@@ -1,7 +1,7 @@
 # Monorepo Example (optional)
 
 Self-contained multi-package layout for the durable profile. Not required for
-single-package use — adopt only when the durable profile grows into more than
+single-package use. Adopt only when the durable profile grows into more than
 one package.
 
 Same pinned toolchain and check contract: Bun `1.4.0`, TypeScript `7.0.2`,
@@ -24,13 +24,16 @@ generation time.
 ## Bootstrap
 
 Bootstrap does not initialize Git. Fallow's `new-only` audit gate needs a
-comparison base, so initialize one before the first check, from the generated
-repository's root (this directory, once copied):
+comparison base. Establish an empty local baseline before the first check so
+the generated scaffold remains visible as new work:
 
 ```sh
 git init -b main
+git -c user.name="Bootstrap Probe" -c user.email="probe@example.invalid" \
+  commit --allow-empty -m "chore: establish comparison base"
 bun install --frozen-lockfile
-git add <the generated scaffold paths>
-git commit -m 'chore: initialize repository'
 bun run check
 ```
+
+After the check passes, commit the generated scaffold with your normal Git
+identity. The probe identity above is local verification metadata only.

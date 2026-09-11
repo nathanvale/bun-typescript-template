@@ -1,4 +1,4 @@
-# Durable Profile — Verification Proof
+# Durable Profile: Verification Proof
 
 Bounded owner: `profiles/durable/**`, `examples/monorepo/**`,
 `proofs/durable/**` in `bun-typescript-template`, branch `feat/durable-profile`.
@@ -8,7 +8,7 @@ This is profile-source evidence from this lane only: what runs when the
 checks execute directly against the committed profile sources inside this
 template repository's own worktree, which has a different (older, shared)
 git history than any generated destination will have. It is not proof of
-what a freshly generated repository produces end to end — the coordinator
+what a freshly generated repository produces end to end. The coordinator
 and the integration reviewer own that fresh generated-destination
 verification.
 
@@ -25,19 +25,23 @@ comparison base:
 
 ```sh
 git init -b main
+git -c user.name="Bootstrap Probe" -c user.email="probe@example.invalid" \
+  commit --allow-empty -m "chore: establish comparison base"
 bun install --frozen-lockfile
-git add <the generated scaffold paths>
-git commit -m 'chore: initialize repository'
 bun run check
 ```
+
+The empty commit supplies a comparison base while leaving the generated
+scaffold visible to Fallow as new work. It is local verification metadata, not
+the generated scaffold's first content commit.
 
 `bun install --frozen-lockfile` is why both profiles now commit their
 generated `bun.lock` (see "Lockfiles" below) instead of ignoring it.
 
-## `profiles/durable/` — profile-only evidence
+## `profiles/durable/`: profile-only evidence
 
 Commands, run with an absolute `--cwd`/`-C` path in `profiles/durable/`
-inside this worktree (the template repository's own git history — branch
+inside this worktree (the template repository's own git history, branch
 `feat/durable-profile`, base branch `main` at the shared root commit
 `a1f4dc5`, not a generated repository's history):
 
@@ -46,15 +50,15 @@ bun install --cwd /Users/nathanvale/code/.worktrees/bun-typescript-template-dura
 bun run --cwd /Users/nathanvale/code/.worktrees/bun-typescript-template-durable/profiles/durable check
 ```
 
-Result: `bun install` — 12 installs across 46 packages, exit 0.
-`bun run check` — exit 0:
+Result: `bun install` completed 12 installs across 46 packages with exit 0.
+`bun run check` exited 0:
 
 - `biome:check`: `Checked 7 files in ...ms. No fixes applied.`
-- `typecheck`: `tsc --noEmit -p tsconfig.json` — no output, exit 0.
-- `test`: `bun test` — `1 pass, 0 fail, 1 expect() calls`.
-- `quality:fallow` — now the repo-local invocation
+- `typecheck`: `tsc --noEmit -p tsconfig.json`, no output, exit 0.
+- `test`: `bun test`, `1 pass, 0 fail, 1 expect() calls`.
+- `quality:fallow`: now the repo-local invocation
   `node_modules/.bin/fallow audit --format json --quiet --type-aware
-  --type-aware-require best-effort` (not ambient `PATH` resolution) —
+  --type-aware-require best-effort` (not ambient `PATH` resolution),
   `"verdict":"pass"`, `dead_code_issues: 0`, `complexity_findings: 0`,
   `duplication_clone_groups: 0`, type-aware `"completeness":"complete"`.
 
@@ -68,7 +72,7 @@ history above (this worktree's), and, separately, will be proven again by the
 coordinator/integration reviewer against an actual generated destination
 following the exact setup sequence above.
 
-## `examples/monorepo/` — profile-only evidence
+## `examples/monorepo/`: profile-only evidence
 
 Same treatment, run with an absolute `--cwd` path in `examples/monorepo/`
 inside this worktree:
@@ -78,15 +82,15 @@ bun install --cwd /Users/nathanvale/code/.worktrees/bun-typescript-template-dura
 bun run --cwd /Users/nathanvale/code/.worktrees/bun-typescript-template-durable/examples/monorepo check
 ```
 
-Result: `bun install` — 14 installs across 47 packages, exit 0.
-`bun run check` — exit 0:
+Result: `bun install` completed 14 installs across 47 packages with exit 0.
+`bun run check` exited 0:
 
 - `biome:check`: `Checked 8 files in ...ms. No fixes applied.`
-- `typecheck`: `bun run --filter '*' typecheck` —
+- `typecheck`: `bun run --filter '*' typecheck`,
   `__REPOSITORY_NAME__-example-lib typecheck: Exited with code 0`.
-- `test`: `bun run --filter '*' test` —
-  `__REPOSITORY_NAME__-example-lib test: 1 pass, 0 fail` — `Exited with code 0`.
-- `quality:fallow` (repo-local invocation) — `"verdict":"pass"`.
+- `test`: `bun run --filter '*' test`,
+  `__REPOSITORY_NAME__-example-lib test: 1 pass, 0 fail`, `Exited with code 0`.
+- `quality:fallow` (repo-local invocation): `"verdict":"pass"`.
 
 Independent of the durable profile's own check run: each has its own
 `package.json`, `tsconfig.base.json`, `biome.jsonc`, `.fallowrc.json`,
@@ -112,7 +116,7 @@ value supplied. `grep -rn '{{SOURCE_PACKET}}'` across `profiles/durable/` and
 
 `profiles/durable/package.json` and `examples/monorepo/package.json` carry
 `"name": "__REPOSITORY_NAME__"`. The monorepo's child package is
-`__REPOSITORY_NAME__-example-lib` — unscoped, so it renders to a valid
+`__REPOSITORY_NAME__-example-lib` is unscoped, so it renders to a valid
 lowercase unscoped npm name once `__REPOSITORY_NAME__` is substituted with an
 actual lowercase repository name (e.g. `my-app` → `my-app-example-lib`).
 Confirmed working as-is (with the literal placeholder still in place):
@@ -131,14 +135,14 @@ resolving dependencies from scratch.
 
 Neither `profiles/durable/` nor `examples/monorepo/` ships a CI workflow.
 Both READMEs and `TEMPLATE-SOURCE.md` state CI is a deliberate, separate
-decision — not automatic because a repository is durable or was promoted from
+decision, not automatic because a repository is durable or was promoted from
 scratch.
 
 ## Template-source documentation
 
 `TEMPLATE-SOURCE.md` (contributor-facing, not shipped) lives only under
 `profiles/durable/`. Neither `README.md` references it or any
-`profiles/durable/` path anymore — a generated repository has no sibling
+`profiles/durable/` path anymore. A generated repository has no sibling
 `profiles/durable/` directory to point to. `grep -rn 'TEMPLATE-SOURCE.md'
 profiles/durable/README.md examples/monorepo/README.md` and `grep -rn
 'profiles/durable' profiles/durable/README.md examples/monorepo/README.md`

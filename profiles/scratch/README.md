@@ -17,22 +17,21 @@ specifically needs it.
 
 ## Source packet
 
-`{{SOURCE_PACKET}}`
+`__SOURCE_PACKET__`
 
 ## Run it
 
 ```sh
-bun install
+bun install --frozen-lockfile
 bun run start
-bun test
-bun x tsc --noEmit
+bun run check
 ```
 
 ## Deletion, retirement, or promotion
 
 - **Delete** this profile once the experiment's question is answered and
-  nothing here is worth keeping — the source packet above is the durable
+  nothing here is worth keeping. The source packet above is the durable
   record, not this code.
 - **Promote** by selecting the `durable` profile from the bootstrap template
   when this becomes a maintained product, shared library, reusable tool, or
-  long-lived code owner that justifies that maintenance — not before.
+  long-lived code owner that justifies that maintenance, not before.

@@ -2,7 +2,7 @@
 
 This file is for contributors editing this profile inside the
 `bun-typescript-template` bootstrap repository. It is **not** copied into a
-generated repository — only `README.md` and the code alongside it are.
+generated repository. Only `README.md` and the code alongside it are.
 
 ## Token contract
 
@@ -10,11 +10,11 @@ generated repository — only `README.md` and the code alongside it are.
 
 | Token | Filled by | With |
 | --- | --- | --- |
-| `{{SOURCE_PACKET}}` | `bun run bootstrap --profile scratch --destination PATH --source-packet PATH_OR_URL` | The exact `--source-packet` value the coordinator passed |
+| `__SOURCE_PACKET__` | `bun run bootstrap --profile scratch --destination PATH --source-packet PATH_OR_URL` | The exact `--source-packet` value the coordinator passed |
 
-`bootstrap` performs a literal string replacement of `{{SOURCE_PACKET}}` in
+`bootstrap` performs a literal string replacement of `__SOURCE_PACKET__` in
 the copied `README.md` with the `--source-packet` argument. No path is
-hardcoded in this profile's source — every generated instance carries its own
+hardcoded in this profile's source. Every generated instance carries its own
 caller-supplied source packet reference.
 
 ## Placement guidance this profile follows
@@ -24,7 +24,7 @@ dotfiles repository's `docs/agents/work-placement.md` (source packet:
 `/Users/nathanvale/code/.worktrees/dotfiles-work-placement/docs/agents/work-placement.md`
 at commit `fd065bec`, merged via `nathanvale/dotfiles-private#136`,
 commit `9d62eafea447269bb4517f9cf36f0878fb6f313a`). That path only exists in
-the dotfiles repository — a generated repository has no reason to reference
+the dotfiles repository. A generated repository has no reason to reference
 it, which is why `README.md` above does not link it.
 
 ## Why the run commands have no `cd`

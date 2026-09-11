@@ -23,13 +23,13 @@ generation time.
 
 `bun run check` runs, in order:
 
-1. `biome:check` — `biome check --diagnostic-level=error .`
-2. `typecheck` — `tsc --noEmit -p tsconfig.json`. The full `tsconfig.base.json`
+1. `biome:check`: `biome check --diagnostic-level=error .`
+2. `typecheck`: `tsc --noEmit -p tsconfig.json`. The full `tsconfig.base.json`
    is inherited as-is: `strict`, `verbatimModuleSyntax`,
    `exactOptionalPropertyTypes`, and `noUncheckedIndexedAccess` are all on and
    are not relaxed anywhere in this profile.
-3. `test` — `bun test`
-4. `quality:fallow` — `node_modules/.bin/fallow audit --format json --quiet
+3. `test`: `bun test`
+4. `quality:fallow`: `node_modules/.bin/fallow audit --format json --quiet
    --type-aware --type-aware-require best-effort` (gate follows the audit
    `verdict`; a type-aware incompleteness is advisory, not blocking)
 
@@ -42,19 +42,22 @@ promoted from scratch.
 ## Bootstrap
 
 Bootstrap does not initialize Git. Fallow's `new-only` audit gate needs a
-comparison base, so initialize one before the first check, from the generated
-repository's root (this directory, once copied):
+comparison base. Establish an empty local baseline before the first check so
+the generated scaffold remains visible as new work:
 
 ```sh
 git init -b main
+git -c user.name="Bootstrap Probe" -c user.email="probe@example.invalid" \
+  commit --allow-empty -m "chore: establish comparison base"
 bun install --frozen-lockfile
-git add <the generated scaffold paths>
-git commit -m 'chore: initialize repository'
 bun run check
 ```
+
+After the check passes, commit the generated scaffold with your normal Git
+identity. The probe identity above is local verification metadata only.
 
 ## Optional monorepo layout
 
 A multi-package layout is available as a separate, self-contained example
-under `examples/monorepo/` — not required here. Adopt it only when this
+under `examples/monorepo/`. It is not required here. Adopt it only when this
 profile grows into more than one package.
