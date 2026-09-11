@@ -1,0 +1,24 @@
+{
+	"name": "durable-profile-template",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"description": "Durable bootstrap profile: Bun, TypeScript, Biome, native Fallow, one check contract.",
+	"packageManager": "bun@1.4.0",
+	"scripts": {
+		"biome:check": "biome check --diagnostic-level=error .",
+		"check:write": "biome check --write .",
+		"lint": "biome lint --diagnostic-level=error .",
+		"lint:fix": "biome lint --write .",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"test": "bun test",
+		"quality:fallow": "fallow audit --format json --quiet --type-aware --type-aware-require best-effort",
+		"check": "bun run biome:check && bun run typecheck && bun run test && bun run --silent quality:fallow"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.4.15",
+		"@types/bun": "1.4.0",
+		"fallow": "3.19.0",
+		"typescript": "7.0.2"
+	}
+}
