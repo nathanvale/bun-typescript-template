@@ -1,5 +1,5 @@
 {
-	"name": "durable-profile-monorepo-example",
+	"name": "__REPOSITORY_NAME__",
 	"version": "0.0.0",
 	"private": true,
 	"type": "module",
@@ -17,7 +17,7 @@
 		"lint:fix": "biome lint --write .",
 		"typecheck": "bun run --filter '*' typecheck",
 		"test": "bun run --filter '*' test",
-		"quality:fallow": "fallow audit --format json --quiet --type-aware --type-aware-require best-effort",
+		"quality:fallow": "node_modules/.bin/fallow audit --format json --quiet --type-aware --type-aware-require best-effort",
 		"check": "bun run biome:check && bun run typecheck && bun run test && bun run --silent quality:fallow"
 	},
 	"devDependencies": {

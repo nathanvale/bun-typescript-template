@@ -1,5 +1,5 @@
 {
-	"name": "durable-profile-template",
+	"name": "__REPOSITORY_NAME__",
 	"version": "0.0.0",
 	"private": true,
 	"type": "module",
@@ -12,7 +12,7 @@
 		"lint:fix": "biome lint --write .",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"test": "bun test",
-		"quality:fallow": "fallow audit --format json --quiet --type-aware --type-aware-require best-effort",
+		"quality:fallow": "node_modules/.bin/fallow audit --format json --quiet --type-aware --type-aware-require best-effort",
 		"check": "bun run biome:check && bun run typecheck && bun run test && bun run --silent quality:fallow"
 	},
 	"devDependencies": {

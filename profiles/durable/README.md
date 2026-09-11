@@ -6,10 +6,10 @@ repository's root.
 
 ## Source packet
 
-`{{SOURCE_PACKET}}`
+`__SOURCE_PACKET__`
 
 Bootstrap substitutes this token with the `--source-packet` value supplied at
-generation time. See `TEMPLATE-SOURCE.md` for the token contract.
+generation time.
 
 ## Pinned toolchain
 
@@ -29,9 +29,9 @@ generation time. See `TEMPLATE-SOURCE.md` for the token contract.
    `exactOptionalPropertyTypes`, and `noUncheckedIndexedAccess` are all on and
    are not relaxed anywhere in this profile.
 3. `test` — `bun test`
-4. `quality:fallow` — `fallow audit --format json --quiet --type-aware
-   --type-aware-require best-effort` (gate follows the audit `verdict`; a
-   type-aware incompleteness is advisory, not blocking)
+4. `quality:fallow` — `node_modules/.bin/fallow audit --format json --quiet
+   --type-aware --type-aware-require best-effort` (gate follows the audit
+   `verdict`; a type-aware incompleteness is advisory, not blocking)
 
 ## CI
 
@@ -41,10 +41,15 @@ promoted from scratch.
 
 ## Bootstrap
 
-Run from the generated repository root (this directory, once copied):
+Bootstrap does not initialize Git. Fallow's `new-only` audit gate needs a
+comparison base, so initialize one before the first check, from the generated
+repository's root (this directory, once copied):
 
 ```sh
-bun install
+git init -b main
+bun install --frozen-lockfile
+git add <the generated scaffold paths>
+git commit -m 'chore: initialize repository'
 bun run check
 ```
 

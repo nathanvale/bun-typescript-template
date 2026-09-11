@@ -10,13 +10,13 @@ generated repository — only `README.md` and the code alongside it are.
 
 | Token | Filled by | With |
 | --- | --- | --- |
-| `{{SOURCE_PACKET}}` | `bun run bootstrap --profile durable --destination PATH --source-packet PATH_OR_URL` | The exact `--source-packet` value the coordinator passed |
+| `__SOURCE_PACKET__` | `bun run bootstrap --profile durable --destination PATH --source-packet PATH_OR_URL` | The exact `--source-packet` value the coordinator passed |
 
-`bootstrap` performs a literal string replacement of `{{SOURCE_PACKET}}` in
+`bootstrap` performs a literal string replacement of `__SOURCE_PACKET__` in
 the copied `README.md` with the `--source-packet` argument. No path is
 hardcoded in this profile's source — every generated instance carries its own
 caller-supplied source packet reference. `bootstrap` must fail rather than
-ship the literal `{{SOURCE_PACKET}}` token if no `--source-packet` value is
+ship the literal `__SOURCE_PACKET__` token if no `--source-packet` value is
 supplied.
 
 ## Placement guidance this profile follows

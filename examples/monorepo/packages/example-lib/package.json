@@ -1,5 +1,5 @@
 {
-	"name": "@example/example-lib",
+	"name": "__REPOSITORY_NAME__-example-lib",
 	"version": "0.0.0",
 	"private": true,
 	"type": "module",
