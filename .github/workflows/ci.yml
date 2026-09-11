@@ -10,8 +10,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
-      - run: bun run check
+      - run: bun run biome:check && bun run typecheck && bun run test
+      - if: github.event_name == 'pull_request'
+        run: bun run --silent quality:fallow --base "origin/${{ github.base_ref }}"
+      - if: github.event_name == 'push'
+        run: bun run --silent quality:fallow --base "${{ github.event.before }}"
