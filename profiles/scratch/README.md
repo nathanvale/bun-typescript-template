@@ -33,7 +33,6 @@ bun x tsc --noEmit
 - **Delete** this profile once the experiment's question is answered and
   nothing here is worth keeping — the source packet above is the durable
   record, not this code.
-- **Promote** to the `durable` profile (see `profiles/durable/`, if present)
-  only when this becomes a maintained product, shared library, reusable tool,
-  or long-lived code owner. Promotion applies the full bootstrap contract
-  (Fallow, per-package check contract, CI) at that point — not before.
+- **Promote** by selecting the `durable` profile from the bootstrap template
+  when this becomes a maintained product, shared library, reusable tool, or
+  long-lived code owner that justifies that maintenance — not before.
