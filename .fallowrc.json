@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/fallow/schema.json",
+  "ignorePatterns": ["profiles/**", "examples/**"],
+  "typeAware": {
+    "enabled": true,
+    "require": "complete"
+  },
+  "audit": {
+    "gate": "new-only"
+  },
+  "rules": {
+    "dev-dependencies-in-production": "error",
+    "private-type-leaks": "error",
+    "re-export-cycle": "error",
+    "stale-suppressions": "error",
+    "test-only-dependencies": "error",
+    "type-only-dependencies": "error",
+    "unused-dev-dependencies": "error",
+    "unused-optional-dependencies": "error"
+  }
+}
