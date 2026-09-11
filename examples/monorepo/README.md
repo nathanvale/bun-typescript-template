@@ -29,11 +29,10 @@ the generated scaffold remains visible as new work:
 
 ```sh
 git init -b main
-git -c user.name="Bootstrap Probe" -c user.email="probe@example.invalid" \
-  commit --allow-empty -m "chore: establish comparison base"
+git commit --allow-empty -m "chore: establish comparison base"
 bun install --frozen-lockfile
 bun run check
 ```
 
 After the check passes, commit the generated scaffold with your normal Git
-identity. The probe identity above is local verification metadata only.
+identity. Git must already have your user name and email configured.

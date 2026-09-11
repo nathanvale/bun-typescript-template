@@ -25,15 +25,15 @@ comparison base:
 
 ```sh
 git init -b main
-git -c user.name="Bootstrap Probe" -c user.email="probe@example.invalid" \
-  commit --allow-empty -m "chore: establish comparison base"
+git commit --allow-empty -m "chore: establish comparison base"
 bun install --frozen-lockfile
 bun run check
 ```
 
 The empty commit supplies a comparison base while leaving the generated
-scaffold visible to Fallow as new work. It is local verification metadata, not
-the generated scaffold's first content commit.
+scaffold visible to Fallow as new work. The generated instructions use the
+caller's configured Git identity. Disposable verification may supply a local
+probe identity per command.
 
 `bun install --frozen-lockfile` is why both profiles now commit their
 generated `bun.lock` (see "Lockfiles" below) instead of ignoring it.

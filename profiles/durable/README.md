@@ -47,17 +47,17 @@ the generated scaffold remains visible as new work:
 
 ```sh
 git init -b main
-git -c user.name="Bootstrap Probe" -c user.email="probe@example.invalid" \
-  commit --allow-empty -m "chore: establish comparison base"
+git commit --allow-empty -m "chore: establish comparison base"
 bun install --frozen-lockfile
 bun run check
 ```
 
 After the check passes, commit the generated scaffold with your normal Git
-identity. The probe identity above is local verification metadata only.
+identity. Git must already have your user name and email configured.
 
 ## Optional monorepo layout
 
-A multi-package layout is available as a separate, self-contained example
-under `examples/monorepo/`. It is not required here. Adopt it only when this
-profile grows into more than one package.
+A multi-package layout is available as a separate, self-contained bootstrap
+profile. From the template checkout, run `bun run bootstrap --profile durable
+--destination PATH --source-packet PATH_OR_URL --monorepo`. It is not required
+here and is not shipped as a subdirectory of this repository.
