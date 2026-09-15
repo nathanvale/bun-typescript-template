@@ -9,7 +9,7 @@
     "check": "bun run biome:check && bun run typecheck && bun run test && bun run --silent quality:fallow",
     "check:write": "biome check --write .",
     "quality:fallow": "node_modules/.bin/fallow audit --format json --quiet --type-aware --type-aware-require best-effort",
-    "test": "bun test",
+    "test": "bun test --path-ignore-patterns 'starters/**'",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "admit:static": "bun run src/static-admission.ts"
   },

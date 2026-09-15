@@ -288,4 +288,79 @@ describe("public bootstrap CLI", () => {
       error: { code: "profile_option_mismatch", retrySafe: true },
     });
   });
+
+  test("generates independently runnable simple and complex CLI starters", async () => {
+    const root = await temporaryRoot();
+    for (const starter of ["simple", "complex"] as const) {
+      const destination = join(root, `${starter}-cli`);
+      const result = invoke(
+        "--profile",
+        "durable",
+        "--starter",
+        starter,
+        "--destination",
+        destination,
+        "--source-packet",
+        `https://example.test/vault/projects/${starter}-cli/`,
+        "--json",
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).toBe("");
+      expect(JSON.parse(result.stdout)).toMatchObject({
+        profile: "durable",
+        starter,
+        status: "created",
+        variant: "single-package",
+      });
+      const files = await listFiles(destination);
+      expect(files).toContain(".github/workflows/ci.yml");
+      expect(files).toContain("src/cli.ts");
+      expect(files).not.toContain("TEMPLATE-SOURCE.md");
+      expect(await readFile(join(destination, "README.md"), "utf8")).toContain(
+        "https://example.test/vault/projects/",
+      );
+
+      expect(
+        runIn(destination, ["install", "--frozen-lockfile"], {}).exitCode,
+      ).toBe(0);
+      const machine = runIn(
+        destination,
+        ["run", "--silent", "start", "--", "status", "--json"],
+        {},
+      );
+      expect(machine.exitCode).toBe(0);
+      expect(machine.stderr).toBe("");
+      expect(JSON.parse(machine.stdout)).toMatchObject({
+        contractVersion: "2.0.0",
+        envelopeVersion: 2,
+        result: { outcome: "success", transactionState: "unchanged" },
+      });
+      expect(runIn(destination, ["run", "check"], {}).exitCode).toBe(0);
+    }
+  }, 120_000);
+
+  test("refuses incompatible starter profile combinations before writing", async () => {
+    const root = await temporaryRoot();
+    for (const args of [
+      ["--profile", "scratch", "--starter", "simple"],
+      ["--profile", "durable", "--starter", "complex", "--monorepo"],
+    ]) {
+      const destination = join(root, `refused-${args.join("-")}`);
+      const result = invoke(
+        ...args,
+        "--destination",
+        destination,
+        "--source-packet",
+        "https://example.test/vault/projects/refused/",
+        "--json",
+      );
+      expect(result.exitCode).toBe(2);
+      expect(await Bun.file(destination).exists()).toBe(false);
+      expect(JSON.parse(result.stderr)).toMatchObject({
+        error: { code: "profile_option_mismatch" },
+        status: "refused",
+      });
+    }
+  });
 });

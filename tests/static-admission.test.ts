@@ -114,6 +114,7 @@ const EXPECTED_FILES: Record<Profile, string[]> = {
 };
 
 const EXPECTED_SCRIPTS = {
+  start: "bun run src/cli.ts",
   biome: "biome check --diagnostic-level=error .",
   config: "tsc --showConfig -p tsconfig.json",
   typecheck: "tsc --noEmit -p tsconfig.json",
@@ -655,6 +656,7 @@ async function assertPacketPolicy(
   const expectedPins = EXPECTED_DEPENDENCY_PINS[profile];
   expect(packageJson.packageManager).toBe("bun@1.4.0");
   expect(packageJson.scripts).toEqual({
+    start: EXPECTED_SCRIPTS.start,
     "biome:check": EXPECTED_SCRIPTS.biome,
     "check:config": EXPECTED_SCRIPTS.config,
     typecheck: EXPECTED_SCRIPTS.typecheck,

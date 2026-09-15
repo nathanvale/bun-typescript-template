@@ -27,6 +27,7 @@ const NAME_TOKEN = "__REPOSITORY_NAME__";
 const PACKET_TOKEN = "__SOURCE_PACKET__";
 
 type Profile = "scratch" | "durable";
+type Starter = "simple" | "complex";
 
 interface BootstrapOptions {
   destination: string;
@@ -35,6 +36,7 @@ interface BootstrapOptions {
   name: string;
   profile: Profile;
   sourcePacket: string;
+  starter?: Starter;
 }
 
 interface ParsedFlags {
@@ -44,9 +46,15 @@ interface ParsedFlags {
   name?: string;
   profile?: Profile;
   sourcePacket?: string;
+  starter?: Starter;
 }
 
-type ValueFlag = "destination" | "name" | "profile" | "sourcePacket";
+type ValueFlag =
+  | "destination"
+  | "name"
+  | "profile"
+  | "sourcePacket"
+  | "starter";
 
 interface BootstrapResult {
   destination: string;
@@ -55,6 +63,7 @@ interface BootstrapResult {
   runId: string;
   schemaVersion: number;
   sourcePacket: string;
+  starter?: Starter;
   status: "created";
   variant: "single-package" | "monorepo";
 }
@@ -76,10 +85,16 @@ const HELP = `Create a Bun TypeScript repository from an explicit profile.
 Usage:
   bun run bootstrap --profile scratch --destination PATH --source-packet PATH_OR_URL [--name NAME] [--json]
   bun run bootstrap --profile durable --destination PATH --source-packet PATH_OR_URL [--name NAME] [--monorepo] [--json]
+  bun run bootstrap --profile durable --starter simple --destination PATH --source-packet PATH_OR_URL [--name NAME] [--json]
+  bun run bootstrap --profile durable --starter complex --destination PATH --source-packet PATH_OR_URL [--name NAME] [--json]
 
 Profiles:
   scratch  Dump-and-run repository with only run, typecheck, and test essentials.
   durable  Maintained repository with Biome, native Fallow, and uniform checks.
+
+CLI starters:
+  simple   Read-only CLI with Contract Core 2.0 help and discovery.
+  complex  State-changing CLI with typed contracts and Branch Stations.
 
 Safety:
   An existing non-empty destination is refused and never overwritten.
@@ -126,11 +141,25 @@ function parseProfile(value: string): Profile {
   );
 }
 
+function parseStarter(value: string): Starter {
+  if (value === "simple" || value === "complex") {
+    return value;
+  }
+  throw new CliError(
+    "invalid_starter",
+    `unsupported starter: ${value}`,
+    "choose --starter simple or --starter complex",
+    2,
+    true,
+  );
+}
+
 const VALUE_FLAGS: Record<string, ValueFlag> = {
   "--destination": "destination",
   "--name": "name",
   "--profile": "profile",
   "--source-packet": "sourcePacket",
+  "--starter": "starter",
 };
 
 function assignValueFlag(
@@ -140,6 +169,10 @@ function assignValueFlag(
 ): void {
   if (flag === "profile") {
     flags.profile = parseProfile(value);
+    return;
+  }
+  if (flag === "starter") {
+    flags.starter = parseStarter(value);
     return;
   }
   flags[flag] = value;
@@ -195,7 +228,17 @@ function requireFlag(value: string | undefined): string {
   return value;
 }
 
-function validateProfileOptions(profile: Profile, monorepo: boolean): void {
+function validateProfileOptions(
+  profile: Profile,
+  monorepo: boolean,
+  starter?: Starter,
+): void {
+  validateMonorepoProfile(profile, monorepo);
+  validateStarterProfile(profile, starter);
+  validateStarterVariant(monorepo, starter);
+}
+
+function validateMonorepoProfile(profile: Profile, monorepo: boolean): void {
   if (monorepo && profile !== "durable") {
     throw new CliError(
       "profile_option_mismatch",
@@ -205,6 +248,34 @@ function validateProfileOptions(profile: Profile, monorepo: boolean): void {
       true,
     );
   }
+}
+
+function validateStarterProfile(profile: Profile, starter?: Starter): void {
+  if (starter !== undefined && profile !== "durable") {
+    throw new CliError(
+      "profile_option_mismatch",
+      "--starter is available only with --profile durable",
+      "remove --starter or choose --profile durable",
+      2,
+      true,
+    );
+  }
+}
+
+function validateStarterVariant(monorepo: boolean, starter?: Starter): void {
+  if (starter !== undefined && monorepo) {
+    throw new CliError(
+      "profile_option_mismatch",
+      "--starter and --monorepo cannot be combined",
+      "choose one CLI starter or the explicit monorepo example",
+      2,
+      true,
+    );
+  }
+}
+
+function starterOption(starter?: Starter): Pick<BootstrapOptions, "starter"> {
+  return starter === undefined ? {} : { starter };
 }
 
 function resolveRepositoryName(destination: string, name?: string): string {
@@ -269,7 +340,7 @@ function parseArgs(argv: string[]): BootstrapOptions | "help" {
   const profile = parseProfile(requireFlag(flags.profile));
   const destination = requireFlag(flags.destination);
   const sourcePacket = requireFlag(flags.sourcePacket);
-  validateProfileOptions(profile, flags.monorepo);
+  validateProfileOptions(profile, flags.monorepo, flags.starter);
   validateSourcePacket(sourcePacket);
 
   return {
@@ -279,6 +350,7 @@ function parseArgs(argv: string[]): BootstrapOptions | "help" {
     name: resolveRepositoryName(destination, flags.name),
     profile,
     sourcePacket,
+    ...starterOption(flags.starter),
   };
 }
 
@@ -410,6 +482,16 @@ function selectedProfileSource(options: BootstrapOptions): string {
   return join(TEMPLATE_ROOT, "profiles", "durable");
 }
 
+function selectedSources(options: BootstrapOptions): string[] {
+  if (options.starter === undefined) {
+    return [selectedProfileSource(options)];
+  }
+  return [
+    join(TEMPLATE_ROOT, "profiles", "static-admission", options.starter),
+    join(TEMPLATE_ROOT, "starters", options.starter),
+  ];
+}
+
 async function requireProfileSource(source: string): Promise<void> {
   if ((await lstatIfPresent(source)) !== undefined) {
     return;
@@ -421,6 +503,16 @@ async function requireProfileSource(source: string): Promise<void> {
     1,
     false,
   );
+}
+
+async function requireProfileSources(sources: string[]): Promise<void> {
+  await Promise.all(sources.map((source) => requireProfileSource(source)));
+}
+
+async function copySources(sources: string[], staging: string): Promise<void> {
+  for (const source of sources) {
+    await copyDirectoryContents(source, staging);
+  }
 }
 
 async function installStaging(
@@ -444,15 +536,15 @@ async function installStaging(
 async function bootstrap(options: BootstrapOptions): Promise<BootstrapResult> {
   const destinationState = await validateDestination(options.destination);
   const variant = options.monorepo ? "monorepo" : "single-package";
-  const source = selectedProfileSource(options);
-  await requireProfileSource(source);
+  const sources = selectedSources(options);
+  await requireProfileSources(sources);
 
   await mkdir(dirname(options.destination), { recursive: true });
   const staging = await mkdtemp(
     join(dirname(options.destination), ".repo-bootstrap-"),
   );
   try {
-    await copyDirectoryContents(source, staging);
+    await copySources(sources, staging);
     const generatedFiles = await substituteTokens(staging, options);
     await installStaging(staging, options.destination, destinationState);
     return {
@@ -462,6 +554,7 @@ async function bootstrap(options: BootstrapOptions): Promise<BootstrapResult> {
       runId: randomUUID(),
       schemaVersion: SCHEMA_VERSION,
       sourcePacket: options.sourcePacket,
+      ...starterOption(options.starter),
       status: "created",
       variant,
     };
