@@ -89,10 +89,10 @@ export function priorRunPending(effectId: string): OperationResult {
       summary: "Run recover and inspect the pending effect before another set.",
     },
     message: "A prior set may still have effects.",
-    outcome: "refused",
+    outcome: "failed",
     repairAction: "Inspect recovery state; do not replay the prior set.",
     retryable: false,
-    transactionState: "unchanged",
+    transactionState: "unknown",
   };
 }
 

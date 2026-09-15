@@ -347,9 +347,9 @@ test("an interrupted set leaves intent, refuses replay, and recovers read-only",
   expect(replay.exitCode).toBe(3);
   expect(JSON.parse(replay.stdout).result).toMatchObject({
     causeCode: "DOMAIN_PRIOR_RUN_PENDING",
-    outcome: "refused",
+    outcome: "failed",
     retryable: false,
-    transactionState: "unchanged",
+    transactionState: "unknown",
   });
   expect(await Bun.file(state).exists()).toBe(false);
 

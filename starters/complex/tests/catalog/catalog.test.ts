@@ -16,7 +16,7 @@ test("every example.set station has a distinct routed tuple", () => {
     "completed",
     "unchanged",
     "unchanged",
-    "unchanged",
+    "unknown",
   ]);
 });
 
