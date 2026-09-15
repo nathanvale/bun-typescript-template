@@ -1,0 +1,29 @@
+{
+  "name": "__REPOSITORY_NAME__",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.0",
+  "description": "Static-admission complex profile policy source.",
+  "scripts": {
+    "biome:check": "biome check --diagnostic-level=error .",
+    "check:config": "tsc --showConfig -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "bun test",
+    "quality:fallow": "node_modules/.bin/fallow dead-code --format json --quiet --type-aware --type-aware-require complete --fail-on-issues",
+    "quality:fallow:changed": "node_modules/.bin/fallow audit --format json --quiet --gate all --type-aware --type-aware-require complete",
+    "check": "bun run biome:check && bun run typecheck && bun run test && bun run --silent quality:fallow && bun run --silent quality:fallow:dependencies",
+    "quality:fallow:dependencies": "node_modules/.bin/fallow dead-code --production --format json --quiet --type-aware --type-aware-require complete --fail-on-issues"
+  },
+  "dependencies": {
+    "@logtape/logtape": "2.3.1",
+    "@logtape/redaction": "2.3.1",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.15",
+    "@types/bun": "1.4.0",
+    "fallow": "3.19.0",
+    "typescript": "7.0.2"
+  }
+}

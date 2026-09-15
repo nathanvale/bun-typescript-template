@@ -10,7 +10,8 @@
     "check:write": "biome check --write .",
     "quality:fallow": "node_modules/.bin/fallow audit --format json --quiet --type-aware --type-aware-require best-effort",
     "test": "bun test",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "admit:static": "bun run src/static-admission.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.15",
