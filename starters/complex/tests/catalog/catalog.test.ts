@@ -1,17 +1,56 @@
 import { expect, test } from "bun:test";
 import { stationsFor } from "../../src/branch-station-catalog.ts";
 
-test("every example.set station has a distinct routed tuple", () => {
-  const stations = stationsFor("example.set");
-  expect(stations).toHaveLength(4);
+test("the catalogue declares the exact routed tuple vocabulary", () => {
   const allStations = [
+    ...stationsFor("example.status"),
     ...stationsFor("example.set"),
     ...stationsFor("example.recover"),
   ];
   const identities = allStations.map((station) =>
     [station.commandIdentity, station.outcome, station.causeCode].join("|"),
   );
+  const expectedIdentities = [
+    "example.recover|failed|INTERNAL_RESULT_UNKNOWN",
+    "example.recover|success|SUCCESS_COMPLETED",
+    "example.recover|success|SUCCESS_UNCHANGED",
+    "example.set|failed|DOMAIN_PRIOR_RUN_PENDING",
+    "example.set|refused|SCHEMA_INVALID_INPUT",
+    "example.set|success|SUCCESS_COMPLETED",
+    "example.set|success|SUCCESS_UNCHANGED",
+    "example.status|success|SUCCESS_UNCHANGED",
+  ]; // Independent literal oracle for the sealed routed tuple vocabulary.
+
+  expect(identities.sort()).toEqual(expectedIdentities);
   expect(new Set(identities).size).toBe(allStations.length);
+  expect(stationsFor("example.status")).toHaveLength(1);
+  expect(stationsFor("example.set")).toHaveLength(4);
+  expect(stationsFor("example.recover")).toHaveLength(3);
+});
+
+test("status declares its successful unchanged inspection station", () => {
+  expect(stationsFor("example.status")).toEqual([
+    {
+      causeCode: "SUCCESS_UNCHANGED",
+      commandIdentity: "example.status",
+      effectClass: "inspect",
+      exitCode: 0,
+      failureClass: null,
+      guidance: { nextAction: "No follow-up is required." },
+      outcome: "success",
+      reachability: "required",
+      repairAction: null,
+      retryable: false,
+      retryDelayPolicy: { kind: "none" },
+      transactionState: "unchanged",
+      trigger: "The current state is inspected.",
+      unreachableRationale: null,
+    },
+  ]); // Independent literal oracle for the status station contract.
+});
+
+test("set declares completed, unchanged, schema, and unknown states", () => {
+  const stations = stationsFor("example.set");
   expect(stations.map((station) => station.transactionState).sort()).toEqual([
     "completed",
     "unchanged",

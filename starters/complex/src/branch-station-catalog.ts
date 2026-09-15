@@ -20,6 +20,22 @@ export interface Station {
 const STATIONS: Station[] = [
   {
     causeCode: "SUCCESS_UNCHANGED",
+    commandIdentity: "example.status",
+    effectClass: "inspect",
+    exitCode: 0,
+    failureClass: null,
+    guidance: { nextAction: "No follow-up is required." },
+    outcome: "success",
+    reachability: "required",
+    repairAction: null,
+    retryable: false,
+    retryDelayPolicy: { kind: "none" },
+    transactionState: "unchanged",
+    trigger: "The current state is inspected.",
+    unreachableRationale: null,
+  },
+  {
+    causeCode: "SUCCESS_UNCHANGED",
     commandIdentity: "example.recover",
     effectClass: "inspect",
     exitCode: 0,

@@ -7,10 +7,10 @@ import {
   completed,
   inspected,
   invalidInput,
+  parseSetArguments,
   previewed,
   priorRunPending,
   recovered,
-  validateSetInput,
 } from "./engine.ts";
 import { systemProcessLifecycle } from "./process-lifecycle.ts";
 import { inspectRecovery, inspectState, setState } from "./runtime.ts";
@@ -184,10 +184,7 @@ async function main(argv: string[]): Promise<number> {
     return result.exitCode;
   }
   if (args[0] === "set") {
-    const valueIndex = args.indexOf("--value");
-    const value = valueIndex === -1 ? "" : (args[valueIndex + 1] ?? "");
-    const preview = args.includes("--preview");
-    const parsed = validateSetInput(value, preview);
+    const parsed = parseSetArguments(args.slice(1));
     if (!parsed.success) {
       const result = invalidInput("The set value is invalid.");
       writeResult(envelope(result), json);

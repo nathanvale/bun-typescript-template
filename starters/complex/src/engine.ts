@@ -14,6 +14,40 @@ export function validateSetInput(value: string, preview: boolean) {
   return SetInput.safeParse({ preview, value });
 }
 
+function invalidSetArguments() {
+  return SetInput.safeParse({ preview: false, value: undefined });
+}
+
+export function parseSetArguments(args: readonly string[]) {
+  let preview = false;
+  let value: string | undefined;
+
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index];
+    if (argument === "--preview") {
+      if (preview) return invalidSetArguments();
+      preview = true;
+      continue;
+    }
+    if (argument === "--value") {
+      const candidate = args[index + 1];
+      if (
+        value !== undefined ||
+        candidate === undefined ||
+        candidate.startsWith("--")
+      ) {
+        return invalidSetArguments();
+      }
+      value = candidate;
+      index += 1;
+      continue;
+    }
+    return invalidSetArguments();
+  }
+
+  return SetInput.safeParse({ preview, value });
+}
+
 export function inspected(value: string | null): OperationResult {
   return {
     causeCode: "SUCCESS_UNCHANGED",
