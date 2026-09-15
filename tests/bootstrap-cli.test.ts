@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 import {
   chmod,
   mkdir,
@@ -480,9 +481,7 @@ describe("public bootstrap CLI", () => {
         ]),
         "git clone generated starter",
       );
-      expect(await Bun.file(join(freshCheckout, "node_modules")).exists()).toBe(
-        false,
-      );
+      expect(existsSync(join(freshCheckout, "node_modules"))).toBe(false);
       expect(
         runIn(freshCheckout, ["install", "--frozen-lockfile"], {}).exitCode,
       ).toBe(0);
@@ -509,7 +508,7 @@ describe("public bootstrap CLI", () => {
         "--json",
       );
       expect(result.exitCode).toBe(2);
-      expect(await Bun.file(destination).exists()).toBe(false);
+      expect(existsSync(destination)).toBe(false);
       expect(JSON.parse(result.stderr)).toMatchObject({
         error: { code: "profile_option_mismatch" },
         status: "refused",
