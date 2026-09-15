@@ -87,3 +87,64 @@ export function invalidInput(message: string): OperationResult {
     transactionState: "unchanged",
   };
 }
+
+export function recovered(
+  observation:
+    | { effectId: null; state: "none" }
+    | { effectId: string; state: "completed" | "unknown" },
+): OperationResult {
+  if (observation.state === "unknown") {
+    return {
+      causeCode: "INTERNAL_RESULT_UNKNOWN",
+      commandIdentity: "example.recover",
+      data: null,
+      effectClass: "inspect",
+      effects: {
+        completed: [],
+        inventoryComplete: true,
+        remaining: [],
+        uncertain: [observation.effectId],
+      },
+      exitCode: 1,
+      failureClass: "internal",
+      handoff: {
+        owner: "operator",
+        summary:
+          "Inspect the state and journal before choosing another action.",
+      },
+      message: "Recovery could not establish the pending effect.",
+      outcome: "failed",
+      repairAction: "Resolve the uncertain effect without replaying it.",
+      retryable: false,
+      transactionState: "unknown",
+    };
+  }
+  const completedEffects =
+    observation.state === "completed" ? [observation.effectId] : [];
+  return {
+    causeCode:
+      observation.state === "completed"
+        ? "SUCCESS_COMPLETED"
+        : "SUCCESS_UNCHANGED",
+    commandIdentity: "example.recover",
+    data: { pendingEffect: observation.effectId },
+    effectClass: "inspect",
+    effects: {
+      completed: completedEffects,
+      inventoryComplete: true,
+      remaining: [],
+      uncertain: [],
+    },
+    exitCode: 0,
+    failureClass: null,
+    message:
+      observation.state === "completed"
+        ? "The pending effect is already present; it was not replayed."
+        : "No pending effect requires recovery.",
+    outcome: "success",
+    repairAction: null,
+    retryable: false,
+    transactionState:
+      observation.state === "completed" ? "completed" : "unchanged",
+  };
+}

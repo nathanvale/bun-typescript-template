@@ -17,7 +17,57 @@ export interface Station {
   unreachableRationale: null;
 }
 
-export const STATIONS: Station[] = [
+const STATIONS: Station[] = [
+  {
+    causeCode: "SUCCESS_UNCHANGED",
+    commandIdentity: "example.recover",
+    effectClass: "inspect",
+    exitCode: 0,
+    failureClass: null,
+    guidance: { nextAction: "No follow-up is required." },
+    outcome: "success",
+    reachability: "required",
+    repairAction: null,
+    retryable: false,
+    retryDelayPolicy: { kind: "none" },
+    transactionState: "unchanged",
+    trigger: "No journal intent is pending.",
+    unreachableRationale: null,
+  },
+  {
+    causeCode: "SUCCESS_COMPLETED",
+    commandIdentity: "example.recover",
+    effectClass: "inspect",
+    exitCode: 0,
+    failureClass: null,
+    guidance: { nextAction: "Do not replay the completed effect." },
+    outcome: "success",
+    reachability: "required",
+    repairAction: null,
+    retryable: false,
+    retryDelayPolicy: { kind: "none" },
+    transactionState: "completed",
+    trigger: "A pending journal intent matches the observed state.",
+    unreachableRationale: null,
+  },
+  {
+    causeCode: "INTERNAL_RESULT_UNKNOWN",
+    commandIdentity: "example.recover",
+    effectClass: "inspect",
+    exitCode: 1,
+    failureClass: "internal",
+    guidance: {
+      nextAction: "Inspect the state and journal, then hand off if unresolved.",
+    },
+    outcome: "failed",
+    reachability: "required",
+    repairAction: "Resolve the uncertain effect without replaying it.",
+    retryable: false,
+    retryDelayPolicy: { kind: "none" },
+    transactionState: "unknown",
+    trigger: "A pending journal intent cannot be reconciled to current state.",
+    unreachableRationale: null,
+  },
   {
     causeCode: "SUCCESS_UNCHANGED",
     commandIdentity: "example.set",

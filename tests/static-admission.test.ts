@@ -237,7 +237,14 @@ const EXPECTED_BOUNDARIES: Record<Profile, Record<string, unknown>> = {
         patterns: ["src/command-contract.ts", "src/model.ts"],
       },
       { name: "engine", patterns: ["src/engine.ts"] },
-      { name: "runtime", patterns: ["src/runtime.ts"] },
+      {
+        name: "runtime",
+        patterns: [
+          "src/runtime.ts",
+          "src/journal.ts",
+          "src/process-lifecycle.ts",
+        ],
+      },
       { name: "catalog", patterns: ["src/branch-station-catalog.ts"] },
       { name: "diagnostics", patterns: ["src/diagnostics.ts"] },
       { name: "unit-tests", patterns: ["tests/unit/**/*.ts"] },
@@ -251,12 +258,12 @@ const EXPECTED_BOUNDARIES: Record<Profile, Record<string, unknown>> = {
       },
       { from: "contract", allow: [] },
       { from: "engine", allow: ["contract"] },
-      { from: "runtime", allow: ["contract"] },
+      { from: "runtime", allow: ["contract", "runtime"] },
       { from: "catalog", allow: ["contract"] },
       { from: "diagnostics", allow: ["contract"] },
       {
         from: "unit-tests",
-        allow: ["front-door", "contract", "engine", "catalog"],
+        allow: ["front-door", "contract", "engine", "runtime", "catalog"],
       },
       {
         from: "integration-tests",

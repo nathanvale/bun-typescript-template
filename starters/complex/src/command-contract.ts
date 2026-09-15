@@ -17,6 +17,7 @@ export function envelope(result: OperationResult) {
       "example.command-discovery",
       "example.discovery",
       "example.help",
+      "example.recover",
       "example.set",
       "example.status",
     ],
@@ -31,7 +32,9 @@ export function envelope(result: OperationResult) {
       effects: result.effects,
       exitCode: result.exitCode,
       failureClass: result.failureClass,
-      nextAction: result.nextAction ?? "No follow-up is required.",
+      ...(result.handoff === undefined
+        ? { nextAction: result.nextAction ?? "No follow-up is required." }
+        : { handoff: result.handoff }),
       outcome: result.outcome,
       repairAction: result.repairAction,
       retryable: result.retryable,

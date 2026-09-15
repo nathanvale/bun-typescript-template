@@ -7,9 +7,15 @@ import {
   inspected,
   invalidInput,
   previewed,
+  recovered,
   validateSetInput,
 } from "./engine.ts";
-import { inspectState, setState } from "./runtime.ts";
+import { systemProcessLifecycle } from "./process-lifecycle.ts";
+import { inspectRecovery, inspectState, setState } from "./runtime.ts";
+
+const lifecycle = systemProcessLifecycle();
+process.on("SIGINT", () => lifecycle.terminate(130));
+process.on("SIGTERM", () => lifecycle.terminate(143));
 
 const COMMANDS = [
   {
@@ -24,6 +30,12 @@ const COMMANDS = [
     route: ["set"],
     summary: "Preview or apply a local state change.",
   },
+  {
+    commandIdentity: "example.recover",
+    effectClass: "inspect",
+    route: ["recover"],
+    summary: "Inspect an interrupted state change without replaying it.",
+  },
 ] as const;
 
 function hasJson(argv: string[]): boolean {
@@ -37,16 +49,24 @@ function statePath(): string {
   return resolve(process.env.CLI_EXAMPLE_STATE ?? "example-state.json");
 }
 
+async function waitForLifecycleTest(): Promise<void> {
+  if (process.env.NODE_ENV !== "test") return;
+  const milliseconds = Number(process.env.CLI_EXAMPLE_TEST_DELAY_MS ?? "0");
+  if (Number.isSafeInteger(milliseconds) && milliseconds > 0) {
+    await Bun.sleep(milliseconds);
+  }
+}
+
 function writeResult(result: ReturnType<typeof envelope>, json: boolean): void {
   if (json) {
-    process.stdout.write(`${JSON.stringify(result)}\n`);
+    lifecycle.stdout(`${JSON.stringify(result)}\n`);
     return;
   }
   const line = `${result.message}\n`;
   if (result.result.outcome === "success") {
-    process.stdout.write(line);
+    lifecycle.stdout(line);
   } else {
-    process.stderr.write(line);
+    lifecycle.stderr(line);
   }
 }
 
@@ -114,7 +134,14 @@ async function main(argv: string[]): Promise<number> {
   }
   if (args.length === 1 && args[0] === "status") {
     await recordDiagnostic("example.status");
+    await waitForLifecycleTest();
     const result = inspected(await inspectState(statePath()));
+    writeResult(envelope(result), json);
+    return result.exitCode;
+  }
+  if (args.length === 1 && args[0] === "recover") {
+    await recordDiagnostic("example.recover");
+    const result = recovered(await inspectRecovery(statePath()));
     writeResult(envelope(result), json);
     return result.exitCode;
   }
@@ -147,4 +174,4 @@ async function main(argv: string[]): Promise<number> {
   return result.exitCode;
 }
 
-process.exitCode = await main(process.argv.slice(2));
+await lifecycle.complete(await main(process.argv.slice(2)));
