@@ -3,7 +3,6 @@ import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import {
   copyFile,
-  cp,
   mkdir,
   mkdtemp,
   readdir,
@@ -13,7 +12,7 @@ import {
   symlink,
   writeFile,
 } from "node:fs/promises";
-import { homedir, tmpdir } from "node:os";
+import { tmpdir } from "node:os";
 import {
   basename,
   delimiter,
@@ -385,15 +384,23 @@ async function linkPackage(
   await symlink(source, destination);
 }
 
-async function copyCachedPackage(
-  nodeModules: string,
-  packageName: string,
-  source: string,
-): Promise<void> {
-  const destination = join(nodeModules, packageName);
-  if (existsSync(destination)) return;
-  await mkdir(dirname(destination), { recursive: true });
-  await cp(source, destination, { recursive: true });
+function installRuntimeDependencies(root: string): void {
+  const args = ["install", "--production", "--frozen-lockfile"];
+  const invocation = runNative(root, process.execPath, args);
+  if (invocation.exitCode === 0) return;
+  throw new Error(
+    "bun " +
+      args.join(" ") +
+      " failed in " +
+      root +
+      " (exit " +
+      invocation.exitCode +
+      "); the pinned runtime dependencies must resolve from the profile lock." +
+      "\nstdout:\n" +
+      invocation.stdout +
+      "\nstderr:\n" +
+      invocation.stderr,
+  );
 }
 
 async function linkDependencies(root: string, profile: Profile): Promise<void> {
@@ -405,6 +412,8 @@ async function linkDependencies(root: string, profile: Profile): Promise<void> {
   const nodeModules = join(root, "node_modules");
   await mkdir(nodeModules, { recursive: true });
 
+  if (profile === "complex") installRuntimeDependencies(root);
+
   for (const entry of await readdir(source, { withFileTypes: true })) {
     if (entry.name === ".bin") continue;
     await linkPackage(nodeModules, entry.name, join(source, entry.name));
@@ -412,21 +421,6 @@ async function linkDependencies(root: string, profile: Profile): Promise<void> {
   if (existsSync(join(source, ".bin"))) {
     await linkPackage(nodeModules, ".bin", join(source, ".bin"));
   }
-
-  if (profile !== "complex") return;
-  const cache =
-    process.env.BUN_INSTALL_CACHE_DIR ?? join(homedir(), ".bun/install/cache");
-  await copyCachedPackage(
-    nodeModules,
-    "@logtape/logtape",
-    join(cache, "@logtape/logtape@2.3.1@@@1"),
-  );
-  await copyCachedPackage(
-    nodeModules,
-    "@logtape/redaction",
-    join(cache, "@logtape/redaction@2.3.1@@@1"),
-  );
-  await copyCachedPackage(nodeModules, "zod", join(cache, "zod@4.4.3@@@1"));
 }
 
 const SIMPLE_SOURCE = {
