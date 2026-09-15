@@ -1,0 +1,155 @@
+{
+  "$schema": "./node_modules/fallow/schema.json",
+  "entry": [
+    "src/cli.ts",
+    "tests/unit/**/*.test.ts",
+    "tests/integration/**/*.test.ts",
+    "tests/catalog/**/*.test.ts"
+  ],
+  "typeAware": {
+    "enabled": true,
+    "projects": ["tsconfig.json"],
+    "require": "complete"
+  },
+  "audit": {
+    "gate": "all",
+    "css": false,
+    "cssDeep": false
+  },
+  "boundaries": {
+    "zones": [
+      {
+        "name": "front-door",
+        "patterns": ["src/cli.ts"]
+      },
+      {
+        "name": "contract",
+        "patterns": ["src/command-contract.ts", "src/model.ts"]
+      },
+      {
+        "name": "engine",
+        "patterns": ["src/engine.ts"]
+      },
+      {
+        "name": "runtime",
+        "patterns": ["src/runtime.ts"]
+      },
+      {
+        "name": "catalog",
+        "patterns": ["src/branch-station-catalog.ts"]
+      },
+      {
+        "name": "diagnostics",
+        "patterns": ["src/diagnostics.ts"]
+      },
+      {
+        "name": "unit-tests",
+        "patterns": ["tests/unit/**/*.ts"]
+      },
+      {
+        "name": "integration-tests",
+        "patterns": ["tests/integration/**/*.ts"]
+      },
+      {
+        "name": "catalog-tests",
+        "patterns": ["tests/catalog/**/*.ts"]
+      }
+    ],
+    "rules": [
+      {
+        "from": "front-door",
+        "allow": ["contract", "engine", "runtime", "catalog", "diagnostics"]
+      },
+      {
+        "from": "contract",
+        "allow": []
+      },
+      {
+        "from": "engine",
+        "allow": ["contract"]
+      },
+      {
+        "from": "runtime",
+        "allow": ["contract"]
+      },
+      {
+        "from": "catalog",
+        "allow": ["contract"]
+      },
+      {
+        "from": "diagnostics",
+        "allow": ["contract"]
+      },
+      {
+        "from": "unit-tests",
+        "allow": ["front-door", "contract", "engine", "catalog"]
+      },
+      {
+        "from": "integration-tests",
+        "allow": ["front-door", "contract", "engine", "runtime", "catalog", "diagnostics"]
+      },
+      {
+        "from": "catalog-tests",
+        "allow": ["front-door", "contract", "engine", "runtime", "catalog", "diagnostics"]
+      }
+    ],
+    "coverage": {
+      "requireAllFiles": true
+    }
+  },
+  "rules": {
+    "boundary-violation": "error",
+    "circular-dependencies": "error",
+    "coverage-gaps": "off",
+    "css-broken-reference": "off",
+    "css-dead-surface": "off",
+    "css-duplicate-block": "off",
+    "css-selector-complexity": "off",
+    "css-token-drift": "off",
+    "dev-dependencies-in-production": "error",
+    "duplicate-exports": "off",
+    "duplicate-prop-shape": "off",
+    "dynamic-segment-name-conflict": "off",
+    "empty-catalog-groups": "off",
+    "feature-flags": "off",
+    "invalid-client-export": "off",
+    "misconfigured-dependency-overrides": "off",
+    "misplaced-directive": "off",
+    "mixed-client-server-barrel": "off",
+    "policy-violation": "off",
+    "private-type-leaks": "off",
+    "prop-drilling": "off",
+    "re-export-cycle": "error",
+    "require-suppression-reason": "error",
+    "route-collision": "off",
+    "security-client-server-leak": "off",
+    "security-sink": "off",
+    "stale-suppressions": "error",
+    "test-only-dependencies": "error",
+    "thin-wrapper": "off",
+    "type-only-dependencies": "error",
+    "unlisted-dependencies": "error",
+    "unprovided-injects": "off",
+    "unrendered-components": "off",
+    "unresolved-catalog-references": "off",
+    "unresolved-imports": "error",
+    "unused-catalog-entries": "off",
+    "unused-class-members": "off",
+    "unused-component-emits": "off",
+    "unused-component-inputs": "off",
+    "unused-component-outputs": "off",
+    "unused-component-props": "off",
+    "unused-dependencies": "error",
+    "unused-dependency-overrides": "off",
+    "unused-dev-dependencies": "off",
+    "unused-enum-members": "off",
+    "unused-exports": "error",
+    "unused-files": "error",
+    "unused-load-data-keys": "off",
+    "unused-optional-dependencies": "off",
+    "unused-server-actions": "off",
+    "unused-store-members": "off",
+    "unused-svelte-events": "off",
+    "unused-types": "error"
+  }
+}

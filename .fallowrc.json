@@ -17,5 +17,6 @@
     "type-only-dependencies": "error",
     "unused-dev-dependencies": "error",
     "unused-optional-dependencies": "error"
-  }
+  },
+  "entry": ["src/static-admission.ts"]
 }

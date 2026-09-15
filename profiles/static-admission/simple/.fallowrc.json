@@ -1,0 +1,97 @@
+{
+  "$schema": "./node_modules/fallow/schema.json",
+  "entry": [
+    "src/cli.ts",
+    "tests/cli.test.ts"
+  ],
+  "typeAware": {
+    "enabled": true,
+    "projects": ["tsconfig.json"],
+    "require": "complete"
+  },
+  "audit": {
+    "gate": "all",
+    "css": false,
+    "cssDeep": false
+  },
+  "boundaries": {
+    "zones": [
+      {
+        "name": "front-door",
+        "patterns": ["src/cli.ts"]
+      },
+      {
+        "name": "tests",
+        "patterns": ["tests/**/*.ts"]
+      }
+    ],
+    "rules": [
+      {
+        "from": "front-door",
+        "allow": []
+      },
+      {
+        "from": "tests",
+        "allow": ["front-door"]
+      }
+    ],
+    "coverage": {
+      "requireAllFiles": true
+    }
+  },
+  "rules": {
+    "boundary-violation": "error",
+    "circular-dependencies": "error",
+    "coverage-gaps": "off",
+    "css-broken-reference": "off",
+    "css-dead-surface": "off",
+    "css-duplicate-block": "off",
+    "css-selector-complexity": "off",
+    "css-token-drift": "off",
+    "dev-dependencies-in-production": "error",
+    "duplicate-exports": "off",
+    "duplicate-prop-shape": "off",
+    "dynamic-segment-name-conflict": "off",
+    "empty-catalog-groups": "off",
+    "feature-flags": "off",
+    "invalid-client-export": "off",
+    "misconfigured-dependency-overrides": "off",
+    "misplaced-directive": "off",
+    "mixed-client-server-barrel": "off",
+    "policy-violation": "off",
+    "private-type-leaks": "off",
+    "prop-drilling": "off",
+    "re-export-cycle": "error",
+    "require-suppression-reason": "error",
+    "route-collision": "off",
+    "security-client-server-leak": "off",
+    "security-sink": "off",
+    "stale-suppressions": "error",
+    "test-only-dependencies": "error",
+    "thin-wrapper": "off",
+    "type-only-dependencies": "error",
+    "unlisted-dependencies": "error",
+    "unprovided-injects": "off",
+    "unrendered-components": "off",
+    "unresolved-catalog-references": "off",
+    "unresolved-imports": "error",
+    "unused-catalog-entries": "off",
+    "unused-class-members": "off",
+    "unused-component-emits": "off",
+    "unused-component-inputs": "off",
+    "unused-component-outputs": "off",
+    "unused-component-props": "off",
+    "unused-dependencies": "error",
+    "unused-dependency-overrides": "off",
+    "unused-dev-dependencies": "off",
+    "unused-enum-members": "off",
+    "unused-exports": "error",
+    "unused-files": "error",
+    "unused-load-data-keys": "off",
+    "unused-optional-dependencies": "off",
+    "unused-server-actions": "off",
+    "unused-store-members": "off",
+    "unused-svelte-events": "off",
+    "unused-types": "error"
+  }
+}
