@@ -283,7 +283,9 @@ test("recover inspects a pending journal intent and never replays it", async () 
 });
 
 test("recover keeps a pending effect unknown when persisted state is invalid", async () => {
-  const root = await mkdtemp(join(tmpdir(), "complex-starter-recover-invalid-"));
+  const root = await mkdtemp(
+    join(tmpdir(), "complex-starter-recover-invalid-"),
+  );
   roots.push(root);
   const state = join(root, "state.json");
   await appendJournal(state, {

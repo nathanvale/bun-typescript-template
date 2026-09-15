@@ -65,6 +65,28 @@ export function inspected(value: string | null): OperationResult {
   };
 }
 
+export function invalidPersistedState(): OperationResult {
+  return {
+    causeCode: "INTERNAL_RESULT_UNCHANGED",
+    commandIdentity: "example.status",
+    data: null,
+    effectClass: "inspect",
+    effects: emptyEffects(),
+    exitCode: 1,
+    failureClass: "internal",
+    handoff: {
+      owner: "operator",
+      summary:
+        "Inspect or repair the persisted state before another status run.",
+    },
+    message: "Persisted state is invalid.",
+    outcome: "failed",
+    repairAction: "Inspect or repair the persisted state schema.",
+    retryable: false,
+    transactionState: "unchanged",
+  };
+}
+
 export function previewed(value: string): OperationResult {
   return {
     causeCode: "SUCCESS_UNCHANGED",

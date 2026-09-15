@@ -6,7 +6,9 @@ export interface Station {
   effectClass: EffectClass;
   exitCode: number;
   failureClass: "domain" | "internal" | "schema" | "usage" | null;
-  guidance: { nextAction: string };
+  guidance:
+    | { handoff: { owner: string; summary: string } }
+    | { nextAction: string };
   outcome: Outcome;
   reachability: "required";
   repairAction: string | null;
@@ -32,6 +34,28 @@ const STATIONS: Station[] = [
     retryDelayPolicy: { kind: "none" },
     transactionState: "unchanged",
     trigger: "The current state is inspected.",
+    unreachableRationale: null,
+  },
+  {
+    causeCode: "INTERNAL_RESULT_UNCHANGED",
+    commandIdentity: "example.status",
+    effectClass: "inspect",
+    exitCode: 1,
+    failureClass: "internal",
+    guidance: {
+      handoff: {
+        owner: "operator",
+        summary:
+          "Inspect or repair the persisted state before another status run.",
+      },
+    },
+    outcome: "failed",
+    reachability: "required",
+    repairAction: "Inspect or repair the persisted state schema.",
+    retryable: false,
+    retryDelayPolicy: { kind: "none" },
+    transactionState: "unchanged",
+    trigger: "The persisted state does not match its schema.",
     unreachableRationale: null,
   },
   {

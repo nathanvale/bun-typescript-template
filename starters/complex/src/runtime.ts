@@ -86,7 +86,9 @@ export async function setState(
       }
     }
     const temporary = `${path}.${process.pid}.tmp`;
-    await writeFile(temporary, `${JSON.stringify({ value })}\n`, { flag: "wx" });
+    await writeFile(temporary, `${JSON.stringify({ value })}\n`, {
+      flag: "wx",
+    });
     await rename(temporary, path);
     await appendJournal(path, {
       effectId,

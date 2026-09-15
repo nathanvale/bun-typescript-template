@@ -18,35 +18,67 @@ test("the catalogue declares the exact routed tuple vocabulary", () => {
     "example.set|refused|SCHEMA_INVALID_INPUT",
     "example.set|success|SUCCESS_COMPLETED",
     "example.set|success|SUCCESS_UNCHANGED",
+    "example.status|failed|INTERNAL_RESULT_UNCHANGED",
     "example.status|success|SUCCESS_UNCHANGED",
   ]; // Independent literal oracle for the sealed routed tuple vocabulary.
 
   expect(identities.sort()).toEqual(expectedIdentities);
   expect(new Set(identities).size).toBe(allStations.length);
-  expect(stationsFor("example.status")).toHaveLength(1);
+  expect(stationsFor("example.status")).toHaveLength(2);
   expect(stationsFor("example.set")).toHaveLength(4);
   expect(stationsFor("example.recover")).toHaveLength(3);
 });
 
 test("status declares its successful unchanged inspection station", () => {
-  expect(stationsFor("example.status")).toEqual([
-    {
-      causeCode: "SUCCESS_UNCHANGED",
-      commandIdentity: "example.status",
-      effectClass: "inspect",
-      exitCode: 0,
-      failureClass: null,
-      guidance: { nextAction: "No follow-up is required." },
-      outcome: "success",
-      reachability: "required",
-      repairAction: null,
-      retryable: false,
-      retryDelayPolicy: { kind: "none" },
-      transactionState: "unchanged",
-      trigger: "The current state is inspected.",
-      unreachableRationale: null,
+  expect(
+    stationsFor("example.status").find(
+      (station) => station.outcome === "success",
+    ),
+  ).toEqual({
+    causeCode: "SUCCESS_UNCHANGED",
+    commandIdentity: "example.status",
+    effectClass: "inspect",
+    exitCode: 0,
+    failureClass: null,
+    guidance: { nextAction: "No follow-up is required." },
+    outcome: "success",
+    reachability: "required",
+    repairAction: null,
+    retryable: false,
+    retryDelayPolicy: { kind: "none" },
+    transactionState: "unchanged",
+    trigger: "The current state is inspected.",
+    unreachableRationale: null,
+  }); // Independent literal oracle for the status station contract.
+});
+
+test("status declares invalid persisted state as failed and unchanged", () => {
+  expect(
+    stationsFor("example.status").find(
+      (station) => station.causeCode === "INTERNAL_RESULT_UNCHANGED",
+    ),
+  ).toEqual({
+    causeCode: "INTERNAL_RESULT_UNCHANGED",
+    commandIdentity: "example.status",
+    effectClass: "inspect",
+    exitCode: 1,
+    failureClass: "internal",
+    guidance: {
+      handoff: {
+        owner: "operator",
+        summary:
+          "Inspect or repair the persisted state before another status run.",
+      },
     },
-  ]); // Independent literal oracle for the status station contract.
+    outcome: "failed",
+    reachability: "required",
+    repairAction: "Inspect or repair the persisted state schema.",
+    retryable: false,
+    retryDelayPolicy: { kind: "none" },
+    transactionState: "unchanged",
+    trigger: "The persisted state does not match its schema.",
+    unreachableRationale: null,
+  }); // Independent literal oracle for the invalid-state station contract.
 });
 
 test("set declares completed, unchanged, schema, and unknown states", () => {

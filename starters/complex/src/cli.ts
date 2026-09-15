@@ -7,13 +7,19 @@ import {
   completed,
   inspected,
   invalidInput,
+  invalidPersistedState,
   parseSetArguments,
   previewed,
   priorRunPending,
   recovered,
 } from "./engine.ts";
 import { systemProcessLifecycle } from "./process-lifecycle.ts";
-import { inspectRecovery, inspectState, setState } from "./runtime.ts";
+import {
+  InvalidStateDocumentError,
+  inspectRecovery,
+  inspectState,
+  setState,
+} from "./runtime.ts";
 
 const lifecycle = systemProcessLifecycle(attemptEmergencyDiagnostic);
 process.on("SIGINT", () => lifecycle.terminate(130));
@@ -131,7 +137,7 @@ async function main(argv: string[]): Promise<number> {
   const json = hasJson(argv);
   const args = argv.filter((value) => value !== "--json");
   if (args.length === 1 && (args[0] === "--help" || args[0] === "-h")) {
-    const result = inspected(await inspectState(statePath()));
+    const result = inspected(null);
     result.commandIdentity = "example.help";
     result.data = {
       commands: COMMANDS,
@@ -146,7 +152,7 @@ async function main(argv: string[]): Promise<number> {
     return 0;
   }
   if (args.length === 1 && args[0] === "--discover") {
-    const result = inspected(await inspectState(statePath()));
+    const result = inspected(null);
     result.commandIdentity = "example.discovery";
     result.data = discoveryData();
     result.message = "Describe commands.";
@@ -158,7 +164,7 @@ async function main(argv: string[]): Promise<number> {
       (candidate) => candidate.commandIdentity === args[1],
     );
     if (command !== undefined) {
-      const result = inspected(await inspectState(statePath()));
+      const result = inspected(null);
       result.commandIdentity = "example.command-discovery";
       result.data = {
         command,
@@ -173,7 +179,13 @@ async function main(argv: string[]): Promise<number> {
   if (args.length === 1 && args[0] === "status") {
     await recordDiagnostic("example.status");
     await waitForLifecycleTest();
-    const result = inspected(await inspectState(statePath()));
+    let result: ReturnType<typeof inspected>;
+    try {
+      result = inspected(await inspectState(statePath()));
+    } catch (error) {
+      if (!(error instanceof InvalidStateDocumentError)) throw error;
+      result = invalidPersistedState();
+    }
     writeResult(envelope(result), json);
     return result.exitCode;
   }
