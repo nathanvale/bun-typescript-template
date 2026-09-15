@@ -5,7 +5,7 @@ export interface Station {
   commandIdentity: string;
   effectClass: EffectClass;
   exitCode: number;
-  failureClass: "internal" | "schema" | "usage" | null;
+  failureClass: "domain" | "internal" | "schema" | "usage" | null;
   guidance: { nextAction: string };
   outcome: Outcome;
   reachability: "required";
@@ -118,6 +118,25 @@ const STATIONS: Station[] = [
     retryDelayPolicy: { kind: "none" },
     transactionState: "unchanged",
     trigger: "The value is empty or longer than 128 characters.",
+    unreachableRationale: null,
+  },
+  {
+    causeCode: "DOMAIN_PRIOR_RUN_PENDING",
+    commandIdentity: "example.set",
+    effectClass: "repository-local",
+    exitCode: 3,
+    failureClass: "domain",
+    guidance: {
+      nextAction:
+        "Run recover and inspect the pending effect before another set.",
+    },
+    outcome: "refused",
+    reachability: "required",
+    repairAction: "Inspect recovery state; do not replay the prior set.",
+    retryable: false,
+    retryDelayPolicy: { kind: "none" },
+    transactionState: "unchanged",
+    trigger: "A prior set has an unresolved journal intent.",
     unreachableRationale: null,
   },
 ];

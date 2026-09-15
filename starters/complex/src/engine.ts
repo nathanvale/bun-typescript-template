@@ -70,6 +70,32 @@ export function completed(value: string, effectId: string): OperationResult {
   };
 }
 
+export function priorRunPending(effectId: string): OperationResult {
+  return {
+    causeCode: "DOMAIN_PRIOR_RUN_PENDING",
+    commandIdentity: "example.set",
+    data: { pendingEffect: effectId },
+    effectClass: "repository-local",
+    effects: {
+      completed: [],
+      inventoryComplete: true,
+      remaining: [],
+      uncertain: [effectId],
+    },
+    exitCode: 3,
+    failureClass: "domain",
+    handoff: {
+      owner: "operator",
+      summary: "Run recover and inspect the pending effect before another set.",
+    },
+    message: "A prior set may still have effects.",
+    outcome: "refused",
+    repairAction: "Inspect recovery state; do not replay the prior set.",
+    retryable: false,
+    transactionState: "unchanged",
+  };
+}
+
 export function invalidInput(message: string): OperationResult {
   return {
     causeCode: "SCHEMA_INVALID_INPUT",

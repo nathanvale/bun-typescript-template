@@ -3,7 +3,7 @@ import { stationsFor } from "../../src/branch-station-catalog.ts";
 
 test("every example.set station has a distinct routed tuple", () => {
   const stations = stationsFor("example.set");
-  expect(stations).toHaveLength(3);
+  expect(stations).toHaveLength(4);
   const allStations = [
     ...stationsFor("example.set"),
     ...stationsFor("example.recover"),
@@ -14,6 +14,7 @@ test("every example.set station has a distinct routed tuple", () => {
   expect(new Set(identities).size).toBe(allStations.length);
   expect(stations.map((station) => station.transactionState).sort()).toEqual([
     "completed",
+    "unchanged",
     "unchanged",
     "unchanged",
   ]);

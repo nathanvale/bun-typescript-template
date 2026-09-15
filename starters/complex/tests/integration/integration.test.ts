@@ -28,6 +28,16 @@ function invoke(state: string, ...args: string[]) {
   };
 }
 
+async function waitFor(path: string): Promise<void> {
+  const deadline = performance.now() + 2_000;
+  while (!(await Bun.file(path).exists())) {
+    if (performance.now() >= deadline) {
+      throw new Error(`process did not reach ${path}`);
+    }
+    await Bun.sleep(2);
+  }
+}
+
 afterEach(async () => {
   await Promise.all(
     roots.splice(0).map((root) => rm(root, { force: true, recursive: true })),
@@ -121,9 +131,13 @@ test("public routes ignore held-open stdin and finish after stdout drains", asyn
   child.stdin.end();
 });
 
-test("SIGTERM stops new output and exits within the bounded flush window", async () => {
+test.each([
+  "SIGINT",
+  "SIGTERM",
+] as const)("%s after handler readiness stops output at the 500ms flush deadline", async (signal) => {
   const root = await mkdtemp(join(tmpdir(), "complex-starter-signal-"));
   roots.push(root);
+  const ready = join(root, "ready");
   const child = Bun.spawn(
     [process.execPath, "run", "src/cli.ts", "status", "--json"],
     {
@@ -132,6 +146,8 @@ test("SIGTERM stops new output and exits within the bounded flush window", async
         ...process.env,
         CLI_EXAMPLE_STATE: join(root, "state.json"),
         CLI_EXAMPLE_TEST_DELAY_MS: "2000",
+        CLI_EXAMPLE_TEST_DIAGNOSTIC_FLUSH_MS: "2000",
+        CLI_EXAMPLE_TEST_READY_PATH: ready,
         NODE_ENV: "test",
       },
       stdin: "ignore",
@@ -139,16 +155,213 @@ test("SIGTERM stops new output and exits within the bounded flush window", async
       stdout: "pipe",
     },
   );
-  await Bun.sleep(100);
+  await waitFor(ready);
   const started = performance.now();
+  child.kill(signal);
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+    child.exited,
+  ]);
+  const elapsed = performance.now() - started;
+  expect(elapsed).toBeGreaterThanOrEqual(400);
+  expect(elapsed).toBeLessThan(750);
+  expect(exitCode).toBe(signal === "SIGINT" ? 130 : 143);
+  expect(stdout).toBe("");
+  expect(stderr).toBe("");
+});
+
+test("a repeated termination exits immediately during diagnostic flush", async () => {
+  const root = await mkdtemp(join(tmpdir(), "complex-starter-repeat-"));
+  roots.push(root);
+  const ready = join(root, "ready");
+  const child = Bun.spawn(
+    [process.execPath, "run", "src/cli.ts", "status", "--json"],
+    {
+      cwd: ROOT,
+      env: {
+        ...process.env,
+        CLI_EXAMPLE_STATE: join(root, "state.json"),
+        CLI_EXAMPLE_TEST_DELAY_MS: "2000",
+        CLI_EXAMPLE_TEST_DIAGNOSTIC_FLUSH_MS: "2000",
+        CLI_EXAMPLE_TEST_READY_PATH: ready,
+        NODE_ENV: "test",
+      },
+      stdin: "ignore",
+      stderr: "pipe",
+      stdout: "pipe",
+    },
+  );
+  await waitFor(ready);
+  child.kill("SIGINT");
+  await Bun.sleep(30);
+  const started = performance.now();
+  child.kill("SIGINT");
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+    child.exited,
+  ]);
+  expect(performance.now() - started).toBeLessThan(250);
+  expect(exitCode).toBe(130);
+  expect(stdout).toBe("");
+  expect(stderr).toBe("");
+});
+
+test.each([
+  "uncaught",
+  "unhandled",
+] as const)("%s crash makes one silent emergency exit", async (crash) => {
+  const root = await mkdtemp(join(tmpdir(), "complex-starter-crash-"));
+  roots.push(root);
+  const ready = join(root, "ready");
+  const state = join(root, "state.json");
+  const child = Bun.spawn(
+    [process.execPath, "run", "src/cli.ts", "status", "--json"],
+    {
+      cwd: ROOT,
+      env: {
+        ...process.env,
+        CLI_EXAMPLE_STATE: state,
+        CLI_EXAMPLE_TEST_CRASH: crash,
+        CLI_EXAMPLE_TEST_READY_PATH: ready,
+        NODE_ENV: "test",
+      },
+      stdin: "ignore",
+      stderr: "pipe",
+      stdout: "pipe",
+    },
+  );
+  await waitFor(ready);
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+    child.exited,
+  ]);
+  expect(exitCode).toBe(1);
+  expect(stdout).toBe("");
+  expect(stderr).toBe("");
+  expect(await Bun.file(state).exists()).toBe(false);
+});
+
+test("consumer disappearance before a large stdout drain exits internal", async () => {
+  const root = await mkdtemp(join(tmpdir(), "complex-starter-epipe-"));
+  roots.push(root);
+  const child = Bun.spawn(
+    [process.execPath, "run", "src/cli.ts", "status", "--json"],
+    {
+      cwd: ROOT,
+      env: {
+        ...process.env,
+        CLI_EXAMPLE_STATE: join(root, "state.json"),
+        CLI_EXAMPLE_TEST_OUTPUT_BYTES: "4000000",
+        NODE_ENV: "test",
+      },
+      stdin: "ignore",
+      stderr: "pipe",
+      stdout: "pipe",
+    },
+  );
+  await child.stdout.cancel();
+  const [stderr, exitCode] = await Promise.all([
+    new Response(child.stderr).text(),
+    child.exited,
+  ]);
+  expect(exitCode).toBe(1);
+  expect(stderr).toBe("");
+});
+
+test("a live consumer receives the complete large envelope before normal exit", async () => {
+  const root = await mkdtemp(join(tmpdir(), "complex-starter-drain-"));
+  roots.push(root);
+  const child = Bun.spawn(
+    [process.execPath, "run", "src/cli.ts", "status", "--json"],
+    {
+      cwd: ROOT,
+      env: {
+        ...process.env,
+        CLI_EXAMPLE_STATE: join(root, "state.json"),
+        CLI_EXAMPLE_TEST_OUTPUT_BYTES: "1000000",
+        NODE_ENV: "test",
+      },
+      stdin: "ignore",
+      stderr: "pipe",
+      stdout: "pipe",
+    },
+  );
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+    child.exited,
+  ]);
+  expect(exitCode).toBe(0);
+  expect(stderr).toBe("");
+  expect(JSON.parse(stdout).result.data.padding).toHaveLength(1_000_000);
+});
+
+test("an interrupted set leaves intent, refuses replay, and recovers read-only", async () => {
+  const root = await mkdtemp(join(tmpdir(), "complex-starter-interrupted-"));
+  roots.push(root);
+  const state = join(root, "state.json");
+  const ready = join(root, "intent-ready");
+  const child = Bun.spawn(
+    [
+      process.execPath,
+      "run",
+      "src/cli.ts",
+      "set",
+      "--value",
+      "enabled",
+      "--json",
+    ],
+    {
+      cwd: ROOT,
+      env: {
+        ...process.env,
+        CLI_EXAMPLE_STATE: state,
+        CLI_EXAMPLE_TEST_AFTER_INTENT_DELAY_MS: "2000",
+        CLI_EXAMPLE_TEST_AFTER_INTENT_READY_PATH: ready,
+        NODE_ENV: "test",
+      },
+      stdin: "ignore",
+      stderr: "pipe",
+      stdout: "pipe",
+    },
+  );
+  await waitFor(ready);
   child.kill("SIGTERM");
   const [stdout, stderr, exitCode] = await Promise.all([
     new Response(child.stdout).text(),
     new Response(child.stderr).text(),
     child.exited,
   ]);
-  expect(performance.now() - started).toBeLessThan(750);
   expect(exitCode).toBe(143);
   expect(stdout).toBe("");
   expect(stderr).toBe("");
+  expect(await Bun.file(state).exists()).toBe(false);
+  expect(
+    (await readFile(journalPath(state), "utf8")).trim().split("\n"),
+  ).toHaveLength(1);
+
+  const replay = invoke(state, "set", "--value", "enabled", "--json");
+  expect(replay.exitCode).toBe(3);
+  expect(JSON.parse(replay.stdout).result).toMatchObject({
+    causeCode: "DOMAIN_PRIOR_RUN_PENDING",
+    outcome: "refused",
+    retryable: false,
+    transactionState: "unchanged",
+  });
+  expect(await Bun.file(state).exists()).toBe(false);
+
+  const recovery = invoke(state, "recover", "--json");
+  expect(recovery.exitCode).toBe(1);
+  expect(JSON.parse(recovery.stdout).result).toMatchObject({
+    causeCode: "INTERNAL_RESULT_UNKNOWN",
+    outcome: "failed",
+    retryable: false,
+    transactionState: "unknown",
+  });
+  expect(
+    (await readFile(journalPath(state), "utf8")).trim().split("\n"),
+  ).toHaveLength(1);
 });

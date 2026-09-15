@@ -18,6 +18,8 @@ repository owns its dependencies, lockfile, source, tests and CI. It has no
 runtime dependency on the template or generator.
 
 Applied changes write an intent before the state effect and a completion record
-after it. Recovery inspects pending intent without replaying it. The process
-lifecycle waits for stdout drain, ignores held-open stdin, and bounds SIGINT or
-SIGTERM diagnostic shutdown to 500 milliseconds.
+after it. An unresolved intent blocks another write; recovery inspects it
+without replaying it. The process lifecycle waits for stdout drain, contains a
+closed consumer, ignores held-open stdin, makes a best-effort crash diagnostic,
+and bounds first SIGINT or SIGTERM shutdown to 500 milliseconds. A repeated
+termination exits immediately.

@@ -1,19 +1,21 @@
+import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { stationsFor } from "./branch-station-catalog.ts";
 import { envelope } from "./command-contract.ts";
-import { recordDiagnostic } from "./diagnostics.ts";
+import { attemptEmergencyDiagnostic, recordDiagnostic } from "./diagnostics.ts";
 import {
   completed,
   inspected,
   invalidInput,
   previewed,
+  priorRunPending,
   recovered,
   validateSetInput,
 } from "./engine.ts";
 import { systemProcessLifecycle } from "./process-lifecycle.ts";
 import { inspectRecovery, inspectState, setState } from "./runtime.ts";
 
-const lifecycle = systemProcessLifecycle();
+const lifecycle = systemProcessLifecycle(attemptEmergencyDiagnostic);
 process.on("SIGINT", () => lifecycle.terminate(130));
 process.on("SIGTERM", () => lifecycle.terminate(143));
 
@@ -51,6 +53,17 @@ function statePath(): string {
 
 async function waitForLifecycleTest(): Promise<void> {
   if (process.env.NODE_ENV !== "test") return;
+  const readyPath = process.env.CLI_EXAMPLE_TEST_READY_PATH;
+  if (readyPath !== undefined) await writeFile(readyPath, "ready\n");
+  const crash = process.env.CLI_EXAMPLE_TEST_CRASH;
+  if (crash === "uncaught" || crash === "unhandled") {
+    await new Promise<void>(() => {
+      queueMicrotask(() => {
+        if (crash === "uncaught") throw new Error("test uncaught exception");
+        void Promise.reject(new Error("test unhandled rejection"));
+      });
+    });
+  }
   const milliseconds = Number(process.env.CLI_EXAMPLE_TEST_DELAY_MS ?? "0");
   if (Number.isSafeInteger(milliseconds) && milliseconds > 0) {
     await Bun.sleep(milliseconds);
@@ -58,6 +71,17 @@ async function waitForLifecycleTest(): Promise<void> {
 }
 
 function writeResult(result: ReturnType<typeof envelope>, json: boolean): void {
+  if (process.env.NODE_ENV === "test") {
+    const paddingBytes = Number(
+      process.env.CLI_EXAMPLE_TEST_OUTPUT_BYTES ?? "0",
+    );
+    if (Number.isSafeInteger(paddingBytes) && paddingBytes > 0) {
+      result.result.data = {
+        original: result.result.data,
+        padding: "x".repeat(paddingBytes),
+      };
+    }
+  }
   if (json) {
     lifecycle.stdout(`${JSON.stringify(result)}\n`);
     return;
@@ -158,10 +182,12 @@ async function main(argv: string[]): Promise<number> {
     await recordDiagnostic("example.set");
     const result = parsed.data.preview
       ? previewed(parsed.data.value)
-      : completed(
-          parsed.data.value,
-          await setState(statePath(), parsed.data.value),
-        );
+      : await (async () => {
+          const state = await setState(statePath(), parsed.data.value);
+          return state.status === "blocked"
+            ? priorRunPending(state.effectId)
+            : completed(parsed.data.value, state.effectId);
+        })();
     writeResult(envelope(result), json);
     return result.exitCode;
   }

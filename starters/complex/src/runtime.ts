@@ -21,8 +21,18 @@ export async function inspectState(path: string): Promise<string | null> {
   }
 }
 
-export async function setState(path: string, value: string): Promise<string> {
+export async function setState(
+  path: string,
+  value: string,
+): Promise<
+  | { effectId: string; status: "blocked" }
+  | { effectId: string; status: "completed" }
+> {
   const effectId = "effect.set-state";
+  const pending = await pendingJournalIntent(path);
+  if (pending !== null) {
+    return { effectId: pending.effectId, status: "blocked" };
+  }
   const runId = randomUUID();
   const expectedValueHash = valueHash(value);
   await mkdir(dirname(path), { recursive: true });
@@ -33,6 +43,16 @@ export async function setState(path: string, value: string): Promise<string> {
     phase: "intent",
     runId,
   });
+  if (process.env.NODE_ENV === "test") {
+    const readyPath = process.env.CLI_EXAMPLE_TEST_AFTER_INTENT_READY_PATH;
+    if (readyPath !== undefined) await writeFile(readyPath, "intent-written\n");
+    const milliseconds = Number(
+      process.env.CLI_EXAMPLE_TEST_AFTER_INTENT_DELAY_MS ?? "0",
+    );
+    if (Number.isSafeInteger(milliseconds) && milliseconds > 0) {
+      await Bun.sleep(milliseconds);
+    }
+  }
   const temporary = `${path}.${process.pid}.tmp`;
   await writeFile(temporary, `${JSON.stringify({ value })}\n`, { flag: "wx" });
   await rename(temporary, path);
@@ -43,7 +63,7 @@ export async function setState(path: string, value: string): Promise<string> {
     phase: "completed",
     runId,
   });
-  return effectId;
+  return { effectId, status: "completed" };
 }
 
 export async function inspectRecovery(path: string) {

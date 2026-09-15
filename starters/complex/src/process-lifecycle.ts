@@ -1,19 +1,22 @@
+type TimerHandle = ReturnType<typeof setTimeout>;
+
 interface ProcessLifecycleDependencies {
-  clearTimer(handle: ReturnType<typeof setTimeout>): void;
+  attemptEmergencyDiagnostics(): void;
+  clearTimer(handle: TimerHandle): void;
   exit(code: number): void;
   finishDiagnostics(): Promise<void>;
   setExitCode(code: number): void;
-  setTimer(
-    callback: () => void,
-    milliseconds: number,
-  ): ReturnType<typeof setTimeout>;
-  unrefTimer(handle: ReturnType<typeof setTimeout>): void;
+  setTimer(callback: () => void, milliseconds: number): TimerHandle;
+  unrefTimer(handle: TimerHandle): void;
   writeStderr(text: string): void;
   writeStdout(text: string, callback: (error?: Error | null) => void): void;
 }
 
-export interface ProcessLifecycle {
+interface ProcessLifecycle {
   complete(code: number): Promise<void>;
+  crash(): void;
+  isStopping(): boolean;
+  outputError(error: Error): void;
   stderr(text: string): void;
   stdout(text: string): void;
   terminate(code: 130 | 143): void;
@@ -28,12 +31,54 @@ function createProcessLifecycle(
   let stopping = false;
   let terminal = false;
   let outputFailed = false;
+  let activeWriteDone: ((error?: Error | null) => void) | null = null;
   let outputFinished = Promise.resolve();
 
   function exitOnce(code: number): void {
     if (terminal) return;
     terminal = true;
     dependencies.exit(code);
+  }
+
+  function stdout(text: string): void {
+    if (stopping || terminal) return;
+    outputFinished = outputFinished.then(() => {
+      if (stopping || terminal) return;
+      return new Promise<void>((resolve) => {
+        let settled = false;
+        const finish = (error?: Error | null): void => {
+          if (settled) return;
+          settled = true;
+          activeWriteDone = null;
+          if (error != null) outputFailed = true;
+          resolve();
+        };
+        activeWriteDone = finish;
+        try {
+          dependencies.writeStdout(text, finish);
+        } catch (error) {
+          finish(
+            error instanceof Error ? error : new Error("stdout write failed"),
+          );
+        }
+      });
+    });
+  }
+
+  function terminate(code: 130 | 143): void {
+    if (stopping) {
+      exitOnce(code);
+      return;
+    }
+    stopping = true;
+    const deadline = dependencies.setTimer(
+      () => exitOnce(code),
+      FLUSH_DEADLINE_MS,
+    );
+    void dependencies.finishDiagnostics().finally(() => {
+      dependencies.clearTimer(deadline);
+      exitOnce(code);
+    });
   }
 
   return {
@@ -48,49 +93,46 @@ function createProcessLifecycle(
       );
       dependencies.unrefTimer(watchdog);
     },
+    crash() {
+      if (terminal) return;
+      stopping = true;
+      try {
+        dependencies.attemptEmergencyDiagnostics();
+      } catch {
+        // Emergency diagnostics remain best-effort.
+      }
+      exitOnce(1);
+    },
+    isStopping: () => stopping,
+    outputError(error) {
+      activeWriteDone?.(error);
+    },
     stderr(text) {
       if (!stopping && !terminal) dependencies.writeStderr(text);
     },
-    stdout(text) {
-      if (stopping || terminal) return;
-      outputFinished = outputFinished.then(
-        () =>
-          new Promise<void>((resolve) => {
-            try {
-              dependencies.writeStdout(text, (error) => {
-                if (error != null) outputFailed = true;
-                resolve();
-              });
-            } catch {
-              outputFailed = true;
-              resolve();
-            }
-          }),
-      );
-    },
-    terminate(code) {
-      if (stopping) {
-        exitOnce(code);
-        return;
-      }
-      stopping = true;
-      const deadline = dependencies.setTimer(
-        () => exitOnce(code),
-        FLUSH_DEADLINE_MS,
-      );
-      void dependencies.finishDiagnostics().finally(() => {
-        dependencies.clearTimer(deadline);
-        exitOnce(code);
-      });
-    },
+    stdout,
+    terminate,
   };
 }
 
-export function systemProcessLifecycle(): ProcessLifecycle {
-  return createProcessLifecycle({
+async function finishDiagnostics(): Promise<void> {
+  if (process.env.NODE_ENV !== "test") return;
+  const milliseconds = Number(
+    process.env.CLI_EXAMPLE_TEST_DIAGNOSTIC_FLUSH_MS ?? "0",
+  );
+  if (Number.isSafeInteger(milliseconds) && milliseconds > 0) {
+    await Bun.sleep(milliseconds);
+  }
+}
+
+export function systemProcessLifecycle(
+  attemptEmergencyDiagnostics: () => void,
+): ProcessLifecycle {
+  const lifecycle = createProcessLifecycle({
+    attemptEmergencyDiagnostics,
     clearTimer: clearTimeout,
     exit: (code) => process.exit(code),
-    finishDiagnostics: async () => undefined,
+    finishDiagnostics,
     setExitCode: (code) => {
       process.exitCode = code;
     },
@@ -99,4 +141,8 @@ export function systemProcessLifecycle(): ProcessLifecycle {
     writeStderr: (text) => process.stderr.write(text),
     writeStdout: (text, callback) => process.stdout.write(text, callback),
   });
+  process.stdout.on("error", (error) => lifecycle.outputError(error));
+  process.on("uncaughtException", () => lifecycle.crash());
+  process.on("unhandledRejection", () => lifecycle.crash());
+  return lifecycle;
 }
