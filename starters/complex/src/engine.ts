@@ -152,6 +152,30 @@ export function priorRunPending(effectId: string): OperationResult {
   };
 }
 
+export function journalLockHeld(): OperationResult {
+  return {
+    causeCode: "DOMAIN_PRECONDITION_UNMET",
+    commandIdentity: "example.set",
+    data: null,
+    effectClass: "repository-local",
+    effects: emptyEffects(),
+    exitCode: 3,
+    failureClass: "domain",
+    handoff: {
+      owner: "operator",
+      summary:
+        "Inspect the lock and journal. Remove crash residue only after effects are reconciled and no owner process remains.",
+    },
+    message:
+      "Another writer or conservative crash residue holds the journal lock.",
+    outcome: "refused",
+    repairAction:
+      "Wait for the active writer, or inspect and manually remove proven crash residue before a new set.",
+    retryable: false,
+    transactionState: "unchanged",
+  };
+}
+
 export function invalidInput(message: string): OperationResult {
   return {
     causeCode: "SCHEMA_INVALID_INPUT",

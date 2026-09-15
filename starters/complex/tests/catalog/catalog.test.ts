@@ -15,6 +15,7 @@ test("the catalogue declares the exact routed tuple vocabulary", () => {
     "example.recover|success|SUCCESS_COMPLETED",
     "example.recover|success|SUCCESS_UNCHANGED",
     "example.set|failed|DOMAIN_PRIOR_RUN_PENDING",
+    "example.set|refused|DOMAIN_PRECONDITION_UNMET",
     "example.set|refused|SCHEMA_INVALID_INPUT",
     "example.set|success|SUCCESS_COMPLETED",
     "example.set|success|SUCCESS_UNCHANGED",
@@ -25,7 +26,7 @@ test("the catalogue declares the exact routed tuple vocabulary", () => {
   expect(identities.sort()).toEqual(expectedIdentities);
   expect(new Set(identities).size).toBe(allStations.length);
   expect(stationsFor("example.status")).toHaveLength(2);
-  expect(stationsFor("example.set")).toHaveLength(4);
+  expect(stationsFor("example.set")).toHaveLength(5);
   expect(stationsFor("example.recover")).toHaveLength(3);
 });
 
@@ -85,6 +86,7 @@ test("set declares completed, unchanged, schema, and unknown states", () => {
   const stations = stationsFor("example.set");
   expect(stations.map((station) => station.transactionState).sort()).toEqual([
     "completed",
+    "unchanged",
     "unchanged",
     "unchanged",
     "unknown",

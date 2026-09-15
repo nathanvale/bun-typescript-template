@@ -179,6 +179,30 @@ const STATIONS: Station[] = [
     trigger: "A prior set has an unresolved journal intent.",
     unreachableRationale: null,
   },
+  {
+    causeCode: "DOMAIN_PRECONDITION_UNMET",
+    commandIdentity: "example.set",
+    effectClass: "repository-local",
+    exitCode: 3,
+    failureClass: "domain",
+    guidance: {
+      handoff: {
+        owner: "operator",
+        summary:
+          "Inspect the lock and journal. Remove crash residue only after effects are reconciled and no owner process remains.",
+      },
+    },
+    outcome: "refused",
+    reachability: "required",
+    repairAction:
+      "Wait for the active writer, or inspect and manually remove proven crash residue before a new set.",
+    retryable: false,
+    retryDelayPolicy: { kind: "none" },
+    transactionState: "unchanged",
+    trigger:
+      "Another writer or conservative crash residue holds the journal lock.",
+    unreachableRationale: null,
+  },
 ];
 
 export function stationsFor(commandIdentity: string): Station[] {

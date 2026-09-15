@@ -165,7 +165,7 @@ test("two processes serialize one completed set and one safe refusal", async () 
   roots.push(root);
   const state = join(root, "state.json");
   const barrier = join(root, "barrier");
-  const start = (value: string) => {
+  const start = (value: string, ownerToken: string) => {
     const child = Bun.spawn(
       [
         process.execPath,
@@ -182,6 +182,7 @@ test("two processes serialize one completed set and one safe refusal", async () 
           ...process.env,
           CLI_EXAMPLE_STATE: state,
           CLI_EXAMPLE_TEST_LOCK_BARRIER_PATH: barrier,
+          CLI_EXAMPLE_TEST_LOCK_OWNER_TOKEN: ownerToken,
           NODE_ENV: "test",
         },
         stdin: "ignore",
@@ -198,10 +199,11 @@ test("two processes serialize one completed set and one safe refusal", async () 
       stderr,
       stdout,
       value,
+      ownerToken,
     }));
   };
-  const first = start("first");
-  const second = start("second");
+  const first = start("first", "contender-first");
+  const second = start("second", "contender-second");
   await waitForCount(barrier, ".ready", 2);
   await writeFile(join(barrier, "start"), "start\n");
   await waitForCount(barrier, ".claimed", 1);
@@ -209,11 +211,12 @@ test("two processes serialize one completed set and one safe refusal", async () 
     entry.endsWith(".claimed"),
   );
   const owner = JSON.parse(await readFile(lockPath(state), "utf8"));
-  expect(owner).toEqual({
+  expect(owner).toMatchObject({
     lockVersion: 1,
-    ownerToken: claimed?.replace(/\.claimed$/, ""),
     pid: expect.any(Number),
   });
+  expect(["contender-first", "contender-second"]).toContain(owner.ownerToken);
+  expect(claimed).toBe(`${owner.ownerToken}.claimed`);
   expect((await stat(lockPath(state))).mode & 0o777).toBe(0o600);
   const refused = await Promise.race([first, second]);
   await writeFile(join(barrier, "finish"), "finish\n");
@@ -225,10 +228,10 @@ test("two processes serialize one completed set and one safe refusal", async () 
   const completed = results.find((result) => result.exitCode === 0);
   expect(completed).toBeDefined();
   expect(JSON.parse(refused.stdout).result).toMatchObject({
-    causeCode: "DOMAIN_PRIOR_RUN_PENDING",
-    outcome: "failed",
+    causeCode: "DOMAIN_PRECONDITION_UNMET",
+    outcome: "refused",
     retryable: false,
-    transactionState: "unknown",
+    transactionState: "unchanged",
   });
   expect(JSON.parse(await readFile(state, "utf8"))).toEqual({
     value: completed?.value,
@@ -248,6 +251,7 @@ test("two processes serialize one completed set and one safe refusal", async () 
   ]);
   expect(journal.map((record) => record.journalVersion)).toEqual([1, 1]);
   expect(journal[0].runId).toBe(journal[1].runId);
+  expect(journal[0].runId).toBe(completed?.ownerToken);
   expect(journal[0].expectedValueHash).toBe(journal[1].expectedValueHash);
   expect(journal[0].expectedValueHash).toMatch(/^[0-9a-f]{64}$/);
   expect(await Bun.file(lockPath(state)).exists()).toBe(false);
@@ -553,10 +557,14 @@ test("an interrupted set leaves intent, refuses replay, and recovers read-only",
   const replay = invoke(state, "set", "--value", "enabled", "--json");
   expect(replay.exitCode).toBe(3);
   expect(JSON.parse(replay.stdout).result).toMatchObject({
-    causeCode: "DOMAIN_PRIOR_RUN_PENDING",
-    outcome: "failed",
+    causeCode: "DOMAIN_PRECONDITION_UNMET",
+    handoff: {
+      owner: "operator",
+      summary: expect.stringContaining("Remove crash residue only after"),
+    },
+    outcome: "refused",
     retryable: false,
-    transactionState: "unknown",
+    transactionState: "unchanged",
   });
   expect(await Bun.file(state).exists()).toBe(false);
   expect(await Bun.file(lockPath(state)).exists()).toBe(true);

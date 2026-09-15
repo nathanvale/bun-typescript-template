@@ -8,6 +8,7 @@ import {
   inspected,
   invalidInput,
   invalidPersistedState,
+  journalLockHeld,
   parseSetArguments,
   previewed,
   priorRunPending,
@@ -207,9 +208,11 @@ async function main(argv: string[]): Promise<number> {
       ? previewed(parsed.data.value)
       : await (async () => {
           const state = await setState(statePath(), parsed.data.value);
-          return state.status === "blocked"
-            ? priorRunPending(state.effectId)
-            : completed(parsed.data.value, state.effectId);
+          if (state.status === "locked") return journalLockHeld();
+          if (state.status === "blocked") {
+            return priorRunPending(state.effectId);
+          }
+          return completed(parsed.data.value, state.effectId);
         })();
     writeResult(envelope(result), json);
     return result.exitCode;

@@ -43,9 +43,14 @@ export async function setState(
 ): Promise<
   | { effectId: string; status: "blocked" }
   | { effectId: string; status: "completed" }
+  | { effectId: string; status: "locked" }
 > {
   const effectId = "effect.set-state";
-  const runId = randomUUID();
+  const runId =
+    process.env.NODE_ENV === "test" &&
+    process.env.CLI_EXAMPLE_TEST_LOCK_OWNER_TOKEN !== undefined
+      ? process.env.CLI_EXAMPLE_TEST_LOCK_OWNER_TOKEN
+      : randomUUID();
   const barrierDirectory =
     process.env.NODE_ENV === "test"
       ? (process.env.CLI_EXAMPLE_TEST_LOCK_BARRIER_PATH ?? null)
@@ -55,7 +60,7 @@ export async function setState(
     release = acquireJournalLock(path, runId, barrierDirectory);
   } catch (error) {
     if (error instanceof JournalLockHeld) {
-      return { effectId, status: "blocked" };
+      return { effectId, status: "locked" };
     }
     throw error;
   }
