@@ -14,6 +14,66 @@ import { join, resolve } from "node:path";
 const ROOT = resolve(import.meta.dir, "..");
 const scratchRoots: string[] = [];
 
+const GENERATED_CI = `name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+`;
+
+const STARTER_FILES = {
+  simple: [
+    ".fallowrc.json",
+    ".github/workflows/ci.yml",
+    ".gitignore",
+    "README.md",
+    "biome.json",
+    "bun.lock",
+    "bunfig.toml",
+    "package.json",
+    "src/cli.ts",
+    "tests/cli.test.ts",
+    "tsconfig.base.json",
+    "tsconfig.json",
+  ],
+  complex: [
+    ".fallowrc.json",
+    ".github/workflows/ci.yml",
+    ".gitignore",
+    "README.md",
+    "biome.json",
+    "bun.lock",
+    "bunfig.toml",
+    "package.json",
+    "src/branch-station-catalog.ts",
+    "src/cli.ts",
+    "src/command-contract.ts",
+    "src/diagnostics.ts",
+    "src/engine.ts",
+    "src/journal.ts",
+    "src/model.ts",
+    "src/process-lifecycle.ts",
+    "src/runtime.ts",
+    "tests/catalog/catalog.test.ts",
+    "tests/integration/integration.test.ts",
+    "tests/unit/unit.test.ts",
+    "tsconfig.base.json",
+    "tsconfig.json",
+  ],
+} as const;
+
 interface Invocation {
   exitCode: number;
   stderr: string;
@@ -82,6 +142,42 @@ async function listFiles(root: string, prefix = ""): Promise<string[]> {
     }
   }
   return files.sort();
+}
+
+function requireSuccess(result: Invocation, operation: string): void {
+  if (result.exitCode !== 0) {
+    throw new Error(
+      `${operation} failed with exit ${result.exitCode}: ${result.stderr}`,
+    );
+  }
+}
+
+function commitGeneratedFiles(
+  destination: string,
+  files: readonly string[],
+): void {
+  requireSuccess(
+    runCommand(destination, ["git", "init", "--quiet"]),
+    "git init",
+  );
+  requireSuccess(
+    runCommand(destination, ["git", "add", "--", ...files]),
+    "git add generated files",
+  );
+  requireSuccess(
+    runCommand(destination, [
+      "git",
+      "-c",
+      "user.name=CLI template qualification",
+      "-c",
+      "user.email=cli-template@example.test",
+      "commit",
+      "--quiet",
+      "-m",
+      "qualify generated starter",
+    ]),
+    "git commit generated files",
+  );
 }
 
 afterEach(async () => {
@@ -314,9 +410,10 @@ describe("public bootstrap CLI", () => {
         variant: "single-package",
       });
       const files = await listFiles(destination);
-      expect(files).toContain(".github/workflows/ci.yml");
-      expect(files).toContain("src/cli.ts");
-      expect(files).not.toContain("TEMPLATE-SOURCE.md");
+      expect(files).toEqual([...STARTER_FILES[starter]]);
+      expect(
+        await readFile(join(destination, ".github/workflows/ci.yml"), "utf8"),
+      ).toBe(GENERATED_CI);
       expect(await readFile(join(destination, "README.md"), "utf8")).toContain(
         "https://example.test/vault/projects/",
       );
@@ -336,7 +433,63 @@ describe("public bootstrap CLI", () => {
         envelopeVersion: 2,
         result: { outcome: "success", transactionState: "unchanged" },
       });
-      expect(runIn(destination, ["run", "check"], {}).exitCode).toBe(0);
+
+      const help = runIn(
+        destination,
+        ["run", "--silent", "start", "--", "--help"],
+        {},
+      );
+      expect(help.exitCode).toBe(0);
+      expect(help.stderr).toBe("");
+      expect(help.stdout).toContain("Usage: example");
+      if (starter === "complex") expect(help.stdout).toContain("recover");
+
+      const discovery = runIn(
+        destination,
+        [
+          "run",
+          "--silent",
+          "start",
+          "--",
+          "--discover-command",
+          "example.status",
+          "--json",
+        ],
+        {},
+      );
+      expect(discovery.exitCode).toBe(0);
+      expect(discovery.stderr).toBe("");
+      expect(JSON.parse(discovery.stdout)).toMatchObject({
+        result: {
+          data: {
+            command: { commandIdentity: "example.status" },
+            semantics: "possible-outcomes",
+          },
+        },
+      });
+
+      commitGeneratedFiles(destination, STARTER_FILES[starter]);
+      const freshCheckout = join(root, `${starter}-fresh-checkout`);
+      requireSuccess(
+        runCommand(root, [
+          "git",
+          "clone",
+          "--quiet",
+          destination,
+          freshCheckout,
+        ]),
+        "git clone generated starter",
+      );
+      expect(await Bun.file(join(freshCheckout, "node_modules")).exists()).toBe(
+        false,
+      );
+      expect(
+        runIn(freshCheckout, ["install", "--frozen-lockfile"], {}).exitCode,
+      ).toBe(0);
+      expect(runIn(freshCheckout, ["run", "check"], {}).exitCode).toBe(0);
+      expect(
+        runCommand(freshCheckout, ["git", "status", "--short"]).stdout,
+      ).toBe("");
     }
   }, 120_000);
 

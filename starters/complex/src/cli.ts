@@ -40,6 +40,18 @@ const COMMANDS = [
   },
 ] as const;
 
+const HUMAN_HELP = `Usage: example status | set --value VALUE [--preview] | recover [--json]
+
+Commands:
+  status   Inspect current state.
+  set      Preview or apply a local state change.
+  recover  Inspect an interrupted change without replaying it.
+
+Discovery:
+  example --discover
+  example --discover-command COMMAND_IDENTITY
+`;
+
 function hasJson(argv: string[]): boolean {
   const separator = argv.indexOf("--");
   return (separator === -1 ? argv : argv.slice(0, separator)).includes(
@@ -125,10 +137,12 @@ async function main(argv: string[]): Promise<number> {
       commands: COMMANDS,
       options: [],
       summary: "Complex example CLI.",
-      usage: "example status | set --value VALUE [--preview]",
+      usage:
+        "example status | set --value VALUE [--preview] | recover [--json]",
     };
     result.message = "Show help.";
-    writeResult(envelope(result), json);
+    if (json) writeResult(envelope(result), true);
+    else lifecycle.stdout(HUMAN_HELP);
     return 0;
   }
   if (args.length === 1 && args[0] === "--discover") {

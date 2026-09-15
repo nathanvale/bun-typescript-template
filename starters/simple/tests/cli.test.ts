@@ -36,6 +36,13 @@ test("machine status emits one 2.0 envelope and no stderr", () => {
   });
 });
 
+test("human help names the supported invocation", () => {
+  const result = invoke("--help");
+  expect(result.exitCode).toBe(0);
+  expect(result.stderr).toBe("");
+  expect(result.stdout).toBe("Usage: example status [--json]\n");
+});
+
 test("selected-command discovery describes only status", () => {
   const result = invoke("--discover-command", "example.status", "--json");
   expect(result.exitCode).toBe(0);

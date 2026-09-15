@@ -44,6 +44,38 @@ afterEach(async () => {
   );
 });
 
+test("human help and selected-command discovery expose the supported routes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "complex-starter-help-"));
+  roots.push(root);
+  const state = join(root, "state.json");
+
+  const help = invoke(state, "--help");
+  expect(help.exitCode).toBe(0);
+  expect(help.stderr).toBe("");
+  expect(help.stdout).toContain(
+    "Usage: example status | set --value VALUE [--preview] | recover [--json]",
+  );
+  expect(help.stdout).toContain("example --discover-command COMMAND_IDENTITY");
+
+  const discovery = invoke(
+    state,
+    "--discover-command",
+    "example.status",
+    "--json",
+  );
+  expect(discovery.exitCode).toBe(0);
+  expect(discovery.stderr).toBe("");
+  expect(JSON.parse(discovery.stdout)).toMatchObject({
+    result: {
+      data: {
+        command: { commandIdentity: "example.status" },
+        semantics: "possible-outcomes",
+      },
+    },
+  });
+  expect(await Bun.file(state).exists()).toBe(false);
+});
+
 test("preview preserves state and apply writes exactly once", async () => {
   const root = await mkdtemp(join(tmpdir(), "complex-starter-"));
   roots.push(root);
