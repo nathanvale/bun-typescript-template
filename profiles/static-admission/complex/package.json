@@ -6,6 +6,7 @@
   "packageManager": "bun@1.4.0",
   "description": "Static-admission complex profile policy source.",
   "scripts": {
+    "start": "bun run src/cli.ts",
     "biome:check": "biome check --diagnostic-level=error .",
     "check:config": "tsc --showConfig -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",

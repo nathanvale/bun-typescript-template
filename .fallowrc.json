@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/fallow/schema.json",
-  "ignorePatterns": ["profiles/**", "examples/**"],
+  "ignorePatterns": ["profiles/**", "examples/**", "starters/**"],
   "typeAware": {
     "enabled": true,
     "require": "complete"

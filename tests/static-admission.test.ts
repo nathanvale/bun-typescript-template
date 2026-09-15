@@ -105,7 +105,9 @@ const EXPECTED_FILES: Record<Profile, string[]> = {
     "src/command-contract.ts",
     "src/diagnostics.ts",
     "src/engine.ts",
+    "src/journal.ts",
     "src/model.ts",
+    "src/process-lifecycle.ts",
     "src/runtime.ts",
     "tests/catalog/catalog.test.ts",
     "tests/integration/integration.test.ts",
@@ -114,6 +116,7 @@ const EXPECTED_FILES: Record<Profile, string[]> = {
 };
 
 const EXPECTED_SCRIPTS = {
+  start: "bun run src/cli.ts",
   biome: "biome check --diagnostic-level=error .",
   config: "tsc --showConfig -p tsconfig.json",
   typecheck: "tsc --noEmit -p tsconfig.json",
@@ -236,7 +239,14 @@ const EXPECTED_BOUNDARIES: Record<Profile, Record<string, unknown>> = {
         patterns: ["src/command-contract.ts", "src/model.ts"],
       },
       { name: "engine", patterns: ["src/engine.ts"] },
-      { name: "runtime", patterns: ["src/runtime.ts"] },
+      {
+        name: "runtime",
+        patterns: [
+          "src/runtime.ts",
+          "src/journal.ts",
+          "src/process-lifecycle.ts",
+        ],
+      },
       { name: "catalog", patterns: ["src/branch-station-catalog.ts"] },
       { name: "diagnostics", patterns: ["src/diagnostics.ts"] },
       { name: "unit-tests", patterns: ["tests/unit/**/*.ts"] },
@@ -250,12 +260,12 @@ const EXPECTED_BOUNDARIES: Record<Profile, Record<string, unknown>> = {
       },
       { from: "contract", allow: [] },
       { from: "engine", allow: ["contract"] },
-      { from: "runtime", allow: ["contract"] },
+      { from: "runtime", allow: ["contract", "runtime"] },
       { from: "catalog", allow: ["contract"] },
       { from: "diagnostics", allow: ["contract"] },
       {
         from: "unit-tests",
-        allow: ["front-door", "contract", "engine", "catalog"],
+        allow: ["front-door", "contract", "engine", "runtime", "catalog"],
       },
       {
         from: "integration-tests",
@@ -468,13 +478,31 @@ const COMPLEX_SOURCE = {
     "}",
     "",
   ].join("\n"),
+  "src/journal.ts": [
+    'import type { Command } from "./command-contract.ts";',
+    "",
+    "export function journalCommand(command: Command): Command {",
+    "  return command;",
+    "}",
+    "",
+  ].join("\n"),
+  "src/process-lifecycle.ts": [
+    'import type { Command } from "./command-contract.ts";',
+    'import { journalCommand } from "./journal.ts";',
+    "",
+    "export function lifecycleCommand(command: Command): Command {",
+    "  return journalCommand(command);",
+    "}",
+    "",
+  ].join("\n"),
   "src/runtime.ts": [
     'import { spawn } from "node:child_process";',
     'import type { Command } from "./command-contract.ts";',
+    'import { lifecycleCommand } from "./process-lifecycle.ts";',
     "",
     "export function runtimeName(command: Command): string {",
     "  void spawn;",
-    "  return command.kind;",
+    "  return lifecycleCommand(command).kind;",
     "}",
     "",
   ].join("\n"),
@@ -655,6 +683,7 @@ async function assertPacketPolicy(
   const expectedPins = EXPECTED_DEPENDENCY_PINS[profile];
   expect(packageJson.packageManager).toBe("bun@1.4.0");
   expect(packageJson.scripts).toEqual({
+    start: EXPECTED_SCRIPTS.start,
     "biome:check": EXPECTED_SCRIPTS.biome,
     "check:config": EXPECTED_SCRIPTS.config,
     typecheck: EXPECTED_SCRIPTS.typecheck,

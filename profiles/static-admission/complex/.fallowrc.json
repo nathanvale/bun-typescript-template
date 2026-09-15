@@ -32,7 +32,11 @@
       },
       {
         "name": "runtime",
-        "patterns": ["src/runtime.ts"]
+        "patterns": [
+          "src/runtime.ts",
+          "src/journal.ts",
+          "src/process-lifecycle.ts"
+        ]
       },
       {
         "name": "catalog",
@@ -70,7 +74,7 @@
       },
       {
         "from": "runtime",
-        "allow": ["contract"]
+        "allow": ["contract", "runtime"]
       },
       {
         "from": "catalog",
@@ -82,7 +86,7 @@
       },
       {
         "from": "unit-tests",
-        "allow": ["front-door", "contract", "engine", "catalog"]
+        "allow": ["front-door", "contract", "engine", "runtime", "catalog"]
       },
       {
         "from": "integration-tests",

@@ -14,6 +14,11 @@ or modify agent/plugin configuration.
 The monorepo layout is an optional durable example. It is never part of the
 scratch profile.
 
+The durable profile also supplies two CLI starters. `simple` is read-only.
+`complex` demonstrates a local configuration change, typed contracts and
+Branch Station discovery. Each generated CLI is a standalone project with its
+own dependencies, lockfile, checks and CI.
+
 ## Bootstrap
 
 From this template checkout:
@@ -26,6 +31,14 @@ bun run bootstrap --profile scratch \
 bun run bootstrap --profile durable \
   --destination "$HOME/code/example" \
   --source-packet "https://example.test/vault/projects/example/"
+
+bun run bootstrap --profile durable --starter simple \
+  --destination "$HOME/code/example-cli" \
+  --source-packet "https://example.test/vault/projects/example-cli/"
+
+bun run bootstrap --profile durable --starter complex \
+  --destination "$HOME/code/example-control-cli" \
+  --source-packet "https://example.test/vault/projects/example-control-cli/"
 
 bun run bootstrap --profile durable \
   --destination "$HOME/code/example-monorepo" \

@@ -28,6 +28,18 @@
       }
     }
   },
+  "overrides": [
+    {
+      "includes": ["starters/**/*.ts"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUndeclaredDependencies": "off"
+          }
+        }
+      }
+    }
+  ],
   "javascript": {
     "formatter": {
       "quoteStyle": "double"

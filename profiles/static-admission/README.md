@@ -1,9 +1,10 @@
 # Static-admission source packet
 
-This directory is contributor-owned policy source for CDS-TS-2. It is not a
-bootstrap profile and is not copied into generated repositories. The current
-`profiles/durable` source remains the observed greeting sample until the S2
-starter owner supplies the public simple and complex starters.
+This directory is contributor-owned policy source for CDS-TS-2. The public S2
+bootstrap combines one selected policy packet with its matching source overlay
+under `starters/`. Keeping the policy here gives generated repositories the
+same admitted TypeScript, Biome and Fallow configuration without maintaining a
+second editable configuration copy.
 
 Each profile below contains only the effective package, TypeScript, Biome and
 Fallow policy that a future starter consumes. The admission test adds fresh
