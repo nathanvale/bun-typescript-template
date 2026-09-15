@@ -1,6 +1,19 @@
 import { createHash } from "node:crypto";
+import {
+  closeSync,
+  existsSync,
+  fchmodSync,
+  fstatSync,
+  fsyncSync,
+  lstatSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { appendFile, mkdir, readFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { z } from "zod";
 
 const JournalRecordSchema = z.strictObject({
@@ -13,8 +26,102 @@ const JournalRecordSchema = z.strictObject({
 
 export type JournalRecord = z.infer<typeof JournalRecordSchema>;
 
+export class JournalLockHeld extends Error {
+  constructor() {
+    super("journal lock is already held");
+  }
+}
+
 function journalPath(statePath: string): string {
   return `${statePath}.journal.jsonl`;
+}
+
+function lockPath(statePath: string): string {
+  return `${statePath}.journal.lock`;
+}
+
+function testBarrier(
+  directory: string,
+  ownerToken: string,
+  phase: "ready" | "claimed",
+  release: string,
+): void {
+  mkdirSync(directory, { mode: 0o700, recursive: true });
+  writeFileSync(join(directory, `${ownerToken}.${phase}`), `${process.pid}\n`, {
+    flag: "wx",
+    mode: 0o600,
+  });
+  const deadline = performance.now() + 10_000;
+  const wait = new Int32Array(new SharedArrayBuffer(4));
+  while (!existsSync(join(directory, release))) {
+    if (performance.now() >= deadline) {
+      throw new Error("journal contention test barrier timed out");
+    }
+    Atomics.wait(wait, 0, 0, 10);
+  }
+}
+
+export function acquireJournalLock(
+  statePath: string,
+  ownerToken: string,
+  barrierDirectory: string | null,
+): () => void {
+  if (barrierDirectory !== null) {
+    testBarrier(barrierDirectory, ownerToken, "ready", "start");
+  }
+  const path = lockPath(statePath);
+  mkdirSync(dirname(path), { recursive: true });
+  let descriptor: number;
+  try {
+    descriptor = openSync(path, "wx", 0o600);
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "EEXIST"
+    ) {
+      throw new JournalLockHeld();
+    }
+    throw error;
+  }
+  const owner = `${JSON.stringify({
+    lockVersion: 1,
+    ownerToken,
+    pid: process.pid,
+  })}\n`;
+  const inode = fstatSync(descriptor);
+  try {
+    fchmodSync(descriptor, 0o600);
+    writeFileSync(descriptor, owner);
+    fsyncSync(descriptor);
+  } finally {
+    closeSync(descriptor);
+  }
+  const release = (): void => {
+    try {
+      const current = lstatSync(path);
+      if (
+        current.isFile() &&
+        current.dev === inode.dev &&
+        current.ino === inode.ino &&
+        readFileSync(path, "utf8") === owner
+      ) {
+        unlinkSync(path);
+      }
+    } catch {
+      // A missing, replaced, or unreadable lock is not ours to remove.
+    }
+  };
+  try {
+    if (barrierDirectory !== null) {
+      testBarrier(barrierDirectory, ownerToken, "claimed", "finish");
+    }
+  } catch (error) {
+    release();
+    throw error;
+  }
+  return release;
 }
 
 export function valueHash(value: string): string {
