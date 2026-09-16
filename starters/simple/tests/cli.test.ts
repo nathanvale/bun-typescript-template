@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
+import { existsSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
@@ -61,7 +62,9 @@ JSON.stringify = (...args) => {
   return preload;
 }
 
-async function outputFailurePreload(): Promise<string> {
+async function outputFailurePreload(
+  mode: "first-write-only" | "persistent" = "first-write-only",
+): Promise<string> {
   const root = await mkdtemp("/tmp/simple-starter-test-");
   scratchRoots.push(root);
   const preload = join(root, "output-failure.ts");
@@ -70,7 +73,7 @@ async function outputFailurePreload(): Promise<string> {
     `const write = process.stdout.write.bind(process.stdout);
 let failed = false;
 process.stdout.write = (chunk, ...args) => {
-  if (!failed) {
+  if (${mode === "persistent"} || !failed) {
     failed = true;
     throw new Error("fixture stdout failure");
   }
@@ -82,11 +85,11 @@ process.stdout.write = (chunk, ...args) => {
 }
 
 afterEach(async () => {
+  const roots = scratchRoots.splice(0);
   await Promise.all(
-    scratchRoots
-      .splice(0)
-      .map((root) => rm(root, { force: true, recursive: true })),
+    roots.map((root) => rm(root, { force: true, recursive: true })),
   );
+  for (const root of roots) expect(existsSync(root)).toBe(false);
 });
 
 test("machine status emits one 2.0 envelope and no stderr", () => {
@@ -193,6 +196,21 @@ test("machine status emits a distinct internal fallback after stdout emission fa
       repairAction: "Inspect the status output stream before retrying.",
     },
   });
+});
+
+test("machine status reports repair guidance when stdout remains unavailable", async () => {
+  const result = invokeWithPreload(
+    await outputFailurePreload("persistent"),
+    "status",
+    "--json",
+  );
+
+  expect(result.exitCode).toBe(1);
+  expect(result.stdout).toBe("");
+  expect(result.stderr).toBe(
+    "The status output could not be emitted.\n" +
+      "Repair: Inspect the status output stream before retrying.\n",
+  );
 });
 
 test("human status reports a repair action after stdout emission fails", async () => {

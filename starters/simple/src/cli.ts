@@ -243,17 +243,27 @@ function render(value: unknown, json: boolean, human: string): void {
   emit(json ? serialize(value) : `${human}\n`);
 }
 
+function reportInternalFailureToStderr(
+  failure: ReturnType<typeof internalFailure>,
+): void {
+  process.stderr.write(
+    `${failure.message}\nRepair: ${failure.result.repairAction}\n`,
+  );
+}
+
 function reportInternalFailure(
   station: InternalFailureStation,
   json: boolean,
 ): number {
   const failure = internalFailure(station);
   if (json) {
-    render(failure, true, failure.message);
+    try {
+      render(failure, true, failure.message);
+    } catch {
+      reportInternalFailureToStderr(failure);
+    }
   } else {
-    process.stderr.write(
-      `${failure.message}\nRepair: ${failure.result.repairAction}\n`,
-    );
+    reportInternalFailureToStderr(failure);
   }
   return 1;
 }
