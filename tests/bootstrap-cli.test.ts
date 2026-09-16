@@ -202,7 +202,7 @@ describe("public bootstrap CLI", () => {
   test("generates scratch without Fallow", async () => {
     const root = await temporaryRoot();
     const destination = join(root, "scratch-example");
-    const packet = "https://example.test/vault/projects/scratch-example/";
+    const packet = "https://example.test/vault/projects/%7Escratch-example/";
     const result = invoke(
       "--profile",
       "scratch",
@@ -217,6 +217,7 @@ describe("public bootstrap CLI", () => {
     expect(result.stderr).toBe("");
     expect(JSON.parse(result.stdout)).toMatchObject({
       profile: "scratch",
+      sourcePacket: packet,
       status: "created",
     });
     const files = await listFiles(destination);
@@ -255,6 +256,38 @@ describe("public bootstrap CLI", () => {
       expect(commandResult.exitCode).toBe(0);
     }
     expect(await Bun.file(invocationMarker).exists()).toBe(false);
+  });
+
+  test("rejects credentialed and query source packets before writing or output", async () => {
+    const root = await temporaryRoot();
+    for (const [name, packet] of [
+      ["userinfo", "https://demo:demo@example.test/vault/projects/example/"],
+      [
+        "query",
+        "https://example.test/vault/projects/example/?access=example-only",
+      ],
+    ] as const) {
+      const destination = join(root, name);
+      const result = invoke(
+        "--profile",
+        "scratch",
+        "--destination",
+        destination,
+        "--source-packet",
+        packet,
+        "--json",
+      );
+
+      expect(result.exitCode).toBe(2);
+      expect(result.stdout).not.toContain(packet);
+      expect(result.stderr).not.toContain(packet);
+      expect(JSON.parse(result.stderr)).toMatchObject({
+        error: { code: "invalid_source_packet", retrySafe: true },
+        status: "refused",
+      });
+      expect(existsSync(destination)).toBe(false);
+      expect(existsSync(join(destination, "README.md"))).toBe(false);
+    }
   });
 
   test("generates and checks durable single-package and optional monorepo variants", async () => {

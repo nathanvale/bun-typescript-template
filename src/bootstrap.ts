@@ -293,17 +293,22 @@ function resolveRepositoryName(destination: string, name?: string): string {
   return repositoryName;
 }
 
-function isWebUrl(value: string): boolean {
+function isSafeWebUrl(value: string): boolean {
   try {
     const parsed = new URL(value);
-    return parsed.protocol === "https:" || parsed.protocol === "http:";
+    return (
+      ["https:", "http:"].includes(parsed.protocol) &&
+      [parsed.username, parsed.password, parsed.search].every(
+        (component) => component === "",
+      )
+    );
   } catch {
     return false;
   }
 }
 
 function isSupportedSourcePacket(sourcePacket: string): boolean {
-  return isAbsolute(sourcePacket) || isWebUrl(sourcePacket);
+  return isAbsolute(sourcePacket) || isSafeWebUrl(sourcePacket);
 }
 
 function hasUnsafeSourcePacketCharacters(sourcePacket: string): boolean {
