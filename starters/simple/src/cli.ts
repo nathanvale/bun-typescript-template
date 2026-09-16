@@ -74,6 +74,30 @@ function refusal(message: string) {
   };
 }
 
+function internalFailure(commandIdentity: string) {
+  return {
+    availablePaths: AVAILABLE_PATHS,
+    contractVersion: CONTRACT_VERSION,
+    envelopeVersion: 2,
+    message: "The machine result could not be serialized.",
+    result: {
+      causeCode: "INTERNAL_RESULT_SERIALIZATION",
+      commandIdentity,
+      data: null,
+      effectClass: "inspect",
+      effects: effects(),
+      exitCode: 1,
+      failureClass: "internal",
+      nextAction: "Inspect the runtime and retry example status.",
+      outcome: "failed",
+      repairAction: "Inspect the serialization failure before retrying.",
+      retryable: false,
+      runId: randomUUID(),
+      transactionState: "unchanged",
+    },
+  };
+}
+
 function discoveryData() {
   return {
     commands: COMMANDS,
@@ -116,6 +140,24 @@ function commandDiscovery() {
         trigger: "The status inspection completes.",
         unreachableRationale: null,
       },
+      {
+        causeCode: "INTERNAL_RESULT_SERIALIZATION",
+        commandIdentity: "example.status",
+        effectClass: "inspect",
+        exitCode: 1,
+        failureClass: "internal",
+        guidance: {
+          nextAction: "Inspect the runtime and retry example status.",
+        },
+        outcome: "failed",
+        reachability: "required",
+        repairAction: "Inspect the serialization failure before retrying.",
+        retryable: false,
+        retryDelayPolicy: { kind: "none" },
+        transactionState: "unchanged",
+        trigger: "The machine status result cannot be serialized.",
+        unreachableRationale: null,
+      },
     ],
   };
 }
@@ -128,6 +170,16 @@ function hasJson(argv: string[]): boolean {
 
 function render(value: unknown, json: boolean, human: string): void {
   process.stdout.write(json ? `${JSON.stringify(value)}\n` : `${human}\n`);
+}
+
+function reportInternalFailure(commandIdentity: string, json: boolean): number {
+  const failure = internalFailure(commandIdentity);
+  if (json) {
+    render(failure, true, failure.message);
+  } else {
+    process.stderr.write(`${failure.message}\n`);
+  }
+  return 1;
 }
 
 async function main(argv: string[]): Promise<number> {
@@ -181,12 +233,16 @@ async function main(argv: string[]): Promise<number> {
     return 0;
   }
   if (args.length === 1 && args[0] === "status") {
-    render(
-      success("example.status", { ready: true }, "Starter is ready."),
-      json,
-      "Starter is ready.",
-    );
-    return 0;
+    try {
+      render(
+        success("example.status", { ready: true }, "Starter is ready."),
+        json,
+        "Starter is ready.",
+      );
+      return 0;
+    } catch {
+      return reportInternalFailure("example.status", json);
+    }
   }
   const failure = refusal("Choose a supported command.");
   if (json) {
