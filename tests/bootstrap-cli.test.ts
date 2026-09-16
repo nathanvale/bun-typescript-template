@@ -75,6 +75,12 @@ const STARTER_FILES = {
   ],
 } as const;
 
+// Independent oracle: these are the public CLI wording expectations.
+const SOURCE_PACKET_DATA_MESSAGE =
+  "HTTP(S) source packet URLs must not contain username, password, or query data";
+const SOURCE_PACKET_DATA_REPAIR =
+  "remove username, password, or query data, or use an absolute local packet path";
+
 interface Invocation {
   exitCode: number;
   stderr: string;
@@ -134,6 +140,7 @@ async function expectRejectedSourcePacket(
   root: string,
   name: string,
   packet: string,
+  redactedParts: readonly string[],
 ): Promise<void> {
   const destination = join(root, name);
   const result = invoke(
@@ -147,10 +154,17 @@ async function expectRejectedSourcePacket(
   );
 
   expect(result.exitCode).toBe(2);
-  expect(result.stdout).not.toContain(packet);
-  expect(result.stderr).not.toContain(packet);
+  for (const value of [packet, ...redactedParts]) {
+    expect(result.stdout).not.toContain(value);
+    expect(result.stderr).not.toContain(value);
+  }
   expect(JSON.parse(result.stderr)).toMatchObject({
-    error: { code: "invalid_source_packet", retrySafe: true },
+    error: {
+      code: "invalid_source_packet",
+      message: SOURCE_PACKET_DATA_MESSAGE,
+      repair: SOURCE_PACKET_DATA_REPAIR,
+      retrySafe: true,
+    },
     status: "refused",
   });
   expect(existsSync(destination)).toBe(false);
@@ -291,6 +305,7 @@ describe("public bootstrap CLI", () => {
       root,
       "username",
       "https://demo@example.test/vault/projects/example/",
+      ["demo"],
     );
   });
 
@@ -300,6 +315,7 @@ describe("public bootstrap CLI", () => {
       root,
       "password",
       "https://:secret@example.test/",
+      ["secret"],
     );
   });
 
@@ -309,6 +325,7 @@ describe("public bootstrap CLI", () => {
       root,
       "query",
       "https://example.test/vault/projects/example/?access=example-only",
+      ["access=example-only"],
     );
   });
 
