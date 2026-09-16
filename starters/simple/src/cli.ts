@@ -94,10 +94,10 @@ type SerializationFailureStation = InternalFailureStationBase & {
 
 type OutputEmissionFailureStation = InternalFailureStationBase & {
   causeCode: "INTERNAL_RESULT_EMISSION";
-  message: "The machine result could not be emitted.";
-  nextAction: "Inspect stdout and retry example status.";
-  repairAction: "Inspect the output stream before retrying.";
-  trigger: "The machine status result cannot be emitted.";
+  message: "The status output could not be emitted.";
+  nextAction: "Inspect the status output and retry example status.";
+  repairAction: "Inspect the status output stream before retrying.";
+  trigger: "The status output cannot be emitted.";
 };
 
 type InternalFailureStation =
@@ -125,13 +125,13 @@ const OUTPUT_EMISSION_FAILURE_STATION: OutputEmissionFailureStation = {
   exitCode: 1,
   failureClass: "internal",
   causeCode: "INTERNAL_RESULT_EMISSION",
-  message: "The machine result could not be emitted.",
-  nextAction: "Inspect stdout and retry example status.",
+  message: "The status output could not be emitted.",
+  nextAction: "Inspect the status output and retry example status.",
   outcome: "failed",
-  repairAction: "Inspect the output stream before retrying.",
+  repairAction: "Inspect the status output stream before retrying.",
   retryable: false,
   transactionState: "unchanged",
-  trigger: "The machine status result cannot be emitted.",
+  trigger: "The status output cannot be emitted.",
 };
 
 function internalFailure(station: InternalFailureStation) {

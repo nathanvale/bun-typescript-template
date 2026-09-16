@@ -185,12 +185,12 @@ test("machine status emits a distinct internal fallback after stdout emission fa
   expect(result.stderr).toBe("");
   expect(result.stdout.trim().split("\n")).toHaveLength(1);
   expect(JSON.parse(result.stdout)).toMatchObject({
-    message: "The machine result could not be emitted.",
+    message: "The status output could not be emitted.",
     result: {
       causeCode: "INTERNAL_RESULT_EMISSION",
-      nextAction: "Inspect stdout and retry example status.",
+      nextAction: "Inspect the status output and retry example status.",
       outcome: "failed",
-      repairAction: "Inspect the output stream before retrying.",
+      repairAction: "Inspect the status output stream before retrying.",
     },
   });
 });
@@ -201,8 +201,8 @@ test("human status reports a repair action after stdout emission fails", async (
   expect(result.exitCode).toBe(1);
   expect(result.stdout).toBe("");
   expect(result.stderr).toBe(
-    "The machine result could not be emitted.\n" +
-      "Repair: Inspect the output stream before retrying.\n",
+    "The status output could not be emitted.\n" +
+      "Repair: Inspect the status output stream before retrying.\n",
   );
 });
 
@@ -235,9 +235,11 @@ test("selected-command discovery describes the status stations", () => {
         station.causeCode === "INTERNAL_RESULT_EMISSION",
     ),
   ).toMatchObject({
-    guidance: { nextAction: "Inspect stdout and retry example status." },
-    repairAction: "Inspect the output stream before retrying.",
-    trigger: "The machine status result cannot be emitted.",
+    guidance: {
+      nextAction: "Inspect the status output and retry example status.",
+    },
+    repairAction: "Inspect the status output stream before retrying.",
+    trigger: "The status output cannot be emitted.",
   });
 });
 
