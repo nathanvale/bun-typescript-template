@@ -74,43 +74,86 @@ function refusal(message: string) {
   };
 }
 
-type InternalFailureStation = {
-  causeCode: "INTERNAL_RESULT_SERIALIZATION";
+type InternalFailureStationBase = {
   commandIdentity: "example.status";
   effectClass: "inspect";
   exitCode: 1;
   failureClass: "internal";
   nextAction: string;
   outcome: "failed";
-  repairAction: string;
   retryable: false;
   transactionState: "unchanged";
 };
 
-const INTERNAL_FAILURE_STATION: InternalFailureStation = {
-  causeCode: "INTERNAL_RESULT_SERIALIZATION",
+type SerializationFailureStation = InternalFailureStationBase & {
+  causeCode: "INTERNAL_RESULT_SERIALIZATION";
+  message: "The machine result could not be serialized.";
+  repairAction: "Inspect the serialization failure before retrying.";
+  trigger: "The machine status result cannot be serialized.";
+};
+
+type OutputEmissionFailureStation = InternalFailureStationBase & {
+  causeCode: "INTERNAL_RESULT_EMISSION";
+  message: "The machine result could not be emitted.";
+  nextAction: "Inspect stdout and retry example status.";
+  repairAction: "Inspect the output stream before retrying.";
+  trigger: "The machine status result cannot be emitted.";
+};
+
+type InternalFailureStation =
+  | SerializationFailureStation
+  | OutputEmissionFailureStation;
+
+const SERIALIZATION_FAILURE_STATION: SerializationFailureStation = {
   commandIdentity: "example.status",
   effectClass: "inspect",
   exitCode: 1,
   failureClass: "internal",
+  causeCode: "INTERNAL_RESULT_SERIALIZATION",
+  message: "The machine result could not be serialized.",
   nextAction: "Inspect the runtime and retry example status.",
   outcome: "failed",
   repairAction: "Inspect the serialization failure before retrying.",
   retryable: false,
   transactionState: "unchanged",
+  trigger: "The machine status result cannot be serialized.",
 };
 
-function internalFailure() {
+const OUTPUT_EMISSION_FAILURE_STATION: OutputEmissionFailureStation = {
+  commandIdentity: "example.status",
+  effectClass: "inspect",
+  exitCode: 1,
+  failureClass: "internal",
+  causeCode: "INTERNAL_RESULT_EMISSION",
+  message: "The machine result could not be emitted.",
+  nextAction: "Inspect stdout and retry example status.",
+  outcome: "failed",
+  repairAction: "Inspect the output stream before retrying.",
+  retryable: false,
+  transactionState: "unchanged",
+  trigger: "The machine status result cannot be emitted.",
+};
+
+function internalFailure(station: InternalFailureStation) {
   return {
     availablePaths: AVAILABLE_PATHS,
     contractVersion: CONTRACT_VERSION,
     envelopeVersion: 2,
-    message: "The machine result could not be serialized.",
+    message: station.message,
     result: {
-      ...INTERNAL_FAILURE_STATION,
+      causeCode: station.causeCode,
+      commandIdentity: station.commandIdentity,
       data: null,
+      effectClass: station.effectClass,
       effects: effects(),
+      exitCode: station.exitCode,
+      failureClass: station.failureClass,
+      nextAction: station.nextAction,
+      outcome: station.outcome,
+      repairAction: station.repairAction,
+      retryable: station.retryable,
       runId: randomUUID(),
+      transactionState: station.transactionState,
     },
   };
 }
@@ -137,7 +180,6 @@ function discoveryData() {
 }
 
 function commandDiscovery() {
-  const { nextAction, ...station } = INTERNAL_FAILURE_STATION;
   return {
     command: COMMANDS[0],
     semantics: "possible-outcomes",
@@ -158,15 +200,28 @@ function commandDiscovery() {
         trigger: "The status inspection completes.",
         unreachableRationale: null,
       },
-      {
-        ...station,
-        guidance: { nextAction },
-        reachability: "required",
-        retryDelayPolicy: { kind: "none" },
-        trigger: "The machine status result cannot be serialized.",
-        unreachableRationale: null,
-      },
+      failureDiscoveryStation(SERIALIZATION_FAILURE_STATION),
+      failureDiscoveryStation(OUTPUT_EMISSION_FAILURE_STATION),
     ],
+  };
+}
+
+function failureDiscoveryStation(station: InternalFailureStation) {
+  return {
+    causeCode: station.causeCode,
+    commandIdentity: station.commandIdentity,
+    effectClass: station.effectClass,
+    exitCode: station.exitCode,
+    failureClass: station.failureClass,
+    guidance: { nextAction: station.nextAction },
+    outcome: station.outcome,
+    reachability: "required",
+    repairAction: station.repairAction,
+    retryable: station.retryable,
+    retryDelayPolicy: { kind: "none" },
+    transactionState: station.transactionState,
+    trigger: station.trigger,
+    unreachableRationale: null,
   };
 }
 
@@ -176,12 +231,23 @@ function hasJson(argv: string[]): boolean {
   return options.includes("--json");
 }
 
-function render(value: unknown, json: boolean, human: string): void {
-  process.stdout.write(json ? `${JSON.stringify(value)}\n` : `${human}\n`);
+function serialize(value: unknown): string {
+  return `${JSON.stringify(value)}\n`;
 }
 
-function reportInternalFailure(json: boolean): number {
-  const failure = internalFailure();
+function emit(value: string): void {
+  process.stdout.write(value);
+}
+
+function render(value: unknown, json: boolean, human: string): void {
+  emit(json ? serialize(value) : `${human}\n`);
+}
+
+function reportInternalFailure(
+  station: InternalFailureStation,
+  json: boolean,
+): number {
+  const failure = internalFailure(station);
   if (json) {
     render(failure, true, failure.message);
   } else {
@@ -243,16 +309,23 @@ async function main(argv: string[]): Promise<number> {
     return 0;
   }
   if (args.length === 1 && args[0] === "status") {
+    const result = success(
+      "example.status",
+      { ready: true },
+      "Starter is ready.",
+    );
+    let output: string;
     try {
-      render(
-        success("example.status", { ready: true }, "Starter is ready."),
-        json,
-        "Starter is ready.",
-      );
-      return 0;
+      output = json ? serialize(result) : "Starter is ready.\n";
     } catch {
-      return reportInternalFailure(json);
+      return reportInternalFailure(SERIALIZATION_FAILURE_STATION, json);
     }
+    try {
+      emit(output);
+    } catch {
+      return reportInternalFailure(OUTPUT_EMISSION_FAILURE_STATION, json);
+    }
+    return 0;
   }
   const failure = refusal("Choose a supported command.");
   if (json) {

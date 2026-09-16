@@ -61,15 +61,17 @@ JSON.stringify = (...args) => {
   return preload;
 }
 
-async function humanFailurePreload(): Promise<string> {
+async function outputFailurePreload(): Promise<string> {
   const root = await mkdtemp("/tmp/simple-starter-test-");
   scratchRoots.push(root);
-  const preload = join(root, "human-failure.ts");
+  const preload = join(root, "output-failure.ts");
   await writeFile(
     preload,
     `const write = process.stdout.write.bind(process.stdout);
+let failed = false;
 process.stdout.write = (chunk, ...args) => {
-  if (String(chunk) === "Starter is ready.\\n") {
+  if (!failed) {
+    failed = true;
     throw new Error("fixture stdout failure");
   }
   return write(chunk, ...args);
@@ -172,14 +174,35 @@ test("machine status emits a strict internal fallback after serialization fails"
   );
 });
 
-test("human status reports a repair action after rendering fails", async () => {
-  const result = invokeWithPreload(await humanFailurePreload(), "status");
+test("machine status emits a distinct internal fallback after stdout emission fails", async () => {
+  const result = invokeWithPreload(
+    await outputFailurePreload(),
+    "status",
+    "--json",
+  );
+
+  expect(result.exitCode).toBe(1);
+  expect(result.stderr).toBe("");
+  expect(result.stdout.trim().split("\n")).toHaveLength(1);
+  expect(JSON.parse(result.stdout)).toMatchObject({
+    message: "The machine result could not be emitted.",
+    result: {
+      causeCode: "INTERNAL_RESULT_EMISSION",
+      nextAction: "Inspect stdout and retry example status.",
+      outcome: "failed",
+      repairAction: "Inspect the output stream before retrying.",
+    },
+  });
+});
+
+test("human status reports a repair action after stdout emission fails", async () => {
+  const result = invokeWithPreload(await outputFailurePreload(), "status");
 
   expect(result.exitCode).toBe(1);
   expect(result.stdout).toBe("");
   expect(result.stderr).toBe(
-    "The machine result could not be serialized.\n" +
-      "Repair: Inspect the serialization failure before retrying.\n",
+    "The machine result could not be emitted.\n" +
+      "Repair: Inspect the output stream before retrying.\n",
   );
 });
 
@@ -202,9 +225,20 @@ test("selected-command discovery describes the status stations", () => {
       )
       .sort(),
   ).toEqual([
+    "INTERNAL_RESULT_EMISSION|failed",
     "INTERNAL_RESULT_SERIALIZATION|failed",
     "SUCCESS_UNCHANGED|success",
   ]);
+  expect(
+    envelope.result.data.stations.find(
+      (station: { causeCode: string }) =>
+        station.causeCode === "INTERNAL_RESULT_EMISSION",
+    ),
+  ).toMatchObject({
+    guidance: { nextAction: "Inspect stdout and retry example status." },
+    repairAction: "Inspect the output stream before retrying.",
+    trigger: "The machine status result cannot be emitted.",
+  });
 });
 
 test("missing command is a focused usage refusal", () => {
