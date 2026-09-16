@@ -243,9 +243,13 @@ function render(value: unknown, json: boolean, human: string): void {
   emit(json ? serialize(value) : `${human}\n`);
 }
 
+let internalFailureReported = false;
+
 function reportInternalFailureToStderr(
   failure: ReturnType<typeof internalFailure>,
 ): void {
+  if (internalFailureReported) return;
+  internalFailureReported = true;
   process.stderr.write(
     `${failure.message}\nRepair: ${failure.result.repairAction}\n`,
   );
@@ -266,6 +270,16 @@ function reportInternalFailure(
     reportInternalFailureToStderr(failure);
   }
   return 1;
+}
+
+let asynchronousStdoutFailure = false;
+
+function reportAsynchronousStdoutFailure(): void {
+  asynchronousStdoutFailure = true;
+  process.exitCode = 1;
+  reportInternalFailureToStderr(
+    internalFailure(OUTPUT_EMISSION_FAILURE_STATION),
+  );
 }
 
 async function main(argv: string[]): Promise<number> {
@@ -319,6 +333,7 @@ async function main(argv: string[]): Promise<number> {
     return 0;
   }
   if (args.length === 1 && args[0] === "status") {
+    process.stdout.on("error", reportAsynchronousStdoutFailure);
     const result = success(
       "example.status",
       { ready: true },
@@ -346,4 +361,5 @@ async function main(argv: string[]): Promise<number> {
   return 2;
 }
 
-process.exitCode = await main(process.argv.slice(2));
+const exitCode = await main(process.argv.slice(2));
+process.exitCode = asynchronousStdoutFailure ? 1 : exitCode;

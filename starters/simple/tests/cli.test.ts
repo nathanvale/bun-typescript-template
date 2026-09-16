@@ -62,9 +62,7 @@ JSON.stringify = (...args) => {
   return preload;
 }
 
-async function outputFailurePreload(
-  mode: "first-write-only" | "persistent" = "first-write-only",
-): Promise<string> {
+async function outputFailurePreload(): Promise<string> {
   const root = await mkdtemp("/tmp/simple-starter-test-");
   scratchRoots.push(root);
   const preload = join(root, "output-failure.ts");
@@ -73,7 +71,7 @@ async function outputFailurePreload(
     `const write = process.stdout.write.bind(process.stdout);
 let failed = false;
 process.stdout.write = (chunk, ...args) => {
-  if (${mode === "persistent"} || !failed) {
+  if (!failed) {
     failed = true;
     throw new Error("fixture stdout failure");
   }
@@ -82,6 +80,84 @@ process.stdout.write = (chunk, ...args) => {
 `,
   );
   return preload;
+}
+
+type ClosedStdoutPreload = {
+  preload: string;
+  ready: string;
+  release: string;
+};
+
+async function closedStdoutPreload(): Promise<ClosedStdoutPreload> {
+  const root = await mkdtemp("/tmp/simple-starter-test-");
+  scratchRoots.push(root);
+  const preload = join(root, "closed-stdout.ts");
+  const ready = join(root, "ready");
+  const release = join(root, "release");
+  await writeFile(
+    preload,
+    `import { existsSync } from "node:fs";
+import { writeFile } from "node:fs/promises";
+
+const readyPath = ${JSON.stringify(ready)};
+const releasePath = ${JSON.stringify(release)};
+await writeFile(readyPath, "ready");
+while (!existsSync(releasePath)) await Bun.sleep(1);
+`,
+  );
+  return { preload, ready, release };
+}
+
+async function waitForFile(path: string): Promise<void> {
+  for (let attempt = 0; attempt < 5_000; attempt += 1) {
+    if (existsSync(path)) return;
+    await Bun.sleep(1);
+  }
+  throw new Error(`Timed out waiting for ${path}`);
+}
+
+async function invokeWithClosedStdoutReader(
+  fixture: ClosedStdoutPreload,
+  ...args: string[]
+) {
+  const child = Bun.spawn(
+    [
+      process.execPath,
+      "run",
+      "--preload",
+      fixture.preload,
+      "src/cli.ts",
+      ...args,
+    ],
+    {
+      cwd: ROOT,
+      stderr: "pipe",
+      stdout: "pipe",
+    },
+  );
+  const stderr = new Response(child.stderr).text();
+  const stdoutReader = child.stdout.getReader();
+  const stdoutRead = stdoutReader.read();
+  try {
+    await waitForFile(fixture.ready);
+    await stdoutReader.cancel();
+    const stdoutResult = await stdoutRead;
+    await writeFile(fixture.release, "release");
+    const [stderrText, exitCode] = await Promise.all([stderr, child.exited]);
+    return {
+      exitCode,
+      stderr: stderrText,
+      stdout: stdoutResult.done
+        ? ""
+        : new TextDecoder().decode(stdoutResult.value),
+    };
+  } finally {
+    if (!existsSync(fixture.release)) {
+      await writeFile(fixture.release, "release");
+    }
+    await stdoutReader.cancel();
+    await child.exited;
+  }
 }
 
 afterEach(async () => {
@@ -198,9 +274,9 @@ test("machine status emits a distinct internal fallback after stdout emission fa
   });
 });
 
-test("machine status reports repair guidance when stdout remains unavailable", async () => {
-  const result = invokeWithPreload(
-    await outputFailurePreload("persistent"),
+test("machine status reports repair guidance after a real stdout reader closes", async () => {
+  const result = await invokeWithClosedStdoutReader(
+    await closedStdoutPreload(),
     "status",
     "--json",
   );
@@ -211,6 +287,8 @@ test("machine status reports repair guidance when stdout remains unavailable", a
     "The status output could not be emitted.\n" +
       "Repair: Inspect the status output stream before retrying.\n",
   );
+  expect(result.stderr).not.toContain("EPIPE");
+  expect(result.stderr).not.toContain("Bun v");
 });
 
 test("human status reports a repair action after stdout emission fails", async () => {
