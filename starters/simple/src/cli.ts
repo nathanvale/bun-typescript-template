@@ -74,6 +74,90 @@ function refusal(message: string) {
   };
 }
 
+type InternalFailureStationBase = {
+  commandIdentity: "example.status";
+  effectClass: "inspect";
+  exitCode: 1;
+  failureClass: "internal";
+  nextAction: string;
+  outcome: "failed";
+  retryable: false;
+  transactionState: "unchanged";
+};
+
+type SerializationFailureStation = InternalFailureStationBase & {
+  causeCode: "INTERNAL_RESULT_SERIALIZATION";
+  message: "The machine result could not be serialized.";
+  repairAction: "Inspect the serialization failure before retrying.";
+  trigger: "The machine status result cannot be serialized.";
+};
+
+type OutputEmissionFailureStation = InternalFailureStationBase & {
+  causeCode: "INTERNAL_RESULT_EMISSION";
+  message: "The status output could not be emitted.";
+  nextAction: "Inspect the status output and retry example status.";
+  repairAction: "Inspect the status output stream before retrying.";
+  trigger: "The status output cannot be emitted.";
+};
+
+type InternalFailureStation =
+  | SerializationFailureStation
+  | OutputEmissionFailureStation;
+
+const SERIALIZATION_FAILURE_STATION: SerializationFailureStation = {
+  commandIdentity: "example.status",
+  effectClass: "inspect",
+  exitCode: 1,
+  failureClass: "internal",
+  causeCode: "INTERNAL_RESULT_SERIALIZATION",
+  message: "The machine result could not be serialized.",
+  nextAction: "Inspect the runtime and retry example status.",
+  outcome: "failed",
+  repairAction: "Inspect the serialization failure before retrying.",
+  retryable: false,
+  transactionState: "unchanged",
+  trigger: "The machine status result cannot be serialized.",
+};
+
+const OUTPUT_EMISSION_FAILURE_STATION: OutputEmissionFailureStation = {
+  commandIdentity: "example.status",
+  effectClass: "inspect",
+  exitCode: 1,
+  failureClass: "internal",
+  causeCode: "INTERNAL_RESULT_EMISSION",
+  message: "The status output could not be emitted.",
+  nextAction: "Inspect the status output and retry example status.",
+  outcome: "failed",
+  repairAction: "Inspect the status output stream before retrying.",
+  retryable: false,
+  transactionState: "unchanged",
+  trigger: "The status output cannot be emitted.",
+};
+
+function internalFailure(station: InternalFailureStation) {
+  return {
+    availablePaths: AVAILABLE_PATHS,
+    contractVersion: CONTRACT_VERSION,
+    envelopeVersion: 2,
+    message: station.message,
+    result: {
+      causeCode: station.causeCode,
+      commandIdentity: station.commandIdentity,
+      data: null,
+      effectClass: station.effectClass,
+      effects: effects(),
+      exitCode: station.exitCode,
+      failureClass: station.failureClass,
+      nextAction: station.nextAction,
+      outcome: station.outcome,
+      repairAction: station.repairAction,
+      retryable: station.retryable,
+      runId: randomUUID(),
+      transactionState: station.transactionState,
+    },
+  };
+}
+
 function discoveryData() {
   return {
     commands: COMMANDS,
@@ -116,7 +200,28 @@ function commandDiscovery() {
         trigger: "The status inspection completes.",
         unreachableRationale: null,
       },
+      failureDiscoveryStation(SERIALIZATION_FAILURE_STATION),
+      failureDiscoveryStation(OUTPUT_EMISSION_FAILURE_STATION),
     ],
+  };
+}
+
+function failureDiscoveryStation(station: InternalFailureStation) {
+  return {
+    causeCode: station.causeCode,
+    commandIdentity: station.commandIdentity,
+    effectClass: station.effectClass,
+    exitCode: station.exitCode,
+    failureClass: station.failureClass,
+    guidance: { nextAction: station.nextAction },
+    outcome: station.outcome,
+    reachability: "required",
+    repairAction: station.repairAction,
+    retryable: station.retryable,
+    retryDelayPolicy: { kind: "none" },
+    transactionState: station.transactionState,
+    trigger: station.trigger,
+    unreachableRationale: null,
   };
 }
 
@@ -126,8 +231,55 @@ function hasJson(argv: string[]): boolean {
   return options.includes("--json");
 }
 
+function serialize(value: unknown): string {
+  return `${JSON.stringify(value)}\n`;
+}
+
+function emit(value: string): void {
+  process.stdout.write(value);
+}
+
 function render(value: unknown, json: boolean, human: string): void {
-  process.stdout.write(json ? `${JSON.stringify(value)}\n` : `${human}\n`);
+  emit(json ? serialize(value) : `${human}\n`);
+}
+
+let internalFailureReported = false;
+
+function reportInternalFailureToStderr(
+  failure: ReturnType<typeof internalFailure>,
+): void {
+  if (internalFailureReported) return;
+  internalFailureReported = true;
+  process.stderr.write(
+    `${failure.message}\nRepair: ${failure.result.repairAction}\n`,
+  );
+}
+
+function reportInternalFailure(
+  station: InternalFailureStation,
+  json: boolean,
+): number {
+  const failure = internalFailure(station);
+  if (json) {
+    try {
+      render(failure, true, failure.message);
+    } catch {
+      reportInternalFailureToStderr(failure);
+    }
+  } else {
+    reportInternalFailureToStderr(failure);
+  }
+  return 1;
+}
+
+let asynchronousStdoutFailure = false;
+
+function reportAsynchronousStdoutFailure(): void {
+  asynchronousStdoutFailure = true;
+  process.exitCode = 1;
+  reportInternalFailureToStderr(
+    internalFailure(OUTPUT_EMISSION_FAILURE_STATION),
+  );
 }
 
 async function main(argv: string[]): Promise<number> {
@@ -181,11 +333,23 @@ async function main(argv: string[]): Promise<number> {
     return 0;
   }
   if (args.length === 1 && args[0] === "status") {
-    render(
-      success("example.status", { ready: true }, "Starter is ready."),
-      json,
+    process.stdout.on("error", reportAsynchronousStdoutFailure);
+    const result = success(
+      "example.status",
+      { ready: true },
       "Starter is ready.",
     );
+    let output: string;
+    try {
+      output = json ? serialize(result) : "Starter is ready.\n";
+    } catch {
+      return reportInternalFailure(SERIALIZATION_FAILURE_STATION, json);
+    }
+    try {
+      emit(output);
+    } catch {
+      return reportInternalFailure(OUTPUT_EMISSION_FAILURE_STATION, json);
+    }
     return 0;
   }
   const failure = refusal("Choose a supported command.");
@@ -197,4 +361,5 @@ async function main(argv: string[]): Promise<number> {
   return 2;
 }
 
-process.exitCode = await main(process.argv.slice(2));
+const exitCode = await main(process.argv.slice(2));
+process.exitCode = asynchronousStdoutFailure ? 1 : exitCode;

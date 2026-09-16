@@ -75,6 +75,12 @@ const STARTER_FILES = {
   ],
 } as const;
 
+// Independent oracle: these are the public CLI wording expectations.
+const SOURCE_PACKET_DATA_MESSAGE =
+  "HTTP(S) source packet URLs must not contain username, password, or query data";
+const SOURCE_PACKET_DATA_REPAIR =
+  "remove username, password, or query data, or use an absolute local packet path";
+
 interface Invocation {
   exitCode: number;
   stderr: string;
@@ -128,6 +134,41 @@ async function temporaryRoot(): Promise<string> {
   const root = await mkdtemp("/tmp/bun-typescript-template-test-");
   scratchRoots.push(root);
   return root;
+}
+
+async function expectRejectedSourcePacket(
+  root: string,
+  name: string,
+  packet: string,
+  redactedParts: readonly string[],
+): Promise<void> {
+  const destination = join(root, name);
+  const result = invoke(
+    "--profile",
+    "scratch",
+    "--destination",
+    destination,
+    "--source-packet",
+    packet,
+    "--json",
+  );
+
+  expect(result.exitCode).toBe(2);
+  for (const value of [packet, ...redactedParts]) {
+    expect(result.stdout).not.toContain(value);
+    expect(result.stderr).not.toContain(value);
+  }
+  expect(JSON.parse(result.stderr)).toMatchObject({
+    error: {
+      code: "invalid_source_packet",
+      message: SOURCE_PACKET_DATA_MESSAGE,
+      repair: SOURCE_PACKET_DATA_REPAIR,
+      retrySafe: true,
+    },
+    status: "refused",
+  });
+  expect(existsSync(destination)).toBe(false);
+  expect(existsSync(join(destination, "README.md"))).toBe(false);
 }
 
 async function listFiles(root: string, prefix = ""): Promise<string[]> {
@@ -202,7 +243,7 @@ describe("public bootstrap CLI", () => {
   test("generates scratch without Fallow", async () => {
     const root = await temporaryRoot();
     const destination = join(root, "scratch-example");
-    const packet = "https://example.test/vault/projects/scratch-example/";
+    const packet = "https://example.test/vault/projects/%7Escratch-example/";
     const result = invoke(
       "--profile",
       "scratch",
@@ -217,6 +258,7 @@ describe("public bootstrap CLI", () => {
     expect(result.stderr).toBe("");
     expect(JSON.parse(result.stdout)).toMatchObject({
       profile: "scratch",
+      sourcePacket: packet,
       status: "created",
     });
     const files = await listFiles(destination);
@@ -255,6 +297,36 @@ describe("public bootstrap CLI", () => {
       expect(commandResult.exitCode).toBe(0);
     }
     expect(await Bun.file(invocationMarker).exists()).toBe(false);
+  });
+
+  test("rejects username-only source packets before writing or output", async () => {
+    const root = await temporaryRoot();
+    await expectRejectedSourcePacket(
+      root,
+      "username",
+      "https://demo@example.test/vault/projects/example/",
+      ["demo"],
+    );
+  });
+
+  test("rejects password-only source packets before writing or output", async () => {
+    const root = await temporaryRoot();
+    await expectRejectedSourcePacket(
+      root,
+      "password",
+      "https://:secret@example.test/",
+      ["secret"],
+    );
+  });
+
+  test("rejects query source packets before writing or output", async () => {
+    const root = await temporaryRoot();
+    await expectRejectedSourcePacket(
+      root,
+      "query",
+      "https://example.test/vault/projects/example/?access=example-only",
+      ["access=example-only"],
+    );
   });
 
   test("generates and checks durable single-package and optional monorepo variants", async () => {

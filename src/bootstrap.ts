@@ -293,17 +293,38 @@ function resolveRepositoryName(destination: string, name?: string): string {
   return repositoryName;
 }
 
-function isWebUrl(value: string): boolean {
+function isHttpUrlWithoutUserInfoOrQuery(value: string): boolean {
   try {
     const parsed = new URL(value);
-    return parsed.protocol === "https:" || parsed.protocol === "http:";
+    return (
+      ["https:", "http:"].includes(parsed.protocol) &&
+      [parsed.username, parsed.password, parsed.search].every(
+        (component) => component === "",
+      )
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isHttpUrlWithUserInfoOrQuery(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return (
+      ["https:", "http:"].includes(parsed.protocol) &&
+      [parsed.username, parsed.password, parsed.search].some(
+        (component) => component !== "",
+      )
+    );
   } catch {
     return false;
   }
 }
 
 function isSupportedSourcePacket(sourcePacket: string): boolean {
-  return isAbsolute(sourcePacket) || isWebUrl(sourcePacket);
+  return (
+    isAbsolute(sourcePacket) || isHttpUrlWithoutUserInfoOrQuery(sourcePacket)
+  );
 }
 
 function hasUnsafeSourcePacketCharacters(sourcePacket: string): boolean {
@@ -322,13 +343,27 @@ function invalidSourcePacket(): CliError {
   );
 }
 
+function invalidSourcePacketWithUserInfoOrQuery(): CliError {
+  return new CliError(
+    "invalid_source_packet",
+    "HTTP(S) source packet URLs must not contain username, password, or query data",
+    "remove username, password, or query data, or use an absolute local packet path",
+    2,
+    true,
+  );
+}
+
 function validateSourcePacket(sourcePacket: string): void {
-  if (!isSupportedSourcePacket(sourcePacket)) {
-    throw invalidSourcePacket();
-  }
   if (hasUnsafeSourcePacketCharacters(sourcePacket)) {
     throw invalidSourcePacket();
   }
+  if (isSupportedSourcePacket(sourcePacket)) {
+    return;
+  }
+  if (isHttpUrlWithUserInfoOrQuery(sourcePacket)) {
+    throw invalidSourcePacketWithUserInfoOrQuery();
+  }
+  throw invalidSourcePacket();
 }
 
 function parseArgs(argv: string[]): BootstrapOptions | "help" {
