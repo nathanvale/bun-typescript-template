@@ -74,26 +74,43 @@ function refusal(message: string) {
   };
 }
 
-function internalFailure(commandIdentity: string) {
+type InternalFailureStation = {
+  causeCode: "INTERNAL_RESULT_SERIALIZATION";
+  commandIdentity: "example.status";
+  effectClass: "inspect";
+  exitCode: 1;
+  failureClass: "internal";
+  nextAction: string;
+  outcome: "failed";
+  repairAction: string;
+  retryable: false;
+  transactionState: "unchanged";
+};
+
+const INTERNAL_FAILURE_STATION: InternalFailureStation = {
+  causeCode: "INTERNAL_RESULT_SERIALIZATION",
+  commandIdentity: "example.status",
+  effectClass: "inspect",
+  exitCode: 1,
+  failureClass: "internal",
+  nextAction: "Inspect the runtime and retry example status.",
+  outcome: "failed",
+  repairAction: "Inspect the serialization failure before retrying.",
+  retryable: false,
+  transactionState: "unchanged",
+};
+
+function internalFailure() {
   return {
     availablePaths: AVAILABLE_PATHS,
     contractVersion: CONTRACT_VERSION,
     envelopeVersion: 2,
     message: "The machine result could not be serialized.",
     result: {
-      causeCode: "INTERNAL_RESULT_SERIALIZATION",
-      commandIdentity,
+      ...INTERNAL_FAILURE_STATION,
       data: null,
-      effectClass: "inspect",
       effects: effects(),
-      exitCode: 1,
-      failureClass: "internal",
-      nextAction: "Inspect the runtime and retry example status.",
-      outcome: "failed",
-      repairAction: "Inspect the serialization failure before retrying.",
-      retryable: false,
       runId: randomUUID(),
-      transactionState: "unchanged",
     },
   };
 }
@@ -120,6 +137,7 @@ function discoveryData() {
 }
 
 function commandDiscovery() {
+  const { nextAction, ...station } = INTERNAL_FAILURE_STATION;
   return {
     command: COMMANDS[0],
     semantics: "possible-outcomes",
@@ -141,20 +159,10 @@ function commandDiscovery() {
         unreachableRationale: null,
       },
       {
-        causeCode: "INTERNAL_RESULT_SERIALIZATION",
-        commandIdentity: "example.status",
-        effectClass: "inspect",
-        exitCode: 1,
-        failureClass: "internal",
-        guidance: {
-          nextAction: "Inspect the runtime and retry example status.",
-        },
-        outcome: "failed",
+        ...station,
+        guidance: { nextAction },
         reachability: "required",
-        repairAction: "Inspect the serialization failure before retrying.",
-        retryable: false,
         retryDelayPolicy: { kind: "none" },
-        transactionState: "unchanged",
         trigger: "The machine status result cannot be serialized.",
         unreachableRationale: null,
       },
@@ -172,12 +180,14 @@ function render(value: unknown, json: boolean, human: string): void {
   process.stdout.write(json ? `${JSON.stringify(value)}\n` : `${human}\n`);
 }
 
-function reportInternalFailure(commandIdentity: string, json: boolean): number {
-  const failure = internalFailure(commandIdentity);
+function reportInternalFailure(json: boolean): number {
+  const failure = internalFailure();
   if (json) {
     render(failure, true, failure.message);
   } else {
-    process.stderr.write(`${failure.message}\n`);
+    process.stderr.write(
+      `${failure.message}\nRepair: ${failure.result.repairAction}\n`,
+    );
   }
   return 1;
 }
@@ -241,7 +251,7 @@ async function main(argv: string[]): Promise<number> {
       );
       return 0;
     } catch {
-      return reportInternalFailure("example.status", json);
+      return reportInternalFailure(json);
     }
   }
   const failure = refusal("Choose a supported command.");

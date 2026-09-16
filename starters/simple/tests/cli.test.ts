@@ -61,6 +61,24 @@ JSON.stringify = (...args) => {
   return preload;
 }
 
+async function humanFailurePreload(): Promise<string> {
+  const root = await mkdtemp("/tmp/simple-starter-test-");
+  scratchRoots.push(root);
+  const preload = join(root, "human-failure.ts");
+  await writeFile(
+    preload,
+    `const write = process.stdout.write.bind(process.stdout);
+process.stdout.write = (chunk, ...args) => {
+  if (String(chunk) === "Starter is ready.\\n") {
+    throw new Error("fixture stdout failure");
+  }
+  return write(chunk, ...args);
+};
+`,
+  );
+  return preload;
+}
+
 afterEach(async () => {
   await Promise.all(
     scratchRoots
@@ -151,6 +169,17 @@ test("machine status emits a strict internal fallback after serialization fails"
   ]);
   expect(envelope.result.runId).toMatch(
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+  );
+});
+
+test("human status reports a repair action after rendering fails", async () => {
+  const result = invokeWithPreload(await humanFailurePreload(), "status");
+
+  expect(result.exitCode).toBe(1);
+  expect(result.stdout).toBe("");
+  expect(result.stderr).toBe(
+    "The machine result could not be serialized.\n" +
+      "Repair: Inspect the serialization failure before retrying.\n",
   );
 });
 

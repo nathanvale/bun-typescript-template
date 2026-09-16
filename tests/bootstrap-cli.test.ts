@@ -130,6 +130,33 @@ async function temporaryRoot(): Promise<string> {
   return root;
 }
 
+async function expectRejectedSourcePacket(
+  root: string,
+  name: string,
+  packet: string,
+): Promise<void> {
+  const destination = join(root, name);
+  const result = invoke(
+    "--profile",
+    "scratch",
+    "--destination",
+    destination,
+    "--source-packet",
+    packet,
+    "--json",
+  );
+
+  expect(result.exitCode).toBe(2);
+  expect(result.stdout).not.toContain(packet);
+  expect(result.stderr).not.toContain(packet);
+  expect(JSON.parse(result.stderr)).toMatchObject({
+    error: { code: "invalid_source_packet", retrySafe: true },
+    status: "refused",
+  });
+  expect(existsSync(destination)).toBe(false);
+  expect(existsSync(join(destination, "README.md"))).toBe(false);
+}
+
 async function listFiles(root: string, prefix = ""): Promise<string[]> {
   const files: string[] = [];
   for (const entry of await readdir(join(root, prefix), {
@@ -258,36 +285,31 @@ describe("public bootstrap CLI", () => {
     expect(await Bun.file(invocationMarker).exists()).toBe(false);
   });
 
-  test("rejects credentialed and query source packets before writing or output", async () => {
+  test("rejects username-only source packets before writing or output", async () => {
     const root = await temporaryRoot();
-    for (const [name, packet] of [
-      ["userinfo", "https://demo:demo@example.test/vault/projects/example/"],
-      [
-        "query",
-        "https://example.test/vault/projects/example/?access=example-only",
-      ],
-    ] as const) {
-      const destination = join(root, name);
-      const result = invoke(
-        "--profile",
-        "scratch",
-        "--destination",
-        destination,
-        "--source-packet",
-        packet,
-        "--json",
-      );
+    await expectRejectedSourcePacket(
+      root,
+      "username",
+      "https://demo@example.test/vault/projects/example/",
+    );
+  });
 
-      expect(result.exitCode).toBe(2);
-      expect(result.stdout).not.toContain(packet);
-      expect(result.stderr).not.toContain(packet);
-      expect(JSON.parse(result.stderr)).toMatchObject({
-        error: { code: "invalid_source_packet", retrySafe: true },
-        status: "refused",
-      });
-      expect(existsSync(destination)).toBe(false);
-      expect(existsSync(join(destination, "README.md"))).toBe(false);
-    }
+  test("rejects password-only source packets before writing or output", async () => {
+    const root = await temporaryRoot();
+    await expectRejectedSourcePacket(
+      root,
+      "password",
+      "https://:secret@example.test/",
+    );
+  });
+
+  test("rejects query source packets before writing or output", async () => {
+    const root = await temporaryRoot();
+    await expectRejectedSourcePacket(
+      root,
+      "query",
+      "https://example.test/vault/projects/example/?access=example-only",
+    );
   });
 
   test("generates and checks durable single-package and optional monorepo variants", async () => {

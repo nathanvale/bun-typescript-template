@@ -293,7 +293,7 @@ function resolveRepositoryName(destination: string, name?: string): string {
   return repositoryName;
 }
 
-function isSafeWebUrl(value: string): boolean {
+function isHttpUrlWithoutUserInfoOrQuery(value: string): boolean {
   try {
     const parsed = new URL(value);
     return (
@@ -308,7 +308,9 @@ function isSafeWebUrl(value: string): boolean {
 }
 
 function isSupportedSourcePacket(sourcePacket: string): boolean {
-  return isAbsolute(sourcePacket) || isSafeWebUrl(sourcePacket);
+  return (
+    isAbsolute(sourcePacket) || isHttpUrlWithoutUserInfoOrQuery(sourcePacket)
+  );
 }
 
 function hasUnsafeSourcePacketCharacters(sourcePacket: string): boolean {
