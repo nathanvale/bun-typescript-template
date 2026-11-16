@@ -28,16 +28,39 @@ import {
 
 const worker = join(import.meta.dir, "fixtures", "coordination-worker.ts");
 const folders: string[] = [];
-const processes: number[] = [];
+// A pid is signalled only while it is still in the process group it had
+// when the test registered it, so a pid the OS reused for an unrelated
+// process is left alone (test-proof Processes; witnessed 1a29b19).
+type Owned = { readonly pid: number; readonly group: number };
+
+function processGroup(pid: number): number | undefined {
+  const result = Bun.spawnSync(["ps", "-o", "pgid=", "-p", String(pid)]);
+  const group = Number(result.stdout.toString().trim());
+  return result.exitCode === 0 && group > 0 ? group : undefined;
+}
+const processes: Owned[] = [];
+
+function own(pid: number): Owned | undefined {
+  const group = processGroup(pid);
+  if (group === undefined) return undefined;
+  const owned = { pid, group };
+  processes.push(owned);
+  return owned;
+}
+
+function signalOwned(owned: Owned, signal: NodeJS.Signals): void {
+  if (processGroup(owned.pid) !== owned.group) return;
+  try {
+    process.kill(owned.pid, signal);
+  } catch {
+    // Already gone.
+  }
+}
 
 afterEach(() => {
-  for (const pid of processes.splice(0)) {
-    try {
-      process.kill(pid, "SIGCONT");
-      process.kill(pid, "SIGKILL");
-    } catch {
-      // Already gone.
-    }
+  for (const owned of processes.splice(0)) {
+    signalOwned(owned, "SIGCONT");
+    signalOwned(owned, "SIGKILL");
   }
   for (const folder of folders.splice(0))
     rmSync(folder, { recursive: true, force: true });
@@ -76,7 +99,7 @@ function start(route: string, mode: string, file: string, option = ""): Worker {
     [process.execPath, worker, route, mode, file, report, option],
     { stdin: "ignore", stdout: "ignore", stderr: "pipe" },
   );
-  processes.push(child.pid);
+  own(child.pid);
   let exited = false;
   void child.exited.then(() => {
     exited = true;
@@ -177,11 +200,12 @@ async function childObservation(
   const { worker, report } = await holder(route, file, option);
   const child = Number(report.child);
   expect(child).toBeGreaterThan(0);
-  processes.push(child);
+  const owned = own(child);
+  expect(owned).toBeDefined();
   await killed(worker);
   const contender = await attempt("addon", file);
   const childAlive = alive(child);
-  process.kill(child, "SIGKILL");
+  if (owned) signalOwned(owned, "SIGKILL");
   return { result: contender.result, childAlive };
 }
 
