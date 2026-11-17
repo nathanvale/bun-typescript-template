@@ -1,2 +1,9 @@
 [install]
 auto = "disable"
+
+[test]
+concurrentTestGlob = [
+  "**/kernel-followup/*.test.ts",
+  "**/tests/planted-faults.test.ts",
+  "**/tests/check-commits.test.ts",
+]
