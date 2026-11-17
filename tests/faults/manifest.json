@@ -68,5 +68,12 @@
     "testFile": "tests/coverage.test.ts",
     "title": "^CV\\.[abcdef] ",
     "source": "04e63be feat(coverage): convert Bun's lcov report to Istanbul coverage for fallow"
+  },
+  {
+    "id": "43eb152-coverage",
+    "patch": "tests/faults/patches/43eb152-coverage.patch",
+    "testFile": "tests/coverage.test.ts",
+    "title": "^CV\\.l ",
+    "source": "43eb152 feat(coverage): leave each function that never ran in-process to fallow's estimate"
   }
 ]

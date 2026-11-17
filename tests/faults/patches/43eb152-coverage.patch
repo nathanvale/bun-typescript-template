@@ -1,0 +1,13 @@
+diff --git a/scripts/coverage.ts b/scripts/coverage.ts
+index 38e224b..078c9da 100644
+--- a/scripts/coverage.ts
++++ b/scripts/coverage.ts
+@@ -252,7 +252,7 @@ function sourceAt(path: string): string | undefined {
+ }
+ 
+ export function ranInProcess(coverage: FileCoverage): FileCoverage {
+-  const ran = ([id]: [string, unknown]) => (coverage.f[id] ?? 0) > 0;
++  const ran = ([id]: [string, unknown]) => (coverage.f[id] ?? 0) >= 0;
+   return {
+     ...coverage,
+     fnMap: Object.fromEntries(Object.entries(coverage.fnMap).filter(ran)),
