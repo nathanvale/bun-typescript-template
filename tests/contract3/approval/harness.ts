@@ -11,7 +11,6 @@ import {
   readFile,
   realpath,
   rm,
-  symlink,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -21,6 +20,7 @@ import type {
   ClosureItem,
   StopItem,
 } from "../../../starters/contract3/src/addons/approval/index.ts";
+import { writeToolchain } from "../../support/materialised-tree.ts";
 import { approvalCases } from "./cases.ts";
 
 const repository = new URL("../../../", import.meta.url).pathname;
@@ -79,27 +79,18 @@ export async function materialize(): Promise<{
   );
   for (const name of ["harness.ts", "cases.ts"])
     await cp(join(repository, tests, name), join(root, tests, name));
+  await mkdir(join(root, "tests/support"), { recursive: true });
+  await cp(
+    join(repository, "tests/support/materialised-tree.ts"),
+    join(root, "tests/support/materialised-tree.ts"),
+  );
   const driver = join(root, tests, "driver.ts");
   await writeFile(driver, await readFile(new URL("driver.ts.txt", fixtures)));
-  await symlink(join(repository, "node_modules"), join(root, "node_modules"));
-  await writeFile(
-    join(root, "tsconfig.json"),
-    JSON.stringify({
-      extends: join(repository, "tsconfig.base.json"),
-      include: ["starters/contract3/src/**/*.ts", `${tests}/**/*.ts`],
-    }),
-  );
-  await writeFile(
-    join(root, "eslint.config.mjs"),
-    [
-      `import contract3 from ${JSON.stringify(join(repository, "config/contract3-eslint.mjs"))};`,
-      "export default [",
-      "  ...contract3,",
-      `  { files: ["**/*.ts"], languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: ${JSON.stringify(root)} } } },`,
-      "];",
-      "",
-    ].join("\n"),
-  );
+  await writeToolchain(root, [
+    "starters/contract3/src/**/*.ts",
+    `${tests}/**/*.ts`,
+    "tests/support/**/*.ts",
+  ]);
   return { root, driver };
 }
 

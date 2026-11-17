@@ -24,17 +24,24 @@ function errnoReader(location: () => unknown): () => number {
   };
 }
 
+function bindCalls(
+  symbols: Pick<Calls, "flock" | "lockf">,
+  location: () => unknown,
+): Calls {
+  return {
+    flock: (fd, operation) => symbols.flock(fd, operation),
+    lockf: (fd, command, length) => symbols.lockf(fd, command, length),
+    errno: errnoReader(location),
+  };
+}
+
 function loadLinux(): Calls {
   const { symbols } = dlopen(library, {
     flock: { args: ["i32", "i32"], returns: "i32" },
     lockf: { args: ["i32", "i32", "i64"], returns: "i32" },
     __errno_location: { args: [], returns: "ptr" },
   });
-  return {
-    flock: (fd, operation) => symbols.flock(fd, operation),
-    lockf: (fd, command, length) => symbols.lockf(fd, command, length),
-    errno: errnoReader(() => symbols.__errno_location()),
-  };
+  return bindCalls(symbols, () => symbols.__errno_location());
 }
 
 function loadDarwin(): Calls {
@@ -43,11 +50,7 @@ function loadDarwin(): Calls {
     lockf: { args: ["i32", "i32", "i64"], returns: "i32" },
     __error: { args: [], returns: "ptr" },
   });
-  return {
-    flock: (fd, operation) => symbols.flock(fd, operation),
-    lockf: (fd, command, length) => symbols.lockf(fd, command, length),
-    errno: errnoReader(() => symbols.__error()),
-  };
+  return bindCalls(symbols, () => symbols.__error());
 }
 
 function load(): Calls | undefined {

@@ -6,11 +6,11 @@ import {
   readFile,
   realpath,
   rm,
-  symlink,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { writeToolchain } from "../../support/materialised-tree.ts";
 import { familyCases } from "./cases.ts";
 import { spawnBounded } from "./swarm-process.ts";
 
@@ -89,25 +89,10 @@ export async function materialise(): Promise<string> {
     );
   for (const name of ["r18-spec.ts", "shapes.ts", "swarm-approval.ts"])
     await cp(new URL(name, import.meta.url), join(tests, name));
-  await symlink(join(repository, "node_modules"), join(root, "node_modules"));
-  await writeFile(
-    join(root, "tsconfig.json"),
-    JSON.stringify({
-      extends: join(repository, "tsconfig.base.json"),
-      include: ["starters/contract3/src/**/*.ts", "tests/**/*.ts"],
-    }),
-  );
-  await writeFile(
-    join(root, "eslint.config.mjs"),
-    [
-      `import contract3 from ${JSON.stringify(join(repository, "config/contract3-eslint.mjs"))};`,
-      "export default [",
-      "  ...contract3,",
-      `  { files: ["**/*.ts"], languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: ${JSON.stringify(root)} } } },`,
-      "];",
-      "",
-    ].join("\n"),
-  );
+  await writeToolchain(root, [
+    "starters/contract3/src/**/*.ts",
+    "tests/**/*.ts",
+  ]);
   return root;
 }
 

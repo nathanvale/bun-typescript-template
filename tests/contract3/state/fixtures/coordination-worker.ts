@@ -1,15 +1,9 @@
 import { dlopen } from "bun:ffi";
-import {
-  closeSync,
-  constants,
-  openSync,
-  readFileSync,
-  renameSync,
-  writeFileSync,
-} from "node:fs";
+import { closeSync, constants, openSync, readFileSync } from "node:fs";
 import { resolveCoordination } from "../../../../starters/contract3/src/addons/state/coordination.ts";
 import { attemptLock, attemptPosixLock, library } from "../holder.ts";
 import type { Attempt } from "../holder.ts";
+import { stayAlive, writeWorkerReport } from "./worker-report.ts";
 
 const [route = "", mode = "", file = "", report = "", option = ""] =
   process.argv.slice(2);
@@ -69,15 +63,10 @@ function take(path: string): { outcome: Outcome; keep: () => void } {
 }
 
 function writeReport(value: Readonly<Record<string, unknown>>): void {
-  const staged = `${report}.tmp`;
-  writeFileSync(staged, JSON.stringify({ pid: process.pid, ...value }));
-  renameSync(staged, report);
+  writeWorkerReport(report, value);
 }
 
 const retained: unknown[] = [];
-function stayAlive(): void {
-  setInterval(() => {}, 1_000_000);
-}
 
 function spawnChild(fd: number | null): number {
   const sharing = route === "shared-control" && fd !== null;

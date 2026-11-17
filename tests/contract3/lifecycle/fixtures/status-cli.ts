@@ -1,4 +1,3 @@
-import { appendFileSync } from "node:fs";
 import {
   command,
   commonCauses,
@@ -27,16 +26,10 @@ import {
   path,
   resource,
 } from "../../../../starters/contract3/src/kernel/validation/brands.ts";
+import { ledger, sleep } from "../ledger.ts";
 import { programStopRow, programStopStation } from "../program-stop.ts";
 
-const ledgerPath = process.env.FX_LEDGER;
 const mode = process.env.FX_STATUS ?? "available";
-function ledger(line: string): void {
-  if (ledgerPath) appendFileSync(ledgerPath, `${line}\n`);
-}
-function sleep(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
 
 const availableStatus = {
   status: "available",

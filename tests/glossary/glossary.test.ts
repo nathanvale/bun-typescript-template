@@ -156,6 +156,70 @@ function declaredName(node: ts.Node): string | undefined {
   return undefined;
 }
 
+type TextNode =
+  | ts.StringLiteral
+  | ts.NoSubstitutionTemplateLiteral
+  | ts.TemplateExpression;
+
+function isTextNode(node: ts.Node): node is TextNode {
+  return (
+    ts.isStringLiteral(node) ||
+    ts.isNoSubstitutionTemplateLiteral(node) ||
+    ts.isTemplateExpression(node)
+  );
+}
+function lineIn(source: ts.SourceFile, position: number): number {
+  return source.getLineAndCharacterOfPosition(position).line + 1;
+}
+function isTitleLiteral(node: TextNode): boolean {
+  const parent = node.parent;
+  return (
+    ts.isCallExpression(parent) &&
+    parent.arguments[0] === node &&
+    TITLE_CALLS.has(rootName(parent.expression))
+  );
+}
+function isSkippedLiteral(node: TextNode, value: string): boolean {
+  const parent = node.parent;
+  if (ts.isImportDeclaration(parent) || ts.isExportDeclaration(parent))
+    return true;
+  return (
+    ts.isPropertyAssignment(parent) &&
+    parent.name === node &&
+    !ERROR_OR_TEXT_PROPERTY.test(value)
+  );
+}
+function literalRecord(
+  node: TextNode,
+  source: ts.SourceFile,
+  production: boolean,
+): TextRecord | undefined {
+  const value = ts.isTemplateExpression(node)
+    ? node.getText(source).slice(1, -1)
+    : node.text;
+  const line = lineIn(source, node.getStart(source));
+  if (isTitleLiteral(node)) return { line, surface: "test-title", text: value };
+  if (!production || !/\s/u.test(value.trim())) return undefined;
+  if (isSkippedLiteral(node, value)) return undefined;
+  return { line, surface: "visible-text", text: value };
+}
+function declarationRecord(
+  node: ts.Node,
+  source: ts.SourceFile,
+  production: boolean,
+): TextRecord | undefined {
+  const name = declaredName(node);
+  if (name === undefined || !production) return undefined;
+  return {
+    line: lineIn(source, node.getStart(source)),
+    surface:
+      !ts.isParameter(node) && exportedStatement(node)
+        ? "public-identifier"
+        : "internal-identifier",
+    text: name,
+  };
+}
+
 function scanSource(file: string, text: string): TextRecord[] {
   const production = !file.startsWith("tests/");
   if (file.endsWith(".md"))
@@ -177,8 +241,7 @@ function scanSource(file: string, text: string): TextRecord[] {
     true,
     kind,
   );
-  const lineOf = (position: number) =>
-    source.getLineAndCharacterOfPosition(position).line + 1;
+  const lineOf = (position: number) => lineIn(source, position);
   const records: TextRecord[] = [];
   const seenComments = new Set<number>();
   const comments = (ranges: ts.CommentRange[] | undefined) => {
@@ -206,42 +269,12 @@ function scanSource(file: string, text: string): TextRecord[] {
   const visit = (node: ts.Node) => {
     comments(ts.getLeadingCommentRanges(text, node.pos));
     comments(ts.getTrailingCommentRanges(text, node.end));
-    if (
-      ts.isStringLiteral(node) ||
-      ts.isNoSubstitutionTemplateLiteral(node) ||
-      ts.isTemplateExpression(node)
-    ) {
-      const value = ts.isTemplateExpression(node)
-        ? node.getText(source).slice(1, -1)
-        : node.text;
-      const parent = node.parent;
-      const line = lineOf(node.getStart(source));
-      const isTitle =
-        ts.isCallExpression(parent) &&
-        parent.arguments[0] === node &&
-        TITLE_CALLS.has(rootName(parent.expression));
-      if (isTitle) records.push({ line, surface: "test-title", text: value });
-      else if (production && /\s/u.test(value.trim())) {
-        const imported =
-          ts.isImportDeclaration(parent) || ts.isExportDeclaration(parent);
-        const keyed =
-          ts.isPropertyAssignment(parent) &&
-          parent.name === node &&
-          !ERROR_OR_TEXT_PROPERTY.test(value);
-        if (!imported && !keyed)
-          records.push({ line, surface: "visible-text", text: value });
-      }
-    }
-    const name = declaredName(node);
-    if (name !== undefined && production)
-      records.push({
-        line: lineOf(node.getStart(source)),
-        surface:
-          !ts.isParameter(node) && exportedStatement(node)
-            ? "public-identifier"
-            : "internal-identifier",
-        text: name,
-      });
+    const literal = isTextNode(node)
+      ? literalRecord(node, source, production)
+      : undefined;
+    if (literal !== undefined) records.push(literal);
+    const declaration = declarationRecord(node, source, production);
+    if (declaration !== undefined) records.push(declaration);
     ts.forEachChild(node, visit);
   };
   visit(source);
@@ -303,64 +336,109 @@ function quoted(table: Table, text: string, at: number): boolean {
   });
 }
 
+type Match = {
+  readonly match: RegExpExecArray | null;
+  readonly source: string;
+};
+
+function isIdentifierSurface(surface: Surface): boolean {
+  return surface.endsWith("identifier");
+}
+
+function isExcused(
+  table: Table,
+  record: TextRecord,
+  lines: readonly string[],
+): boolean {
+  return (
+    marked(table, record.text) || marked(table, lines[record.line - 2] ?? "")
+  );
+}
+
+function findMatch(term: Term, avoid: Avoid, record: TextRecord): Match {
+  const candidates = isIdentifierSurface(record.surface)
+    ? [record.text, words(record.text)]
+    : [withoutWire(record.text)];
+  const stripped = avoid.unlessAllowedForm || avoid.firstUsePerFile;
+  for (const candidate of candidates) {
+    const text = stripped ? stripAllowed(candidate, term.allowed) : candidate;
+    const match = avoid.pattern.exec(text);
+    if (match !== null) return { match, source: candidate };
+  }
+  return { match: null, source: "" };
+}
+
+function isQualified(term: Term, avoid: Avoid, record: TextRecord): boolean {
+  return (
+    avoid.firstUsePerFile &&
+    stripAllowed(record.text, term.allowed) !== record.text
+  );
+}
+
+function firstUseState(
+  current: boolean | undefined,
+  qualified: boolean,
+  matched: boolean,
+): boolean | undefined {
+  if (current !== undefined || (!qualified && !matched)) return current;
+  return qualified && !matched;
+}
+
+function hitsForAvoid(
+  table: Table,
+  file: string,
+  term: Term,
+  avoid: Avoid,
+  ordered: readonly TextRecord[],
+  lines: readonly string[],
+): Hit[] {
+  let firstIsQualified: boolean | undefined;
+  const found: Hit[] = [];
+  for (const record of ordered) {
+    if (!avoid.surfaces.includes(record.surface)) continue;
+    if (isExcused(table, record, lines)) continue;
+    const { match, source } = findMatch(term, avoid, record);
+    firstIsQualified = firstUseState(
+      firstIsQualified,
+      isQualified(term, avoid, record),
+      match !== null,
+    );
+    if (match === null) continue;
+    if (
+      !isIdentifierSurface(record.surface) &&
+      quoted(table, source, match.index)
+    )
+      continue;
+    found.push({
+      file,
+      line: record.line,
+      term: term.term,
+      surface: record.surface,
+      text: record.text,
+      message: avoid.message,
+    });
+  }
+  return avoid.firstUsePerFile && firstIsQualified === true ? [] : found;
+}
+
+function appliesToFile(avoid: Avoid, file: string): boolean {
+  return avoid.pathsOnly.length === 0 || inScope(file, avoid.pathsOnly);
+}
+
 function hitsIn(
   table: Table,
   file: string,
   records: readonly TextRecord[],
   lines: readonly string[] = [],
 ): Hit[] {
-  const hits: Hit[] = [];
   const ordered = [...records].sort((x, y) => x.line - y.line);
-  for (const term of table.terms)
-    for (const avoid of term.avoid) {
-      if (avoid.pathsOnly.length > 0 && !inScope(file, avoid.pathsOnly))
-        continue;
-      let firstIsQualified: boolean | undefined;
-      const found: Hit[] = [];
-      for (const record of ordered) {
-        if (!avoid.surfaces.includes(record.surface)) continue;
-        if (
-          marked(table, record.text) ||
-          marked(table, lines[record.line - 2] ?? "")
-        )
-          continue;
-        const identifier = record.surface.endsWith("identifier");
-        const candidates = identifier
-          ? [record.text, words(record.text)]
-          : [withoutWire(record.text)];
-        let match: RegExpExecArray | null = null;
-        let source = "";
-        for (const candidate of candidates) {
-          const text =
-            avoid.unlessAllowedForm || avoid.firstUsePerFile
-              ? stripAllowed(candidate, term.allowed)
-              : candidate;
-          match = avoid.pattern.exec(text);
-          if (match !== null) {
-            source = candidate;
-            break;
-          }
-        }
-        const qualified =
-          avoid.firstUsePerFile &&
-          stripAllowed(record.text, term.allowed) !== record.text;
-        if (firstIsQualified === undefined && (qualified || match !== null))
-          firstIsQualified = qualified && match === null;
-        if (match === null) continue;
-        if (!identifier && quoted(table, source, match.index)) continue;
-        found.push({
-          file,
-          line: record.line,
-          term: term.term,
-          surface: record.surface,
-          text: record.text,
-          message: avoid.message,
-        });
-      }
-      if (!avoid.firstUsePerFile || firstIsQualified !== true)
-        hits.push(...found);
-    }
-  return hits;
+  return table.terms.flatMap((term) =>
+    term.avoid
+      .filter((avoid) => appliesToFile(avoid, file))
+      .flatMap((avoid) =>
+        hitsForAvoid(table, file, term, avoid, ordered, lines),
+      ),
+  );
 }
 
 function readJson(path: string): unknown {

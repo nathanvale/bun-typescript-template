@@ -181,22 +181,17 @@
       "count": 1
     }
   },
-  "tests/contract3/lifecycle/fixtures/fault-cli.ts": {
-    "repository/tests-no-sleep": {
-      "count": 1
-    }
-  },
-  "tests/contract3/lifecycle/fixtures/status-cli.ts": {
-    "repository/tests-no-sleep": {
-      "count": 1
-    }
-  },
   "tests/contract3/lifecycle/harness.ts": {
     "repository/tests-no-sleep": {
       "count": 5
     },
     "repository/tests-use-test-folder": {
       "count": 2
+    }
+  },
+  "tests/contract3/lifecycle/ledger.ts": {
+    "repository/tests-no-sleep": {
+      "count": 1
     }
   },
   "tests/contract3/lifecycle/lifecycle.test.ts": {

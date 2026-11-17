@@ -140,6 +140,23 @@ export function validateRootOperation(
   )
     throw new Error("Root operation requires a declared option or operand.");
 }
+export type ApprovalFor<
+  C extends CapabilitySelection,
+  I extends InputSchema,
+> = C extends { readonly approval: true }
+  ? { readonly approval: (input: ParsedInput<I>) => ApprovalRequest }
+  : { readonly approval?: never };
+function admitSpecification(spec: {
+  readonly identity: string;
+  readonly route: readonly string[];
+  readonly input: InputSchema;
+}): void {
+  freeze(spec);
+  validateHostInput(spec.input);
+  validateCommandIdentity(spec.identity);
+  validateRootOperation(spec.route, spec.input);
+  validateRouteTokens(spec.route);
+}
 function contextSnapshot(value: unknown): Record<string, unknown> | undefined {
   if (!record(value)) return undefined;
   const snapshot: Record<string, unknown> = {};
@@ -262,17 +279,9 @@ export function command<
       input: ParsedInput<I>,
       context: HandlerContext<C> & ResultContext<Identity, S, "inspect", C, P>,
     ) => CommandResult<Identity> | Promise<CommandResult<Identity>>;
-  } & (C extends { readonly approval: true }
-    ? {
-        readonly approval: (input: ParsedInput<I>) => ApprovalRequest;
-      }
-    : { readonly approval?: never }),
+  } & ApprovalFor<C, I>,
 ) {
-  freeze(spec);
-  validateHostInput(spec.input);
-  validateCommandIdentity(spec.identity);
-  validateRootOperation(spec.route, spec.input);
-  validateRouteTokens(spec.route);
+  admitSpecification(spec);
   admitInspectShape({
     summary: spec.summary,
     capabilities: spec.capabilities,
@@ -360,17 +369,9 @@ export function changing<
         readonly state: StateCapability<Effect>;
       } & ResultContext<Identity, S, "repository-local" | "external">,
     ) => Promise<CommandResult<Identity>>;
-  } & (C extends { readonly approval: true }
-    ? {
-        readonly approval: (input: ParsedInput<I>) => ApprovalRequest;
-      }
-    : { readonly approval?: never }),
+  } & ApprovalFor<C, I>,
 ) {
-  freeze(spec);
-  validateHostInput(spec.input);
-  validateCommandIdentity(spec.identity);
-  validateRootOperation(spec.route, spec.input);
-  validateRouteTokens(spec.route);
+  admitSpecification(spec);
   if (!isIssuedIfNoResult(spec.ifNoResult))
     throw new Error("ifNoResult must come from the state add-on descriptor.");
   admitChangingShape(spec);

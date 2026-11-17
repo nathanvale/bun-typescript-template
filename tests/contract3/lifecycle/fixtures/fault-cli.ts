@@ -1,4 +1,4 @@
-import { appendFileSync, existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import {
   changing,
   command,
@@ -41,9 +41,9 @@ import {
   resource,
 } from "../../../../starters/contract3/src/kernel/validation/brands.ts";
 import { record } from "../../../../starters/contract3/src/kernel/validation/primitives.ts";
+import { ledger, ledgerPath, sleep } from "../ledger.ts";
 import { programStopRow, programStopStation } from "../program-stop.ts";
 
-const ledgerPath = process.env.FX_LEDGER;
 const streamProbe = new URL(
   "../../programs/fixtures/stream-probe.sh",
   import.meta.url,
@@ -51,12 +51,6 @@ const streamProbe = new URL(
 const scenario = new Set((process.env.FX_SCENARIO ?? "").split("+"));
 const marker = "FX-REJECTED-PAYLOAD";
 
-function ledger(line: string): void {
-  if (ledgerPath) appendFileSync(ledgerPath, `${line}\n`);
-}
-function sleep(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
 async function ledgerHas(prefix: string, milliseconds: number) {
   const until = performance.now() + milliseconds;
   while (performance.now() < until) {
@@ -1164,6 +1158,17 @@ const wideEffects = Array.from(
     `fx.wide.${String(index).padStart(2, "0")}.${"w".repeat(480)}`,
 );
 
+function recordWideEffects(state: StateCapability<string>) {
+  return state.transaction(async (transaction) => {
+    for (const effect of wideEffects.slice(0, wideCount))
+      await transaction.record(
+        effect,
+        () => Promise.resolve(undefined),
+        () => Promise.resolve(true),
+      );
+  });
+}
+
 function makeWide(state: StateAddonDescriptor) {
   return changing({
     identity: "fx.wide",
@@ -1179,14 +1184,7 @@ function makeWide(state: StateAddonDescriptor) {
     stations: [...coordination("fx.wide")],
     run: async (_input, context) => {
       intended = undefined;
-      const proof = await context.state.transaction(async (transaction) => {
-        for (const effect of wideEffects.slice(0, wideCount))
-          await transaction.record(
-            effect,
-            () => Promise.resolve(undefined),
-            () => Promise.resolve(true),
-          );
-      });
+      const proof = await recordWideEffects(context.state);
       return context.result(
         { commandIdentity: "fx.wide", causeCode: "SUCCESS_COMPLETED" },
         {
@@ -1305,14 +1303,7 @@ function makeWideStatus(state: StateAddonDescriptor) {
     stations: [...coordination("fx.wide-status")],
     run: async (_input, context) => {
       intended = undefined;
-      const proof = await context.state.transaction(async (transaction) => {
-        for (const effect of wideEffects.slice(0, wideCount))
-          await transaction.record(
-            effect,
-            () => Promise.resolve(undefined),
-            () => Promise.resolve(true),
-          );
-      });
+      const proof = await recordWideEffects(context.state);
       return context.result(
         { commandIdentity: "fx.wide-status", causeCode: "SUCCESS_COMPLETED" },
         {

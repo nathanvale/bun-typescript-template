@@ -1,13 +1,7 @@
 import { dlopen, ptr, read } from "bun:ffi";
 import { Database } from "bun:sqlite";
-import {
-  closeSync,
-  constants,
-  existsSync,
-  openSync,
-  renameSync,
-  writeFileSync,
-} from "node:fs";
+import { closeSync, constants, existsSync, openSync } from "node:fs";
+import { stayAlive, writeWorkerReport } from "./worker-report.ts";
 
 const [candidate = "", mode = "", file = "", report = "", extra = "", go = ""] =
   process.argv.slice(2);
@@ -160,15 +154,10 @@ function open(path: string): Handle {
 }
 
 function writeReport(value: Readonly<Record<string, unknown>>): void {
-  const staged = `${report}.tmp`;
-  writeFileSync(staged, JSON.stringify({ pid: process.pid, ...value }));
-  renameSync(staged, report);
+  writeWorkerReport(report, value);
 }
 
 const retained: Handle[] = [];
-function stayAlive(): void {
-  setInterval(() => {}, 1_000_000);
-}
 
 function hold(): void {
   const handle = open(file);
