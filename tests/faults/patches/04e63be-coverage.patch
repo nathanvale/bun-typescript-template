@@ -1,0 +1,13 @@
+diff --git a/scripts/coverage.ts b/scripts/coverage.ts
+index 5b172fa..906a49c 100644
+--- a/scripts/coverage.ts
++++ b/scripts/coverage.ts
+@@ -171,7 +171,7 @@ export function functionSpans(path: string, source: string): FunctionSpan[] {
+         },
+         loc: {
+           start: positionAt(file, node.body.getStart(file)),
+-          end: positionAt(file, node.body.getEnd()),
++          end: positionAt(file, node.body.getStart(file)),
+         },
+       });
+     }

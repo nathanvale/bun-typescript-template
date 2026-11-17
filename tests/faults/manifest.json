@@ -61,5 +61,12 @@
     "testFile": "tests/lint-rules.test.ts",
     "title": "^no-comments refuses .*nothing here is cast",
     "source": "bbfce9a fix(lint): admit a SAFETY: block only where anti-slop accepts the cast"
+  },
+  {
+    "id": "04e63be-coverage",
+    "patch": "tests/faults/patches/04e63be-coverage.patch",
+    "testFile": "tests/coverage.test.ts",
+    "title": "^CV\\.[abcdef] ",
+    "source": "04e63be feat(coverage): convert Bun's lcov report to Istanbul coverage for fallow"
   }
 ]
