@@ -251,9 +251,13 @@ function sourceAt(path: string): string | undefined {
     : undefined;
 }
 
-export function ranInProcess(coverage: FileCoverage): boolean {
-  const calls = Object.values(coverage.f);
-  return calls.length === 0 || calls.some((count) => count > 0);
+export function ranInProcess(coverage: FileCoverage): FileCoverage {
+  const ran = ([id]: [string, unknown]) => (coverage.f[id] ?? 0) > 0;
+  return {
+    ...coverage,
+    fnMap: Object.fromEntries(Object.entries(coverage.fnMap).filter(ran)),
+    f: Object.fromEntries(Object.entries(coverage.f).filter(ran)),
+  };
 }
 
 export type Conversion = {
@@ -271,10 +275,13 @@ export function convertLcov(lcov: string, root: string): Conversion {
     const source = sourceAt(path);
     if (source === undefined) continue;
     const converted = fileCoverage(path, source, lines);
-    if (ranInProcess(converted)) coverage[path] = converted;
-    else estimated.push(relative(base, path));
+    const kept = ranInProcess(converted);
+    coverage[path] = kept;
+    for (const [id, { name, line }] of Object.entries(converted.fnMap))
+      if (!(id in kept.fnMap))
+        estimated.push(`${relative(base, path)}:${line} ${name}`);
   }
-  return { coverage, estimated: estimated.sort() };
+  return { coverage, estimated };
 }
 
 function run(root: string): number {
@@ -311,7 +318,7 @@ function run(root: string): number {
   );
   if (estimated.length > 0)
     process.stdout.write(
-      `Left to fallow's estimate, because no function ran in the test process (they run in a spawned CLI that Bun's coverage cannot see): ${estimated.join(", ")}\n`,
+      `Left ${estimated.length} functions to fallow's estimate, because none of them ran in the test process. They run only in a spawned CLI, which Bun's coverage cannot see, or they are untested.\n`,
     );
   return 0;
 }

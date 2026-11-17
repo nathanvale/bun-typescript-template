@@ -359,18 +359,20 @@ test("CV.k two records for one file add their hits, and a checksum column is ign
   ]);
 });
 
-test("CV.l a file none of whose functions ran in the test process is left to fallow's estimate and named", () => {
-  const twoFunctions =
-    "export function first() {\n  return 1;\n}\nexport function second() {\n  return 2;\n}\n";
+test("CV.l a function that never ran in the test process is left to fallow's estimate and named", () => {
   const root = repository({
-    "repo/src/spawned.ts": twoFunctions,
-    "repo/src/partly.ts": twoFunctions,
+    "repo/src/partly.ts":
+      "export function ran() {\n  return 1;\n}\nexport function spawned() {\n  return 2;\n}\n",
   });
-  const report = [
-    lcov("src/spawned.ts", { 1: 1, 2: 0, 4: 1, 5: 0 }),
+  const { coverage, estimated } = convertLcov(
     lcov("src/partly.ts", { 1: 1, 2: 3, 4: 1, 5: 0 }),
-  ].join("");
-  const { coverage, estimated } = convertLcov(report, root);
-  expect(Object.keys(coverage)).toEqual([join(root, "src/partly.ts")]);
-  expect(estimated).toEqual(["src/spawned.ts"]);
+    root,
+  );
+  const kept = coverage[join(root, "src/partly.ts")];
+  expect(Object.values(kept?.fnMap ?? {}).map(({ name }) => name)).toEqual([
+    "ran",
+  ]);
+  expect(Object.keys(kept?.f ?? {})).toEqual(Object.keys(kept?.fnMap ?? {}));
+  expect(Object.keys(kept?.statementMap ?? {})).toHaveLength(4);
+  expect(estimated).toEqual(["src/partly.ts:4 spawned"]);
 });
