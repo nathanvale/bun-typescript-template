@@ -251,17 +251,30 @@ function sourceAt(path: string): string | undefined {
     : undefined;
 }
 
-export function convertLcov(lcov: string, root: string): CoverageMap {
+export function ranInProcess(coverage: FileCoverage): boolean {
+  const calls = Object.values(coverage.f);
+  return calls.length === 0 || calls.some((count) => count > 0);
+}
+
+export type Conversion = {
+  readonly coverage: CoverageMap;
+  readonly estimated: readonly string[];
+};
+
+export function convertLcov(lcov: string, root: string): Conversion {
   const base = resolve(root);
-  const map: Record<string, FileCoverage> = {};
+  const coverage: Record<string, FileCoverage> = {};
+  const estimated: string[] = [];
   for (const { file, lines } of parseLcov(lcov)) {
     const path = resolve(base, file);
     if (!isInside(base, path)) continue;
     const source = sourceAt(path);
     if (source === undefined) continue;
-    map[path] = fileCoverage(path, source, lines);
+    const converted = fileCoverage(path, source, lines);
+    if (ranInProcess(converted)) coverage[path] = converted;
+    else estimated.push(relative(base, path));
   }
-  return map;
+  return { coverage, estimated: estimated.sort() };
 }
 
 function run(root: string): number {
@@ -283,16 +296,23 @@ function run(root: string): number {
     );
     return tests.exitCode ?? 1;
   }
-  const map = convertLcov(readFileSync(join(root, lcovPath), "utf8"), root);
+  const { coverage, estimated } = convertLcov(
+    readFileSync(join(root, lcovPath), "utf8"),
+    root,
+  );
   mkdirSync(join(root, "coverage"), { recursive: true });
-  writeFileSync(join(root, istanbulPath), `${JSON.stringify(map)}\n`);
-  const functions = Object.values(map).reduce(
+  writeFileSync(join(root, istanbulPath), `${JSON.stringify(coverage)}\n`);
+  const functions = Object.values(coverage).reduce(
     (total, each) => total + Object.keys(each.fnMap).length,
     0,
   );
   process.stdout.write(
-    `Wrote ${istanbulPath}: ${Object.keys(map).length} files, ${functions} functions.\n`,
+    `Wrote ${istanbulPath}: ${Object.keys(coverage).length} files, ${functions} functions.\n`,
   );
+  if (estimated.length > 0)
+    process.stdout.write(
+      `Left to fallow's estimate, because no function ran in the test process (they run in a spawned CLI that Bun's coverage cannot see): ${estimated.join(", ")}\n`,
+    );
   return 0;
 }
 

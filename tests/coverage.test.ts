@@ -303,7 +303,7 @@ test("CV.h a report converts only files inside the repository, keyed by absolute
     lcov("../outside/sample.ts", sampleHits),
     lcov(join(root, "..", "outside", "sample.ts"), sampleHits),
   ].join("");
-  const converted = convertLcov(report, root);
+  const converted = convertLcov(report, root).coverage;
   expect(Object.keys(converted)).toEqual([join(root, "src/sample.ts")]);
   expect(converted[join(root, "src/sample.ts")]?.path).toBe(
     join(root, "src/sample.ts"),
@@ -318,7 +318,7 @@ test("CV.i a file that no longer exists on disk is skipped", () => {
     lcov("src/gone.ts", { 1: 1 }),
     lcov("src/kept.ts", { 1: 1 }),
   ].join("");
-  expect(Object.keys(convertLcov(report, root))).toEqual([
+  expect(Object.keys(convertLcov(report, root).coverage)).toEqual([
     join(root, "src/kept.ts"),
   ]);
 });
@@ -327,7 +327,7 @@ test("CV.j a repository folder counts as a missing file, not as source", () => {
   const root = repository({
     "repo/src/kept.ts": "export const kept = () => 1;\n",
   });
-  expect(convertLcov(lcov("src", { 1: 1 }), root)).toEqual({});
+  expect(convertLcov(lcov("src", { 1: 1 }), root).coverage).toEqual({});
 });
 
 test("CV.k two records for one file add their hits, and a checksum column is ignored", () => {
@@ -357,4 +357,20 @@ test("CV.k two records for one file add their hits, and a checksum column is ign
     ],
     ["src/b.ts", [[1, 5]]],
   ]);
+});
+
+test("CV.l a file none of whose functions ran in the test process is left to fallow's estimate and named", () => {
+  const twoFunctions =
+    "export function first() {\n  return 1;\n}\nexport function second() {\n  return 2;\n}\n";
+  const root = repository({
+    "repo/src/spawned.ts": twoFunctions,
+    "repo/src/partly.ts": twoFunctions,
+  });
+  const report = [
+    lcov("src/spawned.ts", { 1: 1, 2: 0, 4: 1, 5: 0 }),
+    lcov("src/partly.ts", { 1: 1, 2: 3, 4: 1, 5: 0 }),
+  ].join("");
+  const { coverage, estimated } = convertLcov(report, root);
+  expect(Object.keys(coverage)).toEqual([join(root, "src/partly.ts")]);
+  expect(estimated).toEqual(["src/spawned.ts"]);
 });
