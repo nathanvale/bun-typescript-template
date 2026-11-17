@@ -24,13 +24,24 @@ jobs:
       - name: Typecheck
         if: ${{ !cancelled() }}
         run: bun run typecheck
-      - name: Test
-        if: ${{ !cancelled() }}
-        run: bun run test
       - if: github.event_name == 'pull_request'
         run: bun run --silent quality:fallow --base "origin/${{ github.base_ref }}"
       - if: github.event_name == 'push'
         run: bun run --silent quality:fallow --base "${{ github.event.before }}"
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - run: bun install --frozen-lockfile
+      - name: Test
+        run: bun run test --shard=${{ matrix.shard }}/3 --timings=tests/test-timings.json
   commits:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
