@@ -15,7 +15,7 @@
     "fault-replay": "bun run scripts/planted-faults.ts replay",
     "planted-fault:add": "bun run scripts/planted-faults.ts add",
     "pretest": "bun run doctor",
-    "test": "bun test --parallel=2 --path-ignore-patterns 'starters/**' --path-ignore-patterns 'kernel/**'",
+    "test": "bun test --parallel=4 --path-ignore-patterns 'starters/**' --path-ignore-patterns 'kernel/**'",
     "test:area": "bun run scripts/test-area.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "admit:static": "bun run src/static-admission.ts",
