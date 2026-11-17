@@ -16,6 +16,7 @@
     "pretest": "bun run doctor",
     "test": "bun test --parallel=2 --path-ignore-patterns 'starters/**'",
     "test:area": "bun run scripts/test-area.ts",
+    "coverage": "bun run scripts/coverage.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "admit:static": "bun run src/static-admission.ts",
     "lint": "eslint . --max-warnings 0 && oxlint",
