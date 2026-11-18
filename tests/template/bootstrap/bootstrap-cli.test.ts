@@ -294,7 +294,7 @@ describe("public bootstrap CLI", () => {
         expect(packageJson.devDependencies.fallow).toBe("3.43.2");
         if (variant === "monorepo") {
           expect(packageJson.catalog.typescript).toBe("npm:typescript@7.0.2");
-          expect(packageJson.catalog["@types/bun"]).toBe("1.4.0");
+          expect(packageJson.catalog["@types/bun"]).toBe("1.4.4");
           expect(packageJson.devDependencies.typescript).toBe(
             "npm:@typescript/typescript6@6.0.2",
           );
@@ -302,7 +302,7 @@ describe("public bootstrap CLI", () => {
           expect(packageJson.devDependencies.typescript).toBe(
             "npm:@typescript/typescript6@6.0.2",
           );
-          expect(packageJson.devDependencies["@types/bun"]).toBe("1.4.0");
+          expect(packageJson.devDependencies["@types/bun"]).toBe("1.4.4");
         }
         expect(generatedFiles).not.toContain("TEMPLATE-SOURCE.md");
         expect(readme).toContain(packet);

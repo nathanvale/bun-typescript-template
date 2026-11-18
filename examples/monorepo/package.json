@@ -9,7 +9,7 @@
     "packages/*"
   ],
   "catalog": {
-    "@types/bun": "1.4.0",
+    "@types/bun": "1.4.4",
     "typescript": "npm:typescript@7.0.2"
   },
   "scripts": {

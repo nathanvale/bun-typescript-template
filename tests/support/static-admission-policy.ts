@@ -66,7 +66,7 @@ export const EXPECTED_DEPENDENCY_PINS: Record<
     dependencies: {},
     devDependencies: {
       "@biomejs/biome": "2.6.7",
-      "@types/bun": "1.4.0",
+      "@types/bun": "1.4.4",
       fallow: "3.43.2",
       "@typescript/native": "npm:typescript@7.0.2",
       typescript: "npm:@typescript/typescript6@6.0.2",
@@ -84,7 +84,7 @@ export const EXPECTED_DEPENDENCY_PINS: Record<
     },
     devDependencies: {
       "@biomejs/biome": "2.6.7",
-      "@types/bun": "1.4.0",
+      "@types/bun": "1.4.4",
       fallow: "3.43.2",
       "@typescript/native": "npm:typescript@7.0.2",
       typescript: "npm:@typescript/typescript6@6.0.2",
