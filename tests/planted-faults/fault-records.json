@@ -1286,5 +1286,19 @@
     "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
     "title": "a folder above the stamp checker replaced by a link is broken, naming that folder$",
     "source": "5b40c83 fix(stamp-check): open no link, in answer to Copilot's second review of #113"
+  },
+  {
+    "id": "4ea996f-kernel-reader-name-mark",
+    "patch": "tests/planted-faults/patches/4ea996f-kernel-reader-name-mark.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
+    "title": "a source folder whose name starts with a byte-order mark is read under that name$",
+    "source": "4ea996f fix(kernel-reader): answer CodeRabbit's second review of #113"
+  },
+  {
+    "id": "4ea996f-kernel-reader-record-path",
+    "patch": "tests/planted-faults/patches/4ea996f-kernel-reader-record-path.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
+    "title": "a file name with a backslash, which a stamp record cannot hold, is refused with its repair line$",
+    "source": "4ea996f fix(kernel-reader): answer CodeRabbit's second review of #113"
   }
 ]
