@@ -5,6 +5,7 @@ import { bootstrapWithKernel } from "../../../src/bootstrap.ts";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
 import { KERNEL_RECIPE, lintsCode } from "../../../src/recipe.ts";
 import { listFiles, ROOT } from "../../support/bootstrap-cli-fixture.ts";
+import { spawnBounded } from "../../support/process.ts";
 import {
   generatedJson,
   stampingFixture,
@@ -136,5 +137,24 @@ describe("stamping starts no program", () => {
     expect(sourceOf("src/bootstrap.ts")).toContain(
       'Bun.spawnSync(["git", "-C", TEMPLATE_ROOT, ...args], {',
     );
+  });
+});
+
+describe("the template's own test command", () => {
+  test("runs no test file from the files a generated repository gets, which cannot run before Bootstrap places them", async () => {
+    const { scripts } = JSON.parse(sourceOf("package.json")) as {
+      scripts: { test: string };
+    };
+    const ignored = [
+      ...scripts.test.matchAll(/--path-ignore-patterns '([^']+)'/g),
+    ].flatMap(([, pattern = ""]) => ["--path-ignore-patterns", pattern]);
+    const run = await spawnBounded(
+      [process.execPath, "test", ...ignored, "./generated-repository"],
+      { cwd: ROOT, processGroup: true },
+    );
+    expect({
+      exit: run.exit,
+      noFile: run.stderr.includes("did not match any test files"),
+    }).toEqual({ exit: 1, noFile: true });
   });
 });
