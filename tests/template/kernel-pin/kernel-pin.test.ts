@@ -15,7 +15,7 @@ const valid = {
 };
 const keys = "repository, remote, commit, branch, carryOutIdentity";
 const abbreviated = (key: string, value: string) =>
-  `Error: kernel-pin.json: ${key} is "${value}", which is not a full commit. An abbreviated commit is refused, because a pinned commit and a carry-out identity each name one commit for good. Repair: write all 40 lowercase hexadecimal characters.`;
+  `Error: kernel-pin.json: ${key} is "${value}", which is not a full commit. An abbreviated commit is refused, because it can come to match more than one commit. Repair: write all 40 lowercase hexadecimal characters.`;
 
 function refusalFor(source: string): string {
   try {

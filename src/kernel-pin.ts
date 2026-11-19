@@ -48,7 +48,7 @@ function text(entries: Map<string, unknown>, key: keyof typeof shapes): string {
   if (shapes[key].test(value)) return value;
   return fail(
     shapes[key] === fullCommit
-      ? `${key} is "${value}", which is not a full commit. An abbreviated commit is refused, because a pinned commit and a carry-out identity each name one commit for good. Repair: write all 40 lowercase hexadecimal characters.`
+      ? `${key} is "${value}", which is not a full commit. An abbreviated commit is refused, because it can come to match more than one commit. Repair: write all 40 lowercase hexadecimal characters.`
       : `${key} is "${value}", which does not match ${shapes[key]}. Repair: write a value that pattern matches.`,
   );
 }
