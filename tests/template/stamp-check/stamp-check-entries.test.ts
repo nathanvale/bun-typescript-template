@@ -3,9 +3,11 @@ import {
   chmodSync,
   cpSync,
   mkdirSync,
+  readFileSync,
   renameSync,
   rmSync,
   symlinkSync,
+  writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
 import { checkStamp } from "../../../src/stamp-check.ts";
@@ -118,6 +120,31 @@ describe("the stamp check returns broken", () => {
           kind: "stamp-record",
           path: stampRecordName,
           detail: "it is not a plain file that can be read.",
+        },
+      ],
+    });
+  });
+
+  test("for a stamp record with a byte that is not UTF-8, naming the stamp record", () => {
+    const folder = stamped();
+    const text = readFileSync(join(folder, stampRecordName));
+    const cut = text.indexOf("small-kernel");
+    expect(cut).toBeGreaterThan(0);
+    writeFileSync(
+      join(folder, stampRecordName),
+      Buffer.concat([
+        text.subarray(0, cut),
+        Buffer.from([0xff]),
+        text.subarray(cut),
+      ]),
+    );
+    expect(checkStamp(folder)).toEqual({
+      status: "broken",
+      findings: [
+        {
+          kind: "stamp-record",
+          path: stampRecordName,
+          detail: "it is not UTF-8 text.",
         },
       ],
     });

@@ -300,6 +300,18 @@ function plainBytes(path: string): Buffer {
   return readFileSync(path);
 }
 
+// Interface: the text of a plain file. Bytes that are not UTF-8 are refused,
+// not replaced, so a value read from the file is the one the file holds.
+function plainText(path: string): string {
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(plainBytes(path));
+  } catch (error) {
+    if (error instanceof TypeError)
+      throw new Error("it is not UTF-8 text.", { cause: error });
+    throw error;
+  }
+}
+
 function fileFindings(folder: string, file: StampedFile): StampFinding[] {
   const at = join(folder, file.path);
   const found = entryAt(at);
@@ -403,7 +415,7 @@ function extraFindings(folder: string, record: StampRecord): StampFinding[] {
 // not a JSON object.
 function mergedInto(folder: string, file: string, key: string) {
   const held = attempt(
-    () => fieldsOf(jsonOf(plainBytes(join(folder, file)).toString()), file),
+    () => fieldsOf(jsonOf(plainText(join(folder, file))), file),
     undefined,
   );
   const unreadable: StampFinding[] =
@@ -487,7 +499,7 @@ export function checkStamp(folder: string): StampVerdict {
   if (entryAt(recordAt) === undefined) return { status: "unstamped" };
   let record: StampRecord;
   try {
-    record = recordOf(plainBytes(recordAt).toString());
+    record = recordOf(plainText(recordAt));
   } catch (error) {
     return {
       status: "broken",
