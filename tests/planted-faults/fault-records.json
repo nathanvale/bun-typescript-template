@@ -969,7 +969,7 @@
     "id": "bfd2db1-kernel-reader-abbreviated",
     "patch": "tests/planted-faults/patches/bfd2db1-kernel-reader-abbreviated.patch",
     "testFile": "tests/template/kernel-reader/kernel-reader-refusals.test.ts",
-    "title": "an abbreviated commit: 39 characters and git's short form are refused, 40 are read$",
+    "title": "an identity that is not 40 characters: 39, 41 and git's short form are refused, 40 are read$",
     "source": "bfd2db1 feat(kernel-reader): read the kernel from git objects at one commit"
   },
   {

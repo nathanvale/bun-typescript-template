@@ -1,6 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { git, gitOutput } from "./git-fixture.ts";
+import { git, gitEnv, gitOutput, inherited } from "./git-fixture.ts";
 
 export type ObjectEntry =
   | {
@@ -66,4 +66,34 @@ export function treeOf(root: string, commit: string, folder: string): string {
     "rev-parse",
     folder === "" ? `${commit}^{tree}` : `${commit}:${folder}`,
   );
+}
+
+// Interface: stages one file whose path is given as raw bytes, so a name that
+// is not UTF-8 text reaches the next commit. Only git's own index reader takes
+// such a path: a process argument is always text.
+export function stageRawPath(
+  root: string,
+  rawPath: Uint8Array,
+  bytes: string,
+): void {
+  const [mode = "", blob = ""] = cacheInfo(root, { path: "", bytes }).split(
+    ",",
+  );
+  const staged = Bun.spawnSync(["git", "update-index", "--index-info"], {
+    cwd: root,
+    env: { ...inherited(), ...gitEnv },
+    stdin: Buffer.concat([
+      Buffer.from(`${mode} ${blob}\t`),
+      rawPath,
+      Buffer.from("\n"),
+    ]),
+    stdout: "pipe",
+    stderr: "pipe",
+    timeout: 4_000,
+    killSignal: "SIGKILL",
+  });
+  if (staged.exitCode !== 0)
+    throw new Error(
+      `git update-index --index-info: ${staged.stderr.toString()}`,
+    );
 }

@@ -1,17 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import {
-  KernelRefusal,
-  type KernelRefusalCode,
-  readKernel,
-} from "../../../src/kernel-reader.ts";
-import { ownedFolders } from "../../support/fixture-files.ts";
+import { readKernel } from "../../../src/kernel-reader.ts";
+import { ownedFolders, write } from "../../support/fixture-files.ts";
 import { git, initRepository } from "../../support/git-fixture.ts";
 import {
   commitObjects,
   type ObjectEntry,
 } from "../../support/git-object-fixture.ts";
+import { refusalOf, refused, repairs } from "../../support/kernel-refusal.ts";
 import {
   declarationPathIn,
   firstLayout,
@@ -21,34 +18,6 @@ import {
 
 const folder = ownedFolders();
 const path = declarationPathIn(firstLayout);
-
-const repairs = {
-  repository:
-    "Put a clone of the kernel repository at that path, or give the path of one that is there.",
-  abbreviated:
-    "Give the commit's full identity, as `git rev-parse <commit>` prints it in the kernel repository.",
-  commit:
-    "Fetch that commit into the clone with `git fetch origin <commit>`, then run this again.",
-  format: "Give a kernel repository that uses git's sha1 object format.",
-  declaration:
-    "Give a commit that holds the kernel declaration, or the path the kernel declaration has at that commit.",
-  entry:
-    "Make that entry a plain file with its own name in the kernel repository, then give the commit that holds the change.",
-};
-
-function refusalOf(read: () => unknown) {
-  try {
-    read();
-  } catch (error) {
-    if (!(error instanceof KernelRefusal)) throw error;
-    return { code: error.code, message: error.message, repair: error.repair };
-  }
-  throw new Error("The read was not refused.");
-}
-
-function refused(code: KernelRefusalCode, cause: string, repair: string) {
-  return { code, message: `${cause} Repair: ${repair}`, repair };
-}
 
 function small() {
   const repository = folder("kernel-reader-refusals-");
@@ -74,6 +43,35 @@ describe("the kernel reader refuses, with its repair line", () => {
     );
   });
 
+  test("a path that is a file", () => {
+    const { commit } = small();
+    const repository = join(folder("kernel-reader-refusals-"), "a-file");
+    write(repository, "", "not a folder\n");
+    expect(refusalOf(() => readKernel({ repository, commit }, path))).toEqual(
+      refused(
+        "kernel_repository_missing",
+        `No git repository is at ${repository}: that path is not a folder.`,
+        repairs.repository,
+      ),
+    );
+  });
+
+  test("the identity of a tag, which is not a commit", () => {
+    const { repository, commit } = small();
+    git(repository, "tag", "-a", "v1", "-m", "a tag", commit);
+    const tag = git(repository, "rev-parse", "v1");
+    expect(tag).not.toBe(commit);
+    expect(
+      refusalOf(() => readKernel({ repository, commit: tag }, path)),
+    ).toEqual(
+      refused(
+        "kernel_commit_missing",
+        `${tag} names a tag, not a commit, in the git repository at ${repository}.`,
+        repairs.commit,
+      ),
+    );
+  });
+
   test("a folder that is not a repository, even inside a repository that holds the commit", () => {
     const outer = small();
     const repository = join(outer.repository, "not-a-repository");
@@ -92,11 +90,12 @@ describe("the kernel reader refuses, with its repair line", () => {
     });
   });
 
-  test("an abbreviated commit: 39 characters and git's short form are refused, 40 are read", () => {
+  test("an identity that is not 40 characters: 39, 41 and git's short form are refused, 40 are read", () => {
     const { repository, commit } = small();
     expect(readKernel({ repository, commit }, path).commit).toBe(commit);
     for (const given of [
       commit.slice(0, 39),
+      `${commit}0`,
       git(repository, "rev-parse", "--short", commit),
     ])
       expect(
@@ -167,7 +166,7 @@ describe("the kernel reader refuses, with its repair line", () => {
       refused(
         "kernel_declaration_missing",
         `Commit ${before} holds no kernel declaration at ${path}.`,
-        repairs.declaration,
+        repairs.declarationMissing,
       ),
     );
   });

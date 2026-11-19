@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { checkStamp } from "../../../src/stamp-check.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
+import { reasonJsonRefuses, withField } from "../../support/json-faults.ts";
 import {
   stampedFolder,
   stampRecordName,
@@ -10,20 +11,6 @@ import {
 const owned = ownedFolders();
 
 type StampRecord = ReturnType<typeof stampedFolder>;
-
-function withField(owner: object, key: string, value: unknown): undefined {
-  Reflect.set(owner, key, value);
-  return undefined;
-}
-
-function reasonJsonRefuses(text: string): string {
-  try {
-    JSON.parse(text);
-  } catch (error) {
-    if (error instanceof Error) return error.message;
-  }
-  throw new Error(`JSON.parse read ${text}.`);
-}
 
 const notJson = "{ schemaVersion: 1 }";
 const otherBlob = "b".repeat(40);
@@ -94,6 +81,17 @@ const faults: readonly (readonly [
     "a merged package version that is not text",
     ({ requirements }) => withField(requirements, "packages", { pad: 1 }),
     "requirements.packages.pad must be a non-empty string.",
+  ],
+  [
+    "a merged dead-code entry that climbs out of the folder",
+    ({ requirements }) =>
+      withField(requirements, "deadCodeEntries", ["../index.ts"]),
+    'requirements.deadCodeEntries[0] is "../index.ts", which is not a plain path: it has an empty, "." or ".." part.',
+  ],
+  [
+    "a stamp checker path that climbs out of the folder",
+    ({ stampChecker }) => withField(stampChecker, "path", "../check-stamp.ts"),
+    'stampChecker.path is "../check-stamp.ts", which is not a plain path: it has an empty, "." or ".." part.',
   ],
   [
     "no stamp checker",

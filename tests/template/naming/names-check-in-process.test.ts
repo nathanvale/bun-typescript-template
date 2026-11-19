@@ -1,12 +1,12 @@
 import { expect, test } from "bun:test";
-import { writeFileSync } from "node:fs";
-import { delimiter, join } from "node:path";
+import { join } from "node:path";
 import {
   recordedHitsFile,
   stagedNewPaths,
   stagedText,
 } from "../../../scripts/glossary.ts";
 import { git, gitEnv, inherited } from "../../support/git-fixture.ts";
+import { timed, whileGitHangs } from "../../support/hung-git.ts";
 import { processWatchdog } from "../../support/process.ts";
 import {
   check,
@@ -20,29 +20,6 @@ import {
 
 const { emptyRepository, folder, namesRepository, outsideRepository } =
   namesCheckFixture();
-
-async function whileGitHangs<T>(run: () => T | Promise<T>): Promise<T> {
-  const bin = folder();
-  writeFileSync(join(bin, "git"), "#!/bin/sh\nexec sleep 15\n", {
-    mode: 0o755,
-  });
-  const chosen = process.env.PATH;
-  process.env.PATH = `${bin}${delimiter}${chosen ?? ""}`;
-  try {
-    return await run();
-  } finally {
-    if (chosen === undefined) delete process.env.PATH;
-    else process.env.PATH = chosen;
-  }
-}
-
-async function timed<T>(
-  run: () => T | Promise<T>,
-): Promise<{ value: T; milliseconds: number }> {
-  const started = performance.now();
-  const value = await run();
-  return { value, milliseconds: performance.now() - started };
-}
 
 function stage(root: string, files: Record<string, string>): void {
   for (const [path, content] of Object.entries(files)) {
@@ -152,7 +129,7 @@ test(
   async () => {
     const root = namesRepository();
     const command = "git diff --cached --name-only --diff-filter=ACR -z";
-    const { value, milliseconds } = await whileGitHangs(() =>
+    const { value, milliseconds } = await whileGitHangs(folder(), () =>
       timed(() => check(root, ["--staged"])),
     );
     expect(milliseconds).toBeGreaterThanOrEqual(10_000 - 100);
@@ -169,7 +146,7 @@ test(
   "in process: the fixture's git stops a call that never answers at its bound",
   async () => {
     const root = namesRepository();
-    const { value, milliseconds } = await whileGitHangs(() =>
+    const { value, milliseconds } = await whileGitHangs(folder(), () =>
       timed(() => thrownBy(() => git(root, "status"))),
     );
     expect(milliseconds).toBeGreaterThanOrEqual(4_000 - 100);

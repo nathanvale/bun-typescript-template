@@ -1,10 +1,12 @@
-import { existsSync, realpathSync } from "node:fs";
+import { existsSync, realpathSync, statSync } from "node:fs";
 import { dirname } from "node:path";
 import {
-  type FileMode,
   fieldsOf,
+  fileModeOf,
+  fullIdentity,
   jsonOf,
   listOf,
+  messageOf,
   plainPath,
   type StampedFile,
   textOf,
@@ -62,7 +64,7 @@ const repairs: { readonly [Code in KernelRefusalCode]: string } = {
   kernel_commit_abbreviated:
     "Give the commit's full identity, as `git rev-parse <commit>` prints it in the kernel repository.",
   kernel_commit_missing:
-    "Fetch that commit into the clone with `git fetch origin <commit>`, then run this again.",
+    "Give a commit that clone holds with all its files. Fetch one with `git fetch origin <commit>`, and in a partial clone also run `git fetch --refetch --no-filter origin`. Then run this again.",
   kernel_object_format_unsupported:
     "Give a kernel repository that uses git's sha1 object format.",
   kernel_declaration_missing:
@@ -101,8 +103,8 @@ type Declaration = Requirements & {
   })[];
 };
 
-const gitMilliseconds = 10_000;
-const fullCommit = /^[0-9a-f]{40}$/;
+const gitMilliseconds = 4_000;
+const replacementCharacter = "�";
 const linkKinds = new Map([
   ["120000", "a symbolic link"],
   ["160000", "a submodule"],
@@ -155,6 +157,8 @@ function repositoryAt(path: string): string {
       `No git repository is at ${path}: ${why}`,
     );
   if (!existsSync(path)) throw missing("that path does not exist.");
+  if (!statSync(path).isDirectory())
+    throw missing("that path is not a folder.");
   const repository = realpathSync(path);
   const format = git(repository, "rev-parse", ["--show-object-format"]);
   if (!format.ok) throw missing(`git says "${format.said}".`);
@@ -167,15 +171,33 @@ function repositoryAt(path: string): string {
   return repository;
 }
 
-function entriesAt(repository: string, commit: string): Entry[] {
+function requireCommit(repository: string, seam: KernelSeam): void {
+  const kind = git(repository, "cat-file", ["-t", seam.commit]);
+  const named = kind.stdout.toString().trim();
+  if (!kind.ok)
+    throw new KernelRefusal(
+      "kernel_commit_missing",
+      `Commit ${seam.commit} is not in the git repository at ${seam.repository}.`,
+    );
+  if (named !== "commit")
+    throw new KernelRefusal(
+      "kernel_commit_missing",
+      `${seam.commit} names a ${named}, not a commit, in the git repository at ${seam.repository}.`,
+    );
+}
+
+function entriesAt(repository: string, seam: KernelSeam): Entry[] {
   const listing = git(repository, "ls-tree", [
     "-r",
     "-z",
     "--full-tree",
-    commit,
+    seam.commit,
   ]);
   if (!listing.ok)
-    throw new Error(`git could not list commit ${commit}: ${listing.said}`);
+    throw new KernelRefusal(
+      "kernel_commit_missing",
+      `Commit ${seam.commit} is in the git repository at ${seam.repository}, and its list of files is not: git says "${listing.said}".`,
+    );
   return listing.stdout
     .toString()
     .split("\0")
@@ -187,43 +209,53 @@ function entriesAt(repository: string, commit: string): Entry[] {
     });
 }
 
+// Platform: for each identity it is given, `git cat-file --batch` prints a
+// line of the identity, the object's kind and its size, then that many bytes
+// and a line feed. An object the repository lacks gets a line that ends in
+// "missing" and no bytes.
 function blobsOf(
   repository: string,
+  seam: KernelSeam,
   ids: readonly string[],
 ): Map<string, Uint8Array> {
-  const batch = git(
+  const { stdout } = git(
     repository,
     "cat-file",
     ["--batch"],
     Buffer.from(ids.map((id) => `${id}\n`).join("")),
   );
   const blobs = new Map<string, Uint8Array>();
-  let at = 0;
+  let offset = 0;
   for (const id of ids) {
-    const lineEnd = batch.stdout.indexOf(10, at);
-    const [, kind, size] = batch.stdout
-      .subarray(at, lineEnd)
+    const lineEnd = stdout.indexOf(10, offset);
+    const [named, kind, size] = stdout
+      .subarray(offset, Math.max(lineEnd, offset))
       .toString()
       .split(" ");
-    if (!batch.ok || lineEnd < 0 || kind !== "blob")
+    const end = lineEnd + 1 + Number(size);
+    if (named !== id || kind !== "blob" || stdout[end] !== 10)
       throw new KernelRefusal(
         "kernel_commit_missing",
-        `File object ${id} is not in the git repository at ${repository}.`,
+        `Commit ${seam.commit} is in the git repository at ${seam.repository}, and its file object ${id} is not.`,
       );
-    const end = lineEnd + 1 + Number(size);
-    blobs.set(id, new Uint8Array(batch.stdout.subarray(lineEnd + 1, end)));
-    at = end + 1;
+    blobs.set(id, new Uint8Array(stdout.subarray(lineEnd + 1, end)));
+    offset = end + 1;
   }
   return blobs;
 }
 
 function plainFile({ path, mode, id }: Entry, commit: string): StampedFile {
-  if (mode !== "100644" && mode !== "100755")
+  if (path.includes(replacementCharacter))
+    throw new KernelRefusal(
+      "kernel_entry_unsupported",
+      `${path} in commit ${commit} has a name that is not UTF-8 text, and a stamp root holds files with UTF-8 names only.`,
+    );
+  const plain = fileModeOf(mode);
+  if (plain === undefined)
     throw new KernelRefusal(
       "kernel_entry_unsupported",
       `${path} in commit ${commit} is ${linkKinds.get(mode) ?? `an entry of git mode ${mode}`}, and a stamp root holds plain files only.`,
     );
-  const plain: FileMode = mode;
   return { path, mode: plain, blob: id };
 }
 
@@ -259,6 +291,10 @@ function checkRoots(roots: readonly string[]): void {
   }
 }
 
+function everyRoot({ roots, addons }: Declaration): string[] {
+  return [...roots, ...addons.map(({ root }) => root)];
+}
+
 function declarationOf(text: string): Declaration {
   const file = fieldsOf(jsonOf(text), "the file");
   if (file.get("schemaVersion") !== 2)
@@ -289,8 +325,9 @@ function declarationOf(text: string): Declaration {
         throw new Error(
           `addons.${name}.requires names "${required}", which is not a declared add-on.`,
         );
-  checkRoots([...roots, ...addons.map(({ root }) => root)]);
-  return { roots, addons, ...requirementsOf(base, "base") };
+  const declaration = { roots, addons, ...requirementsOf(base, "base") };
+  checkRoots(everyRoot(declaration));
+  return declaration;
 }
 
 function sourceRootOf(declarationPath: string, roots: readonly string[]) {
@@ -312,13 +349,15 @@ function listedUnder(
   root: string,
   commit: string,
 ): Listed[] {
-  const strip = sourceRoot === "" ? 0 : sourceRoot.length + 1;
+  const source = sourceRoot === "" ? "" : `${sourceRoot}/`;
   const listed = entries
-    .filter((entry) => entry.path.slice(strip).startsWith(`${root}/`))
-    .filter((entry) => strip === 0 || entry.path.startsWith(`${sourceRoot}/`))
+    .filter((entry) => entry.path.startsWith(`${source}${root}/`))
     .map((entry) => {
       const file = plainFile(entry, commit);
-      return { entry, file: { ...file, path: entry.path.slice(strip) } };
+      return {
+        entry,
+        file: { ...file, path: entry.path.slice(source.length) },
+      };
     });
   if (listed.length === 0)
     throw new Error(
@@ -327,17 +366,25 @@ function listedUnder(
   return listed;
 }
 
+// Platform: a file system that ignores letter case or Unicode form (the
+// defaults on macOS and Windows) holds one entry where git holds two whose
+// names differ only in that, whether they are two files, two folders, or a
+// file and a folder.
 function refuseCollisions(listed: readonly Listed[], commit: string): void {
-  const seen = new Map<string, string>();
+  const spelled = new Map<string, string>();
   for (const { entry } of listed) {
-    const folded = entry.path.normalize("NFC").toLowerCase();
-    const earlier = seen.get(folded);
-    if (earlier !== undefined)
-      throw new KernelRefusal(
-        "kernel_entry_unsupported",
-        `${earlier} and ${entry.path} in commit ${commit} differ only in letter case or Unicode form, so one would replace the other where file names ignore that.`,
-      );
-    seen.set(folded, entry.path);
+    const parts = entry.path.split("/");
+    for (const depth of parts.keys()) {
+      const path = parts.slice(0, depth + 1).join("/");
+      const folded = path.normalize("NFC").toLowerCase();
+      const earlier = spelled.get(folded) ?? path;
+      if (earlier !== path)
+        throw new KernelRefusal(
+          "kernel_entry_unsupported",
+          `${earlier} and ${path} in commit ${commit} differ only in letter case or Unicode form, so one would replace the other where file names ignore that.`,
+        );
+      spelled.set(folded, path);
+    }
   }
 }
 
@@ -352,7 +399,7 @@ function declared<Result>(
     if (error instanceof KernelRefusal) throw error;
     throw new KernelRefusal(
       "kernel_declaration_invalid",
-      `The kernel declaration at ${declarationPath} in commit ${commit} is not valid: ${String(Reflect.get(Object(error), "message"))}`,
+      `The kernel declaration at ${declarationPath} in commit ${commit} is not valid: ${messageOf(error)}`,
     );
   }
 }
@@ -363,44 +410,40 @@ function declared<Result>(
 // kernel declaration at `declarationPath` in that commit and takes every
 // other path from it. Each file's `path` is the one it will have in a
 // generated repository: its path in the kernel repository with `sourceRoot`
-// removed. It throws a KernelRefusal, whose message ends with its repair
-// line, before returning anything. No network, no cache, no credential.
+// removed. It refuses by throwing a KernelRefusal, whose message ends with
+// its repair line, before it returns anything. A git call that does not
+// finish within its bound throws an Error with its own repair line. No
+// network, no cache, no credential.
 export function readKernel(
   seam: KernelSeam,
   declarationPath: string = kernelDeclarationPath,
 ): Kernel {
   const { commit } = seam;
-  if (!fullCommit.test(commit))
+  if (!fullIdentity.test(commit))
     throw new KernelRefusal(
       "kernel_commit_abbreviated",
       `"${commit}" is not a full commit identity, which is 40 lowercase hexadecimal characters.`,
     );
   const repository = repositoryAt(seam.repository);
-  if (!git(repository, "cat-file", ["-e", `${commit}^{commit}`]).ok)
-    throw new KernelRefusal(
-      "kernel_commit_missing",
-      `Commit ${commit} is not in the git repository at ${seam.repository}.`,
-    );
-  const entries = entriesAt(repository, commit);
+  requireCommit(repository, seam);
+  const entries = entriesAt(repository, seam);
   const held = entries.find(({ path }) => path === declarationPath);
   if (held === undefined)
     throw new KernelRefusal(
       "kernel_declaration_missing",
       `Commit ${commit} holds no kernel declaration at ${declarationPath}.`,
     );
-  const text = blobsOf(repository, [plainFile(held, commit).blob]).get(held.id);
+  const text = blobsOf(repository, seam, [plainFile(held, commit).blob]).get(
+    held.id,
+  );
   const { declaration, sourceRoot, listed } = declared(
     declarationPath,
     commit,
     () => {
       const declaration = declarationOf(new TextDecoder().decode(text));
       const sourceRoot = sourceRootOf(declarationPath, declaration.roots);
-      const paths = [
-        ...declaration.roots,
-        ...declaration.addons.map(({ root }) => root),
-      ];
       const listed = new Map(
-        paths.map((root) => [
+        everyRoot(declaration).map((root) => [
           root,
           listedUnder(entries, sourceRoot, root, commit),
         ]),
@@ -412,6 +455,7 @@ export function readKernel(
   refuseCollisions(every, commit);
   const blobs = blobsOf(
     repository,
+    seam,
     every.map(({ file }) => file.blob),
   );
   const stampRoot = (path: string): StampRoot => {

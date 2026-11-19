@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   blobIdentity,
+  fileModeOf,
   type StampedFile,
   treeIdentity,
 } from "../../../src/stamp-check.ts";
@@ -50,9 +51,10 @@ function committed(entries: readonly ObjectEntry[]) {
 
 function stamped(root: string, commit: string): StampedFile[] {
   return listedFiles(root, commit).map(({ path, mode, blob }) => {
-    if (mode !== "100644" && mode !== "100755")
+    const plain = fileModeOf(mode);
+    if (plain === undefined)
       throw new Error(`${path} has mode ${mode}, which is not a plain file.`);
-    return { path, mode, blob };
+    return { path, mode: plain, blob };
   });
 }
 

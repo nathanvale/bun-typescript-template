@@ -114,7 +114,7 @@ const breakages: readonly Breakage[] = [
         kind: "requirement",
         path: "package.json",
         detail:
-          'the stamp merged dependency "left-pad" at "1.3.0", and it is now "1.3.1".',
+          'the stamp merged package "left-pad" at "1.3.0", and it is now "1.3.1".',
       },
     ],
   ],
@@ -129,7 +129,7 @@ const breakages: readonly Breakage[] = [
         kind: "requirement",
         path: "package.json",
         detail:
-          'the stamp merged dependency "left-pad" at "1.3.0", and it is now absent.',
+          'the stamp merged package "left-pad" at "1.3.0", and it is now absent.',
       },
     ],
   ],
@@ -145,6 +145,49 @@ const breakages: readonly Breakage[] = [
         path: ".fallowrc.json",
         detail:
           'the stamp merged dead-code entry "lib/extras/beta/index.ts", and it is now absent.',
+      },
+    ],
+  ],
+  [
+    "a package file that is no longer JSON, naming the file and not its packages",
+    (folder) => write(folder, "package.json", "{ dependencies: {} }"),
+    [
+      {
+        kind: "requirement",
+        path: "package.json",
+        detail:
+          "it cannot be read as a JSON object, and the stamp merged requirements into it.",
+      },
+    ],
+  ],
+  [
+    "a deleted dead-code settings file, naming the file and not its entries",
+    (folder) => rmSync(join(folder, ".fallowrc.json")),
+    [
+      {
+        kind: "requirement",
+        path: ".fallowrc.json",
+        detail:
+          "it cannot be read as a JSON object, and the stamp merged requirements into it.",
+      },
+    ],
+  ],
+  [
+    "two extra files in a stamp root, in path order",
+    (folder) => {
+      write(folder, "settings/zebra.mjs", "extra\n");
+      write(folder, "settings/apple.mjs", "extra\n");
+    },
+    [
+      {
+        kind: "extra",
+        path: "settings/apple.mjs",
+        detail: "it is in a stamp root and is not recorded.",
+      },
+      {
+        kind: "extra",
+        path: "settings/zebra.mjs",
+        detail: "it is in a stamp root and is not recorded.",
       },
     ],
   ],

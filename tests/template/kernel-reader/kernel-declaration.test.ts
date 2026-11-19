@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { KernelRefusal, readKernel } from "../../../src/kernel-reader.ts";
+import { readKernel } from "../../../src/kernel-reader.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
+import { reasonJsonRefuses, withField } from "../../support/json-faults.ts";
+import { refusalOf, refused, repairs } from "../../support/kernel-refusal.ts";
 import {
   declarationFor,
   declarationPathIn,
@@ -11,28 +13,12 @@ import {
 
 const folder = ownedFolders();
 const path = declarationPathIn(firstLayout);
-const repair =
-  "Correct the kernel declaration in the kernel repository, then give the commit that holds the correction.";
 
 type Declaration = ReturnType<typeof declarationFor>;
 
 function changed(change: (declaration: Declaration) => unknown): unknown {
   const declaration = declarationFor(firstLayout);
   return change(declaration) ?? declaration;
-}
-
-function withField(owner: object, key: string, value: unknown): undefined {
-  Reflect.set(owner, key, value);
-  return undefined;
-}
-
-function reasonJsonRefuses(text: string): string {
-  try {
-    JSON.parse(text);
-  } catch (error) {
-    if (error instanceof Error) return error.message;
-  }
-  throw new Error(`JSON.parse read ${text}.`);
 }
 
 const notJson = "{ schemaVersion: 2 }";
@@ -82,6 +68,11 @@ const cases: readonly (readonly [string, unknown, string])[] = [
     "base.deadCodeEntries must be a list.",
   ],
   [
+    "a dead-code entry that climbs out of its folder",
+    changed(({ base }) => withField(base, "deadCodeEntries", ["../index.ts"])),
+    'base.deadCodeEntries[0] is "../index.ts", which is not a plain path: it has an empty, "." or ".." part.',
+  ],
+  [
     "a required add-on that is not declared",
     changed(({ addons }) => withField(addons.alpha, "requires", ["gamma"])),
     'addons.alpha.requires names "gamma", which is not a declared add-on.',
@@ -122,22 +113,12 @@ describe("the kernel reader refuses, with its repair line, a kernel declaration 
       repository,
       kernelEntries(firstLayout, declaration),
     );
-    let refusal: unknown;
-    try {
-      readKernel({ repository, commit }, path);
-    } catch (error) {
-      refusal = error;
-    }
-    if (!(refusal instanceof KernelRefusal))
-      throw new Error("The read was not refused.", { cause: refusal });
-    expect({
-      code: refusal.code,
-      message: refusal.message,
-      repair: refusal.repair,
-    }).toEqual({
-      code: "kernel_declaration_invalid",
-      message: `The kernel declaration at ${path} in commit ${commit} is not valid: ${problem} Repair: ${repair}`,
-      repair,
-    });
+    expect(refusalOf(() => readKernel({ repository, commit }, path))).toEqual(
+      refused(
+        "kernel_declaration_invalid",
+        `The kernel declaration at ${path} in commit ${commit} is not valid: ${problem}`,
+        repairs.declaration,
+      ),
+    );
   });
 });

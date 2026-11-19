@@ -37,16 +37,25 @@ export function textOf(value: unknown, where: string): string {
   return value;
 }
 
+export function messageOf(error: unknown): string {
+  return String(Reflect.get(Object(error), "message"));
+}
+
 export function jsonOf(text: string): unknown {
   try {
     const parsed: unknown = JSON.parse(text);
     return parsed;
   } catch (error) {
-    throw new Error(
-      `it is not JSON (${String(Reflect.get(Object(error), "message"))}).`,
-      { cause: error },
-    );
+    throw new Error(`it is not JSON (${messageOf(error)}).`, { cause: error });
   }
+}
+
+// Interface: a git identity in full: 40 lowercase hexadecimal characters.
+export const fullIdentity = /^[0-9a-f]{40}$/;
+
+// Interface: the git mode of a plain file, or undefined for any other entry.
+export function fileModeOf(mode: unknown): FileMode | undefined {
+  return mode === "100644" || mode === "100755" ? mode : undefined;
 }
 
 export function plainPath(value: unknown, where: string): string {
@@ -174,8 +183,6 @@ type StampRecord = {
   readonly stampChecker: { readonly path: string; readonly blob: string };
 };
 
-const fullIdentity = /^[0-9a-f]{40}$/;
-
 function identityOf(value: unknown, where: string): string {
   const text = textOf(value, where);
   if (!fullIdentity.test(text))
@@ -192,10 +199,10 @@ function only(value: unknown, read: unknown, where: string, what: string) {
 
 function recordedFile(value: unknown, where: string): StampedFile {
   const file = fieldsOf(value, where);
-  const mode = file.get("mode");
-  if (mode !== "100644" && mode !== "100755")
+  const mode = fileModeOf(file.get("mode"));
+  if (mode === undefined)
     throw new Error(
-      `${where}.mode is ${JSON.stringify(mode)}, and a stamped file is 100644 or 100755.`,
+      `${where}.mode is ${JSON.stringify(file.get("mode"))}, and a stamped file is 100644 or 100755.`,
     );
   return {
     path: plainPath(file.get("path"), `${where}.path`),
@@ -255,7 +262,7 @@ function recordOf(text: string): StampRecord {
       requirements.get("deadCodeEntries"),
       "requirements.deadCodeEntries",
     ).map((entry, index) =>
-      textOf(entry, `requirements.deadCodeEntries[${index}]`),
+      plainPath(entry, `requirements.deadCodeEntries[${index}]`),
     ),
     stampChecker: {
       path: plainPath(stampChecker.get("path"), "stampChecker.path"),
@@ -295,7 +302,7 @@ function fileFindings(folder: string, file: StampedFile): StampFinding[] {
   // execute it.
   const mode: FileMode = (found.mode & 0o100) === 0 ? "100644" : "100755";
   const findings: StampFinding[] = [];
-  if (blobIdentity(readFileSync(at)) !== file.blob)
+  if (attempt(() => blobIdentity(readFileSync(at)), "") !== file.blob)
     findings.push({
       kind: "modified",
       path: file.path,
@@ -322,43 +329,57 @@ function entriesUnder(folder: string, path: string): string[] {
     );
 }
 
-function requirementFindings(
-  folder: string,
-  record: StampRecord,
-): StampFinding[] {
-  const fieldOf = (file: string, key: string): unknown =>
-    attempt(
-      () =>
-        fieldsOf(
-          JSON.parse(readFileSync(join(folder, file), "utf8")),
-          file,
-        ).get(key),
-      undefined,
-    );
-  const dependencies = attempt(
-    () => fieldsOf(fieldOf(packageFile, "dependencies"), "dependencies"),
+// Interface: one file the stamp merged requirements into, read as the field
+// that holds them. `unreadable` holds a finding when the file is missing or is
+// not a JSON object.
+function mergedInto(folder: string, file: string, key: string) {
+  const held = attempt(
+    () => fieldsOf(jsonOf(readFileSync(join(folder, file), "utf8")), file),
+    undefined,
+  );
+  const unreadable: StampFinding[] =
+    held === undefined
+      ? [
+          {
+            kind: "requirement",
+            path: file,
+            detail:
+              "it cannot be read as a JSON object, and the stamp merged requirements into it.",
+          },
+        ]
+      : [];
+  return { field: held?.get(key), unreadable };
+}
+
+function packageFindings(folder: string, record: StampRecord): StampFinding[] {
+  if (record.packages.length === 0) return [];
+  const { field, unreadable } = mergedInto(folder, packageFile, "dependencies");
+  if (unreadable.length > 0) return unreadable;
+  const held = attempt(
+    () => fieldsOf(field, "dependencies"),
     new Map<string, unknown>(),
   );
-  const entries = attempt(
-    () => listOf(fieldOf(deadCodeFile, "entry"), "entry"),
-    [],
-  );
-  return [
-    ...record.packages
-      .filter(([name, version]) => dependencies.get(name) !== version)
-      .map(([name, version]) => ({
-        kind: "requirement" as const,
-        path: packageFile,
-        detail: `the stamp merged dependency "${name}" at "${version}", and it is now ${dependencies.has(name) ? JSON.stringify(dependencies.get(name)) : "absent"}.`,
-      })),
-    ...record.deadCodeEntries
-      .filter((entry) => !entries.includes(entry))
-      .map((entry) => ({
-        kind: "requirement" as const,
-        path: deadCodeFile,
-        detail: `the stamp merged dead-code entry "${entry}", and it is now absent.`,
-      })),
-  ];
+  return record.packages
+    .filter(([name, version]) => held.get(name) !== version)
+    .map(([name, version]) => ({
+      kind: "requirement",
+      path: packageFile,
+      detail: `the stamp merged package "${name}" at "${version}", and it is now ${held.has(name) ? JSON.stringify(held.get(name)) : "absent"}.`,
+    }));
+}
+
+function deadCodeFindings(folder: string, record: StampRecord): StampFinding[] {
+  if (record.deadCodeEntries.length === 0) return [];
+  const { field, unreadable } = mergedInto(folder, deadCodeFile, "entry");
+  if (unreadable.length > 0) return unreadable;
+  const held = attempt(() => listOf(field, "entry"), []);
+  return record.deadCodeEntries
+    .filter((entry) => !held.includes(entry))
+    .map((entry) => ({
+      kind: "requirement",
+      path: deadCodeFile,
+      detail: `the stamp merged dead-code entry "${entry}", and it is now absent.`,
+    }));
 }
 
 function findingsIn(folder: string, record: StampRecord): StampFinding[] {
@@ -378,7 +399,8 @@ function findingsIn(folder: string, record: StampRecord): StampFinding[] {
         path: at,
         detail: "it is in a stamp root and is not recorded.",
       })),
-    ...requirementFindings(folder, record),
+    ...packageFindings(folder, record),
+    ...deadCodeFindings(folder, record),
     ...(stampChecker === blob
       ? []
       : [
@@ -411,7 +433,7 @@ export function checkStamp(folder: string): StampVerdict {
         {
           kind: "stamp-record",
           path: stampRecordPath,
-          detail: String(Reflect.get(Object(error), "message")),
+          detail: messageOf(error),
         },
       ],
     };

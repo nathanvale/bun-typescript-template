@@ -1,13 +1,13 @@
 diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
-index 060d4a8..64b62cf 100644
+index 94c1df2..71d879f 100644
 --- a/src/kernel-reader.ts
 +++ b/src/kernel-reader.ts
-@@ -218,7 +218,7 @@ function blobsOf(
- }
- 
- function plainFile({ path, mode, id }: Entry, commit: string): StampedFile {
--  if (mode !== "100644" && mode !== "100755")
-+  if (mode === "")
+@@ -250,7 +250,7 @@ function plainFile({ path, mode, id }: Entry, commit: string): StampedFile {
+       "kernel_entry_unsupported",
+       `${path} in commit ${commit} has a name that is not UTF-8 text, and a stamp root holds files with UTF-8 names only.`,
+     );
+-  const plain = fileModeOf(mode);
++  const plain = fileModeOf(mode) ?? fileModeOf("100644");
+   if (plain === undefined)
      throw new KernelRefusal(
        "kernel_entry_unsupported",
-       `${path} in commit ${commit} is ${linkKinds.get(mode) ?? `an entry of git mode ${mode}`}, and a stamp root holds plain files only.`,
