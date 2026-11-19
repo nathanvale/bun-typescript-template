@@ -1405,5 +1405,12 @@
     "testFile": "tests/template/bootstrap/recipe.test.ts",
     "title": "refuses a file where a template source folder belongs before any file is copied$",
     "source": "3d754ed fix(bootstrap): refuse a recipe source of the wrong type"
+  },
+  {
+    "id": "126c1a5-stamp-check-empty-folder",
+    "patch": "tests/planted-faults/patches/126c1a5-stamp-check-empty-folder.patch",
+    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
+    "title": "returns broken for an empty folder in a stamp root, naming the folder$",
+    "source": "126c1a5 fix(stamp-check): report an empty folder in a stamp root"
   }
 ]
