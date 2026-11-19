@@ -152,10 +152,9 @@ function place(top: Tree, names: readonly string[], file: StampedFile): void {
   tree.set(leaf, file);
 }
 
-// Interface: git's SHA-1 identity of the tree that holds the listed files
-// under `root`, computed without git. `root` is a folder path with no trailing
-// slash, or "" for every listed file. A tree identity does not depend on where
-// the tree sits, so one folder has the same identity in any repository.
+// Interface: git's SHA-1 identity of the tree of the listed files under
+// `root` (a folder path, or "" for all), computed without git. It does not
+// depend on where the tree sits.
 export function treeIdentity(
   files: readonly StampedFile[],
   root: string,
@@ -411,10 +410,8 @@ function fileFindings(folder: string, file: StampedFile): StampFinding[] {
   return findings;
 }
 
-// Interface: every folder on the way from the top of `folder` to each stamp
-// root, the stamp root included, and to the stamp checker, must be a folder
-// itself. A link there would let the files of another folder pass as the
-// stamped ones.
+// Interface: each folder on the way to a stamp root (itself included) and to
+// the stamp checker must be a folder, not a link to another folder's files.
 function folderFindings(folder: string, record: StampRecord) {
   const checkerFolder = record.stampChecker.path.split("/").slice(0, -1);
   const onTheWay = new Set(
@@ -458,11 +455,13 @@ function entriesUnder(folder: string, path: string): Under[] {
       };
     })
     .sort((one, other) => (one.at < other.at ? -1 : 1))
-    .flatMap(({ at, utf8 }) =>
-      utf8 && folderAt(join(folder, at)) === true
-        ? entriesUnder(folder, at)
-        : [{ at, listed: true, utf8 }],
-    );
+    .flatMap(({ at, utf8 }) => {
+      const inside =
+        utf8 && folderAt(join(folder, at)) === true
+          ? entriesUnder(folder, at)
+          : [];
+      return inside.length > 0 ? inside : [{ at, listed: true, utf8 }];
+    });
 }
 
 function extraFinding({ at, listed, utf8 }: Under): StampFinding {

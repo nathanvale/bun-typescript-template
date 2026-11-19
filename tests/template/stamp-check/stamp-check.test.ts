@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   chmodSync,
+  mkdirSync,
   readFileSync,
   rmSync,
   symlinkSync,
@@ -66,6 +67,29 @@ const breakages: readonly Breakage[] = [
       {
         kind: "extra",
         path: "lib/extras/beta/deep/extra.ts",
+        detail: "it is in a stamp root and is not recorded.",
+      },
+    ],
+  ],
+  [
+    "an empty folder in a stamp root, naming the folder",
+    (folder) => mkdirSync(join(folder, "lib/core/empty")),
+    [
+      {
+        kind: "extra",
+        path: "lib/core/empty",
+        detail: "it is in a stamp root and is not recorded.",
+      },
+    ],
+  ],
+  [
+    "a folder in a stamp root holding only an empty folder, naming the inner folder",
+    (folder) =>
+      mkdirSync(join(folder, "settings/outer/inner"), { recursive: true }),
+    [
+      {
+        kind: "extra",
+        path: "settings/outer/inner",
         detail: "it is in a stamp root and is not recorded.",
       },
     ],
