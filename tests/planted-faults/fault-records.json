@@ -1566,5 +1566,12 @@
     "testFile": "tests/template/stamping/merged-requirements.test.ts",
     "title": "merging keeps a list in package.json one item a line and fits a list in the dead-code settings on its line$",
     "source": "8ee369b fix(stamping): findings from the review before the first push"
+  },
+  {
+    "id": "dd553d6-package-test-ignore",
+    "patch": "tests/planted-faults/patches/dd553d6-package-test-ignore.patch",
+    "testFile": "tests/template/stamping/kernel-row.test.ts",
+    "title": "runs no test file from the files a generated repository gets, which cannot run before Bootstrap places them$",
+    "source": "dd553d6 fix(test): leave the generated repository's files out of the template's test run"
   }
 ]
