@@ -3,8 +3,11 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { readKernel } from "../../../src/kernel-reader.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
+import { git, initRepository } from "../../support/git-fixture.ts";
 import {
   commitEmptyFolder,
+  commitObjects,
+  stageRawPath,
   listedFiles,
   treeOf,
 } from "../../support/git-object-fixture.ts";
@@ -16,6 +19,7 @@ import {
   firstLayout,
   kernelEntries,
   kernelRepository,
+  type Layout,
 } from "../../support/kernel-repository-fixture.ts";
 
 const folder = ownedFolders();
@@ -90,6 +94,67 @@ describe("the kernel reader reads names and text as the bytes git stores", () =>
     const inside = join(repository, "engine");
     mkdirSync(inside);
     expect(readKernel({ repository, commit }, path).commit).toBe(commit);
+    expect(
+      refusalOf(() => readKernel({ repository: inside, commit }, path)),
+    ).toEqual(
+      refused(
+        "kernel_repository_missing",
+        `No git repository is at ${inside}: that folder is inside the repository above it.`,
+        repairs.repository,
+      ),
+    );
+  });
+});
+
+describe("the kernel reader matches a stamp root by the bytes of a path", () => {
+  test("a path that is not UTF-8, outside a stamp root whose own name holds the replacement character, is left out and not refused", () => {
+    const layout: Layout = { ...firstLayout, core: "lib/co\uFFFDe" };
+    const repository = folder("kernel-reader-bytes-");
+    initRepository(repository);
+    stageRawPath(
+      repository,
+      Buffer.concat([
+        Buffer.from("engine/lib/co"),
+        Buffer.from([0xff]),
+        Buffer.from("e/stray.ts"),
+      ]),
+      "export const stray = 1;\n",
+    );
+    const commit = commitObjects(
+      repository,
+      "a look-alike",
+      kernelEntries(layout),
+    );
+    const [core] = readKernel(
+      { repository, commit },
+      declarationPathIn(layout),
+    ).roots;
+    expect(core?.files.map((file) => file.path)).toEqual([
+      "lib/co\uFFFDe/deep/leaf.ts",
+      "lib/co\uFFFDe/index.ts",
+      "lib/co\uFFFDe/run.sh",
+    ]);
+  });
+});
+
+describe("the kernel reader, given a bare repository", () => {
+  function bareClone() {
+    const origin = folder("kernel-reader-bytes-");
+    const commit = kernelRepository(origin);
+    const repository = join(folder("kernel-reader-bytes-"), "kernel:bare");
+    git(origin, "clone", "--quiet", "--bare", "--no-local", origin, repository);
+    return { repository, commit };
+  }
+
+  test("reads it at its top", () => {
+    const { repository, commit } = bareClone();
+    expect(readKernel({ repository, commit }, path).commit).toBe(commit);
+  });
+
+  test("refuses a folder inside it, where a colon in the path above defeats git's own limit on looking upward", () => {
+    const { repository, commit } = bareClone();
+    const inside = join(repository, "inside");
+    mkdirSync(inside);
     expect(
       refusalOf(() => readKernel({ repository: inside, commit }, path)),
     ).toEqual(

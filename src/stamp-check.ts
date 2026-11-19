@@ -1,10 +1,13 @@
 import { createHash } from "node:crypto";
 import {
+  closeSync,
+  constants,
+  fstatSync,
   lstatSync,
+  openSync,
   readdirSync,
   readFileSync,
   type Stats,
-  statSync,
 } from "node:fs";
 import { join } from "node:path";
 
@@ -288,16 +291,45 @@ function attempt<Result>(read: () => Result, otherwise: Result): Result {
   }
 }
 
-function entryAt(path: string): Stats | undefined {
-  return attempt<Stats | undefined>(() => lstatSync(path), undefined);
+// Platform: looking an entry up fails with ENOENT when nothing has that
+// name, and with ENOTDIR when a name on the way is not a folder. Any other
+// failure, such as a folder that may not be searched, says nothing about
+// whether the entry is there.
+function entryAt(path: string): Stats | "absent" | "unreadable" {
+  try {
+    return lstatSync(path);
+  } catch (error) {
+    return ["ENOENT", "ENOTDIR"].includes(
+      String(Reflect.get(Object(error), "code")),
+    )
+      ? "absent"
+      : "unreadable";
+  }
 }
 
-// Platform: reading a named pipe waits for a writer, and reading a folder
-// fails. Only a plain file, or a link to one, is opened.
+function folderAt(path: string): boolean | undefined {
+  const found = entryAt(path);
+  return typeof found === "string" ? undefined : found.isDirectory();
+}
+
+// Platform: opening a named pipe to read waits for a writer unless the open
+// is non-blocking, and the entry at a path can change between a look and an
+// open. So the file is opened without waiting, and the open file itself is
+// checked before it is read.
 function plainBytes(path: string): Buffer {
-  if (!attempt(() => statSync(path).isFile(), false))
-    throw new Error("it is not a plain file that can be read.");
-  return readFileSync(path);
+  const unreadable = () =>
+    new Error("it is not a plain file that can be read.");
+  const file = attempt(
+    () => openSync(path, constants.O_RDONLY | constants.O_NONBLOCK),
+    undefined,
+  );
+  if (file === undefined) throw unreadable();
+  try {
+    if (!fstatSync(file).isFile()) throw unreadable();
+    return readFileSync(file);
+  } finally {
+    closeSync(file);
+  }
 }
 
 // Interface: the text of a plain file. Bytes that are not UTF-8 are refused,
@@ -315,12 +347,20 @@ function plainText(path: string): string {
 function fileFindings(folder: string, file: StampedFile): StampFinding[] {
   const at = join(folder, file.path);
   const found = entryAt(at);
-  if (found === undefined)
+  if (found === "absent")
     return [
       {
         kind: "missing",
         path: file.path,
         detail: "it is recorded and is not in the folder.",
+      },
+    ];
+  if (found === "unreadable")
+    return [
+      {
+        kind: "unreadable",
+        path: file.path,
+        detail: "it is recorded and cannot be looked up.",
       },
     ];
   if (!found.isFile())
@@ -362,7 +402,7 @@ function folderFindings(folder: string, roots: readonly string[]) {
     ),
   );
   return [...onTheWay]
-    .filter((path) => entryAt(join(folder, path))?.isDirectory() === false)
+    .filter((path) => folderAt(join(folder, path)) === false)
     .map(
       (path): StampFinding => ({
         kind: "not-a-folder",
@@ -375,7 +415,7 @@ function folderFindings(folder: string, roots: readonly string[]) {
 type Under = { readonly at: string; readonly listed: boolean };
 
 function entriesUnder(folder: string, path: string): Under[] {
-  if (entryAt(join(folder, path))?.isDirectory() !== true) return [];
+  if (folderAt(join(folder, path)) !== true) return [];
   const entries = attempt(
     () => readdirSync(join(folder, path), { withFileTypes: true }),
     undefined,
@@ -496,7 +536,7 @@ function findingsIn(folder: string, record: StampRecord): StampFinding[] {
 // stamped file on purpose can edit the stamp record too.
 export function checkStamp(folder: string): StampVerdict {
   const recordAt = join(folder, stampRecordPath);
-  if (entryAt(recordAt) === undefined) return { status: "unstamped" };
+  if (entryAt(recordAt) === "absent") return { status: "unstamped" };
   let record: StampRecord;
   try {
     record = recordOf(plainText(recordAt));

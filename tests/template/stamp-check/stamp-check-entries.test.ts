@@ -166,3 +166,49 @@ describe("the stamp check returns broken", () => {
     });
   });
 });
+
+describe("the stamp check, where an entry cannot be looked up", () => {
+  test("returns broken, naming the stamp record, for a folder that may not be searched, and not unstamped", () => {
+    const folder = stamped();
+    chmodSync(folder, 0o000);
+    try {
+      expect(checkStamp(folder)).toEqual({
+        status: "broken",
+        findings: [
+          {
+            kind: "stamp-record",
+            path: stampRecordName,
+            detail: "it is not a plain file that can be read.",
+          },
+        ],
+      });
+    } finally {
+      chmodSync(folder, 0o755);
+    }
+  });
+
+  test("returns broken, naming a stamped file it cannot look up and the folder it cannot list", () => {
+    const folder = stamped();
+    const locked = join(folder, "lib/core/deep");
+    chmodSync(locked, 0o000);
+    try {
+      expect(checkStamp(folder)).toEqual({
+        status: "broken",
+        findings: [
+          {
+            kind: "unreadable",
+            path: "lib/core/deep/leaf.ts",
+            detail: "it is recorded and cannot be looked up.",
+          },
+          {
+            kind: "unreadable",
+            path: "lib/core/deep",
+            detail: "it is a folder in a stamp root and cannot be listed.",
+          },
+        ],
+      });
+    } finally {
+      chmodSync(locked, 0o755);
+    }
+  });
+});

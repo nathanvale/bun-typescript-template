@@ -87,6 +87,7 @@ export class KernelRefusal extends Error {
 }
 
 type Entry = {
+  readonly name: Buffer;
   readonly path: string;
   readonly utf8: boolean;
   readonly mode: string;
@@ -116,9 +117,8 @@ const linkKinds = new Map([
 // holds nothing of the caller's but PATH: a replace ref cannot swap an object,
 // no prompt can open, no configuration file outside the repository applies,
 // and git looks for the repository in the given folder alone. A partial clone
-// cannot fetch an object: GIT_NO_LAZY_FETCH stops the attempt on git 2.45 and
-// later, and GIT_ALLOW_PROTOCOL, which older git reads too, allows no
-// transport at all.
+// cannot fetch an object: an empty GIT_ALLOW_PROTOCOL allows no transport,
+// not a local path and not a remote helper found on PATH.
 function git(
   repository: string,
   command: "rev-parse" | "ls-tree" | "cat-file",
@@ -131,8 +131,7 @@ function git(
       PATH: process.env.PATH ?? "",
       GIT_CEILING_DIRECTORIES: dirname(repository),
       GIT_NO_REPLACE_OBJECTS: "1",
-      GIT_NO_LAZY_FETCH: "1",
-      GIT_ALLOW_PROTOCOL: "none",
+      GIT_ALLOW_PROTOCOL: "",
       GIT_TERMINAL_PROMPT: "0",
       GIT_CONFIG_NOSYSTEM: "1",
       GIT_CONFIG_GLOBAL: "/dev/null",
@@ -166,12 +165,20 @@ function repositoryAt(path: string): string {
   const repository = realpathSync(path);
   const found = git(repository, "rev-parse", [
     "--show-object-format",
+    "--is-inside-work-tree",
     "--show-prefix",
+    "--absolute-git-dir",
   ]);
   if (!found.ok) throw missing(`git says "${found.said}".`);
-  const [name = "", inside = ""] = found.stdout.toString().split("\n");
-  if (inside !== "")
-    throw missing("that folder is inside the repository above it.");
+  const [name = "", inWorkTree, prefix, gitFolder] = found.stdout
+    .toString()
+    .split("\n");
+  // Platform: at the top of a working tree git prints an empty prefix. In a
+  // bare repository, or in a .git folder, there is no working tree, and the
+  // folder is the repository only when it is git's own folder.
+  const atTop =
+    inWorkTree === "true" ? prefix === "" : gitFolder === repository;
+  if (!atTop) throw missing("that folder is inside the repository above it.");
   if (name !== "sha1")
     throw new KernelRefusal(
       "kernel_object_format_unsupported",
@@ -216,6 +223,7 @@ function entriesAt(repository: string, seam: KernelSeam): Entry[] {
     const name = record.subarray(tab + 1);
     const path = utf8Of(name);
     return {
+      name,
       path: path ?? name.toString(),
       utf8: path !== undefined,
       mode,
@@ -392,8 +400,9 @@ function listedUnder(
   commit: string,
 ): Listed[] {
   const source = sourceRoot === "" ? "" : `${sourceRoot}/`;
+  const under = Buffer.from(`${source}${root}/`);
   const listed = entries
-    .filter((entry) => entry.path.startsWith(`${source}${root}/`))
+    .filter(({ name }) => name.subarray(0, under.length).equals(under))
     .map((entry) => {
       const file = plainFile(entry, commit);
       return {
@@ -527,7 +536,9 @@ export function readKernel(
   const repository = repositoryAt(seam.repository);
   requireCommit(repository, seam);
   const entries = entriesAt(repository, seam);
-  const held = entries.find(({ path }) => path === declarationPath);
+  const held = entries.find(
+    ({ path, utf8 }) => utf8 && path === declarationPath,
+  );
   if (held === undefined)
     throw new KernelRefusal(
       "kernel_declaration_missing",
