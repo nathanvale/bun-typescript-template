@@ -1,16 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { bootstrapWithKernel } from "../../../src/bootstrap.ts";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
 import { KERNEL_RECIPE, lintsCode } from "../../../src/recipe.ts";
-import { listFiles } from "../../support/bootstrap-cli-fixture.ts";
+import { listFiles, ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import {
   generatedJson,
   stampingFixture,
 } from "../../support/stamping-fixture.ts";
 
-const ROOT = resolve(import.meta.dir, "../../..");
 const run = stampingFixture();
 const bootstrapModules = [
   "src/bootstrap.ts",
@@ -95,7 +94,7 @@ describe("the kernel row", () => {
 });
 
 describe("Bootstrap takes kernel paths from the kernel declaration", () => {
-  test("no module of Bootstrap names a folder the pinned kernel declares, or its source folder", () => {
+  test("no module of Bootstrap names a folder the kernel repository uses today, from a list kept here by hand", () => {
     const pin = readKernelPin(ROOT);
     const kernelFolders = [
       "src/kernel",

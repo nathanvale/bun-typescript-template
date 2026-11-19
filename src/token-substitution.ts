@@ -57,5 +57,6 @@ export async function substituteTokens(
   tokens: Tokens,
 ): Promise<{ readonly staging: RenderedStaging; readonly fileCount: number }> {
   const fileCount = await substituteIn(root, tokens);
-  return { staging: { path: root, [rendered]: true }, fileCount };
+  const staging = Object.freeze({ path: root, [rendered]: true as const });
+  return { staging, fileCount };
 }

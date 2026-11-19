@@ -16,66 +16,84 @@ const packageFields = [
   "optionalDependencies",
   "peerDependencies",
 ];
-const lineWidth = 80;
+const strictText = new TextDecoder("utf-8", { fatal: true });
 const indent = (depth: number) => "  ".repeat(depth);
+
+// Interface: how wide a line may be for a list to go on it. The formatter
+// fits a list on a line of 80 columns, except in package.json, where it
+// always gives a list one item a line.
+const fittedLists = 80;
+export const packageFileLists = 0;
+
+type Place = {
+  readonly depth: number;
+  readonly before: number;
+  readonly after: number;
+};
 
 function listText(
   items: readonly unknown[],
-  depth: number,
-  before: number,
-  after: number,
+  { depth, before, after }: Place,
+  width: number,
 ): string {
   if (items.length === 0) return "[]";
   const inner = items.map((item, index) =>
     valueText(
       item,
-      depth + 1,
-      2 * (depth + 1),
-      index + 1 < items.length ? 1 : 0,
+      {
+        depth: depth + 1,
+        before: 2 * (depth + 1),
+        after: index + 1 < items.length ? 1 : 0,
+      },
+      width,
     ),
   );
   const flat = `[${inner.join(", ")}]`;
-  if (!flat.includes("\n") && before + flat.length + after <= lineWidth)
+  if (!flat.includes("\n") && before + flat.length + after <= width)
     return flat;
   const lines = inner.map((item) => `${indent(depth + 1)}${item}`);
   return `[\n${lines.join(",\n")}\n${indent(depth)}]`;
 }
 
-function objectText(fields: Map<string, unknown>, depth: number): string {
+function objectText(
+  fields: Map<string, unknown>,
+  depth: number,
+  width: number,
+): string {
   if (fields.size === 0) return "{}";
   const lines = [...fields].map(([key, value], index) => {
     const lead = `${indent(depth + 1)}${JSON.stringify(key)}: `;
     const after = index + 1 < fields.size ? 1 : 0;
-    return `${lead}${valueText(value, depth + 1, lead.length, after)}`;
+    const place = { depth: depth + 1, before: lead.length, after };
+    return `${lead}${valueText(value, place, width)}`;
   });
   return `{\n${lines.join(",\n")}\n${indent(depth)}}`;
 }
 
-function valueText(
-  value: unknown,
-  depth: number,
-  before: number,
-  after: number,
-): string {
+function valueText(value: unknown, place: Place, width: number): string {
   if (Array.isArray(value)) {
     const items: readonly unknown[] = value;
-    return listText(items, depth, before, after);
+    return listText(items, place, width);
   }
   return typeof value === "object" && value !== null
-    ? objectText(new Map(Object.entries(value)), depth)
+    ? objectText(new Map(Object.entries(value)), place.depth, width)
     : JSON.stringify(value);
 }
 
 // Interface: JSON text in the form the generated repository's formatter
 // leaves unchanged: two spaces a level, every object with one field a line,
-// and a list on one line when that line fits in 80 columns.
-export function settingsText(value: unknown): string {
-  return `${valueText(value, 0, 0, 0)}\n`;
+// and a list on one line when that line fits in `listWidth` columns.
+export function settingsText(
+  value: unknown,
+  listWidth: number = fittedLists,
+): string {
+  return `${valueText(value, { depth: 0, before: 0, after: 0 }, listWidth)}\n`;
 }
 
 async function fieldsIn(folder: string, file: string) {
   try {
-    return fieldsOf(jsonOf(await readFile(join(folder, file), "utf8")), file);
+    const text = strictText.decode(await readFile(join(folder, file)));
+    return fieldsOf(jsonOf(text), file);
   } catch (error) {
     throw new Error(
       `The stamp merges requirements into ${file}, and it cannot be read as a JSON object in the staging folder: ${messageOf(error)} Repair: restore ${file} in the template's own files for a generated repository.`,
@@ -133,9 +151,10 @@ async function rewrite(
 ): Promise<void> {
   const settings = await fieldsIn(folder, file);
   change(settings);
+  const listWidth = file === packageFile ? packageFileLists : fittedLists;
   await writeFile(
     join(folder, file),
-    settingsText(Object.fromEntries(settings)),
+    settingsText(Object.fromEntries(settings), listWidth),
   );
 }
 

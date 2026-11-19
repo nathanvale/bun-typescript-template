@@ -1,14 +1,18 @@
 import { describe, expect, test } from "bun:test";
 import { cpSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { bootstrapWithKernel } from "../../../src/bootstrap.ts";
-import { settingsText } from "../../../src/merged-requirements.ts";
-import { ownedFolders } from "../../support/fixture-files.ts";
+import {
+  mergeRequirements,
+  packageFileLists,
+  settingsText,
+} from "../../../src/merged-requirements.ts";
+import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
+import { ownedFolders, write } from "../../support/fixture-files.ts";
 import { initRepository } from "../../support/git-fixture.ts";
 import { spawnBounded } from "../../support/process.ts";
 import { stampingFixture } from "../../support/stamping-fixture.ts";
 
-const ROOT = resolve(import.meta.dir, "../../..");
 const formatter = join(ROOT, "node_modules/.bin/biome");
 const run = stampingFixture();
 const folder = ownedFolders();
@@ -72,5 +76,46 @@ describe("the settings the stamp merges requirements into", () => {
         widths.map((width) => `width-${width}.json`),
       ),
     ).toBe(true);
+  });
+
+  test("a list in package.json goes one item a line however short, as the formatter does there, and the formatter refuses it on one line", async () => {
+    const settings = folder("settings-text-");
+    initRepository(settings);
+    cpSync(
+      join(ROOT, "generated-repository/settings/biome.json"),
+      join(settings, "biome.json"),
+    );
+    const packageSettings = { name: "demo", files: ["a"], none: [], no: {} };
+    const text = settingsText(packageSettings, packageFileLists);
+    expect(text).toBe(
+      '{\n  "name": "demo",\n  "files": [\n    "a"\n  ],\n  "none": [],\n  "no": {}\n}\n',
+    );
+    writeFileSync(join(settings, "package.json"), text);
+    expect(await formatterAccepts(settings, ["package.json"])).toBe(true);
+    writeFileSync(
+      join(settings, "package.json"),
+      settingsText(packageSettings),
+    );
+    expect(await formatterAccepts(settings, ["package.json"])).toBe(false);
+  });
+
+  test("merging keeps a list in package.json one item a line and fits a list in the dead-code settings on its line", async () => {
+    const settings = folder("settings-merge-");
+    write(settings, "package.json", '{ "files": ["a"] }\n');
+    write(settings, ".fallowrc.json", '{ "entry": ["x"] }\n');
+    const merged = await mergeRequirements(settings, {
+      packages: { "left-pad": "1.3.0" },
+      deadCodeEntries: ["y"],
+    });
+    expect({
+      merged,
+      packageFile: readFileSync(join(settings, "package.json"), "utf8"),
+      deadCodeFile: readFileSync(join(settings, ".fallowrc.json"), "utf8"),
+    }).toEqual({
+      merged: { packages: { "left-pad": "1.3.0" }, deadCodeEntries: ["y"] },
+      packageFile:
+        '{\n  "files": [\n    "a"\n  ],\n  "dependencies": {\n    "left-pad": "1.3.0"\n  }\n}\n',
+      deadCodeFile: '{\n  "entry": ["x", "y"]\n}\n',
+    });
   });
 });

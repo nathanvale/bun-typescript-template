@@ -1508,7 +1508,7 @@
     "id": "1ae6c19-stamping-stamp-record-last",
     "patch": "tests/planted-faults/patches/1ae6c19-stamping-stamp-record-last.patch",
     "testFile": "tests/template/stamping/stamping.test.ts",
-    "title": "writes the stamp record after every other file$",
+    "title": "gives no file a later modification time than the stamp record$",
     "source": "1ae6c19 feat(bootstrap): stamp the kernel through a kernel row"
   }
 ]

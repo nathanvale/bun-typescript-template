@@ -106,7 +106,7 @@ describe("Bootstrap stamping the kernel through the kernel row", () => {
     );
   });
 
-  test("writes the stamp record after every other file", async () => {
+  test("gives no file a later modification time than the stamp record", async () => {
     const { destination, request } = run({ addons: ["beta"] });
     await bootstrapWithKernel(request);
     const changed = (path: string) =>

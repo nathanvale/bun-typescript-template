@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { bootstrapWithKernel } from "../../../src/bootstrap.ts";
+import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import {
   firstLayout,
@@ -14,7 +15,6 @@ import {
   tokenText,
 } from "../../support/stamping-fixture.ts";
 
-const ROOT = resolve(import.meta.dir, "../../..");
 const run = stampingFixture();
 const folder = ownedFolders();
 const compileBound = 60_000;

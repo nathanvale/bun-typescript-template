@@ -14,25 +14,39 @@ import {
 import { blobIdentity, stampRecordPath } from "./stamp-check.ts";
 import type { RenderedStaging } from "./token-substitution.ts";
 
-// Interface: where a generated repository keeps its stamp checker, and where
-// the template keeps one committed lockfile for each package set.
+// Interface: where a generated repository keeps its stamp checker and its
+// lockfile, and where the template keeps one committed lockfile for each
+// package set.
 export const stampCheckerPath = "stamp-checker.ts";
+export const lockfilePath = "bun.lock";
 export const committedLockfiles = "generated-repository/lockfiles";
+
+// Interface: who owns the kernel's own stamp roots in a stamp record, and the
+// package set of a selection that merges no add-on's package. An add-on may
+// not take the name.
+const kernelOwner = "base";
+const plainName = /^[a-z][a-z0-9-]*$/;
 
 export type StampRefusalCode =
   | "addon_unknown"
+  | "addon_name_unsupported"
   | "addon_requirement_missing"
+  | "addon_requirements_disagree"
   | "lockfile_missing"
   | "stamp_conflict";
 
 const repairs: { readonly [Code in StampRefusalCode]: string } = {
   addon_unknown: "Select only add-ons that commit declares.",
+  addon_name_unsupported:
+    "Rename the add-on in the kernel repository, then give the commit that holds the change.",
   addon_requirement_missing:
     "Add the add-on it requires to the add-on selection.",
+  addon_requirements_disagree:
+    "Make the kernel declaration require one version of that package, then give the commit that holds the change.",
   lockfile_missing:
     "Put the lockfile for that package set at that path in the template, or supply the lockfile's bytes.",
   stamp_conflict:
-    "Remove it from the template's own files for a generated repository. Stamped source, its requirements, the stamp checker and the stamp record come from the stamp alone.",
+    "Remove it from the template's own files for a generated repository. Bootstrap alone supplies stamped source, its requirements, the stamp checker, the stamp record and the lockfile.",
 };
 
 export class StampRefusal extends Error {
@@ -63,11 +77,46 @@ function byName(one: Addon, other: Addon): number {
   return Buffer.compare(Buffer.from(one.name), Buffer.from(other.name));
 }
 
+type Owner = Requirements & { readonly name: string };
+
+// Interface: what a kernel and the add-ons selected with it need merged, each
+// package and dead-code entry once. It refuses a package two of them require
+// at different versions.
+function requirementsOf(
+  kernel: Kernel,
+  addons: readonly Addon[],
+): Requirements {
+  const owners: readonly Owner[] = [
+    { ...kernel, name: "the kernel" },
+    ...addons.map((addon) => ({ ...addon, name: `add-on "${addon.name}"` })),
+  ];
+  const packages = new Map<string, { version: string; owner: string }>();
+  for (const { name: owner, packages: required } of owners)
+    for (const [name, version] of Object.entries(required)) {
+      const first = packages.get(name) ?? { version, owner };
+      if (first.version !== version)
+        throw new StampRefusal(
+          "addon_requirements_disagree",
+          `Kernel commit ${kernel.commit} requires package "${name}" at "${first.version}" for ${first.owner} and at "${version}" for ${owner}.`,
+        );
+      packages.set(name, first);
+    }
+  return {
+    packages: Object.fromEntries(
+      [...packages].map(([name, { version }]) => [name, version]),
+    ),
+    deadCodeEntries: [
+      ...new Set(owners.flatMap(({ deadCodeEntries }) => deadCodeEntries)),
+    ],
+  };
+}
+
 // Interface: checks the named add-ons against one kernel commit, in memory.
 // It refuses a name the kernel declaration does not hold, listing the names
-// it does hold, and an add-on whose required add-on is not named. It never
-// adds a required add-on itself: the names given are the selection the stamp
-// record shows.
+// it does hold; an add-on whose name a lockfile path or a stamp record cannot
+// hold; an add-on whose required add-on is not named; and requirements that
+// disagree. It never adds a required add-on itself: the names given are the
+// selection the stamp record shows.
 export function selectAddons(
   kernel: Kernel,
   names: readonly string[],
@@ -86,6 +135,14 @@ export function selectAddons(
       }`,
     );
   const addons = declared.filter(({ name }) => names.includes(name));
+  const unsupported = addons.find(
+    ({ name }) => !plainName.test(name) || name === kernelOwner,
+  );
+  if (unsupported !== undefined)
+    throw new StampRefusal(
+      "addon_name_unsupported",
+      `Add-on name ${JSON.stringify(unsupported.name)} at kernel commit ${kernel.commit} is not one a stamp record and a lockfile path can hold: a name is lowercase letters, digits and hyphens, starts with a letter, and is not "${kernelOwner}".`,
+    );
   for (const { name, requires } of addons) {
     const missing = requires.find((required) => !names.includes(required));
     if (missing !== undefined)
@@ -94,14 +151,16 @@ export function selectAddons(
         `Add-on "${name}" requires "${missing}", which is not selected.`,
       );
   }
+  requirementsOf(kernel, addons);
   const withPackages = addons
     .filter(({ packages }) => Object.keys(packages).length > 0)
     .map(({ name }) => name);
-  return {
-    addons,
-    packageSet: withPackages.length === 0 ? "base" : withPackages.join("+"),
-    [selected]: true,
-  };
+  return Object.freeze({
+    addons: Object.freeze(addons),
+    packageSet:
+      withPackages.length === 0 ? kernelOwner : withPackages.join("+"),
+    [selected]: true as const,
+  });
 }
 
 export type LockfileInput =
@@ -136,35 +195,42 @@ type Owned = { readonly owner: string; readonly root: StampRoot };
 
 function stampedRoots(kernel: Kernel, selection: AddonSelection): Owned[] {
   return [
-    ...kernel.roots.map((root) => ({ owner: "base", root })),
+    ...kernel.roots.map((root) => ({ owner: kernelOwner, root })),
     ...selection.addons.map(({ name, root }) => ({ owner: name, root })),
   ];
 }
 
-function requirementsOf(
-  kernel: Kernel,
-  selection: AddonSelection,
-): Requirements {
-  const owners: readonly Requirements[] = [kernel, ...selection.addons];
-  return {
-    packages: Object.fromEntries(
-      owners.flatMap(({ packages }) => Object.entries(packages)),
-    ),
-    deadCodeEntries: owners.flatMap(({ deadCodeEntries }) => deadCodeEntries),
-  };
-}
-
-async function held(folder: string, path: string): Promise<boolean> {
+async function entryAt(folder: string, path: string) {
   try {
-    await lstat(join(folder, path));
-    return true;
+    return await lstat(join(folder, path));
   } catch (error) {
-    if (
-      ["ENOENT", "ENOTDIR"].includes(String(Reflect.get(Object(error), "code")))
-    )
-      return false;
+    if (Reflect.get(Object(error), "code") === "ENOENT") return undefined;
     throw error;
   }
+}
+
+const ownFiles = "the generated repository's own files";
+
+// Interface: why a stamp root cannot be written as new, or undefined. Each
+// folder on the way to it must be absent or a folder itself, and the stamp
+// root must be absent.
+async function rootConflict(folder: string, root: string) {
+  const parts = root.split("/");
+  for (const depth of parts.keys()) {
+    const path = parts.slice(0, depth + 1).join("/");
+    const found = await entryAt(folder, path);
+    if (found === undefined) return undefined;
+    if (path === root) return `Stamp root "${root}" is already in ${ownFiles}.`;
+    if (!found.isDirectory())
+      return `${path} is in ${ownFiles} and is not a folder, and stamp root "${root}" needs it to be one.`;
+  }
+  return undefined;
+}
+
+async function heldConflict(folder: string, path: string) {
+  return (await entryAt(folder, path)) === undefined
+    ? undefined
+    : `${path} is already in ${ownFiles}.`;
 }
 
 async function conflictIn(
@@ -172,13 +238,28 @@ async function conflictIn(
   roots: readonly Owned[],
   required: Requirements,
 ): Promise<string | undefined> {
-  for (const { root } of roots)
-    if (await held(folder, root.path))
-      return `Stamp root "${root.path}" is already in the generated repository's own files.`;
-  for (const path of [stampCheckerPath, stampRecordPath])
-    if (await held(folder, path))
-      return `${path} is already in the generated repository's own files.`;
+  for (const { root } of roots) {
+    const conflict = await rootConflict(folder, root.path);
+    if (conflict !== undefined) return conflict;
+  }
+  for (const path of [stampCheckerPath, stampRecordPath]) {
+    const conflict = await heldConflict(folder, path);
+    if (conflict !== undefined) return conflict;
+  }
   return requirementConflict(folder, required);
+}
+
+// Interface: places the lockfile's bytes as they are, in a staging folder
+// that token substitution has already rendered, so nothing rewrites them. It
+// refuses a lockfile the folder already holds as a stamp conflict.
+export async function placeLockfile(
+  staging: RenderedStaging,
+  bytes: Uint8Array,
+): Promise<void> {
+  const conflict = await heldConflict(staging.path, lockfilePath);
+  if (conflict !== undefined)
+    throw new StampRefusal("stamp_conflict", conflict);
+  await writeFile(join(staging.path, lockfilePath), bytes, { flag: "wx" });
 }
 
 async function writeNew(
@@ -214,7 +295,7 @@ export async function stampKernel(
 ): Promise<number> {
   const folder = staging.path;
   const roots = stampedRoots(kernel, selection);
-  const required = requirementsOf(kernel, selection);
+  const required = requirementsOf(kernel, selection.addons);
   const conflict = await conflictIn(folder, roots, required);
   if (conflict !== undefined)
     throw new StampRefusal("stamp_conflict", conflict);

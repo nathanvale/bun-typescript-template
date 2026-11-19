@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { KernelRefusal } from "../../src/kernel-reader.ts";
+import { KernelRefusal, readKernel } from "../../src/kernel-reader.ts";
 import {
   bootstrapWithKernel,
   type KernelBootstrap,
@@ -28,6 +28,33 @@ export type StampingRun = {
   readonly parent: string;
   readonly request: KernelBootstrap;
 };
+
+// Interface: the repair line each stamp refusal must end with, written out
+// here so a test compares the source's text with a second copy.
+export const stampRepairs = {
+  unknown: "Select only add-ons that commit declares.",
+  name: "Rename the add-on in the kernel repository, then give the commit that holds the change.",
+  requirement: "Add the add-on it requires to the add-on selection.",
+  disagree:
+    "Make the kernel declaration require one version of that package, then give the commit that holds the change.",
+  lockfile:
+    "Put the lockfile for that package set at that path in the template, or supply the lockfile's bytes.",
+  conflict:
+    "Remove it from the template's own files for a generated repository. Bootstrap alone supplies stamped source, its requirements, the stamp checker, the stamp record and the lockfile.",
+};
+
+// Interface: the small kernel repository's first layout, committed into
+// `repository` and read through the kernel reader.
+export function smallKernel(
+  repository: string,
+  declaration: unknown = declarationFor(firstLayout),
+) {
+  const commit = kernelRepository(
+    repository,
+    kernelEntries(firstLayout, declaration),
+  );
+  return readKernel({ repository, commit }, declarationPathIn(firstLayout));
+}
 
 export const tokenText = "__REPOSITORY_NAME__ and __SOURCE_PACKET__\n";
 export const notUtf8 = new Uint8Array([0xc3, 0x28, 0xff, 0x00, 0x80, 0x0a]);
@@ -86,7 +113,9 @@ export function stampingFixture() {
   };
 }
 
-export async function refusalOf(request: KernelBootstrap): Promise<Refused> {
+export async function bootstrapRefusal(
+  request: KernelBootstrap,
+): Promise<Refused> {
   try {
     await bootstrapWithKernel(request);
   } catch (error) {

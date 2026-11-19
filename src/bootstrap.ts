@@ -37,6 +37,7 @@ import {
 import {
   type LockfileInput,
   lockfileFor,
+  placeLockfile,
   selectAddons,
   stampKernel,
 } from "./stamping.ts";
@@ -675,8 +676,7 @@ export async function bootstrapWithKernel(
     sourcePacket: request.sourcePacket,
   };
   return bootstrap(options, async (staging) => {
-    if (lockfile !== undefined)
-      await writeFile(join(staging.path, "bun.lock"), lockfile, { flag: "wx" });
+    if (lockfile !== undefined) await placeLockfile(staging, lockfile);
     const stamped = await stampKernel(staging, kernel, selection, {
       kernelRepository: request.kernelRepository,
       stampCheckSource: join(TEMPLATE_ROOT, "src/stamp-check.ts"),

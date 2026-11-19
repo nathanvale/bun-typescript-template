@@ -4,7 +4,10 @@ import { join } from "node:path";
 import { KERNEL_RECIPE, RECIPES } from "../../../src/recipe.ts";
 import { committedLockfiles } from "../../../src/stamping.ts";
 import { invoke } from "../../support/bootstrap-cli-fixture.ts";
-import { repairs as readerRepairs } from "../../support/kernel-refusal.ts";
+import {
+  repairs as readerRepairs,
+  refused,
+} from "../../support/kernel-refusal.ts";
 import {
   declarationFor,
   firstLayout,
@@ -14,29 +17,17 @@ import {
 import {
   declarationWith,
   leftBehind,
-  refusalOf,
+  bootstrapRefusal,
   stampingFixture,
+  stampRepairs as repairs,
 } from "../../support/stamping-fixture.ts";
 
 const run = stampingFixture();
 
-const repairs = {
-  unknown: "Select only add-ons that commit declares.",
-  requirement: "Add the add-on it requires to the add-on selection.",
-  lockfile:
-    "Put the lockfile for that package set at that path in the template, or supply the lockfile's bytes.",
-  conflict:
-    "Remove it from the template's own files for a generated repository. Stamped source, its requirements, the stamp checker and the stamp record come from the stamp alone.",
-};
-
-function refused(code: string, cause: string, repair: string) {
-  return { code, message: `${cause} Repair: ${repair}`, repair };
-}
-
 describe("refusals before any staging folder exists", () => {
   test("an unknown add-on is refused with the list of valid names", async () => {
     const stamping = run({ addons: ["beta", "gamma"] });
-    expect(await refusalOf(stamping.request)).toEqual(
+    expect(await bootstrapRefusal(stamping.request)).toEqual(
       refused(
         "addon_unknown",
         `"gamma" is not an add-on at kernel commit ${stamping.request.kernel.commit}. The add-ons there are alpha, beta.`,
@@ -55,7 +46,7 @@ describe("refusals before any staging folder exists", () => {
       entries: kernelEntries(firstLayout, declaration),
       addons: ["approval"],
     });
-    expect(await refusalOf(stamping.request)).toEqual(
+    expect(await bootstrapRefusal(stamping.request)).toEqual(
       refused(
         "addon_requirement_missing",
         'Add-on "approval" requires "state", which is not selected.',
@@ -69,7 +60,7 @@ describe("refusals before any staging folder exists", () => {
     const stamping = run();
     const missing = join(stamping.parent, "no-kernel-here");
     expect(
-      await refusalOf({
+      await bootstrapRefusal({
         ...stamping.request,
         kernel: { ...stamping.request.kernel, repository: missing },
       }),
@@ -88,7 +79,7 @@ describe("refusals before any staging folder exists", () => {
     const commit = "f".repeat(40);
     const { repository } = stamping.request.kernel;
     expect(
-      await refusalOf({
+      await bootstrapRefusal({
         ...stamping.request,
         kernel: { repository, commit },
       }),
@@ -104,7 +95,7 @@ describe("refusals before any staging folder exists", () => {
 
   test("a committed lockfile the template does not hold is refused", async () => {
     const stamping = run({ lockfile: { source: "committed" } });
-    expect(await refusalOf(stamping.request)).toEqual(
+    expect(await bootstrapRefusal(stamping.request)).toEqual(
       refused(
         "lockfile_missing",
         `The template holds no committed lockfile for package set base: ${committedLockfiles}/base.lock is not there.`,
@@ -149,7 +140,7 @@ describe("a stamp conflict removes its staging folder and publishes nothing", ()
         base: { ...declaration.base, ...change },
       }),
     });
-    expect(await refusalOf(stamping.request)).toEqual(
+    expect(await bootstrapRefusal(stamping.request)).toEqual(
       refused("stamp_conflict", cause, repairs.conflict),
     );
     expect(leftBehind(stamping)).toEqual([]);
