@@ -1510,5 +1510,61 @@
     "testFile": "tests/template/stamping/stamping.test.ts",
     "title": "gives no file a later modification time than the stamp record$",
     "source": "1ae6c19 feat(bootstrap): stamp the kernel through a kernel row"
+  },
+  {
+    "id": "8ee369b-stamping-addon-name",
+    "patch": "tests/planted-faults/patches/8ee369b-stamping-addon-name.patch",
+    "testFile": "tests/template/stamping/add-on-selection.test.ts",
+    "title": "refuses the selected add-on name \"\\.\\./\\.\\./outside\", which a lockfile path or a stamp record cannot hold$",
+    "source": "8ee369b fix(stamping): findings from the review before the first push"
+  },
+  {
+    "id": "8ee369b-stamping-addon-name-base",
+    "patch": "tests/planted-faults/patches/8ee369b-stamping-addon-name-base.patch",
+    "testFile": "tests/template/stamping/add-on-selection.test.ts",
+    "title": "refuses the selected add-on name \"base\", which a lockfile path or a stamp record cannot hold$",
+    "source": "8ee369b fix(stamping): findings from the review before the first push"
+  },
+  {
+    "id": "8ee369b-stamping-requirements-disagree",
+    "patch": "tests/planted-faults/patches/8ee369b-stamping-requirements-disagree.patch",
+    "testFile": "tests/template/stamping/add-on-selection.test.ts",
+    "title": "refuses a package the kernel and a selected add-on require at different versions, naming both$",
+    "source": "8ee369b fix(stamping): findings from the review before the first push"
+  },
+  {
+    "id": "8ee369b-stamping-selection-frozen",
+    "patch": "tests/planted-faults/patches/8ee369b-stamping-selection-frozen.patch",
+    "testFile": "tests/template/stamping/add-on-selection.test.ts",
+    "title": "cannot be changed after it is checked$",
+    "source": "8ee369b fix(stamping): findings from the review before the first push"
+  },
+  {
+    "id": "8ee369b-stamping-root-on-the-way",
+    "patch": "tests/planted-faults/patches/8ee369b-stamping-root-on-the-way.patch",
+    "testFile": "tests/template/stamping/stamp-kernel.test.ts",
+    "title": "refuses a file where a folder on the way to a stamp root belongs, and writes nothing$",
+    "source": "8ee369b fix(stamping): findings from the review before the first push"
+  },
+  {
+    "id": "8ee369b-stamping-lockfile-conflict",
+    "patch": "tests/planted-faults/patches/8ee369b-stamping-lockfile-conflict.patch",
+    "testFile": "tests/template/stamping/stamp-kernel.test.ts",
+    "title": "refuses a lockfile already in the folder as a stamp conflict, and keeps it$",
+    "source": "8ee369b fix(stamping): findings from the review before the first push"
+  },
+  {
+    "id": "8ee369b-merged-requirements-unreadable",
+    "patch": "tests/planted-faults/patches/8ee369b-merged-requirements-unreadable.patch",
+    "testFile": "tests/template/stamping/stamp-kernel.test.ts",
+    "title": "fails before it writes anything when package.json is not an object, naming the file and the repair$",
+    "source": "8ee369b fix(stamping): findings from the review before the first push"
+  },
+  {
+    "id": "8ee369b-merged-requirements-package-lists",
+    "patch": "tests/planted-faults/patches/8ee369b-merged-requirements-package-lists.patch",
+    "testFile": "tests/template/stamping/merged-requirements.test.ts",
+    "title": "merging keeps a list in package.json one item a line and fits a list in the dead-code settings on its line$",
+    "source": "8ee369b fix(stamping): findings from the review before the first push"
   }
 ]
