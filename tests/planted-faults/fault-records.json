@@ -1321,5 +1321,19 @@
     "testFile": "tests/template/stamp-check/stamp-record.test.ts",
     "title": "a stamp checker path that holds a NUL byte$",
     "source": "016b761 fix(kernel-reader): answer the third review round of #113"
+  },
+  {
+    "id": "b3637f2-stamp-check-stamped-link",
+    "patch": "tests/planted-faults/patches/b3637f2-stamp-check-stamped-link.patch",
+    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
+    "title": "returns broken for a symbolic link where a stamped file was, naming the file$",
+    "source": "b3637f2 fix(stamp-check): open each stamped file once"
+  },
+  {
+    "id": "b3637f2-stamp-check-name-bytes",
+    "patch": "tests/planted-faults/patches/b3637f2-stamp-check-name-bytes.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-entries.test.ts",
+    "title": "a file whose name is not UTF-8 text$",
+    "source": "b3637f2 fix(stamp-check): open each stamped file once"
   }
 ]
