@@ -82,7 +82,7 @@ function ruleFileProblems(
     const copy = join(generated, file);
     if (!existsSync(copy))
       return [
-        `${name} has no ${file}, a rule file the template's eslint.config.mjs loads. Repair: name it in LINT_RULES in src/recipe.ts, so that Bootstrap copies it.`,
+        `${name} has no ${file}, a rule file the template's eslint.config.mjs loads. Repair: name it in LINT_RULE_FILES in src/recipe.ts, so that Bootstrap copies it.`,
       ];
     return readFileSync(copy, "utf8") ===
       readFileSync(join(template, file), "utf8")

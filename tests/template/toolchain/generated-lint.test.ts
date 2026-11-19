@@ -201,7 +201,7 @@ test("a generated tree that lacks a rule file names the file and the recipe tabl
   const root = tree({ "eslint.config.mjs": FIXTURE_TEMPLATE_CONFIG });
   rmSync(join(root, "config/payload-rules.mjs"));
   expect(await generatedLintProblems(fixtureTemplate, root, "recipe")).toEqual([
-    "recipe has no config/payload-rules.mjs, a rule file the template's eslint.config.mjs loads. Repair: name it in LINT_RULES in src/recipe.ts, so that Bootstrap copies it.",
+    "recipe has no config/payload-rules.mjs, a rule file the template's eslint.config.mjs loads. Repair: name it in LINT_RULE_FILES in src/recipe.ts, so that Bootstrap copies it.",
   ]);
 });
 
