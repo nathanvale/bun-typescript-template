@@ -1,0 +1,13 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 9f5f56c..bae9b1d 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -170,7 +170,7 @@ function repositoryAt(path: string): string {
+   ]);
+   if (!found.ok) throw missing(`git says "${found.said}".`);
+   const [name = "", inside = ""] = found.stdout.toString().split("\n");
+-  if (inside !== "")
++  if (inside === "never")
+     throw missing("that folder is inside the repository above it.");
+   if (name !== "sha1")
+     throw new KernelRefusal(

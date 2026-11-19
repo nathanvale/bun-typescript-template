@@ -1,0 +1,13 @@
+diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+index 72a5d1a..cfeea0d 100644
+--- a/src/stamp-check.ts
++++ b/src/stamp-check.ts
+@@ -368,7 +368,7 @@ function entriesUnder(folder: string, path: string): Under[] {
+     () => readdirSync(join(folder, path), { withFileTypes: true }),
+     undefined,
+   );
+-  if (entries === undefined) return [{ at: path, listed: false }];
++  if (entries === undefined) return [];
+   return entries
+     .map((entry) => ({ entry, at: `${path}/${entry.name}` }))
+     .sort((one, other) => (one.at < other.at ? -1 : 1))

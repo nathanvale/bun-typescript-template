@@ -1,0 +1,13 @@
+diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+index 72a5d1a..3796478 100644
+--- a/src/stamp-check.ts
++++ b/src/stamp-check.ts
+@@ -350,7 +350,7 @@ function folderFindings(folder: string, roots: readonly string[]) {
+     ),
+   );
+   return [...onTheWay]
+-    .filter((path) => entryAt(join(folder, path))?.isDirectory() === false)
++    .filter((path) => entryAt(join(folder, path))?.isDirectory() === undefined)
+     .map(
+       (path): StampFinding => ({
+         kind: "not-a-folder",

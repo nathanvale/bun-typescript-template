@@ -1,0 +1,13 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 9f5f56c..b988fbc 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -217,7 +217,7 @@ function entriesAt(repository: string, seam: KernelSeam): Entry[] {
+     const path = utf8Of(name);
+     return {
+       path: path ?? name.toString(),
+-      utf8: path !== undefined,
++      utf8: !name.toString().includes(String.fromCharCode(0xfffd)),
+       mode,
+       id,
+     };

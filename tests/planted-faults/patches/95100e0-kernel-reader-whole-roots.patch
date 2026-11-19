@@ -1,0 +1,13 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 9f5f56c..917a760 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -465,7 +465,7 @@ function requireWholeRoots(
+     .stdout.toString()
+     .split("\n");
+   for (const [index, { path, tree }] of roots.entries())
+-    if (named[index] !== tree)
++    if (named[index] === "")
+       throw new KernelRefusal(
+         "kernel_entry_unsupported",
+         `${source}${path} in commit ${seam.commit} holds an entry that is not a file, such as an empty folder, and a stamp root holds plain files only.`,

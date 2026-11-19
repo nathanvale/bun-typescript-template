@@ -1188,5 +1188,61 @@
     "testFile": "tests/template/stamp-check/git-identities.test.ts",
     "title": "refuses a path listed twice$",
     "source": "12232bd feat(stamp-check): compute git blob and tree identities in process"
+  },
+  {
+    "id": "95100e0-kernel-reader-inside-repository",
+    "patch": "tests/planted-faults/patches/95100e0-kernel-reader-inside-repository.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
+    "title": "a colon in the path above it defeats git's own limit on looking upward$",
+    "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
+  },
+  {
+    "id": "95100e0-kernel-reader-name-replacement",
+    "patch": "tests/planted-faults/patches/95100e0-kernel-reader-name-replacement.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
+    "title": "a file whose name holds the replacement character itself is read",
+    "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
+  },
+  {
+    "id": "95100e0-kernel-reader-declaration-bytes",
+    "patch": "tests/planted-faults/patches/95100e0-kernel-reader-declaration-bytes.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
+    "title": "a kernel declaration with a byte that is not UTF-8 is refused, with its repair line$",
+    "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
+  },
+  {
+    "id": "95100e0-kernel-reader-whole-roots",
+    "patch": "tests/planted-faults/patches/95100e0-kernel-reader-whole-roots.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
+    "title": "a stamp root that holds an empty folder, which no list of files shows, is refused with its repair line$",
+    "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
+  },
+  {
+    "id": "95100e0-stamp-check-backslash",
+    "patch": "tests/planted-faults/patches/95100e0-stamp-check-backslash.patch",
+    "testFile": "tests/template/stamp-check/stamp-record.test.ts",
+    "title": "a file path written with a backslash$",
+    "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
+  },
+  {
+    "id": "95100e0-stamp-check-linked-root",
+    "patch": "tests/planted-faults/patches/95100e0-stamp-check-linked-root.patch",
+    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
+    "title": "for a stamp root replaced by a link to a folder that holds the same files, naming the stamp root$",
+    "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
+  },
+  {
+    "id": "95100e0-stamp-check-unlistable",
+    "patch": "tests/planted-faults/patches/95100e0-stamp-check-unlistable.patch",
+    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
+    "title": "for a folder in a stamp root that cannot be listed, naming the folder$",
+    "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
+  },
+  {
+    "id": "95100e0-stamp-check-record-link",
+    "patch": "tests/planted-faults/patches/95100e0-stamp-check-record-link.patch",
+    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
+    "title": "for a stamp record that is a link to nothing, naming the stamp record",
+    "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
   }
 ]
