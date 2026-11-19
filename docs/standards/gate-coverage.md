@@ -89,25 +89,29 @@ gates and their witnesses.
 ## Generated repositories
 
 - Bootstrap copies the six lint rule files in `config/` into a repository
-  generated from a durable recipe, and that recipe's `eslint.config.mjs`
-  turns on every lint rule this repository's `eslint.config.mjs` turns on
-  for the same kind of file: source, test and `.mjs`.
+  generated from a durable recipe. That recipe's `eslint.config.mjs` turns
+  on every lint rule this repository's `eslint.config.mjs` turns on for a
+  file at the same path.
 - `tests/template/toolchain/generated-lint.test.ts` generates each recipe.
-  It fails when a generated repository lacks a rule file, holds another
-  text of one, or sets a rule another way for a file. It also plants one
-  violation of each rule, and every comment case.
-- Fault `19348a4-recipe-rule-file` drops a rule file from the recipe table,
-  and fault `19348a4-eslint-config-rule-off` drops `no-comments` from the
-  durable recipe's lint config; the durable recipe's case kills both.
-- Static admission compares a generated starter repository's rule files
-  with this repository's. Fault `19348a4-static-admission-rule-files`
-  drops that comparison.
+  It fails when a generated repository lacks a lint rule file, holds
+  another text of one, or sets a lint rule another way for a file. It
+  judges each generated file and eight probe paths, `scripts/probe.ts`
+  among them, so a lint rule narrowed to today's files fails too. It also
+  plants one violation of each lint rule, and every comment case.
+- Fault `19348a4-recipe-rule-file` drops a lint rule file from the recipe
+  table, and fault `19348a4-eslint-config-rule-off` drops `no-comments`
+  from the durable recipe's lint config; the durable recipe's case kills
+  both.
+- Static admission compares the lint rule files of a repository generated
+  with a CLI starter with this repository's. Fault
+  `19348a4-static-admission-rule-files` drops that comparison.
 - A scratch repository has no lint. Its `AGENTS.md` states the comment
-  rule.
+  lint rule as an instruction.
 - Review only: the truth of a `Platform:` or `Interface:` claim in a
-  generated repository, a rule file edited in a repository generated from
-  a recipe that is not a CLI starter, and each gate script of this
-  repository, which no generated repository gets.
+  generated repository; a lint rule file edited in a repository generated
+  with no CLI starter; a folder the template has no file under, such as a
+  package's own `scripts/`; and each gate script of this repository, which
+  no generated repository gets.
 
 ## Untrusted-value lints
 
@@ -166,6 +170,8 @@ file extensions in those directories.
 - In review, verify each accepted decision citation. Require a Command
   Contract 3 question number, an ID such as `N4a`, or the ruling date.
   Consult the [CLI kernel authority](../agents/cli-kernel.md).
+- A generated repository gets these lint rules too: see
+  [Generated repositories](#generated-repositories).
 - Not covered: `starters/simple/`, `starters/complex/`, the bootstrap
   profiles, the `.ts.txt` fixtures, the kernel lint configuration that lints
   a materialised tree, YAML and Markdown.
