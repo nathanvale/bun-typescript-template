@@ -948,42 +948,42 @@
     "id": "19348a4-recipe-rule-file",
     "patch": "tests/planted-faults/patches/19348a4-recipe-rule-file.patch",
     "testFile": "tests/template/toolchain/generated-lint.test.ts",
-    "title": "^a repository generated from the durable single-package recipe holds the template's rule files and turns on every rule the template turns on$",
+    "title": "^a repository generated from the durable single-package recipe holds the template's lint rule files and turns on every lint rule the template turns on$",
     "source": "19348a4 feat(lint): give generated repositories the template lint rules"
   },
   {
     "id": "19348a4-eslint-config-rule-off",
     "patch": "tests/planted-faults/patches/19348a4-eslint-config-rule-off.patch",
     "testFile": "tests/template/toolchain/generated-lint.test.ts",
-    "title": "^a repository generated from the durable single-package recipe holds the template's rule files and turns on every rule the template turns on$",
+    "title": "^a repository generated from the durable single-package recipe holds the template's lint rule files and turns on every lint rule the template turns on$",
     "source": "19348a4 feat(lint): give generated repositories the template lint rules"
   },
   {
     "id": "19348a4-generated-lint-setting",
     "patch": "tests/planted-faults/patches/19348a4-generated-lint-setting.patch",
     "testFile": "tests/template/toolchain/generated-lint.test.ts",
-    "title": "^a generated tree that only warns on a rule names the rule for each file it misses$",
+    "title": "^a generated tree that only warns on a lint rule names it for each file and probe path it misses$",
     "source": "19348a4 feat(lint): give generated repositories the template lint rules"
   },
   {
     "id": "19348a4-generated-lint-text",
     "patch": "tests/planted-faults/patches/19348a4-generated-lint-text.patch",
     "testFile": "tests/template/toolchain/generated-lint.test.ts",
-    "title": "^a generated tree whose rule file has other text names the file$",
+    "title": "^a generated tree whose lint rule file has other text names the file$",
     "source": "19348a4 feat(lint): give generated repositories the template lint rules"
   },
   {
     "id": "19348a4-generated-lint-missing",
     "patch": "tests/planted-faults/patches/19348a4-generated-lint-missing.patch",
     "testFile": "tests/template/toolchain/generated-lint.test.ts",
-    "title": "^a generated tree that lacks a rule file names the file and the recipe table$",
+    "title": "^a generated tree that lacks a lint rule file names the file and the recipe table$",
     "source": "19348a4 feat(lint): give generated repositories the template lint rules"
   },
   {
     "id": "19348a4-static-admission-rule-files",
     "patch": "tests/planted-faults/patches/19348a4-static-admission-rule-files.patch",
     "testFile": "tests/template/static-admission/static-admission-policy-in-process.test.ts",
-    "title": "^checkPolicy names each rule file that differs from the template's$",
+    "title": "^checkPolicy names each lint rule file that differs from the template's$",
     "source": "19348a4 feat(lint): give generated repositories the template lint rules"
   },
   {

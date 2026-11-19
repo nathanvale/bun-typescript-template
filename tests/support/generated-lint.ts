@@ -1,29 +1,22 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ESLint } from "eslint";
+import { EXPECTED_RULE_FILES } from "./lint-rule-files.ts";
 
-export const RULE_FILES = [
-  "config/anti-slop-bindings.mjs",
-  "config/anti-slop-rules.mjs",
-  "config/anti-slop-type-rules.mjs",
-  "config/payload-rules.mjs",
-  "config/platform-rules.mjs",
-  "config/template-rules.mjs",
+const PROBES = [
+  "probe.mjs",
+  "probe.ts",
+  "scripts/probe.ts",
+  "src/probe.cts",
+  "src/probe.mts",
+  "src/probe.ts",
+  "tests/probe.ts",
+  "tests/support/probe.mts",
 ] as const;
 
-export type Kind = "source" | "test" | "config";
-
-export const TEMPLATE_FILES: Readonly<Record<Kind, string>> = {
-  source: "src/recipe.ts",
-  test: "tests/template/doctor/doctor.test.ts",
-  config: "eslint.config.mjs",
-};
-
 const TEMPLATE_RULE = /^(?:repository|anti-slop)\//;
-const SOURCE_FOLDER = /^(?:packages\/[^/]+\/)?src\//;
-const TEST_FILE = /(?:^tests\/|\.test\.ts$)/;
 const REPAIR =
-  "Repair: copy the rule's entry from the template's eslint.config.mjs into the eslint.config.mjs this recipe copies.";
+  "Repair: copy the lint rule's entry, with its files, from the template's eslint.config.mjs into the eslint.config.mjs this recipe copies.";
 
 type Settings = ReadonlyMap<string, unknown>;
 
@@ -51,26 +44,18 @@ async function turnedOn(eslint: ESLint, file: string): Promise<Settings> {
   );
 }
 
-export async function templateRulesOn(
+export async function lintRulesOn(
   root: string,
   file: string,
 ): Promise<string[]> {
   return [...(await turnedOn(new ESLint({ cwd: root }), file)).keys()].sort();
 }
 
-export function kindsOf(file: string): Kind[] {
-  if (file.endsWith(".mjs")) return ["config"];
-  return [
-    ...(SOURCE_FOLDER.test(file) ? (["source"] as const) : []),
-    ...(TEST_FILE.test(file) ? (["test"] as const) : []),
-  ];
-}
-
 async function lintedFiles(root: string): Promise<string[]> {
   const files = await Array.fromAsync(
-    new Bun.Glob("**/*.{ts,mjs}").scan({ cwd: root }),
+    new Bun.Glob("**/*.{ts,mts,cts,mjs}").scan({ cwd: root }),
   );
-  return files.filter((file) => !file.includes("node_modules/")).sort();
+  return files.filter((file) => !file.includes("node_modules/"));
 }
 
 function ruleFileProblems(
@@ -78,11 +63,11 @@ function ruleFileProblems(
   generated: string,
   name: string,
 ): string[] {
-  return RULE_FILES.flatMap((file) => {
+  return EXPECTED_RULE_FILES.flatMap((file) => {
     const copy = join(generated, file);
     if (!existsSync(copy))
       return [
-        `${name} has no ${file}, a rule file the template's eslint.config.mjs loads. Repair: name it in LINT_RULE_FILES in src/recipe.ts, so that Bootstrap copies it.`,
+        `${name} has no ${file}, a lint rule file the template's eslint.config.mjs loads. Repair: name it in LINT_RULE_FILES in src/recipe.ts, so that Bootstrap copies it.`,
       ];
     return readFileSync(copy, "utf8") ===
       readFileSync(join(template, file), "utf8")
@@ -100,20 +85,15 @@ async function ruleSettingProblems(
 ): Promise<string[]> {
   const ours = new ESLint({ cwd: template });
   const theirs = new ESLint({ cwd: generated });
-  const wanted = {
-    source: await turnedOn(ours, TEMPLATE_FILES.source),
-    test: await turnedOn(ours, TEMPLATE_FILES.test),
-    config: await turnedOn(ours, TEMPLATE_FILES.config),
-  };
+  const files = new Set([...(await lintedFiles(generated)), ...PROBES]);
   const problems: string[] = [];
-  for (const file of await lintedFiles(generated)) {
+  for (const file of [...files].sort()) {
     const given = await settingsFor(theirs, file);
-    for (const kind of kindsOf(file))
-      for (const [rule, setting] of wanted[kind])
-        if (!Bun.deepEquals(given.get(rule), setting))
-          problems.push(
-            `${name} does not turn on ${rule} for ${file} as the template's eslint.config.mjs does for ${TEMPLATE_FILES[kind]}. ${REPAIR}`,
-          );
+    for (const [rule, setting] of await turnedOn(ours, file))
+      if (!Bun.deepEquals(given.get(rule), setting))
+        problems.push(
+          `${name} does not turn on ${rule} for ${file} as the template's eslint.config.mjs does for a file at that path. ${REPAIR}`,
+        );
   }
   return problems;
 }

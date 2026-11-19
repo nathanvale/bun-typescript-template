@@ -14,20 +14,20 @@ import {
   parsePackage,
   requireSuccess,
   ROOT,
+  rowKey,
 } from "../../support/bootstrap-cli-fixture.ts";
 import {
   generatedLint,
   generatedLintProblems,
-  kindsOf,
-  RULE_FILES,
-  TEMPLATE_FILES,
-  templateRulesOn,
+  lintRulesOn,
 } from "../../support/generated-lint.ts";
 import { commentCases } from "../../support/lint-comment-cases.ts";
 import { antiSlopGate, repositoryGate } from "../../support/lint-gate-cases.ts";
+import { EXPECTED_RULE_FILES } from "../../support/lint-rule-files.ts";
+import { processWatchdog } from "../../support/process.ts";
 import { testFolder } from "../../support/test-folder.ts";
 
-const generationTimeout = 120_000;
+const generationTimeout = processWatchdog(5);
 const SOURCE_FILE = "src/commands.ts";
 const folders: string[] = [];
 
@@ -48,20 +48,23 @@ const EVERY_FILE = [
   "repository/no-comments",
   "repository/no-host-path-literal",
 ];
-const TEMPLATE_RULES = {
-  source: [
-    ...EVERY_FILE,
-    "repository/no-in-operator",
-    "repository/no-locale-compare",
-  ],
-  test: [
-    ...EVERY_FILE,
-    "repository/require-to-throw-message",
-    "repository/tests-no-sleep",
-    "repository/tests-use-test-folder",
-  ],
-  config: EVERY_FILE,
-};
+const SOURCE = [
+  ...EVERY_FILE,
+  "repository/no-in-operator",
+  "repository/no-locale-compare",
+];
+const TEST = [
+  ...EVERY_FILE,
+  "repository/require-to-throw-message",
+  "repository/tests-no-sleep",
+  "repository/tests-use-test-folder",
+];
+const TEMPLATE_LINT_RULES: [string, string[]][] = [
+  ["src/recipe.ts", SOURCE],
+  ["scripts/doctor.ts", SOURCE],
+  ["tests/template/doctor/doctor.test.ts", TEST],
+  ["eslint.config.mjs", EVERY_FILE],
+];
 const LINTED = [
   "durable single-package",
   "durable monorepo",
@@ -69,13 +72,7 @@ const LINTED = [
   "durable single-package complex",
 ];
 const TURN_ON =
-  "Repair: copy the rule's entry from the template's eslint.config.mjs into the eslint.config.mjs this recipe copies.";
-
-function rowKey({ request }: ProjectRecipe): string {
-  return [request.profile, request.layout, request.starter]
-    .filter((word) => word !== undefined)
-    .join(" ");
-}
+  "Repair: copy the lint rule's entry, with its files, from the template's eslint.config.mjs into the eslint.config.mjs this recipe copies.";
 
 function recipeNamed(row: string): ProjectRecipe {
   const recipe = RECIPES.find((candidate) => rowKey(candidate) === row);
@@ -139,12 +136,25 @@ export default [
   { files: ["tests/**/*.ts"], rules: { "repository/tests-no-sleep": "error" } },
 ];
 `;
+const FIXTURE_FILES_WITH_NO_COMMENTS = [
+  ...EXPECTED_RULE_FILES,
+  "eslint.config.mjs",
+  "probe.mjs",
+  "probe.ts",
+  "scripts/probe.ts",
+  "src/cli.ts",
+  "src/probe.ts",
+  "tests/cli.test.ts",
+  "tests/probe.ts",
+];
 
 function tree(files: Record<string, string>): string {
   const root = testFolder("generated-lint-fixture-");
   folders.push(root);
   for (const [path, text] of Object.entries({
-    ...Object.fromEntries(RULE_FILES.map((file) => [file, `// ${file}\n`])),
+    ...Object.fromEntries(
+      EXPECTED_RULE_FILES.map((file) => [file, `export default "${file}";\n`]),
+    ),
     "src/cli.ts": "",
     "tests/cli.test.ts": "",
     ...files,
@@ -165,47 +175,26 @@ async function problemsOf(files: Record<string, string>): Promise<string[]> {
   );
 }
 
-test.each(Object.entries(TEMPLATE_RULES))(
-  "the template turns on exactly these rules of its own for its %s file",
-  async (kind, rules) => {
-    const file = TEMPLATE_FILES[kind as keyof typeof TEMPLATE_FILES];
-    expect(await templateRulesOn(ROOT, file)).toEqual(rules.toSorted());
+test.each(TEMPLATE_LINT_RULES)(
+  "the template turns on exactly these lint rules of its own for %s",
+  async (file, rules) => {
+    expect(await lintRulesOn(ROOT, file)).toEqual(rules.toSorted());
   },
 );
 
-test("a generated file is judged as source, as a test, as both or as a rule file by its path", () => {
-  expect(
-    Object.fromEntries(
-      [
-        "src/cli.ts",
-        "packages/example-lib/src/index.ts",
-        "src/index.test.ts",
-        "tests/support/test-folder.ts",
-        "config/template-rules.mjs",
-      ].map((file) => [file, kindsOf(file)]),
-    ),
-  ).toEqual({
-    "src/cli.ts": ["source"],
-    "packages/example-lib/src/index.ts": ["source"],
-    "src/index.test.ts": ["source", "test"],
-    "tests/support/test-folder.ts": ["test"],
-    "config/template-rules.mjs": ["config"],
-  });
-});
-
-test("a generated tree with the template's rule files and rule settings has no problem", async () => {
+test("a generated tree with the template's lint rule files and settings has no problem", async () => {
   expect(await problemsOf({})).toEqual([]);
 });
 
-test("a generated tree that lacks a rule file names the file and the recipe table", async () => {
+test("a generated tree that lacks a lint rule file names the file and the recipe table", async () => {
   const root = tree({ "eslint.config.mjs": FIXTURE_TEMPLATE_CONFIG });
   rmSync(join(root, "config/payload-rules.mjs"));
   expect(await generatedLintProblems(fixtureTemplate, root, "recipe")).toEqual([
-    "recipe has no config/payload-rules.mjs, a rule file the template's eslint.config.mjs loads. Repair: name it in LINT_RULE_FILES in src/recipe.ts, so that Bootstrap copies it.",
+    "recipe has no config/payload-rules.mjs, a lint rule file the template's eslint.config.mjs loads. Repair: name it in LINT_RULE_FILES in src/recipe.ts, so that Bootstrap copies it.",
   ]);
 });
 
-test("a generated tree whose rule file has other text names the file", async () => {
+test("a generated tree whose lint rule file has other text names the file", async () => {
   expect(
     await problemsOf({ "config/template-rules.mjs": "export default {};\n" }),
   ).toEqual([
@@ -215,49 +204,55 @@ test("a generated tree whose rule file has other text names the file", async () 
 
 test.each([
   [
-    "leaves a rule off",
+    "leaves a lint rule off",
     FIXTURE_TEMPLATE_CONFIG.replace(
       '"repository/no-comments": "error"',
       '"repository/no-comments": "off"',
     ),
   ],
   [
-    "only warns on a rule",
+    "only warns on a lint rule",
     FIXTURE_TEMPLATE_CONFIG.replace(
       '"repository/no-comments": "error"',
       '"repository/no-comments": "warn"',
     ),
   ],
 ])(
-  "a generated tree that %s names the rule for each file it misses",
+  "a generated tree that %s names it for each file and probe path it misses",
   async (_, config) => {
     expect(await problemsOf({ "eslint.config.mjs": config })).toEqual(
-      [
-        ...RULE_FILES,
-        "eslint.config.mjs",
-        "src/cli.ts",
-        "tests/cli.test.ts",
-      ].map(
+      FIXTURE_FILES_WITH_NO_COMMENTS.map(
         (file) =>
-          `recipe does not turn on repository/no-comments for ${file} as the template's eslint.config.mjs does for ${TEMPLATE_FILES[kindsOf(file)[0] ?? "config"]}. ${TURN_ON}`,
+          `recipe does not turn on repository/no-comments for ${file} as the template's eslint.config.mjs does for a file at that path. ${TURN_ON}`,
       ),
     );
   },
 );
 
-test("a generated tree that narrows a test rule to one file names each test file it misses", async () => {
+test("a generated tree that narrows a lint rule to the files it has today names the probe path it misses", async () => {
   expect(
     await problemsOf({
-      "tests/other.test.ts": "",
       "eslint.config.mjs": FIXTURE_TEMPLATE_CONFIG.replace(
         '["tests/**/*.ts"]',
         '["tests/cli.test.ts"]',
       ),
     }),
   ).toEqual([
-    `recipe does not turn on repository/tests-no-sleep for tests/other.test.ts as the template's eslint.config.mjs does for tests/template/doctor/doctor.test.ts. ${TURN_ON}`,
+    `recipe does not turn on repository/tests-no-sleep for tests/probe.ts as the template's eslint.config.mjs does for a file at that path. ${TURN_ON}`,
   ]);
 });
+
+test(
+  "a generated monorepo turns the source and test lint rules on inside a package",
+  async () => {
+    const root = await generatedFrom("durable monorepo");
+    expect({
+      source: await lintRulesOn(root, "packages/probe/src/probe.ts"),
+      test: await lintRulesOn(root, "packages/probe/tests/probe.ts"),
+    }).toEqual({ source: SOURCE.toSorted(), test: TEST.toSorted() });
+  },
+  generationTimeout,
+);
 
 test(
   "the recipes whose generated repository has a lint script are the four durable ones",
@@ -276,7 +271,7 @@ test(
 );
 
 test.each(LINTED)(
-  "a repository generated from the %s recipe holds the template's rule files and turns on every rule the template turns on",
+  "a repository generated from the %s recipe holds the template's lint rule files and turns on every lint rule the template turns on",
   async (row) => {
     expect(
       await generatedLintProblems(ROOT, await generatedFrom(row), row),
@@ -304,7 +299,7 @@ test.each(LINTED)(
 );
 
 test.each(LINTED)(
-  "a repository generated from the %s recipe refuses a planted violation of each rule and admits its clean form",
+  "a repository generated from the %s recipe refuses a planted violation of each lint rule and admits its clean form",
   async (row) => {
     const root = await generatedFrom(row);
     const lint = generatedLint(root);
@@ -340,7 +335,7 @@ const LINTED_GUIDANCE = `## Comments
 Lint refuses a comment in code, so say it in a name, a type or a test title.
 ${MARKERS}
 
-The rule files in config/ are the template's. Change a rule in the template, not here.
+The lint rule files in config/ are the template's. Change a lint rule in the template, not here.
 `;
 const UNLINTED_GUIDANCE = `## Comments
 

@@ -68,9 +68,14 @@ function reached(met: () => boolean, failure: string): Promise<void> {
   const started = performance.now();
   return new Promise((resolve, reject) => {
     const poll = setInterval(() => {
-      if (met()) resolve();
-      else if (performance.now() - started >= 2_000) reject(new Error(failure));
-      else return;
+      try {
+        if (met()) resolve();
+        else if (performance.now() - started >= 2_000)
+          reject(new Error(failure));
+        else return;
+      } catch (error) {
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
       clearInterval(poll);
     }, 2);
   });

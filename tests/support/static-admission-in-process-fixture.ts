@@ -7,6 +7,7 @@ import {
   writeFileSync,
   readFileSync,
 } from "node:fs";
+import { EXPECTED_RULE_FILES } from "./lint-rule-files.ts";
 import { testFolder } from "./test-folder.ts";
 import {
   type Document as Fields,
@@ -35,18 +36,9 @@ export const policyFiles = [
   "bun.lock",
 ];
 
-export const ruleFiles = [
-  "config/anti-slop-bindings.mjs",
-  "config/anti-slop-rules.mjs",
-  "config/anti-slop-type-rules.mjs",
-  "config/payload-rules.mjs",
-  "config/platform-rules.mjs",
-  "config/template-rules.mjs",
-];
-
 export function copyRuleFiles(root: string): void {
   mkdirSync(join(root, "config"));
-  for (const file of ruleFiles)
+  for (const file of EXPECTED_RULE_FILES)
     copyFileSync(join(repository, file), join(root, file));
 }
 

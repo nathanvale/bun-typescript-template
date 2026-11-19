@@ -62,7 +62,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["src/**/*.ts"],
+    files: ["src/**/*.ts", "scripts/**/*.ts"],
     plugins: { repository },
     rules: {
       "repository/no-locale-compare": "error",

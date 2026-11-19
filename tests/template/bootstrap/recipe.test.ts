@@ -13,6 +13,8 @@ import {
   selectRecipe,
   UNCOPIED_NAMES,
 } from "../../../src/recipe.ts";
+import { rowKey } from "../../support/bootstrap-cli-fixture.ts";
+import { EXPECTED_RULE_FILES } from "../../support/lint-rule-files.ts";
 import { spawnBounded } from "../../support/process.ts";
 import { testFolder } from "../../support/test-folder.ts";
 
@@ -103,13 +105,6 @@ function selectionKey(selection: Selection): string {
     selection.monorepo ? "--monorepo" : undefined,
     selection.starter,
   ]
-    .filter((word) => word !== undefined)
-    .join(" ");
-}
-
-function rowKey(recipe: ProjectRecipe): string {
-  const { profile, layout, starter } = recipe.request;
-  return [profile, layout, starter]
     .filter((word) => word !== undefined)
     .join(" ");
 }
@@ -217,14 +212,7 @@ describe("project recipe", () => {
   });
 
   test("the four durable rows copy every lint rule file into config, and the scratch row copies none", async () => {
-    const ruleFiles = [
-      "config/anti-slop-bindings.mjs",
-      "config/anti-slop-rules.mjs",
-      "config/anti-slop-type-rules.mjs",
-      "config/payload-rules.mjs",
-      "config/platform-rules.mjs",
-      "config/template-rules.mjs",
-    ];
+    const ruleFiles = [...EXPECTED_RULE_FILES];
     expect(LINT_RULE_FILES.map((file) => `config/${file}`)).toEqual(ruleFiles);
     const copied: Record<string, unknown> = {};
     for (const recipe of RECIPES)

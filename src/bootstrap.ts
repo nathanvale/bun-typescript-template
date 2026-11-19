@@ -580,7 +580,7 @@ function commentGuidance(recipe: ProjectRecipe): string {
     ? "Lint refuses a comment in code, so say it in a name, a type or a test title."
     : "Write no comment in code. Say it in a name, a type or a test title.";
   const owner = lintsCode(recipe)
-    ? "\nThe rule files in config/ are the template's. Change a rule in the template, not here.\n"
+    ? "\nThe lint rule files in config/ are the template's. Change a lint rule in the template, not here.\n"
     : "";
   return `## Comments\n\n${refusal}\n${MARKER_GUIDANCE}\n${owner}`;
 }

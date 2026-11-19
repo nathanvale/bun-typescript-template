@@ -62,7 +62,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["src/**/*.ts", "packages/*/src/**/*.ts"],
+    files: ["src/**/*.ts", "scripts/**/*.ts", "packages/*/src/**/*.ts"],
     plugins: { repository },
     rules: {
       "repository/no-locale-compare": "error",
@@ -70,7 +70,11 @@ export default tseslint.config(
     },
   },
   {
-    files: ["tests/**/*.{ts,mts,cts}", "**/*.test.{ts,mts,cts}"],
+    files: [
+      "tests/**/*.{ts,mts,cts}",
+      "packages/*/tests/**/*.{ts,mts,cts}",
+      "**/*.test.{ts,mts,cts}",
+    ],
     plugins: { repository },
     rules: {
       "repository/require-to-throw-message": "error",

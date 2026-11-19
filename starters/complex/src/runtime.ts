@@ -5,6 +5,7 @@ import { StateDocument } from "./command-contract.ts";
 import {
   acquireJournalLock,
   appendJournal,
+  errorCode,
   JournalLockHeld,
   pendingJournalIntent,
   valueHash,
@@ -21,11 +22,7 @@ export async function inspectState(path: string): Promise<string | null> {
   try {
     text = await readFile(path, "utf8");
   } catch (error) {
-    if (
-      error instanceof Error &&
-      Object.hasOwn(error, "code") &&
-      Reflect.get(error, "code") === "ENOENT"
-    ) {
+    if (errorCode(error) === "ENOENT") {
       return null;
     }
     throw error;

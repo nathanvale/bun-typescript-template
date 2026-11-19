@@ -14,6 +14,7 @@ import {
   runGit,
   runIn,
 } from "../../support/bootstrap-cli-fixture.ts";
+import { EXPECTED_RULE_FILES } from "../../support/lint-rule-files.ts";
 import { processWatchdog } from "../../support/process.ts";
 
 const temporaryRoot = bootstrapCliFixture();
@@ -55,12 +56,7 @@ const STARTER_FILES = {
     "biome.json",
     "bun.lock",
     "bunfig.toml",
-    "config/anti-slop-bindings.mjs",
-    "config/anti-slop-rules.mjs",
-    "config/anti-slop-type-rules.mjs",
-    "config/payload-rules.mjs",
-    "config/platform-rules.mjs",
-    "config/template-rules.mjs",
+    ...EXPECTED_RULE_FILES,
     "package.json",
     "src/cli.ts",
     "tests/cli.test.ts",
@@ -84,12 +80,7 @@ const STARTER_FILES = {
     "biome.json",
     "bun.lock",
     "bunfig.toml",
-    "config/anti-slop-bindings.mjs",
-    "config/anti-slop-rules.mjs",
-    "config/anti-slop-type-rules.mjs",
-    "config/payload-rules.mjs",
-    "config/platform-rules.mjs",
-    "config/template-rules.mjs",
+    ...EXPECTED_RULE_FILES,
     "package.json",
     "src/branch-station-catalog.ts",
     "src/cli.ts",

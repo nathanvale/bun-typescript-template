@@ -258,10 +258,6 @@ function recoverStaleLock(lock: string): void {
   rmdirSync(lock);
 }
 
-function replaceEmptyDirectory(target: string, replacement: string): void {
-  renameSync(replacement, target);
-}
-
 function acquireAllocationLock(directory: string): () => void {
   const lock = join(directory, ".allocation-lock");
   sequence += 1;
@@ -270,12 +266,14 @@ function acquireAllocationLock(directory: string): () => void {
   sweepResidue(directory);
   if (existing(retiring) !== null) discard(retiring);
   const marker = stageAllocationLock(staging);
+  // Platform: rename(2) replaces a directory only when it is empty, so a
+  // populated lock that a live holder owns is never displaced.
   try {
     try {
-      replaceEmptyDirectory(lock, staging);
+      renameSync(staging, lock);
     } catch {
       recoverStaleLock(lock);
-      replaceEmptyDirectory(lock, staging);
+      renameSync(staging, lock);
     }
   } catch {
     discard(staging);

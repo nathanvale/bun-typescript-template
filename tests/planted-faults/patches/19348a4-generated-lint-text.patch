@@ -1,10 +1,10 @@
 diff --git a/tests/support/generated-lint.ts b/tests/support/generated-lint.ts
-index 3cb5ba6..d5fbf0c 100644
+index d6852b2..d179792 100644
 --- a/tests/support/generated-lint.ts
 +++ b/tests/support/generated-lint.ts
-@@ -84,8 +84,7 @@ function ruleFileProblems(
+@@ -69,8 +69,7 @@ function ruleFileProblems(
        return [
-         `${name} has no ${file}, a rule file the template's eslint.config.mjs loads. Repair: name it in LINT_RULES in src/recipe.ts, so that Bootstrap copies it.`,
+         `${name} has no ${file}, a lint rule file the template's eslint.config.mjs loads. Repair: name it in LINT_RULE_FILES in src/recipe.ts, so that Bootstrap copies it.`,
        ];
 -    return readFileSync(copy, "utf8") ===
 -      readFileSync(join(template, file), "utf8")
