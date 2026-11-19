@@ -15,6 +15,7 @@ const fallowArgs = [
 ] as const;
 const fallowRun = `node_modules/.bin/fallow ${fallowArgs.join(" ")}`;
 const done = "Done when bun run test:area standards passes.";
+const gapsReport = `${fallowRun}: its "coverage_gaps"`;
 
 type Gap = { readonly path: string; readonly exportName?: string };
 
@@ -58,21 +59,24 @@ function countedList(gaps: unknown, key: string, count: string): unknown[] {
     : listAt(
         gaps,
         key,
-        `${fallowRun}: its "coverage_gaps"`,
+        gapsReport,
         "install the pinned fallow with bun install --frozen-lockfile.",
       );
 }
 
 function reportedGaps(report: string): Gap[] {
-  const where = `${fallowRun}: its "coverage_gaps"`;
   const gaps = field(JSON.parse(report), "coverage_gaps");
   return [
     ...countedList(gaps, "files", "untested_files").map((entry, index) => ({
-      path: textAt(entry, "path", `${where}.files[${index}]`),
+      path: textAt(entry, "path", `${gapsReport}.files[${index}]`),
     })),
     ...countedList(gaps, "exports", "untested_exports").map((entry, index) => ({
-      path: textAt(entry, "path", `${where}.exports[${index}]`),
-      exportName: textAt(entry, "export_name", `${where}.exports[${index}]`),
+      path: textAt(entry, "path", `${gapsReport}.exports[${index}]`),
+      exportName: textAt(
+        entry,
+        "export_name",
+        `${gapsReport}.exports[${index}]`,
+      ),
     })),
   ];
 }
