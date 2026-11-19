@@ -95,9 +95,14 @@ gates and their witnesses.
 - `tests/template/toolchain/generated-lint.test.ts` generates each recipe.
   It fails when a generated repository lacks a lint rule file, holds
   another text of one, or sets a lint rule another way for a file. It
-  judges each generated file and eight probe paths, `scripts/probe.ts`
+  judges each generated file and twelve probe paths, `scripts/probe.ts`
   among them, so a lint rule narrowed to today's files fails too. It also
   plants one violation of each lint rule, and every comment case.
+- The check reads every file form the template's lint rules cover: `.ts`,
+  `.mts`, `.cts`, `.tsx`, `.js`, `.mjs`, `.cjs` and `.jsx`. Fault
+  `815691a-generated-lint-forms` drops the `.js`, `.cjs`, `.jsx` and `.tsx`
+  probes; the case that names each file and probe path a lint rule misses
+  kills it. Witnessed: [r4625491126].
 - Fault `19348a4-recipe-rule-file` drops a lint rule file from the recipe
   table, and fault `19348a4-eslint-config-rule-off` drops `no-comments`
   from the durable recipe's lint config; the durable recipe's case kills
@@ -196,3 +201,5 @@ file extensions in those directories.
   `kernelLint` turns on. The kernel repository's own lint rules,
   `no-comments` and the three test lint rules, live in
   `config/kernel-repository-rules.mjs`.
+
+[r4625491126]: https://github.com/nathanvale/bun-typescript-template/pull/114#discussion_r4625491126
