@@ -1272,5 +1272,19 @@
     "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
     "title": "naming the stamp record, for a folder that may not be searched, and not unstamped$",
     "source": "1bf0634 fix(kernel-reader): answer CodeRabbit's replies on the first round of #113"
+  },
+  {
+    "id": "5b40c83-stamp-check-linked-file",
+    "patch": "tests/planted-faults/patches/5b40c83-stamp-check-linked-file.patch",
+    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
+    "title": "a stamp checker that is a link to a file with the same bytes outside the folder is broken, naming the stamp checker$",
+    "source": "5b40c83 fix(stamp-check): open no link, in answer to Copilot's second review of #113"
+  },
+  {
+    "id": "5b40c83-stamp-check-linked-checker-folder",
+    "patch": "tests/planted-faults/patches/5b40c83-stamp-check-linked-checker-folder.patch",
+    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
+    "title": "a folder above the stamp checker replaced by a link is broken, naming that folder$",
+    "source": "5b40c83 fix(stamp-check): open no link, in answer to Copilot's second review of #113"
   }
 ]
