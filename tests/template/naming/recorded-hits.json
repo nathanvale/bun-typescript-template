@@ -20,21 +20,6 @@
       "path": "starters",
       "word": "starter",
       "reason": "Holds the CLI starters. It keeps its name until the CLI starters are removed (decided 17 November 2026)."
-    },
-    {
-      "path": "tests/kernel/locks/probes.test.ts",
-      "word": "probe",
-      "reason": "Kernel file, named by the kernel's own words. Remove this entry when the kernel leaves."
-    },
-    {
-      "path": "tests/kernel/locks/probes.ts",
-      "word": "probe",
-      "reason": "Kernel file, named by the kernel's own words. Remove this entry when the kernel leaves."
-    },
-    {
-      "path": "tests/template/glossary/known-hits.json",
-      "word": "known hit",
-      "reason": "Kernel file: the kernel's word for a recorded hit. Remove this entry when the kernel leaves."
     }
   ]
 }

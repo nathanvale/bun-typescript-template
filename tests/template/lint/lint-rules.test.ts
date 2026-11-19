@@ -9,7 +9,6 @@ import templateRuleSet from "../../../config/template-rules.mjs";
 import { commentCases } from "../../support/lint-comment-cases.ts";
 import {
   hits,
-  kernelPath,
   messages,
   root,
   ruleOn,
@@ -374,7 +373,7 @@ test("every template rule is on for a tracked template file", async () => {
   const off: string[] = [];
   for (const rule of templateRules) {
     let on = false;
-    for (const path of tracked.filter((path) => !kernelPath.test(path)))
+    for (const path of tracked)
       if (await ruleOn(`repository/${rule}`, path)) {
         on = true;
         break;

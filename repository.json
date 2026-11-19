@@ -7,12 +7,6 @@
       "folder": "tests/template",
       "holds": "folder",
       "subfolders": true
-    },
-    {
-      "name": "kernel",
-      "folder": "tests/kernel",
-      "holds": "files",
-      "subfolders": true
     }
   ]
 }

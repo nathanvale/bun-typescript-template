@@ -1,40 +1,5 @@
 [
   {
-    "id": "6021454-install",
-    "patch": "tests/planted-faults/patches/6021454-install.patch",
-    "testFile": "tests/kernel/state/component.test.ts",
-    "title": "^NW\\.[ab] ",
-    "source": "6021454 fix(state): refuse a wait limit that is not a number"
-  },
-  {
-    "id": "b456208-json-equality",
-    "patch": "tests/planted-faults/patches/b456208-json-equality.patch",
-    "testFile": "tests/kernel/kernel-repair/equality.test.ts",
-    "title": "^R15\\.",
-    "source": "b456208 fix(contract3): JSON equality sorts keys by code unit, not locale (F16)"
-  },
-  {
-    "id": "e55f94a-framing",
-    "patch": "tests/planted-faults/patches/e55f94a-framing.patch",
-    "testFile": "tests/kernel/state/journal.test.ts",
-    "title": "^J04\\.g-",
-    "source": "e55f94a fix(contract3-state): repair round 1, test seams off the host path and missing controls"
-  },
-  {
-    "id": "1a93f4b-index",
-    "patch": "tests/planted-faults/patches/1a93f4b-index.patch",
-    "testFile": "tests/kernel/kernel-followup/decision-1.test.ts",
-    "title": "^KF1\\.c ",
-    "source": "1a93f4b feat(contract3): refuse an add-on attach fault before handler entry as a preparation fault (KF1)"
-  },
-  {
-    "id": "5ac4285-eslint-rules",
-    "patch": "tests/planted-faults/patches/5ac4285-eslint-rules.patch",
-    "testFile": "tests/kernel/lint-rules.test.ts",
-    "title": "^no-comments refuses .*Note\\.",
-    "source": "5ac4285 feat(lint): refuse comments, except Platform:, Interface: and accepted decisions"
-  },
-  {
     "id": "5ac4285-template-rules",
     "patch": "tests/planted-faults/patches/5ac4285-template-rules.patch",
     "testFile": "tests/template/lint/lint-comments.test.ts",
@@ -63,25 +28,11 @@
     "source": "f0ad643 feat(lint): gate six anti-slop rules in bun run lint"
   },
   {
-    "id": "bbfce9a-eslint-rules",
-    "patch": "tests/planted-faults/patches/bbfce9a-eslint-rules.patch",
-    "testFile": "tests/kernel/lint-rules.test.ts",
-    "title": "^no-comments refuses .*nothing here is cast",
-    "source": "bbfce9a fix(lint): admit a SAFETY: block only where anti-slop accepts the cast"
-  },
-  {
     "id": "bbfce9a-template-rules",
     "patch": "tests/planted-faults/patches/bbfce9a-template-rules.patch",
     "testFile": "tests/template/lint/lint-comments.test.ts",
     "title": "^no-comments refuses .*nothing here is cast",
     "source": "bbfce9a fix(lint): admit a SAFETY: block only where anti-slop accepts the cast"
-  },
-  {
-    "id": "64b4738-eslint-rules",
-    "patch": "tests/planted-faults/patches/64b4738-eslint-rules.patch",
-    "testFile": "tests/kernel/generated-repository-lint.test.ts",
-    "title": "kernelLint settings cause-literal-owner without settings\\.kernel\\.srcDir fails loudly$",
-    "source": "64b4738 feat(lint): the kernel lint module takes its folders as settings (MAG-121)"
   },
   {
     "id": "8d55f96-check-commits",
@@ -110,13 +61,6 @@
     "testFile": "tests/template/process-runner/process-runner.test.ts",
     "title": "CE\\.d ",
     "source": "79db613 refactor(scripts): give the template one process runner for its scripts and their tests"
-  },
-  {
-    "id": "64b4738-eslint",
-    "patch": "tests/planted-faults/patches/64b4738-eslint.patch",
-    "testFile": "tests/kernel/generated-repository-lint.test.ts",
-    "title": "kernelLint settings a missing srcDir fails loudly$",
-    "source": "64b4738 feat(lint): the kernel lint module takes its folders as settings (MAG-121)"
   },
   {
     "id": "4afda36-project-recipe",
@@ -444,7 +388,7 @@
     "id": "aaedd58-doctor",
     "patch": "tests/planted-faults/patches/aaedd58-doctor.patch",
     "testFile": "tests/template/standards/coverage-gaps.test.ts",
-    "title": "^every runtime file and export outside the kernel is imported by a test",
+    "title": "^every runtime file and export is imported by a test",
     "source": "aaedd58 test(standards): refuse a runtime file or export that no test imports"
   },
   {
@@ -553,13 +497,6 @@
     "source": "6bea874 feat(names): refuse a test file outside every family folder"
   },
   {
-    "id": "751520c-eslint.config",
-    "patch": "tests/planted-faults/patches/751520c-eslint.config.patch",
-    "testFile": "tests/template/lint/anti-slop-rules.test.ts",
-    "title": "^no-restricted-syntax refuses the 751520c shape",
-    "source": "751520c fix(lint): refuse assertion chains where the kernel sets no-restricted-syntax"
-  },
-  {
     "id": "dc6396a-repository",
     "patch": "tests/planted-faults/patches/dc6396a-repository.patch",
     "testFile": "tests/template/repository/repository.test.ts",
@@ -586,20 +523,6 @@
     "testFile": "tests/template/fault-replay/planted-fault-changes-in-process.test.ts",
     "title": "faultsTouchedSince refuses a git read that outlasts its bound",
     "source": "ddd9e83 fix(faults): end each synchronous git read of the fault tool at 4 s (GREEN)"
-  },
-  {
-    "id": "0ade74f-harness",
-    "patch": "tests/planted-faults/patches/0ade74f-harness.patch",
-    "testFile": "tests/kernel/diagnostics/cases.test.ts",
-    "title": "T5 test harness: a crash run past its bound",
-    "source": "0ade74f test(kernel): kill a hung crash run's and R2 child's whole process group (GREEN)"
-  },
-  {
-    "id": "0ade74f-cases.test",
-    "patch": "tests/planted-faults/patches/0ade74f-cases.test.patch",
-    "testFile": "tests/kernel/diagnostics/cases.test.ts",
-    "title": "T5 ledger: a ledger child past its bound",
-    "source": "0ade74f test(kernel): kill a hung crash run's and R2 child's whole process group (GREEN)"
   },
   {
     "id": "ea215c9-pre-commit",
@@ -691,20 +614,6 @@
     "testFile": "tests/template/fault-replay/planted-faults-in-process.test.ts",
     "title": "STALE when the patch (creates|deletes) a whole file",
     "source": "b9b2905 fix(faults): refuse a patch that creates or deletes a whole file (GREEN)"
-  },
-  {
-    "id": "442de9a-swarm-process",
-    "patch": "tests/planted-faults/patches/442de9a-swarm-process.patch",
-    "testFile": "tests/kernel/diagnostics/cases.test.ts",
-    "title": "T5 test harness: a run past its bound fails with the output it wrote while",
-    "source": "442de9a test(kernel): bound the wait after a bound run's SIGKILL (GREEN)"
-  },
-  {
-    "id": "f91b625-swarm-process",
-    "patch": "tests/planted-faults/patches/f91b625-swarm-process.patch",
-    "testFile": "tests/kernel/diagnostics/cases.test.ts",
-    "title": "T5 ledger: a ledger child past its bound",
-    "source": "f91b625 test(kernel): show a hung R2 child's output in its failure (GREEN)"
   },
   {
     "id": "246ba4a-anti-slop-rules",
@@ -803,13 +712,6 @@
     "testFile": "tests/template/fault-replay/planted-fault-process.test.ts",
     "title": "FR\\.y ",
     "source": "3887c4b fix(faults): prune the worktree entry a stopped removal leaves behind (GREEN)"
-  },
-  {
-    "id": "71df3eb-swarm-process",
-    "patch": "tests/planted-faults/patches/71df3eb-swarm-process.patch",
-    "testFile": "tests/kernel/diagnostics/cases.test.ts",
-    "title": "T5 test harness: a run past its bound fails with the output it wrote while",
-    "source": "71df3eb test(kernel): pin the wait after a held-output run's SIGKILL to 3,000 ms"
   },
   {
     "id": "a11290a-check-file-size",

@@ -15,12 +15,6 @@ const fallowArgs = [
 ] as const;
 const fallowRun = `node_modules/.bin/fallow ${fallowArgs.join(" ")}`;
 const done = "Done when bun run test:area standards passes.";
-const kernelOwned = [
-  "kernel/",
-  "tests/kernel/",
-  "tests/template/glossary/",
-  "config/kernel-repository-rules.mjs",
-];
 
 type Gap = { readonly path: string; readonly exportName?: string };
 
@@ -100,15 +94,12 @@ function recordedGaps(text: string): Gap[] {
 }
 
 function gapProblems(reported: readonly Gap[], recorded: readonly Gap[]) {
-  const outsideKernel = reported.filter(
-    ({ path }) => !kernelOwned.some((owned) => path.startsWith(owned)),
-  );
-  const reportedKeys = new Set(outsideKernel.map(shown));
+  const reportedKeys = new Set(reported.map(shown));
   const recordedKeys = new Set(recorded.map(shown));
   const repair =
     "Repair: import and call it from a test, beside any test that spawns it.";
   return [
-    ...outsideKernel
+    ...reported
       .filter((gap) => !recordedKeys.has(shown(gap)))
       .map(({ path, exportName }) =>
         exportName === undefined
@@ -137,7 +128,7 @@ async function fallowGaps(): Promise<Gap[]> {
 }
 
 test(
-  "every runtime file and export outside the kernel is imported by a test, apart from its recorded hits",
+  "every runtime file and export is imported by a test, apart from its recorded hits",
   async () => {
     const recorded = recordedGaps(
       readFileSync(join(root, recordedHitsFile), "utf8"),
@@ -149,20 +140,15 @@ test(
 
 const fixtureReport = JSON.stringify({
   coverage_gaps: {
-    files: [{ path: "scripts/spawned.ts" }, { path: "kernel/src/cli.ts" }],
-    exports: [
-      { path: "scripts/runner.ts", export_name: "run" },
-      { path: "tests/kernel/fixture.ts", export_name: "fixture" },
-      { path: "config/kernel-repository-rules.mjs", export_name: "rules" },
-      { path: "tests/template/glossary/terms.ts", export_name: "terms" },
-    ],
+    files: [{ path: "scripts/spawned.ts" }],
+    exports: [{ path: "scripts/runner.ts", export_name: "run" }],
   },
 });
 const fixtureHits = (hits: object[]) => JSON.stringify({ hits });
 const spawnedHit = { path: "scripts/spawned.ts", reason: "fixture" };
 const runHit = { path: "scripts/runner.ts", export: "run", reason: "fixture" };
 
-test("a gap fallow reports and the recorded hits list passes, and kernel gaps need no hit", () => {
+test("a gap fallow reports and the recorded hits list passes", () => {
   expect(
     gapProblems(
       reportedGaps(fixtureReport),
@@ -198,13 +184,6 @@ test.each([
     [spawnedHit, runHit, { path: "scripts/imported.ts", reason: "fixture" }],
     [
       `${recordedHitsFile}: records scripts/imported.ts, which fallow no longer reports as a coverage gap. Repair: remove that recorded hit. ${done}`,
-    ],
-  ],
-  [
-    "a recorded kernel gap",
-    [spawnedHit, runHit, { path: "kernel/src/cli.ts", reason: "fixture" }],
-    [
-      `${recordedHitsFile}: records kernel/src/cli.ts, which fallow no longer reports as a coverage gap. Repair: remove that recorded hit. ${done}`,
     ],
   ],
   [

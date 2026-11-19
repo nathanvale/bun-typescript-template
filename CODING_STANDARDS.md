@@ -70,32 +70,27 @@ row's guide or gate note cites two distinct witnesses.
 ### Linux and macOS
 
 - `.github/workflows/ci.yml` runs on every pull request.
-- `R1.platform-outcomes-pinned` pins unproved diagnostics rows only.
-- State `caseTest` titles can show `UNPROVED` off their platform, but no test
-  pins their count.
-- `tests/kernel/approval/component.test.ts` still reports unproved cases
-  through `test.skip`.
 - `.github/workflows/macos-nightly.yml` runs on schedule once it reaches
   `main`.
 - Lint `repository/no-host-path-literal` refuses a string, or the head of a
   template literal, that starts at `/private`, `/usr`, `/var`, `/tmp`,
   `/etc`, `/opt`, `/Users`, `/home`, `/Library` or `/System`, in every file
-  `eslint.config.mjs` lints outside the kernel. `/dev/null`, `/bin/sh` and a
-  shebang pass: both hosts have them.
+  `eslint.config.mjs` lints. `/dev/null`, `/bin/sh` and a shebang pass: both
+  hosts have them.
 - Fault `b79a4ac-platform-rules` drops `/private` from that list; the lint
   case for the [ff5fffe] shape kills it.
 - Review only: a path built at run time, such as `"/" + "tmp"` or
   `join("/", "usr")`; a host path after a template expression; other roots,
-  such as `/proc` or `/run`; `kernel/` and `tests/kernel/`, which leave with
-  the kernel; and `starters/`, which ESLint skips.
+  such as `/proc` or `/run`; and `starters/`, which ESLint skips.
 - Witnessed: [8e4ec47], [ff5fffe].
 
 ### Glossary
 
-- `tests/template/glossary/glossary.test.ts`, with its shrinking `known-hits.json`,
-  checks the `scope` listed in `tests/template/glossary/term-table.json`.
-- That scope is kernel source, kernel tests, and the kernel's lint config.
-  `src/`, the starters, and docs are review only.
+- `tests/template/naming/names.test.ts`, with its shrinking
+  `recorded-hits.json`, checks every tracked file and folder name against
+  `GLOSSARY.md`. Pre-commit runs the same names check on staged names.
+- Words inside a file are review only. The test that read kernel files for
+  Command Contract 3 terms left with the kernel.
 - Witnessed: [2784de0], [356cce9].
 
 ### Test proof

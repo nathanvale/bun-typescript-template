@@ -22,22 +22,6 @@ const antiSlopCases = [
     lines: [2, 3, 4],
   },
   {
-    rule: "no-restricted-syntax",
-    witness: "751520c",
-    message: "This assertion chain discards type evidence.",
-    filePath: "kernel/src/kernel/validation/brands.ts",
-    failing: [
-      "type AuthorityId = string & { readonly authority: true };",
-      "type ResourceId = string & { readonly resource: true };",
-      "export const id = (value: string) => value as ResourceId as AuthorityId;",
-    ],
-    passing: [
-      "type AuthorityId = string & { readonly authority: true };",
-      "export const id = (value: string) => value as AuthorityId;",
-    ],
-    lines: [3],
-  },
-  {
     rule: "anti-slop/no-widen-then-assert",
     witness: "anti-slop 13909c9",
     message: "discards type evidence and later recreates it with an assertion.",

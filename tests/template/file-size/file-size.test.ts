@@ -351,8 +351,6 @@ test(
       [integration]: overLimit,
       [standing]: " x",
       [nearby]: overLimit,
-      "kernel/notes.txt": overLimit,
-      "tests/kernel/notes.txt": overLimit,
       "vendor/upstream/notes.txt": overLimit,
       "starters/complex/bun.lock": overLimit,
       ".claude/hooks/fallow-gate.sh": overLimit,

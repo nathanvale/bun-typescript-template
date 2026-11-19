@@ -16,10 +16,8 @@ each pointer rather than a copy:
   seen once.
 - [tests/template/lint/lint-rules.test.ts](../../../tests/template/lint/lint-rules.test.ts) and
   [tests/template/lint/anti-slop-rules.test.ts](../../../tests/template/lint/anti-slop-rules.test.ts)
-  for template rules, and
-  [tests/kernel/lint-rules.test.ts](../../../tests/kernel/lint-rules.test.ts)
-  for kernel rules: a failing and a passing snippet for each lint, each case
-  naming its witness.
+  for template rules: a failing and a passing snippet for each lint, each
+  case naming its witness.
 - [Planted-fault guide](../../../docs/standards/test-proof.md#planted-faults):
   how to record a fault in `tests/planted-faults/fault-records.json`.
 - [Recorded hits](../../../CODING_STANDARDS.md#recorded-hits): existing hits
@@ -41,19 +39,14 @@ owner.
 
 A lint rule's owner determines where to define, enable, and test it.
 
-| Owner              | Rule files                                                                           | Turned on in                        | Cases                                         |
-| ------------------ | ------------------------------------------------------------------------------------ | ----------------------------------- | --------------------------------------------- |
-| Template           | `config/template-rules.mjs`, `config/platform-rules.mjs`, `config/payload-rules.mjs` | `eslint.config.mjs`                 | `tests/template/lint/lint-rules.test.ts`      |
-| Template anti-slop | `config/anti-slop-rules.mjs`, `config/anti-slop-type-rules.mjs`                      | `eslint.config.mjs`                 | `tests/template/lint/anti-slop-rules.test.ts` |
-| Kernel             | `config/kernel-repository-rules.mjs`                                                 | `config/kernel-repository-lint.mjs` | `tests/kernel/lint-rules.test.ts`             |
+| Owner              | Rule files                                                                           | Turned on in        | Cases                                         |
+| ------------------ | ------------------------------------------------------------------------------------ | ------------------- | --------------------------------------------- |
+| Template           | `config/template-rules.mjs`, `config/platform-rules.mjs`, `config/payload-rules.mjs` | `eslint.config.mjs` | `tests/template/lint/lint-rules.test.ts`      |
+| Template anti-slop | `config/anti-slop-rules.mjs`, `config/anti-slop-type-rules.mjs`                      | `eslint.config.mjs` | `tests/template/lint/anti-slop-rules.test.ts` |
 
-- A rule both owners need has one copy per owner. Change both copies to
-  the same text, with a case in each owner's cases file.
-- `eslint-rules.mjs` re-exports the kernel's rule file, and
-  `config/kernel-lint.mjs` passes this repository's folders to the kernel's
-  stamped lint. Leave both unchanged.
-- Rules stamped into generated repositories live in `kernel/config/kernel/`,
-  outside the write scope. Report a change there for the code owner.
+- The kernel's lint rules, and the rules stamped into generated
+  repositories, live in the kernel repository, outside the write scope.
+  Report a change there for its owner.
 
 ## Write scope
 
@@ -145,8 +138,7 @@ Done when each item holds:
 
 Done when each item holds:
 
-- `bun run test:area template -t "<rule id>"` passes for a template rule and
-  `bun run test:area kernel -t "<rule id>"` for a kernel rule, or
+- `bun run test:area template -t "<rule id>"` passes for a template rule, or
   `bun run fault-replay <id>` prints `KILLED`, or the report hands a type or
   architecture gate to the code owner.
 - `bun run lint`, `bun run typecheck` and `bun run format:check` exit 0.

@@ -1,4 +1,4 @@
 {
-  "about": "Runtime files and exports outside the kernel that no test imported when the coverage gaps test landed (18 November 2026), so only a test that spawns them proves them. The test fails on any gap fallow reports that is not listed here, and on any listed gap that fallow no longer reports: remove an entry in the change that adds a test importing it. Kernel paths (kernel/, tests/kernel/, tests/template/glossary/ and config/kernel-repository-rules.mjs) are left out, since they leave with the kernel.",
+  "about": "Runtime files and exports that no test imported when the coverage gaps test landed (18 November 2026), so only a test that spawns them proves them. The test fails on any gap fallow reports that is not listed here, and on any listed gap that fallow no longer reports: remove an entry in the change that adds a test importing it.",
   "hits": []
 }

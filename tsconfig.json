@@ -1,13 +1,4 @@
 {
   "extends": "./tsconfig.base.json",
-  "include": [
-    "src/**/*.ts",
-    "scripts/**/*.ts",
-    "tests/**/*.ts",
-    "kernel/src/**/*.ts",
-    "kernel/src/**/*.mts",
-    "kernel/src/**/*.cts",
-    "tests/kernel/**/*.mts",
-    "tests/kernel/**/*.cts"
-  ]
+  "include": ["src/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts"]
 }

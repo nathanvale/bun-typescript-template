@@ -1,4 +1,0 @@
-import { contractFor } from "__KERNEL_INDEX__";
-import { main, syntheticState } from "__FAULT_CLI__";
-
-await main(contractFor.stateAddon(syntheticState));
