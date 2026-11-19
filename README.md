@@ -83,5 +83,9 @@ Generated `AGENTS.md` gives the exact install, check and smoke commands.
 including whether the source checkout had uncommitted changes.
 
 `eslint-rules.mjs` demonstrates one local custom rule. Its ownership rule
-prevents domain modules from writing to stdout or stderr; it does not add a
-project-specific catalogue of rules. Formatting checks never rewrite files.
+prevents domain modules from writing to stdout or stderr. Every durable
+recipe also copies this repository's own lint rule files from `config/` and
+turns on the same rules for the same kinds of file, `no-comments` among them.
+`tests/template/toolchain/generated-lint.test.ts` fails when a generated
+repository lacks one of those files, holds another copy, or leaves a rule
+off. Formatting checks never rewrite files.

@@ -58,7 +58,7 @@ fi
 
 source_edits=$(staged '*.ts' '*.mts' '*.cts' '*.mjs' | tr -d '\0')
 if [ -n "$source_edits" ]; then
-  staged '*.ts' '*.mts' '*.cts' '*.mjs' | xargs -0 "$bin/eslint" --max-warnings 0 --no-warn-ignored -- || {
+  staged '*.ts' '*.mts' '*.cts' '*.mjs' | xargs -0 "$bin/eslint" --config eslint.config.mjs --max-warnings 0 --no-warn-ignored -- || {
     echo "pre-commit: lint errors above. Repair: correct each one in code, stage the change, and commit again. Done when bun run lint passes." >&2
     exit 1
   }

@@ -1,6 +1,12 @@
 import { resolve, join, dirname } from "node:path";
 import { afterEach } from "bun:test";
-import { rmSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import {
+  copyFileSync,
+  rmSync,
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+} from "node:fs";
 import { testFolder } from "./test-folder.ts";
 import {
   type Document as Fields,
@@ -28,6 +34,21 @@ export const policyFiles = [
   "eslint-rules.mjs",
   "bun.lock",
 ];
+
+export const ruleFiles = [
+  "config/anti-slop-bindings.mjs",
+  "config/anti-slop-rules.mjs",
+  "config/anti-slop-type-rules.mjs",
+  "config/payload-rules.mjs",
+  "config/platform-rules.mjs",
+  "config/template-rules.mjs",
+];
+
+export function copyRuleFiles(root: string): void {
+  mkdirSync(join(root, "config"));
+  for (const file of ruleFiles)
+    copyFileSync(join(repository, file), join(root, file));
+}
 
 export function fields(value: unknown): Fields {
   if (value === null || typeof value !== "object" || Array.isArray(value))

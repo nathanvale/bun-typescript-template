@@ -3,6 +3,7 @@ import { existsSync, statSync } from "node:fs";
 import { cp, mkdir, readdir, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
+  LINT_RULE_FILES,
   PROFILES,
   type ProjectRecipe,
   RECIPES,
@@ -211,6 +212,33 @@ describe("project recipe", () => {
     expect({ profiles: PROFILES, starters: STARTERS }).toEqual({
       profiles: ["scratch", "durable"],
       starters: ["simple", "complex"],
+    });
+  });
+
+  test("the four durable rows copy every lint rule file into config, and the scratch row copies none", async () => {
+    const ruleFiles = [
+      "config/anti-slop-bindings.mjs",
+      "config/anti-slop-rules.mjs",
+      "config/anti-slop-type-rules.mjs",
+      "config/payload-rules.mjs",
+      "config/platform-rules.mjs",
+      "config/template-rules.mjs",
+    ];
+    expect(LINT_RULE_FILES.map((file) => `config/${file}`)).toEqual(ruleFiles);
+    const copied: Record<string, unknown> = {};
+    for (const recipe of RECIPES)
+      copied[rowKey(recipe)] = {
+        ruleFiles: (await copiedFiles(recipe))
+          .filter((file) => file.startsWith("config/"))
+          .toSorted(),
+      };
+    const linted = { ruleFiles };
+    expect(copied).toEqual({
+      "scratch single-package": { ruleFiles: [] },
+      "durable single-package": linted,
+      "durable monorepo": linted,
+      "durable single-package simple": linted,
+      "durable single-package complex": linted,
     });
   });
 

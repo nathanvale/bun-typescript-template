@@ -15,6 +15,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { gitEnv, inherited } from "./git-fixture.ts";
 import { spawnBounded } from "./process.ts";
+import { copyRuleFiles } from "./static-admission-in-process-fixture.ts";
 
 export const ROOT = resolve(import.meta.dir, "../..");
 
@@ -323,6 +324,7 @@ async function createProject(
   const root = await mkdtemp(join(tmpdir(), "cds-ts2-static-admission-"));
   temporaryRoots.push(root);
   await copyTree(join(STATIC_PACKET, profile), root);
+  copyRuleFiles(root);
 
   const packagePath = join(root, "package.json");
   const packageJson = await readJson(packagePath);
@@ -448,8 +450,8 @@ export async function makeTypeOnlyDependency(root: string): Promise<void> {
       "    if (",
       '      typeof input === "object" &&',
       "      input !== null &&",
-      '      "kind" in input &&',
-      '      input.kind === "help"',
+      '      Object.hasOwn(input, "kind") &&',
+      '      Reflect.get(input, "kind") === "help"',
       "    )",
       '      return { kind: "help" };',
       '    throw new Error("invalid command");',

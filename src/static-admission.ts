@@ -1,4 +1,5 @@
 import { inventoryApplicationClis } from "./cli-inventory.ts";
+import { LINT_RULE_FILES } from "./recipe.ts";
 import { resolveToolchain } from "./toolchain-resolution.ts";
 import { createHash } from "node:crypto";
 import type { Dirent } from "node:fs";
@@ -191,6 +192,14 @@ export async function checkPolicy(options: Options): Promise<Document> {
       await readFile(join(options.project, file), "utf8"),
       await readFile(join(packet, file), "utf8"),
       `policy:${file}`,
+    );
+  }
+  const rules = resolve(import.meta.dir, "../config");
+  for (const file of LINT_RULE_FILES) {
+    compare(
+      await readFile(join(options.project, "config", file), "utf8"),
+      await readFile(join(rules, file), "utf8"),
+      `policy:config/${file}`,
     );
   }
   await checkLock(options.project, expected);
