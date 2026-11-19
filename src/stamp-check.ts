@@ -61,13 +61,26 @@ export function fileModeOf(mode: unknown): FileMode | undefined {
   return mode === "100644" || mode === "100755" ? mode : undefined;
 }
 
-// Interface: a path from a folder's top, written with "/" between its parts,
-// that cannot leave the folder on any host: no empty, "." or ".." part, and no
-// backslash, which Windows reads as a separator.
+// Platform: a decoder drops a leading byte-order mark unless told to keep it,
+// and in a name it is a character.
+const strictName = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+
+// Interface: a name's text from its stored bytes, or undefined if not UTF-8.
+export function nameText(bytes: Uint8Array): string | undefined {
+  try {
+    return strictName.decode(bytes);
+  } catch {
+    return undefined;
+  }
+}
+
+// Interface: why a "/" path cannot stay inside its folder on every host, or
+// undefined. Windows reads a backslash as a separator.
 export function plainPathFault(path: string): string | undefined {
   if (path.split("/").some((part) => ["", ".", ".."].includes(part)))
     return 'it has an empty, "." or ".." part.';
   if (path.includes("\\")) return "it has a backslash.";
+  if (path.includes("\0")) return "it has a NUL byte.";
   return undefined;
 }
 
@@ -316,11 +329,9 @@ function folderAt(path: string): boolean | undefined {
   return typeof found === "string" ? undefined : found.isDirectory();
 }
 
-// Platform: opening a named pipe to read waits for a writer unless the open
-// is non-blocking, and the entry at a path can change between a look and an
-// open. So the file is opened without waiting, and the open file itself is
-// checked before it is read. O_NOFOLLOW makes the open fail on a link, so a
-// link to a file outside the folder never stands in for the file named.
+// Platform: opening a named pipe waits for a writer unless non-blocking, and
+// an entry can change between a look and an open. So the open waits for
+// nothing, fails on a link (O_NOFOLLOW), and the open file is checked.
 function plainBytes(path: string): Buffer {
   const unreadable = () =>
     new Error("it is not a plain file that can be read.");
@@ -384,7 +395,7 @@ function fileFindings(folder: string, file: StampedFile): StampFinding[] {
   // execute it.
   const mode: FileMode = (found.mode & 0o100) === 0 ? "100644" : "100755";
   const findings: StampFinding[] = [];
-  if (attempt(() => blobIdentity(readFileSync(at)), "") !== file.blob)
+  if (attempt(() => blobIdentity(plainBytes(at)), "") !== file.blob)
     findings.push({
       kind: "modified",
       path: file.path,
@@ -424,42 +435,57 @@ function folderFindings(folder: string, record: StampRecord) {
     );
 }
 
-type Under = { readonly at: string; readonly listed: boolean };
+type Under = {
+  readonly at: string;
+  readonly listed: boolean;
+  readonly utf8: boolean;
+};
 
 function entriesUnder(folder: string, path: string): Under[] {
   if (folderAt(join(folder, path)) !== true) return [];
-  const entries = attempt(
-    () => readdirSync(join(folder, path), { withFileTypes: true }),
+  const names = attempt(
+    () => readdirSync(join(folder, path), { encoding: "buffer" }),
     undefined,
   );
-  if (entries === undefined) return [{ at: path, listed: false }];
-  return entries
-    .map((entry) => ({ entry, at: `${path}/${entry.name}` }))
+  if (names === undefined) return [{ at: path, listed: false, utf8: true }];
+  return names
+    .map((bytes) => {
+      const name = nameText(bytes);
+      return {
+        utf8: name !== undefined,
+        at: `${path}/${name ?? bytes.toString()}`,
+      };
+    })
     .sort((one, other) => (one.at < other.at ? -1 : 1))
-    .flatMap(({ entry, at }) =>
-      entry.isDirectory() ? entriesUnder(folder, at) : [{ at, listed: true }],
+    .flatMap(({ at, utf8 }) =>
+      utf8 && folderAt(join(folder, at)) === true
+        ? entriesUnder(folder, at)
+        : [{ at, listed: true, utf8 }],
     );
+}
+
+function extraFinding({ at, listed, utf8 }: Under): StampFinding {
+  if (!listed)
+    return {
+      kind: "unreadable",
+      path: at,
+      detail: "it is a folder in a stamp root and cannot be listed.",
+    };
+  return {
+    kind: "extra",
+    path: at,
+    detail: utf8
+      ? "it is in a stamp root and is not recorded."
+      : "it is in a stamp root, and its name is not UTF-8 text, so no stamp record can hold it.",
+  };
 }
 
 function extraFindings(folder: string, record: StampRecord): StampFinding[] {
   const recorded = new Set(record.files.map(({ path }) => path));
   return record.roots
     .flatMap((root) => entriesUnder(folder, root))
-    .filter(({ at, listed }) => !listed || !recorded.has(at))
-    .map(
-      ({ at, listed }): StampFinding =>
-        listed
-          ? {
-              kind: "extra",
-              path: at,
-              detail: "it is in a stamp root and is not recorded.",
-            }
-          : {
-              kind: "unreadable",
-              path: at,
-              detail: "it is a folder in a stamp root and cannot be listed.",
-            },
-    );
+    .filter(({ at, listed, utf8 }) => !listed || !utf8 || !recorded.has(at))
+    .map(extraFinding);
 }
 
 // Interface: one file the stamp merged requirements into, read as the field

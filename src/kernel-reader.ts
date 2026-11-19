@@ -7,6 +7,7 @@ import {
   jsonOf,
   listOf,
   messageOf,
+  nameText,
   plainPath,
   plainPathFault,
   type StampedFile,
@@ -107,10 +108,6 @@ type Declaration = Requirements & {
 };
 
 const gitMilliseconds = 4_000;
-// Platform: a decoder drops a byte-order mark at the start of its input
-// unless told to keep it. A path may start with one, and it is part of the
-// name. At the start of a file's text it is a mark, and is dropped.
-const strictName = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 const strictText = new TextDecoder("utf-8", { fatal: true });
 const linkKinds = new Map([
   ["120000", "a symbolic link"],
@@ -171,18 +168,20 @@ function repositoryAt(path: string): string {
   const found = git(repository, "rev-parse", [
     "--show-object-format",
     "--is-inside-work-tree",
-    "--show-prefix",
-    "--absolute-git-dir",
   ]);
   if (!found.ok) throw missing(`git says "${found.said}".`);
-  const [name = "", inWorkTree, prefix, gitFolder] = found.stdout
-    .toString()
-    .split("\n");
+  const [name = "", inWorkTree] = found.stdout.toString().split("\n");
   // Platform: at the top of a working tree git prints an empty prefix. In a
   // bare repository, or in a .git folder, there is no working tree, and the
-  // folder is the repository only when it is git's own folder.
+  // folder is the repository only when it is git's own folder. Git prints a
+  // path as it is stored, line feeds included, so each path is asked for in a
+  // call of its own and only the one line feed git adds is removed.
+  const onePath = (option: string) =>
+    git(repository, "rev-parse", [option]).stdout.toString().slice(0, -1);
   const atTop =
-    inWorkTree === "true" ? prefix === "" : gitFolder === repository;
+    inWorkTree === "true"
+      ? onePath("--show-prefix") === ""
+      : onePath("--absolute-git-dir") === repository;
   if (!atTop) throw missing("that folder is inside the repository above it.");
   if (name !== "sha1")
     throw new KernelRefusal(
@@ -226,7 +225,7 @@ function entriesAt(repository: string, seam: KernelSeam): Entry[] {
       .toString()
       .split(" ");
     const name = record.subarray(tab + 1);
-    const path = utf8Of(name, strictName);
+    const path = nameText(name);
     return {
       name,
       path: path ?? name.toString(),

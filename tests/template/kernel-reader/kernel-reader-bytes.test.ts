@@ -195,3 +195,30 @@ describe("the kernel reader keeps a path as git stores it", () => {
     );
   });
 });
+
+describe("the kernel reader reads a path that holds a line feed", () => {
+  test("a folder named with a line feed inside a working tree is refused as inside the repository above it", () => {
+    const repository = join(folder("kernel-reader-bytes-"), "kernel:fixture");
+    mkdirSync(repository);
+    const commit = kernelRepository(repository);
+    const inside = join(repository, "\nchild");
+    mkdirSync(inside);
+    expect(
+      refusalOf(() => readKernel({ repository: inside, commit }, path)),
+    ).toEqual(
+      refused(
+        "kernel_repository_missing",
+        `No git repository is at ${inside}: that folder is inside the repository above it.`,
+        repairs.repository,
+      ),
+    );
+  });
+
+  test("a bare repository whose path holds a line feed is read", () => {
+    const origin = folder("kernel-reader-bytes-");
+    const commit = kernelRepository(origin);
+    const repository = join(folder("kernel-reader-bytes-"), "kernel\nbare");
+    git(origin, "clone", "--quiet", "--bare", "--no-local", origin, repository);
+    expect(readKernel({ repository, commit }, path).commit).toBe(commit);
+  });
+});

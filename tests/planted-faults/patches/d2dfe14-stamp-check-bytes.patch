@@ -1,13 +1,13 @@
 diff --git a/src/stamp-check.ts b/src/stamp-check.ts
-index d2f8eda..361c6b7 100644
+index 37a61fa..5175b0e 100644
 --- a/src/stamp-check.ts
 +++ b/src/stamp-check.ts
-@@ -302,7 +302,7 @@ function fileFindings(folder: string, file: StampedFile): StampFinding[] {
+@@ -395,7 +395,7 @@ function fileFindings(folder: string, file: StampedFile): StampFinding[] {
    // execute it.
    const mode: FileMode = (found.mode & 0o100) === 0 ? "100644" : "100755";
    const findings: StampFinding[] = [];
--  if (attempt(() => blobIdentity(readFileSync(at)), "") !== file.blob)
-+  if (attempt(() => blobIdentity(readFileSync(at)), "") === "")
+-  if (attempt(() => blobIdentity(plainBytes(at)), "") !== file.blob)
++  if (attempt(() => blobIdentity(plainBytes(at)), "") === "")
      findings.push({
        kind: "modified",
        path: file.path,

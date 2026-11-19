@@ -99,6 +99,12 @@ const faults: readonly (readonly [
     'stampChecker.path is "../check-stamp.ts", which is not a plain path: it has an empty, "." or ".." part.',
   ],
   [
+    "a stamp checker path that holds a NUL byte",
+    ({ stampChecker }) =>
+      withField(stampChecker, "path", "scripts/check\u0000stamp.ts"),
+    'stampChecker.path is "scripts/check\u0000stamp.ts", which is not a plain path: it has a NUL byte.',
+  ],
+  [
     "no stamp checker",
     (record) => withField(record, "stampChecker", undefined),
     "stampChecker must be an object.",

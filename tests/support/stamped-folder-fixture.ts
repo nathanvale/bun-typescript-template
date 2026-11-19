@@ -40,9 +40,13 @@ const ownFiles = {
 // roots, the two files the stamp merged requirements into, a stamp checker and
 // one file of its own. The stamp record it returns takes every identity from
 // git, which committed the same files, and is not yet written to the folder.
-export function stampedFolder(folder: string) {
+export function stampedFolder(
+  folder: string,
+  more: Readonly<Record<string, string>> = {},
+) {
+  const stamping = { ...stamped, ...more };
   initRepository(folder);
-  for (const [path, text] of Object.entries({ ...stamped, ...ownFiles }))
+  for (const [path, text] of Object.entries({ ...stamping, ...ownFiles }))
     write(folder, path, text);
   chmodSync(join(folder, "lib/core/run.sh"), 0o755);
   git(folder, "add", "--all");
@@ -62,7 +66,7 @@ export function stampedFolder(folder: string) {
       ...root,
       tree: treeOf(folder, commit, root.path),
     })),
-    files: listed.filter(({ path }) => Object.hasOwn(stamped, path)),
+    files: listed.filter(({ path }) => Object.hasOwn(stamping, path)),
     requirements: {
       packages: { "left-pad": "1.3.0" },
       deadCodeEntries: ["lib/core/index.ts", "lib/extras/beta/index.ts"],

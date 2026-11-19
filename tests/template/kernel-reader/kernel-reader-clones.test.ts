@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { readKernel } from "../../../src/kernel-reader.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
@@ -9,7 +10,11 @@ import {
   inherited,
 } from "../../support/git-fixture.ts";
 import { listedFiles } from "../../support/git-object-fixture.ts";
-import { timed, whileGitHangs } from "../../support/hung-git.ts";
+import {
+  timed,
+  whileGitHangs,
+  withToolsFirst,
+} from "../../support/hung-git.ts";
 import { refusalOf, refused, repairs } from "../../support/kernel-refusal.ts";
 import {
   declarationPathIn,
@@ -126,4 +131,37 @@ describe("the kernel reader keeps git to the repository it was given", () => {
     },
     processWatchdog(1),
   );
+});
+
+describe("the kernel reader starts no remote helper", () => {
+  test("a partial clone whose promisor is a none:: remote does not run git-remote-none, which git runs when the allowlist names none", async () => {
+    const { repository, commit } = partialClone("blob:none");
+    git(repository, "config", "remote.origin.url", "none::kernel");
+    const bin = folder("kernel-reader-clones-");
+    const ran = join(bin, "helper-ran");
+    writeFileSync(
+      join(bin, "git-remote-none"),
+      `#!/bin/sh\ntouch '${ran}'\nexit 1\n`,
+      { mode: 0o755 },
+    );
+    await withToolsFirst(bin, () => {
+      expect(
+        refusalOf(() => readKernel({ repository, commit }, path)).code,
+      ).toBe("kernel_commit_missing");
+      expect(existsSync(ran)).toBe(false);
+      const control = Bun.spawnSync(
+        ["git", "cat-file", "-p", `${commit}:${path}`],
+        {
+          cwd: repository,
+          env: { ...inherited(), ...gitEnv, GIT_ALLOW_PROTOCOL: "none" },
+          stdout: "pipe",
+          stderr: "pipe",
+          timeout: 4_000,
+          killSignal: "SIGKILL",
+        },
+      );
+      expect(control.exitCode).not.toBe(0);
+      expect(existsSync(ran)).toBe(true);
+    });
+  });
 });

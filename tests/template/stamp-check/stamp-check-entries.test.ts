@@ -266,3 +266,38 @@ describe("the stamp check opens no link", () => {
     });
   });
 });
+
+describe("the stamp check reads a name as the bytes the file system stores", () => {
+  test.skipIf(process.platform !== "linux")(
+    "an extra file whose name is not UTF-8, beside a stamped file whose name holds the replacement character, is broken (Linux only: macOS stores UTF-8 names only)",
+    () => {
+      const folder = owned("stamp-check-entries-");
+      writeStampRecord(
+        folder,
+        stampedFolder(folder, {
+          "lib/core/caf\uFFFD.ts": "export const odd = 1;\n",
+        }),
+      );
+      expect(checkStamp(folder).status).toBe("intact");
+      writeFileSync(
+        Buffer.concat([
+          Buffer.from(join(folder, "lib/core/caf")),
+          Buffer.from([0xe9]),
+          Buffer.from(".ts"),
+        ]),
+        "a latin-1 name\n",
+      );
+      expect(checkStamp(folder)).toEqual({
+        status: "broken",
+        findings: [
+          {
+            kind: "extra",
+            path: "lib/core/caf\uFFFD.ts",
+            detail:
+              "it is in a stamp root, and its name is not UTF-8 text, so no stamp record can hold it.",
+          },
+        ],
+      });
+    },
+  );
+});
