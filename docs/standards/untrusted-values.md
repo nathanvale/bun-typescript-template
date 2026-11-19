@@ -54,7 +54,9 @@ boundary trusts the types.
   that holds U+FFFD itself was refused as not UTF-8), [r4625592501] (paths
   that were not UTF-8 were matched against a stamp root through their lossy
   decoding, so one outside a stamp root whose name holds U+FFFD was refused;
-  compare bytes with bytes before decoding).
+  compare bytes with bytes before decoding), [#113-copilot] (folder entries
+  were read as decoded text, so a name that is not UTF-8 read the same as a
+  stamped name holding U+FFFD; read each name as bytes, then decode it).
 - Decode a name with `ignoreBOM: true`, so that every character of it is
   kept. A strict decoder still drops a byte-order mark at the start of its
   input. Witnessed: [r4625804683] (a path that starts with U+FEFF lost its
@@ -73,7 +75,10 @@ boundary trusts the types.
   `GIT_CEILING_DIRECTORIES`, a colon-separated list, so a folder inside a
   repository was read as that repository), [r4625593933] (the confirmation
   read a working tree's prefix, which git prints empty in a bare repository,
-  so a folder inside a bare repository still passed).
+  so a folder inside a bare repository still passed), [r4625956755] (git
+  prints a path as stored, line feeds included, and rev-parse's output was
+  split on line feeds, so a folder named with one was misread; ask for each
+  printed path in a call of its own, or framed by NUL).
 
 ## Plain paths
 
@@ -83,7 +88,8 @@ boundary trusts the types.
   `tests/` or with `..` ran in the area runner, and the test placement check
   matched no file under it), [r4625243640] (the stamp record's plain-path
   refusal split a path on `/` alone, so `..\outside` passed, and a backslash
-  separates folders on Windows).
+  separates folders on Windows), [#113-copilot] (a path with a NUL byte
+  passed the plain-path rule and threw at the first file system call).
 
 ## Links
 
@@ -96,7 +102,9 @@ boundary trusts the types.
   nothing read as absent, so the verdict was `unstamped`), [r4625772395]
   (the reader checked a file with `statSync` and opened what a link pointed
   to, so a stamp checker that was a link to a file with the recorded bytes
-  outside the folder gave `intact`).
+  outside the folder gave `intact`), [#113-copilot] (a stamped file was
+  inspected with `lstatSync` and then read with `readFileSync`, which
+  follows a link; read through the same open that was checked).
 
 ## Failed reads
 
@@ -145,6 +153,8 @@ boundary trusts the types.
 [r4625772325]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625772325
 [r4625772395]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625772395
 [r4625804683]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625804683
+[r4625956755]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625956755
+[#113-copilot]: https://github.com/nathanvale/bun-typescript-template/pull/113#pullrequestreview-5971793022
 [75b4bc0]: https://github.com/nathanvale/bun-typescript-template/commit/75b4bc045d038970858b95b136f9f176fd3fc4cc
 [57c8c8b]: https://github.com/nathanvale/bun-typescript-template/commit/57c8c8b881c66e967688d05a3a70e1ef487c5553
 [5cbff3a]: https://github.com/nathanvale/bun-typescript-template/commit/5cbff3a87746defffd2672320038c48fbd1ddbc6
