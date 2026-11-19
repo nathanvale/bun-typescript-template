@@ -205,6 +205,7 @@ const EXPECTED_BOUNDARIES: Record<Profile, Record<string, unknown>> = {
         name: "diagnostics",
         patterns: ["src/diagnostics.ts", "src/diagnostics-custody.ts"],
       },
+      { name: "test-support", patterns: ["tests/support/**/*.ts"] },
       { name: "unit-tests", patterns: ["tests/unit/**/*.ts"] },
       { name: "integration-tests", patterns: ["tests/integration/**/*.ts"] },
       { name: "catalog-tests", patterns: ["tests/catalog/**/*.ts"] },
@@ -230,9 +231,17 @@ const EXPECTED_BOUNDARIES: Record<Profile, Record<string, unknown>> = {
       { from: "runtime", allow: ["contract", "runtime", "diagnostics"] },
       { from: "catalog", allow: ["contract"] },
       { from: "diagnostics", allow: ["contract"] },
+      { from: "test-support", allow: [] },
       {
         from: "unit-tests",
-        allow: ["front-door", "contract", "engine", "runtime", "catalog"],
+        allow: [
+          "front-door",
+          "contract",
+          "engine",
+          "runtime",
+          "catalog",
+          "test-support",
+        ],
       },
       {
         from: "integration-tests",
@@ -243,6 +252,7 @@ const EXPECTED_BOUNDARIES: Record<Profile, Record<string, unknown>> = {
           "runtime",
           "catalog",
           "diagnostics",
+          "test-support",
         ],
       },
       {
@@ -254,6 +264,7 @@ const EXPECTED_BOUNDARIES: Record<Profile, Record<string, unknown>> = {
           "runtime",
           "catalog",
           "diagnostics",
+          "test-support",
         ],
       },
       {

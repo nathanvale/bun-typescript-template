@@ -21,7 +21,9 @@ import {
 } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  type Copy,
   type Layout,
+  lintsCode,
   PROFILES,
   type Profile,
   type ProjectRecipe,
@@ -439,12 +441,20 @@ async function validateDestination(
   return "empty";
 }
 
+function isCopied(name: string, only: readonly string[] | undefined): boolean {
+  return (
+    !UNCOPIED_NAMES.includes(name) &&
+    (only === undefined || only.includes(name))
+  );
+}
+
 async function copyDirectoryContents(
   source: string,
   destination: string,
+  only: readonly string[] | undefined,
 ): Promise<void> {
   for (const entry of await readdir(source, { withFileTypes: true })) {
-    if (UNCOPIED_NAMES.includes(entry.name)) {
+    if (!isCopied(entry.name, only)) {
       continue;
     }
     await cp(join(source, entry.name), join(destination, entry.name), {
@@ -485,25 +495,59 @@ async function substituteTokens(
   return count;
 }
 
-async function requireProfileSource(source: string): Promise<void> {
-  if ((await lstatIfPresent(source)) !== undefined) {
-    return;
-  }
-  throw new CliError(
-    "profile_source_missing",
-    `recipe folder is missing: ${relative(TEMPLATE_ROOT, source)}`,
-    `run git restore ${relative(TEMPLATE_ROOT, source)} in the template repository`,
+function sourceRefusal(source: string, code: string, message: string) {
+  const path = relative(TEMPLATE_ROOT, source);
+  return new CliError(
+    code,
+    `${message}: ${path}`,
+    `run git restore ${path} in the template repository`,
     1,
     false,
   );
 }
 
+async function requireSourceFolder(source: string): Promise<void> {
+  const stats = await lstatIfPresent(source);
+  if (stats === undefined)
+    throw sourceRefusal(
+      source,
+      "profile_source_missing",
+      "recipe folder is missing",
+    );
+  if (!stats.isDirectory())
+    throw sourceRefusal(
+      source,
+      "profile_source_wrong_type",
+      "recipe folder is not a folder",
+    );
+}
+
+async function requireSourceFile(source: string): Promise<void> {
+  const stats = await lstatIfPresent(source);
+  if (stats === undefined)
+    throw sourceRefusal(
+      source,
+      "profile_source_missing",
+      "recipe file is missing",
+    );
+  if (!stats.isFile())
+    throw sourceRefusal(
+      source,
+      "profile_source_wrong_type",
+      "recipe file is not a regular file",
+    );
+}
+
+async function requireCopySource(copy: Copy): Promise<void> {
+  const folder = join(TEMPLATE_ROOT, copy.from);
+  await requireSourceFolder(folder);
+  for (const name of copy.only ?? []) {
+    await requireSourceFile(join(folder, name));
+  }
+}
+
 async function requireProfileSources(recipe: ProjectRecipe): Promise<void> {
-  await Promise.all(
-    recipe.copies.map((copy) =>
-      requireProfileSource(join(TEMPLATE_ROOT, copy.from)),
-    ),
-  );
+  await Promise.all(recipe.copies.map(requireCopySource));
 }
 
 async function copyRecipe(
@@ -513,7 +557,11 @@ async function copyRecipe(
   for (const copy of recipe.copies) {
     const into = join(staging, copy.into);
     await mkdir(into, { recursive: true });
-    await copyDirectoryContents(join(TEMPLATE_ROOT, copy.from), into);
+    await copyDirectoryContents(
+      join(TEMPLATE_ROOT, copy.from),
+      into,
+      copy.only,
+    );
   }
 }
 
@@ -551,6 +599,19 @@ function templateIdentity(args: string[]) {
   return child.stdout.toString().trim();
 }
 
+const MARKER_GUIDANCE =
+  "A comment that opens with `Platform:` or `Interface:` makes a claim that a reviewer checks. It is not a way to keep a comment.";
+
+function commentGuidance(recipe: ProjectRecipe): string {
+  const refusal = lintsCode(recipe)
+    ? "Lint refuses a comment in code, so say it in a name, a type or a test title."
+    : "Write no comment in code. Say it in a name, a type or a test title.";
+  const owner = lintsCode(recipe)
+    ? "\nThe lint rule files in config/ are the template's. Change a lint rule in the template, not here.\n"
+    : "";
+  return `## Comments\n\n${refusal}\n${MARKER_GUIDANCE}\n${owner}`;
+}
+
 async function writeRepositoryContext(
   staging: string,
   options: BootstrapOptions,
@@ -575,7 +636,7 @@ async function writeRepositoryContext(
   const check = options.recipe.checkCommand;
   await writeFile(
     join(staging, "AGENTS.md"),
-    `# Repository commands\n\nUse the existing repository CLI at src/cli.ts. Add commands through src/commands.ts.\nKeep domain implementation in separate files and preserve one public application CLI.\n\nCheck command: ${check}\nSmoke: bun run start --help\nSource packet: ${options.sourcePacket}\nTemplate source: ${metadata.templateRevision}\n`,
+    `# Repository commands\n\nUse the existing repository CLI at src/cli.ts. Add commands through src/commands.ts.\nKeep domain implementation in separate files and preserve one public application CLI.\n\nCheck command: ${check}\nSmoke: bun run start --help\nSource packet: ${options.sourcePacket}\nTemplate source: ${metadata.templateRevision}\n\n${commentGuidance(options.recipe)}`,
   );
 }
 

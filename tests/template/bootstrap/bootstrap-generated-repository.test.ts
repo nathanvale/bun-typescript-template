@@ -89,7 +89,7 @@ test(
 );
 
 test(
-  "lint, local rules, formatting and native type errors fail independent read-only checks",
+  "lint, local rules, the template's rules, formatting and native type errors fail independent read-only checks",
   async () => {
     const root = temporaryRoot();
     const destination = join(root, "gates");
@@ -120,7 +120,24 @@ test(
     ) as { scripts: Record<string, string> };
     const path = join(destination, "src/domains/status.ts");
     const original = await readFile(path, "utf8");
+    await writeFile(path, `// Platform: Bun drains spawn pipes.\n${original}`);
+    requireSuccess(
+      await runIn(destination, ["run", "lint"], {}),
+      "sanctioned comment marker control",
+    );
     const mutations = [
+      {
+        source: `// Loop over the names.\n${original}`,
+        phase: "lint",
+        code: 1,
+        diagnostic: "repository/no-comments",
+      },
+      {
+        source: original + "\nexport type Opaque = unknown;\n",
+        phase: "lint",
+        code: 1,
+        diagnostic: "anti-slop/no-unknown-type-aliases",
+      },
       {
         source: original + '\nprocess.stdout.write("forbidden");\n',
         phase: "lint",
@@ -157,5 +174,5 @@ test(
       expect(await readFile(path, "utf8")).toBe(mutation.source);
     }
   },
-  processWatchdog(7),
+  processWatchdog(10),
 );

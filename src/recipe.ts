@@ -21,7 +21,8 @@ export type Request =
 
 export interface Copy {
   readonly from: string;
-  readonly into: "." | "src" | "tests";
+  readonly into: "." | "src" | "tests" | "tests/support" | "config";
+  readonly only?: readonly string[];
 }
 
 export interface ProjectRecipe {
@@ -36,10 +37,32 @@ export const UNCOPIED_NAMES: readonly string[] = [
   "composition-tests",
 ];
 
+export const LINT_RULE_FILES: readonly string[] = [
+  "anti-slop-bindings.mjs",
+  "anti-slop-rules.mjs",
+  "anti-slop-type-rules.mjs",
+  "payload-rules.mjs",
+  "platform-rules.mjs",
+  "template-rules.mjs",
+];
+
+const LINT_RULES: Copy = {
+  from: "config",
+  into: "config",
+  only: LINT_RULE_FILES,
+};
+
+const TEST_FOLDER: Copy = {
+  from: "tests/support",
+  into: "tests/support",
+  only: ["test-folder.ts"],
+};
+
 const SIMPLE_CLI: readonly Copy[] = [
   { from: "starters/shared/src", into: "src" },
   { from: "starters/simple/src", into: "src" },
   { from: "starters/simple/tests", into: "tests" },
+  TEST_FOLDER,
 ];
 
 function starterRow(starter: Starter): ProjectRecipe {
@@ -49,6 +72,8 @@ function starterRow(starter: Starter): ProjectRecipe {
       { from: `profiles/static-admission/${starter}`, into: "." },
       { from: `starters/${starter}`, into: "." },
       { from: "starters/shared/src", into: "src" },
+      TEST_FOLDER,
+      LINT_RULES,
     ],
     cli: starter,
     checkCommand: "bun run check",
@@ -64,19 +89,31 @@ export const RECIPES: readonly ProjectRecipe[] = [
   },
   {
     request: { profile: "durable", layout: "single-package" },
-    copies: [{ from: "profiles/durable", into: "." }, ...SIMPLE_CLI],
+    copies: [
+      { from: "profiles/durable", into: "." },
+      ...SIMPLE_CLI,
+      LINT_RULES,
+    ],
     cli: "simple",
     checkCommand: "bun run check",
   },
   {
     request: { profile: "durable", layout: "monorepo" },
-    copies: [{ from: "examples/monorepo", into: "." }, ...SIMPLE_CLI],
+    copies: [
+      { from: "examples/monorepo", into: "." },
+      ...SIMPLE_CLI,
+      LINT_RULES,
+    ],
     cli: "simple",
     checkCommand: "bun run check",
   },
   starterRow("simple"),
   starterRow("complex"),
 ];
+
+export function lintsCode(recipe: ProjectRecipe): boolean {
+  return recipe.copies.includes(LINT_RULES);
+}
 
 function distinct<T>(values: readonly (T | undefined)[]): T[] {
   return [

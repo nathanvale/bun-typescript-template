@@ -1,0 +1,13 @@
+diff --git a/tests/support/generated-lint.ts b/tests/support/generated-lint.ts
+index d6852b2..0b3efb8 100644
+--- a/tests/support/generated-lint.ts
++++ b/tests/support/generated-lint.ts
+@@ -65,7 +65,7 @@ function ruleFileProblems(
+ ): string[] {
+   return EXPECTED_RULE_FILES.flatMap((file) => {
+     const copy = join(generated, file);
+-    if (!existsSync(copy))
++    if (!existsSync(generated))
+       return [
+         `${name} has no ${file}, a lint rule file the template's eslint.config.mjs loads. Repair: name it in LINT_RULE_FILES in src/recipe.ts, so that Bootstrap copies it.`,
+       ];

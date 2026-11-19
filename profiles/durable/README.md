@@ -24,7 +24,8 @@ generation time.
 
 `bun run check` runs, in order:
 
-1. `lint`: typed ESLint on source and tests, including repository-local rules.
+1. `lint`: typed ESLint on source and tests, including repository-local rules
+   and the template's rules in `config/`, which refuse comments in code.
 2. `format:check`: Biome formatting without writes; lint and assist are disabled.
 3. `typecheck`: native TypeScript, inheriting the strict base configuration.
 4. `test`: Bun tests, including the repository CLI process tests.

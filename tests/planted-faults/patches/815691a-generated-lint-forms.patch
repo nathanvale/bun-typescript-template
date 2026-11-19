@@ -1,0 +1,21 @@
+diff --git a/tests/support/generated-lint.ts b/tests/support/generated-lint.ts
+index 56e2f35..98afd1d 100644
+--- a/tests/support/generated-lint.ts
++++ b/tests/support/generated-lint.ts
+@@ -4,16 +4,12 @@ import { ESLint } from "eslint";
+ import { EXPECTED_RULE_FILES } from "./lint-rule-files.ts";
+ 
+ const PROBES = [
+-  "probe.cjs",
+-  "probe.js",
+   "probe.mjs",
+   "probe.ts",
+   "scripts/probe.ts",
+   "src/probe.cts",
+-  "src/probe.jsx",
+   "src/probe.mts",
+   "src/probe.ts",
+-  "src/probe.tsx",
+   "tests/probe.ts",
+   "tests/support/probe.mts",
+ ] as const;

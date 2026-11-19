@@ -66,6 +66,10 @@ this file.
   nothing, since the tool looks that name up too. Witnessed: [r4625603158]
   (`GIT_ALLOW_PROTOCOL=none` let git run a `git-remote-none` helper found on
   `PATH`).
+- Check that a declared path is the kind it is declared as, a regular file
+  or a folder, not only that it exists. Witnessed: [#114-types] (Bootstrap
+  took a folder named `config/template-rules.mjs` as a template file, copied
+  it whole, and reported success for a malformed repository).
 
 [ac11ed9]: https://github.com/nathanvale/bun-typescript-template/commit/ac11ed98b7d538e8a304cac053aaefcaaf6b2cb3
 [cd2498b]: https://github.com/nathanvale/bun-typescript-template/commit/cd2498b7189a2d45d1906b9c870e8d13da6cd2dd
@@ -84,3 +88,4 @@ this file.
 [r4625304791]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625304791
 [r4625304802]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625304802
 [r4625603158]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625603158
+[#114-types]: https://github.com/nathanvale/bun-typescript-template/pull/114#pullrequestreview-5971659214
