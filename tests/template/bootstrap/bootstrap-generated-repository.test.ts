@@ -115,37 +115,44 @@ test(
       await runIn(destination, ["run", "lint"], {}),
       "positive lint and local rule control",
     );
+    const { scripts } = JSON.parse(
+      await readFile(join(destination, "package.json"), "utf8"),
+    ) as { scripts: Record<string, string> };
     const path = join(destination, "src/domains/status.ts");
     const original = await readFile(path, "utf8");
     const mutations = [
       {
         source: original + '\nprocess.stdout.write("forbidden");\n',
         phase: "lint",
+        code: 1,
         diagnostic: "repository/no-domain-output",
       },
       {
         source: original + "\nexport const unsafe: any = 1;\n",
         phase: "lint",
+        code: 1,
         diagnostic: "@typescript-eslint/no-explicit-any",
       },
       {
         source: original + "\n\n",
         phase: "format:check",
+        code: 1,
         diagnostic: "Formatter would have printed",
       },
       {
         source: "export function inspectStatus(): string {\n  return 42;\n}\n",
         phase: "typecheck",
+        code: 2,
         diagnostic: "TS2322",
       },
     ];
     for (const mutation of mutations) {
       await writeFile(path, mutation.source);
       const result = await runIn(destination, ["run", "check"], {});
-      expect(result.exitCode).not.toBe(0);
-      expect(result.stderr).toContain(
-        `script "${mutation.phase}" exited with code 1`,
-      );
+      expect(result.exitCode).toBe(mutation.code);
+      expect(
+        result.stderr.split("\n").findLast((line) => line.startsWith("$ ")),
+      ).toBe(`$ ${scripts[mutation.phase]}`);
       expect(result.stdout + result.stderr).toContain(mutation.diagnostic);
       expect(await readFile(path, "utf8")).toBe(mutation.source);
     }

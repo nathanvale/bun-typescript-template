@@ -10,7 +10,7 @@
   ],
   "catalog": {
     "@types/bun": "1.4.4",
-    "typescript": "npm:typescript@7.0.2"
+    "typescript": "npm:typescript@7.1.0-beta"
   },
   "scripts": {
     "biome:check": "bun run format:check",
@@ -30,7 +30,7 @@
     "@types/bun": "catalog:",
     "fallow": "3.43.2",
     "typescript": "npm:@typescript/typescript6@6.0.2",
-    "@typescript/native": "npm:typescript@7.0.2",
+    "@typescript/native": "npm:typescript@7.1.0-beta",
     "eslint": "10.15.0",
     "@eslint/js": "10.0.1",
     "typescript-eslint": "8.73.0",

@@ -14,7 +14,7 @@ generation time.
 ## Pinned toolchain
 
 - Bun `1.4.4` (`packageManager`, `bunfig.toml` `install.auto = "disable"`)
-- Native TypeScript `7.0.2` for compilation, TypeScript `6.0.2` for linting
+- Native TypeScript `7.1.0-beta` for compilation, TypeScript `6.0.2` for linting
 - ESLint `10.15.0` with typescript-eslint `8.73.0` and its recommended typed preset
 - `@types/bun` `1.4.4` (exact devDependency)
 - Biome `2.6.7` for formatting only
