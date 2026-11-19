@@ -1244,5 +1244,12 @@
     "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
     "title": "for a stamp record that is a link to nothing, naming the stamp record",
     "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
+  },
+  {
+    "id": "e4493d7-stamp-check-record-bytes",
+    "patch": "tests/planted-faults/patches/e4493d7-stamp-check-record-bytes.patch",
+    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
+    "title": "for a stamp record with a byte that is not UTF-8, naming the stamp record$",
+    "source": "e4493d7 fix(stamp-check): decode the stamp record and requirement files strictly"
   }
 ]
