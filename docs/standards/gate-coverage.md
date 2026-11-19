@@ -86,6 +86,29 @@ gates and their witnesses.
   body of more than one statement), and a timer reached through `window`,
   `Bun.setTimeout` or a computed key.
 
+## Generated repositories
+
+- Bootstrap copies the six lint rule files in `config/` into a repository
+  generated from a durable recipe, and that recipe's `eslint.config.mjs`
+  turns on every lint rule this repository's `eslint.config.mjs` turns on
+  for the same kind of file: source, test and `.mjs`.
+- `tests/template/toolchain/generated-lint.test.ts` generates each recipe.
+  It fails when a generated repository lacks a rule file, holds another
+  text of one, or sets a rule another way for a file. It also plants one
+  violation of each rule, and every comment case.
+- Fault `19348a4-recipe-rule-file` drops a rule file from the recipe table,
+  and fault `19348a4-eslint-config-rule-off` drops `no-comments` from the
+  durable recipe's lint config; the durable recipe's case kills both.
+- Static admission compares a generated starter repository's rule files
+  with this repository's. Fault `19348a4-static-admission-rule-files`
+  drops that comparison.
+- A scratch repository has no lint. Its `AGENTS.md` states the comment
+  rule.
+- Review only: the truth of a `Platform:` or `Interface:` claim in a
+  generated repository, a rule file edited in a repository generated from
+  a recipe that is not a CLI starter, and each gate script of this
+  repository, which no generated repository gets.
+
 ## Untrusted-value lints
 
 Both rules run on `.ts` files under `src/` and `scripts/`. Review other

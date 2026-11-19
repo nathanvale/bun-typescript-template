@@ -1,0 +1,13 @@
+diff --git a/src/bootstrap.ts b/src/bootstrap.ts
+index 3079012..5a94572 100644
+--- a/src/bootstrap.ts
++++ b/src/bootstrap.ts
+@@ -514,7 +514,7 @@ async function requireProfileSource(
+ async function requireCopySource(copy: Copy): Promise<void> {
+   const folder = join(TEMPLATE_ROOT, copy.from);
+   await requireProfileSource(folder, "folder");
+-  for (const name of copy.only ?? []) {
++  for (const name of []) {
+     await requireProfileSource(join(folder, name), "file");
+   }
+ }
