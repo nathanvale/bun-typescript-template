@@ -57,16 +57,26 @@ function textAt(value: unknown, key: string, where: string): string {
   return text;
 }
 
+function countedList(gaps: unknown, key: string, count: string): unknown[] {
+  const countsNone = field(field(gaps, "summary"), count) === 0;
+  return countsNone && field(gaps, key) === undefined
+    ? []
+    : listAt(
+        gaps,
+        key,
+        `${fallowRun}: its "coverage_gaps"`,
+        "install the pinned fallow with bun install --frozen-lockfile.",
+      );
+}
+
 function reportedGaps(report: string): Gap[] {
   const where = `${fallowRun}: its "coverage_gaps"`;
-  const repair =
-    "install the pinned fallow with bun install --frozen-lockfile.";
   const gaps = field(JSON.parse(report), "coverage_gaps");
   return [
-    ...listAt(gaps, "files", where, repair).map((entry, index) => ({
+    ...countedList(gaps, "files", "untested_files").map((entry, index) => ({
       path: textAt(entry, "path", `${where}.files[${index}]`),
     })),
-    ...listAt(gaps, "exports", where, repair).map((entry, index) => ({
+    ...countedList(gaps, "exports", "untested_exports").map((entry, index) => ({
       path: textAt(entry, "path", `${where}.exports[${index}]`),
       exportName: textAt(entry, "export_name", `${where}.exports[${index}]`),
     })),
@@ -211,6 +221,14 @@ test.each([
   ).toEqual(expected);
 });
 
+test("a list fallow leaves out is read as empty when its summary counts none", () => {
+  const summary = { untested_files: 0, untested_exports: 1 };
+  const exports = [{ path: "scripts/runner.ts", export_name: "run" }];
+  expect(
+    reportedGaps(JSON.stringify({ coverage_gaps: { summary, exports } })),
+  ).toEqual([{ path: "scripts/runner.ts", exportName: "run" }]);
+});
+
 test.each([
   [
     "a recorded hit with no reason",
@@ -226,6 +244,18 @@ test.each([
     "a fallow report with no coverage gaps",
     () => reportedGaps("{}"),
     `${fallowRun}: its "coverage_gaps" has no "files" array. Repair: install the pinned fallow with bun install --frozen-lockfile. ${done}`,
+  ],
+  [
+    "a fallow report that counts a gap and lists none",
+    () =>
+      reportedGaps(
+        JSON.stringify({
+          coverage_gaps: {
+            summary: { untested_files: 0, untested_exports: 1 },
+          },
+        }),
+      ),
+    `${fallowRun}: its "coverage_gaps" has no "exports" array. Repair: install the pinned fallow with bun install --frozen-lockfile. ${done}`,
   ],
 ])("%s is refused, naming the field", (_case, read, message) => {
   expect(read).toThrow(message);
