@@ -25,7 +25,9 @@ here.
   changed what the staged readers listed. Witnessed: [f929eb7], [7a62deb],
   [#84-git] (a local copy left runtime configuration in the replay fixture),
   [#90-git] (the bootstrap fixture inherited a signing requirement),
-  [#101-git] (the naming fixture inherited a setting that disabled its hook).
+  [#101-git] (the naming fixture inherited a setting that disabled its hook),
+  [#113-lazy] (a git control inherited `GIT_NO_LAZY_FETCH`, which hid the
+  behaviour it was there to show).
 - Start every child and git call a hook can reach from
   `withoutRepositoryLocation` in `scripts/process-runner.ts`, so none reads
   the hook's repository through `GIT_DIR` or the variables beside it.
@@ -50,3 +52,4 @@ here.
 [def3ec4]: https://github.com/nathanvale/bun-typescript-template/commit/def3ec4a0b0bbe9047f9296dc0bbf6424c44a807
 [#109-git]: https://github.com/nathanvale/bun-typescript-template/pull/109#discussion_r4609955976
 [#113-path]: https://github.com/nathanvale/bun-typescript-template/pull/113#pullrequestreview-5971206975
+[#113-lazy]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4626555126

@@ -149,11 +149,16 @@ describe("the kernel reader starts no remote helper", () => {
         refusalOf(() => readKernel({ repository, commit }, path)).code,
       ).toBe("kernel_commit_missing");
       expect(existsSync(ran)).toBe(false);
+      const callerFree = Object.fromEntries(
+        Object.entries(inherited()).filter(
+          ([name]) => name !== "GIT_NO_LAZY_FETCH",
+        ),
+      );
       const control = Bun.spawnSync(
         ["git", "cat-file", "-p", `${commit}:${path}`],
         {
           cwd: repository,
-          env: { ...inherited(), ...gitEnv, GIT_ALLOW_PROTOCOL: "none" },
+          env: { ...callerFree, ...gitEnv, GIT_ALLOW_PROTOCOL: "none" },
           stdout: "pipe",
           stderr: "pipe",
           timeout: 4_000,
