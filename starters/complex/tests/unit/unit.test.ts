@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { parseSetArguments } from "../../src/engine.ts";
+import { testFolder } from "../support/test-folder.ts";
 
 const ROOT = resolve(import.meta.dir, "../..");
 
@@ -40,7 +40,7 @@ test.each([
 });
 
 test("a rejected public set invocation does not create the state path", async () => {
-  const root = await mkdtemp(join(tmpdir(), "complex-starter-invalid-set-"));
+  const root = testFolder("complex-starter-invalid-set-");
   const state = join(root, "state.json");
   try {
     const result = Bun.spawnSync(

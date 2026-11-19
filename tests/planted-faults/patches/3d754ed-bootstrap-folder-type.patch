@@ -1,0 +1,13 @@
+diff --git a/src/bootstrap.ts b/src/bootstrap.ts
+index 3c42895..2bbca98 100644
+--- a/src/bootstrap.ts
++++ b/src/bootstrap.ts
+@@ -514,7 +514,7 @@ async function requireSourceFolder(source: string): Promise<void> {
+       "profile_source_missing",
+       "recipe folder is missing",
+     );
+-  if (!stats.isDirectory())
++  if (stats.isSymbolicLink())
+     throw sourceRefusal(
+       source,
+       "profile_source_wrong_type",

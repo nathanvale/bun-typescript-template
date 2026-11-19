@@ -1,0 +1,12 @@
+diff --git a/src/recipe.ts b/src/recipe.ts
+index 5adc011..1c06ca9 100644
+--- a/src/recipe.ts
++++ b/src/recipe.ts
+@@ -41,7 +41,6 @@ export const LINT_RULE_FILES: readonly string[] = [
+   "anti-slop-bindings.mjs",
+   "anti-slop-rules.mjs",
+   "anti-slop-type-rules.mjs",
+-  "payload-rules.mjs",
+   "platform-rules.mjs",
+   "template-rules.mjs",
+ ];

@@ -40,6 +40,14 @@ function lockPath(statePath: string): string {
   return `${statePath}.journal.lock`;
 }
 
+export function errorCode(error: unknown): unknown {
+  return typeof error === "object" &&
+    error !== null &&
+    Object.hasOwn(error, "code")
+    ? Reflect.get(error, "code")
+    : undefined;
+}
+
 function testBarrier(
   directory: string,
   ownerToken: string,
@@ -75,12 +83,7 @@ export function acquireJournalLock(
   try {
     descriptor = openSync(path, "wx", 0o600);
   } catch (error) {
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      error.code === "EEXIST"
-    ) {
+    if (errorCode(error) === "EEXIST") {
       throw new JournalLockHeld();
     }
     throw error;
@@ -143,7 +146,7 @@ async function readJournal(statePath: string): Promise<JournalRecord[]> {
   try {
     text = await readFile(journalPath(statePath), "utf8");
   } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+    if (errorCode(error) === "ENOENT") {
       return [];
     }
     throw error;

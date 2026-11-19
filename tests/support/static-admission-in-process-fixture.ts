@@ -1,6 +1,13 @@
 import { resolve, join, dirname } from "node:path";
 import { afterEach } from "bun:test";
-import { rmSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import {
+  copyFileSync,
+  rmSync,
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+} from "node:fs";
+import { EXPECTED_RULE_FILES } from "./lint-rule-files.ts";
 import { testFolder } from "./test-folder.ts";
 import {
   type Document as Fields,
@@ -28,6 +35,12 @@ export const policyFiles = [
   "eslint-rules.mjs",
   "bun.lock",
 ];
+
+export function copyRuleFiles(root: string): void {
+  mkdirSync(join(root, "config"));
+  for (const file of EXPECTED_RULE_FILES)
+    copyFileSync(join(repository, file), join(root, file));
+}
 
 export function fields(value: unknown): Fields {
   if (value === null || typeof value !== "object" || Array.isArray(value))

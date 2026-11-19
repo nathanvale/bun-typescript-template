@@ -14,6 +14,7 @@ import {
   runGit,
   runIn,
 } from "../../support/bootstrap-cli-fixture.ts";
+import { EXPECTED_RULE_FILES } from "../../support/lint-rule-files.ts";
 import { processWatchdog } from "../../support/process.ts";
 
 const temporaryRoot = bootstrapCliFixture();
@@ -55,9 +56,11 @@ const STARTER_FILES = {
     "biome.json",
     "bun.lock",
     "bunfig.toml",
+    ...EXPECTED_RULE_FILES,
     "package.json",
     "src/cli.ts",
     "tests/cli.test.ts",
+    "tests/support/test-folder.ts",
     "tsconfig.base.json",
     "tsconfig.json",
   ],
@@ -77,6 +80,7 @@ const STARTER_FILES = {
     "biome.json",
     "bun.lock",
     "bunfig.toml",
+    ...EXPECTED_RULE_FILES,
     "package.json",
     "src/branch-station-catalog.ts",
     "src/cli.ts",
@@ -88,6 +92,7 @@ const STARTER_FILES = {
     "src/process-lifecycle.ts",
     "src/runtime.ts",
     "tests/catalog/catalog.test.ts",
+    "tests/support/test-folder.ts",
     "tests/integration/diagnostics.test.ts",
     "tests/integration/integration.test.ts",
     "tests/unit/unit.test.ts",

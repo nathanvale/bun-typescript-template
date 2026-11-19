@@ -4,18 +4,16 @@ import {
   chmod,
   lstat,
   mkdir,
-  mkdtemp,
   readFile,
   readdir,
-  realpath,
   rm,
   stat,
   symlink,
   utimes,
   writeFile,
 } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { testFolder } from "../support/test-folder.ts";
 
 const ROOT = resolve(import.meta.dir, "../..");
 const roots: string[] = [];
@@ -27,10 +25,8 @@ function object(value: unknown): Observed {
   return value as Observed;
 }
 
-async function fixture() {
-  const root = await realpath(
-    await mkdtemp(join(tmpdir(), "complex-diagnostics-")),
-  );
+function fixture() {
+  const root = testFolder("complex-diagnostics-");
   roots.push(root);
   const xdg = join(root, "xdg");
   return { root, xdg, directory: join(xdg, "example", "diagnostics") };
@@ -114,7 +110,7 @@ afterEach(async () => {
 });
 
 test("diagnostics create private files, preserve current closed files, and prune seven-day closed files only", async () => {
-  const { root, xdg, directory } = await fixture();
+  const { root, xdg, directory } = fixture();
   const first = await invoke(root, xdg);
   expect(first.exit).toBe(0);
   const closed = diagnosticFile(first.document);
@@ -151,7 +147,7 @@ test("diagnostics create private files, preserve current closed files, and prune
 });
 
 test("ambiguous active reservations refuse diagnostics without deleting evidence or preventing a set", async () => {
-  const { root, xdg, directory } = await fixture();
+  const { root, xdg, directory } = fixture();
   await mkdir(directory, { recursive: true, mode: 0o700 });
   for (let index = 0; index < 10; index += 1)
     await writeFile(
@@ -182,7 +178,7 @@ test("ambiguous active reservations refuse diagnostics without deleting evidence
 });
 
 test("concurrent pruning keeps active evidence and contains all log allocations", async () => {
-  const { root, xdg, directory } = await fixture();
+  const { root, xdg, directory } = fixture();
   const original = diagnosticFile((await invoke(root, xdg)).document);
   const active = join(directory, "active.jsonl");
   await writeFile(active, "still active", { mode: 0o600 });
@@ -224,7 +220,7 @@ test("concurrent pruning keeps active evidence and contains all log allocations"
 test.each(["fifo", "symlink", "writable-ancestor"])(
   "diagnostics contain a hostile %s without changing the domain result",
   async (kind) => {
-    const { root, xdg, directory } = await fixture();
+    const { root, xdg, directory } = fixture();
     const normal = await invoke(root, join(root, "normal"));
     diagnosticFile(normal.document);
     const outside = join(root, "outside");
@@ -255,7 +251,7 @@ test.each(["fifo", "symlink", "writable-ancestor"])(
 );
 
 test("exclusive diagnostic creation never appends to an existing final file", async () => {
-  const { root, xdg } = await fixture();
+  const { root, xdg } = fixture();
   const fixedIdentity = await preload(
     root,
     `import { mock } from "bun:test"; import * as crypto from "node:crypto"; mock.module("node:crypto", () => ({ ...crypto, randomUUID: () => "11111111-1111-4111-8111-111111111111" }));`,
@@ -303,7 +299,7 @@ mock.module("node:fs", () => ({ ...fs,
 test.each(["missing-home", "EACCES", "ENOSPC", "write-throw", "stuck-write"])(
   "diagnostic %s preserves the complete set result, state and one completed effect",
   async (fault) => {
-    const { root, xdg } = await fixture();
+    const { root, xdg } = fixture();
     const normal = await invoke(root, join(root, "normal"), [
       "set",
       "--value",

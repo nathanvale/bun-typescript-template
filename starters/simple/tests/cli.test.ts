@@ -14,8 +14,9 @@ function parseEnvelope(text: string) {
 
 import { afterEach, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { testFolder } from "./support/test-folder.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const scratchRoots: string[] = [];
@@ -49,7 +50,7 @@ function invokeWithPreload(preload: string, ...args: string[]) {
 }
 
 async function serializerFailurePreload(): Promise<string> {
-  const root = await mkdtemp("/tmp/simple-starter-test-");
+  const root = testFolder("simple-starter-test-");
   scratchRoots.push(root);
   const preload = join(root, "serializer-failure.ts");
   await writeFile(
@@ -77,7 +78,7 @@ JSON.stringify = (...args) => {
 }
 
 async function outputFailurePreload(): Promise<string> {
-  const root = await mkdtemp("/tmp/simple-starter-test-");
+  const root = testFolder("simple-starter-test-");
   scratchRoots.push(root);
   const preload = join(root, "output-failure.ts");
   await writeFile(
@@ -103,7 +104,7 @@ type ClosedStdoutPreload = {
 };
 
 async function closedStdoutPreload(): Promise<ClosedStdoutPreload> {
-  const root = await mkdtemp("/tmp/simple-starter-test-");
+  const root = testFolder("simple-starter-test-");
   scratchRoots.push(root);
   const preload = join(root, "closed-stdout.ts");
   const ready = join(root, "ready");
@@ -122,12 +123,17 @@ while (!existsSync(releasePath)) await Bun.sleep(1);
   return { preload, ready, release };
 }
 
-async function waitForFile(path: string): Promise<void> {
-  for (let attempt = 0; attempt < 5_000; attempt += 1) {
-    if (existsSync(path)) return;
-    await Bun.sleep(1);
-  }
-  throw new Error(`Timed out waiting for ${path}`);
+function waitForFile(path: string): Promise<void> {
+  const started = performance.now();
+  return new Promise((resolve, reject) => {
+    const poll = setInterval(() => {
+      if (existsSync(path)) resolve();
+      else if (performance.now() - started >= 5_000)
+        reject(new Error(`Timed out waiting for ${path}`));
+      else return;
+      clearInterval(poll);
+    }, 1);
+  });
 }
 
 async function invokeWithClosedStdoutReader(
@@ -385,7 +391,7 @@ test("missing command is a focused usage refusal", () => {
 async function operationPreload(
   guidance: Record<string, unknown> | string,
 ): Promise<string> {
-  const root = await mkdtemp("/tmp/simple-starter-test-");
+  const root = testFolder("simple-starter-test-");
   scratchRoots.push(root);
   const preload = join(root, "operation.ts");
   await writeFile(
@@ -573,7 +579,7 @@ for (const [args, identity, exitCode] of [
     expect(normal.exitCode).toBe(exitCode);
     expect(normal.stderr).toBe("");
     expect(parseEnvelope(normal.stdout).result.commandIdentity).toBe(identity);
-    const root = await mkdtemp("/tmp/simple-starter-test-");
+    const root = testFolder("simple-starter-test-");
     scratchRoots.push(root);
     const preload = join(root, "async-output.ts");
     await writeFile(

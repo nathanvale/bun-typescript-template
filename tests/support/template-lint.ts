@@ -4,7 +4,10 @@ import { ESLint } from "eslint";
 
 export const root = resolve(import.meta.dir, "../..");
 export const templateSourceFile = "src/toolchain-resolution.ts";
-const eslint = new ESLint({ cwd: root });
+const eslint = new ESLint({
+  cwd: root,
+  overrideConfigFile: resolve(root, "eslint.config.mjs"),
+});
 
 export async function messages(filePath: string, code: string) {
   const [result] = await eslint.lintText(code, { filePath });

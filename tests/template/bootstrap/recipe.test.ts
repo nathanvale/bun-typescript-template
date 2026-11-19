@@ -1,14 +1,20 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, statSync } from "node:fs";
-import { cp, mkdir, readdir, rm } from "node:fs/promises";
+import { cp, mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
+  LINT_RULE_FILES,
+  lintsCode,
+  PROFILES,
   type ProjectRecipe,
   RECIPES,
   type Selection,
+  STARTERS,
   selectRecipe,
   UNCOPIED_NAMES,
 } from "../../../src/recipe.ts";
+import { rowKey } from "../../support/bootstrap-cli-fixture.ts";
+import { EXPECTED_RULE_FILES } from "../../support/lint-rule-files.ts";
 import { spawnBounded } from "../../support/process.ts";
 import { testFolder } from "../../support/test-folder.ts";
 
@@ -103,13 +109,6 @@ function selectionKey(selection: Selection): string {
     .join(" ");
 }
 
-function rowKey(recipe: ProjectRecipe): string {
-  const { profile, layout, starter } = recipe.request;
-  return [profile, layout, starter]
-    .filter((word) => word !== undefined)
-    .join(" ");
-}
-
 function outcome(selection: Selection): unknown {
   const choice = selectRecipe(selection);
   return choice.status === "selected"
@@ -135,6 +134,7 @@ async function copiedFiles(recipe: ProjectRecipe): Promise<string[]> {
     const source = join(ROOT, copy.from);
     for (const entry of await readdir(source, { withFileTypes: true })) {
       if (UNCOPIED_NAMES.includes(entry.name)) continue;
+      if (copy.only !== undefined && !copy.only.includes(entry.name)) continue;
       const targets = entry.isDirectory()
         ? (await filesUnder(source, entry.name)).map((path) =>
             join(copy.into, path),
@@ -204,6 +204,34 @@ describe("project recipe", () => {
     expect(provenance).toEqual(PROVENANCE);
   });
 
+  test("the profile and starter words Bootstrap accepts are the ones the rows use", () => {
+    expect({ profiles: PROFILES, starters: STARTERS }).toEqual({
+      profiles: ["scratch", "durable"],
+      starters: ["simple", "complex"],
+    });
+  });
+
+  test("the four durable rows copy every lint rule file into config, and the scratch row copies none", async () => {
+    const ruleFiles = [...EXPECTED_RULE_FILES];
+    expect(LINT_RULE_FILES.map((file) => `config/${file}`)).toEqual(ruleFiles);
+    const copied: Record<string, unknown> = {};
+    for (const recipe of RECIPES)
+      copied[rowKey(recipe)] = {
+        lintsCode: lintsCode(recipe),
+        ruleFiles: (await copiedFiles(recipe))
+          .filter((file) => file.startsWith("config/"))
+          .toSorted(),
+      };
+    const linted = { lintsCode: true, ruleFiles };
+    expect(copied).toEqual({
+      "scratch single-package": { lintsCode: false, ruleFiles: [] },
+      "durable single-package": linted,
+      "durable monorepo": linted,
+      "durable single-package simple": linted,
+      "durable single-package complex": linted,
+    });
+  });
+
   test("a selection that no row and no refusal matches throws, naming the selection", () => {
     const withGap = RECIPES.filter(
       ({ request }) => request.profile !== "scratch",
@@ -228,9 +256,38 @@ afterEach(async () => {
 });
 
 describe("Bootstrap carrying out a row", () => {
-  test(
-    "refuses a missing template source folder before any file is copied",
-    async () => {
+  test.each([
+    {
+      name: "a missing template source folder",
+      path: "starters/shared/src",
+      plant: "remove",
+      code: "profile_source_missing",
+      message: "recipe folder is missing: starters/shared/src",
+    },
+    {
+      name: "a missing template source file",
+      path: "tests/support/test-folder.ts",
+      plant: "remove",
+      code: "profile_source_missing",
+      message: "recipe file is missing: tests/support/test-folder.ts",
+    },
+    {
+      name: "a folder where a template source file belongs",
+      path: "config/payload-rules.mjs",
+      plant: "folder",
+      code: "profile_source_wrong_type",
+      message: "recipe file is not a regular file: config/payload-rules.mjs",
+    },
+    {
+      name: "a file where a template source folder belongs",
+      path: "starters/shared/src",
+      plant: "file",
+      code: "profile_source_wrong_type",
+      message: "recipe folder is not a folder: starters/shared/src",
+    },
+  ])(
+    "refuses $name before any file is copied",
+    async ({ path, plant, code, message }) => {
       const template = testFolder("recipe-template-");
       carryOutFolders.push(template);
       await mkdir(join(template, "src"));
@@ -239,13 +296,17 @@ describe("Bootstrap carrying out a row", () => {
       }
       const durable = selectRecipe({ profile: "durable", monorepo: false });
       if (durable.status !== "selected") throw new Error(durable.message);
-      const missing = "starters/shared/src";
       for (const copy of durable.recipe.copies) {
-        if (copy.from === missing) continue;
         await cp(join(ROOT, copy.from), join(template, copy.from), {
           recursive: true,
         });
       }
+      const planted = join(template, path);
+      await rm(planted, { recursive: true });
+      if (plant === "folder")
+        await mkdir(join(planted, "planted"), { recursive: true });
+      if (plant === "file") await writeFile(planted, "planted\n");
+      expect(existsSync(planted)).toBe(plant !== "remove");
       const output = testFolder("recipe-out-");
       carryOutFolders.push(output);
       const parent = join(output, "nested");
@@ -278,9 +339,9 @@ describe("Bootstrap carrying out a row", () => {
           schemaVersion: 1,
           status: "refused",
           error: {
-            code: "profile_source_missing",
-            message: `recipe folder is missing: ${missing}`,
-            repair: `run git restore ${missing} in the template repository`,
+            code,
+            message,
+            repair: `run git restore ${path} in the template repository`,
             retrySafe: false,
           },
         },
