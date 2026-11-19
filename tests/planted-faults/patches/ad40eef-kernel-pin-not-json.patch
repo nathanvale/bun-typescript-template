@@ -1,0 +1,14 @@
+diff --git a/src/kernel-pin.ts b/src/kernel-pin.ts
+index 6f7462d..1c5ce59 100644
+--- a/src/kernel-pin.ts
++++ b/src/kernel-pin.ts
+@@ -35,7 +35,8 @@ function entriesOf(source: string): Map<string, unknown> {
+   let parsed: unknown;
+   try {
+     parsed = JSON.parse(source);
+-  } catch {
++  } catch (error) {
++    if (error instanceof SyntaxError) throw error;
+     fail(`is not JSON. ${restoreRepair}`);
+   }
+   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))

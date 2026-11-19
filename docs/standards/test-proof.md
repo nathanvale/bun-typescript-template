@@ -99,9 +99,7 @@ repository broke it.
   limit).
 - Template tests: reuse `spawnBounded` (`tests/support/process.ts`), which
   runs the child through `startChild` (`scripts/process-runner.ts`), for that
-  bound. Kernel tests: reuse `spawnBounded`
-  (`tests/kernel/kernel-repair/swarm-process.ts`) or `exitWithin`
-  (`tests/kernel/lifecycle/harness.ts`).
+  bound.
 - In `finally` or per-case teardown, release the CLI, its ledgered children,
   then its temporary folders. Witnessed: [d592b6d], [70c7280], [#84-cleanup],
   [#91-cleanup], [5533cd6].
@@ -120,9 +118,7 @@ repository broke it.
 ## Time
 
 - Wait on an event the subject produces (a ready file, ledger line, or
-  barrier), or drive the fake clock in
-  `tests/kernel/lifecycle/recording-host.ts`. Witnessed: [b077b0b],
-  [4386b03].
+  barrier). Witnessed: [b077b0b], [4386b03].
 - Widen a race control until it catches its fault on every run. Witnessed:
   [2b2907a] (caught in 48 of 50 runs before widening).
 - Bound a duration a test reads back from output by zero below and, above,

@@ -1,0 +1,13 @@
+diff --git a/src/kernel-pin.ts b/src/kernel-pin.ts
+index 6f7462d..8d75c7e 100644
+--- a/src/kernel-pin.ts
++++ b/src/kernel-pin.ts
+@@ -61,7 +61,7 @@ function patternProblem(field: Field, value: string): string {
+ function checkedField(entries: Map<string, unknown>, field: Field): string {
+   if (!entries.has(field)) fail(`needs key "${field}". Repair: add that key.`);
+   const value = entries.get(field);
+-  if (typeof value !== "string")
++  if (typeof value === "symbol")
+     fail(
+       `${field} is ${JSON.stringify(value)}, which is not a string. Repair: write it as a string.`,
+     );

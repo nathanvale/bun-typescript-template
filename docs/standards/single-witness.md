@@ -66,6 +66,10 @@ this file.
   nothing, since the tool looks that name up too. Witnessed: [r4625603158]
   (`GIT_ALLOW_PROTOCOL=none` let git run a `git-remote-none` helper found on
   `PATH`).
+- Check a name another tool reads by that tool's rules, not only by the
+  characters it allows, so the parser admits no name the tool refuses.
+  Witnessed: [r4625152049] (the kernel pin's branch pattern `/^[\w./-]+$/`
+  admitted `main..next`, which git refuses as a branch name).
 - Check that a declared path is the kind it is declared as, a regular file
   or a folder, not only that it exists. Witnessed: [#114-types] (Bootstrap
   took a folder named `config/template-rules.mjs` as a template file, copied
@@ -88,4 +92,5 @@ this file.
 [r4625304791]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625304791
 [r4625304802]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625304802
 [r4625603158]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625603158
+[r4625152049]: https://github.com/nathanvale/bun-typescript-template/pull/112#discussion_r4625152049
 [#114-types]: https://github.com/nathanvale/bun-typescript-template/pull/114#pullrequestreview-5971659214

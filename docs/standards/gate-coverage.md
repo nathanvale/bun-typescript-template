@@ -15,9 +15,9 @@ gates and their witnesses.
   local exception to the shared `entry` rule for the file-size gate. The
   normal Fallow audit includes the gate, and the tokenizer stays in
   `devDependencies`. See [Fallow entry settings](https://fallow.tools/docs/configuration/overview/#supportentry).
-- The scan excludes `kernel/`, `tests/kernel/`, files under `vendor/`
-  directories, every `bun.lock`, and the generated `fallow-gate.sh` at exactly
-  `.claude/hooks/` and `.codex/hooks/`.
+- The scan excludes files under `vendor/` directories, every `bun.lock`, and
+  the generated `fallow-gate.sh` at exactly `.claude/hooks/` and
+  `.codex/hooks/`.
 - [The gate's recorded hits](../../scripts/file-size-recorded-hits.json) name each
   exception, its reason, and its lifetime. The standing fault-replay record
   reports its token count whenever scanned. Remove a temporary record in the
@@ -49,8 +49,8 @@ gates and their witnesses.
   `tests/template/standards/coverage-gaps-recorded-hits.json` records it. It also
   refuses a recorded hit that fallow no longer reports, so the list only
   shrinks. The `test` job runs it through `bun run test`, in three shards.
-- It leaves out the kernel's paths: `kernel/`, `tests/kernel/`,
-  `tests/template/glossary/` and `config/kernel-repository-rules.mjs`.
+- It reads a list that fallow leaves out as empty only when the report's
+  summary counts none of that kind.
 - Fault `aaedd58-doctor` adds to `scripts/doctor.ts` an exported `doneLine`
   that only the spawned doctor calls; the test refuses it.
 - Review only: a test that imports a function but never calls it, or calls
@@ -132,22 +132,17 @@ file extensions in those directories.
   declared on the target's type, or on one member of its union, passes, so
   `in` still narrows a union. A private name (`#id in value`) and
   `Object.hasOwn` pass.
-- Tests stay review. The R15 locale arm in
-  `tests/kernel/kernel-repair/equality.test.ts` swaps the collation on
-  purpose. The `in` witnesses were source reading another program's
-  payload, and a test reads values it built.
+- Tests stay review. The `in` witnesses were source reading another
+  program's payload, and a test reads values it built.
 - Also review only: an index read such as `fields[key]` with a key from a
   payload, and a key the type declares that a value only inherits.
-- Other source stays review in this table. The kernel's own lint covers
-  `kernel/src/`.
+- Other source stays review in this table.
 
 ## Comments
 
 - Lint `repository/no-comments` refuses every comment block in a file
-  `eslint.config.mjs` lints outside the kernel: `src/`, `scripts/`, `tests/`
-  outside `tests/kernel/`, `config/` and the root `.mjs` files.
-  Consecutive line comments are one block. The kernel's lint rule
-  covers `kernel/` and `tests/kernel/`.
+  `eslint.config.mjs` lints: `src/`, `scripts/`, `tests/`, `config/` and the
+  root `.mjs` files. Consecutive line comments are one block.
 - A block stays only when it is one of these:
   - `Platform:` on its first line: behaviour of a runtime, operating system
     or tool this repository cannot change, such as an errno meaning or a Bun
@@ -165,11 +160,9 @@ file extensions in those directories.
   rule whose message explains the constraint. An empty `catch` says what
   happens next in code (`return`, `continue`, or a rethrow), not in prose.
 - Fault `5ac4285-template-rules` admits a marker on any line of a block; the
-  lint test that refuses `Platform:` on a second line kills it. Fault
-  `5ac4285-eslint-rules` plants the same fault in the kernel's copy.
+  lint test that refuses `Platform:` on a second line kills it.
 - Fault `bbfce9a-template-rules` admits a `SAFETY:` block anywhere; the lint
-  test that refuses one above a statement with no cast kills it. Fault
-  `bbfce9a-eslint-rules` plants the same fault in the kernel's copy.
+  test that refuses one above a statement with no cast kills it.
 - In review, verify what a `Platform:` or `Interface:` comment claims and
   whether it names something outside this repository.
 - In review, verify each accepted decision citation. Require a Command
@@ -178,20 +171,18 @@ file extensions in those directories.
 - A generated repository gets these lint rules too: see
   [Generated repositories](#generated-repositories).
 - Not covered: `starters/simple/`, `starters/complex/`, the bootstrap
-  profiles, the `.ts.txt` fixtures, the kernel lint configuration that lints
-  a materialised tree, YAML and Markdown.
+  profiles, the `.ts.txt` fixtures, YAML and Markdown.
 
 ## Host path lint
 
 - Lint `repository/no-host-path-literal` refuses a string, or the head of a
   template literal, that starts at `/private`, `/usr`, `/var`, `/tmp`,
   `/etc`, `/opt`, `/Users`, `/home`, `/Library` or `/System`, in every file
-  `eslint.config.mjs` lints outside the kernel. `/dev/null`, `/bin/sh` and a
-  shebang pass: both hosts have them.
+  `eslint.config.mjs` lints. `/dev/null`, `/bin/sh` and a shebang pass: both
+  hosts have them.
 - Review only: a path built at run time, such as `"/" + "tmp"` or
   `join("/", "usr")`; a host path after a template expression; other roots,
-  such as `/proc` or `/run`; `kernel/` and `tests/kernel/`, which leave with
-  the kernel; and `starters/`, which ESLint skips.
+  such as `/proc` or `/run`; and `starters/`, which ESLint skips.
 
 ## Fault replay
 
@@ -225,11 +216,7 @@ file extensions in those directories.
   `platform-rules.mjs` owns `no-host-path-literal` and `payload-rules.mjs`
   owns `no-in-operator`. `eslint.config.mjs` joins the three under the
   `repository` plugin.
-- The kernel lint rules and their recorded hits run from
-  `config/kernel-repository-lint.mjs` and leave with the kernel.
-- `kernel/config/kernel/` is stamped, so it holds only the rules
-  `kernelLint` turns on. The kernel repository's own lint rules,
-  `no-comments` and the three test lint rules, live in
-  `config/kernel-repository-rules.mjs`.
+- The kernel's lint rules and their recorded hits left with the kernel. The
+  kernel repository owns them.
 
 [r4625491126]: https://github.com/nathanvale/bun-typescript-template/pull/114#discussion_r4625491126
