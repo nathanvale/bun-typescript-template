@@ -1,0 +1,13 @@
+diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+index fa60315..8e0ee6d 100644
+--- a/src/stamp-check.ts
++++ b/src/stamp-check.ts
+@@ -372,7 +372,7 @@ function findingsIn(folder: string, record: StampRecord): StampFinding[] {
+     ...record.files.flatMap((file) => fileFindings(folder, file)),
+     ...record.roots
+       .flatMap((root) => entriesUnder(folder, root))
+-      .filter((at) => !recorded.has(at))
++      .filter((at) => at === "")
+       .map((at) => ({
+         kind: "extra" as const,
+         path: at,

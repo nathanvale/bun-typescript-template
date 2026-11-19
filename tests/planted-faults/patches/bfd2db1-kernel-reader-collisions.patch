@@ -1,0 +1,12 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 060d4a8..f402d87 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -409,7 +409,6 @@ export function readKernel(
+     },
+   );
+   const every = [...listed.values()].flat();
+-  refuseCollisions(every, commit);
+   const blobs = blobsOf(
+     repository,
+     every.map(({ file }) => file.blob),

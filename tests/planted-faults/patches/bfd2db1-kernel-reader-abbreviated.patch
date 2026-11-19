@@ -1,0 +1,13 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 060d4a8..f02c5ee 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -370,7 +370,7 @@ export function readKernel(
+   declarationPath: string = kernelDeclarationPath,
+ ): Kernel {
+   const { commit } = seam;
+-  if (!fullCommit.test(commit))
++  if (commit === "")
+     throw new KernelRefusal(
+       "kernel_commit_abbreviated",
+       `"${commit}" is not a full commit identity, which is 40 lowercase hexadecimal characters.`,

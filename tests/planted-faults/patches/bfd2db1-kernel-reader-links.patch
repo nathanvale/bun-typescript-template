@@ -1,0 +1,13 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 060d4a8..64b62cf 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -218,7 +218,7 @@ function blobsOf(
+ }
+ 
+ function plainFile({ path, mode, id }: Entry, commit: string): StampedFile {
+-  if (mode !== "100644" && mode !== "100755")
++  if (mode === "")
+     throw new KernelRefusal(
+       "kernel_entry_unsupported",
+       `${path} in commit ${commit} is ${linkKinds.get(mode) ?? `an entry of git mode ${mode}`}, and a stamp root holds plain files only.`,
