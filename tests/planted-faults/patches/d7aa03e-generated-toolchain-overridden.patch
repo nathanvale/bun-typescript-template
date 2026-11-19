@@ -1,0 +1,12 @@
+diff --git a/tests/support/generated-toolchain.ts b/tests/support/generated-toolchain.ts
+index 623a453..bf8f948 100644
+--- a/tests/support/generated-toolchain.ts
++++ b/tests/support/generated-toolchain.ts
+@@ -275,7 +275,6 @@ function lockProblems(
+     ...(Bun.deepEquals(lock.overrides, overrides)
+       ? []
+       : [`${folder}/bun.lock records other overrides. ${relock(folder)}`]),
+-    ...overridden,
+     ...listed.flatMap((entry) =>
+       workspaceLockProblems(folder, lock, entry, top.catalog),
+     ),

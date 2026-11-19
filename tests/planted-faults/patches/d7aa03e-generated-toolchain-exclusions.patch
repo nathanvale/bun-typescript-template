@@ -1,0 +1,13 @@
+diff --git a/tests/support/generated-toolchain.ts b/tests/support/generated-toolchain.ts
+index 623a453..a9a4766 100644
+--- a/tests/support/generated-toolchain.ts
++++ b/tests/support/generated-toolchain.ts
+@@ -128,7 +128,7 @@ export function recipeFolders(tree: string): string[] {
+ function memberPatterns(workspaces: unknown): string[] | undefined {
+   return Array.isArray(workspaces) &&
+     workspaces.every(
+-      (pattern) => typeof pattern === "string" && !pattern.startsWith("!"),
++      (pattern) => typeof pattern === "string",
+     )
+     ? workspaces
+     : undefined;

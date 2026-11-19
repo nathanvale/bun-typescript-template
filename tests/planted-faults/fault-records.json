@@ -915,5 +915,33 @@
     "testFile": "tests/template/toolchain/generated-toolchain.test.ts",
     "title": "^a named catalog fails, naming the file and what to change$",
     "source": "3c995d9 test(toolchain): close the generated toolchain check's silent gaps"
+  },
+  {
+    "id": "d7aa03e-generated-toolchain-overridden",
+    "patch": "tests/planted-faults/patches/d7aa03e-generated-toolchain-overridden.patch",
+    "testFile": "tests/template/toolchain/generated-toolchain.test.ts",
+    "title": "^a bun\\.lock whose overridden package resolves to another version fails, naming the record$",
+    "source": "d7aa03e test(toolchain): compare resolved overrides, exact versions only, peers and workspace exclusions"
+  },
+  {
+    "id": "d7aa03e-generated-toolchain-exact",
+    "patch": "tests/planted-faults/patches/d7aa03e-generated-toolchain-exact.patch",
+    "testFile": "tests/template/toolchain/generated-toolchain.test.ts",
+    "title": "^a caret range fails, naming the file and what to change$",
+    "source": "d7aa03e test(toolchain): compare resolved overrides, exact versions only, peers and workspace exclusions"
+  },
+  {
+    "id": "d7aa03e-generated-toolchain-exclusions",
+    "patch": "tests/planted-faults/patches/d7aa03e-generated-toolchain-exclusions.patch",
+    "testFile": "tests/template/toolchain/generated-toolchain.test.ts",
+    "title": "^a workspaces exclusion fails, naming the file and what to change$",
+    "source": "d7aa03e test(toolchain): compare resolved overrides, exact versions only, peers and workspace exclusions"
+  },
+  {
+    "id": "d7aa03e-generated-toolchain-optional-peer",
+    "patch": "tests/planted-faults/patches/d7aa03e-generated-toolchain-optional-peer.patch",
+    "testFile": "tests/template/toolchain/generated-toolchain.test.ts",
+    "title": "^an optional peer dependency that bun\\.lock does not install passes$",
+    "source": "d7aa03e test(toolchain): compare resolved overrides, exact versions only, peers and workspace exclusions"
   }
 ]
