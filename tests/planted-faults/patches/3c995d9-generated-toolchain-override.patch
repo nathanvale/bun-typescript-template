@@ -1,0 +1,13 @@
+diff --git a/tests/support/generated-toolchain.ts b/tests/support/generated-toolchain.ts
+index 34c3313..ea66dff 100644
+--- a/tests/support/generated-toolchain.ts
++++ b/tests/support/generated-toolchain.ts
+@@ -195,7 +195,7 @@ function overrideProblems(
+       ({ selector, range, name }) =>
+         `${where} has no override ${selector}, and ${folder}/bun.lock installs ${name}. Repair: add "${selector}": "${range}" to its overrides, then regenerate ${folder}/bun.lock.`,
+     );
+-  return [...declared, ...missing];
++  return declared;
+ }
+ 
+ function workspaceLockProblems(

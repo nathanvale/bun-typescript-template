@@ -1,0 +1,12 @@
+diff --git a/tests/support/generated-toolchain.ts b/tests/support/generated-toolchain.ts
+index 34c3313..f1d954e 100644
+--- a/tests/support/generated-toolchain.ts
++++ b/tests/support/generated-toolchain.ts
+@@ -260,7 +260,6 @@ async function folderProblems(
+   const patterns = memberPatterns(top.workspaces);
+   const listed: Listed[] = [
+     ["package.json", top],
+-    ...(await packagesIn(join(tree, folder), patterns ?? [])),
+   ];
+   const lockPath = join(tree, folder, "bun.lock");
+   const lock = existsSync(lockPath)
