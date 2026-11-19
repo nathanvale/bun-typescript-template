@@ -908,5 +908,12 @@
     "testFile": "tests/template/kernel-pin/kernel-pin.test.ts",
     "title": "^a pinned commit in upper case is refused",
     "source": "91f18e7 fix(kernel-pin): name each refusal's real cause, and test the branch and the 41st character"
+  },
+  {
+    "id": "0b40120-kernel-pin-branch-name",
+    "patch": "tests/planted-faults/patches/0b40120-kernel-pin-branch-name.patch",
+    "testFile": "tests/template/kernel-pin/kernel-pin.test.ts",
+    "title": "^a branch with two dots in a row is refused",
+    "source": "0b40120 fix(kernel-pin): freeze the parsed pin, and refuse a branch git cannot use"
   }
 ]
