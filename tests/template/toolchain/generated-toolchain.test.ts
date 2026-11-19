@@ -17,7 +17,7 @@ const OVERRIDE = "@typescript/old@npm:typescript@^6";
 const RELOCK =
   "Repair: run bun install --lockfile-only in a copy of recipe and copy its bun.lock back.";
 const UNREAD =
-  "which this test cannot compare with the template's version. Repair: use a plain version, an npm: alias or an entry of the default catalog, or teach tests/support/generated-toolchain.ts to read it.";
+  "which this test cannot compare with the template's version: it reads an exact version, an npm: alias to one, or an entry of the default catalog. Repair: use one of those, or teach tests/support/generated-toolchain.ts to read it.";
 
 afterAll(() => {
   for (const fixture of fixtures) rmSync(fixture, { recursive: true });
@@ -33,6 +33,8 @@ const TEMPLATE: Partial<PackageJson> = {
   },
   overrides: { [OVERRIDE]: "npm:typescript@6.0.2" },
 };
+const WORKSPACES =
+  "recipe/package.json workspaces is not a plain list of member folders (an object, or an exclusion starting with !), the only form this test reads. Repair: list member folders in workspaces, or teach tests/support/generated-toolchain.ts to read it.";
 const LATEST: Partial<PackageJson> = {
   packageManager: "bun@1.4.4",
   devDependencies: { "@types/bun": "1.4.4", typescript: "7.1.0-beta" },
@@ -43,7 +45,12 @@ function lockOf(packageJson: Partial<PackageJson>): Partial<LockFile> {
     ...packageJson.dependencies,
     ...packageJson.devDependencies,
     ...packageJson.optionalDependencies,
-  }).filter(([, range]) => !range.startsWith("catalog:"));
+    ...packageJson.peerDependencies,
+  }).filter(
+    ([name, range]) =>
+      !range.startsWith("catalog:") &&
+      packageJson.peerDependenciesMeta?.[name]?.optional !== true,
+  );
   return {
     workspaces: { "": packageJson },
     ...(packageJson.catalog ? { catalog: packageJson.catalog } : {}),
@@ -119,6 +126,21 @@ test.each<[string, Partial<PackageJson>, string]>([
     "recipe/package.json optionalDependencies.eslint installs eslint@10.0.0, and the template's package.json has eslint@10.15.0. Repair: make it install eslint@10.15.0, then regenerate recipe/bun.lock.",
   ],
   [
+    "a peer dependency older than the template's",
+    { ...LATEST, peerDependencies: { eslint: "10.0.0" } },
+    "recipe/package.json peerDependencies.eslint installs eslint@10.0.0, and the template's package.json has eslint@10.15.0. Repair: make it install eslint@10.15.0, then regenerate recipe/bun.lock.",
+  ],
+  [
+    "a caret range",
+    { ...LATEST, dependencies: { zod: "^4.4.3" } },
+    `recipe/package.json dependencies.zod is ^4.4.3, ${UNREAD}`,
+  ],
+  [
+    "an npm: alias to a range",
+    { ...LATEST, dependencies: { tsc: "npm:typescript@~7.1.0" } },
+    `recipe/package.json dependencies.tsc is npm:typescript@~7.1.0, ${UNREAD}`,
+  ],
+  [
     "another override",
     { ...LATEST, overrides: { [OVERRIDE]: "npm:typescript@6.0.1" } },
     `recipe/package.json overrides.${OVERRIDE} is npm:typescript@6.0.1, and the template's package.json has npm:typescript@6.0.2. Repair: copy the template's override.`,
@@ -141,7 +163,12 @@ test.each<[string, Partial<PackageJson>, string]>([
   [
     "workspaces written as an object",
     { ...LATEST, workspaces: { packages: ["packages/*"] } },
-    "recipe/package.json workspaces is not a list of folders, the only form this test reads. Repair: list member folders in workspaces, or teach tests/support/generated-toolchain.ts to read it.",
+    WORKSPACES,
+  ],
+  [
+    "a workspaces exclusion",
+    { ...LATEST, workspaces: ["packages/*", "!packages/fixture"] },
+    WORKSPACES,
   ],
 ])(
   "%s fails, naming the file and what to change",
@@ -186,6 +213,43 @@ test("a recipe folder whose bun.lock installs an overridden package without the 
     }),
   ).toEqual([
     `recipe/package.json has no override ${OVERRIDE}, and recipe/bun.lock installs @typescript/old. Repair: add "${OVERRIDE}": "npm:typescript@6.0.2" to its overrides, then regenerate recipe/bun.lock.`,
+  ]);
+});
+
+test("an optional peer dependency that bun.lock does not install passes", async () => {
+  const packageJson = {
+    ...LATEST,
+    peerDependencies: { eslint: "10.15.0" },
+    peerDependenciesMeta: { eslint: { optional: true } },
+  };
+  expect(
+    await problemsOf({
+      "recipe/package.json": packageJson,
+      "recipe/bun.lock": lockOf(packageJson),
+    }),
+  ).toEqual([]);
+});
+
+test("a bun.lock whose overridden package resolves to another version fails, naming the record", async () => {
+  const packageJson = {
+    ...LATEST,
+    overrides: { [OVERRIDE]: "npm:typescript@6.0.2" },
+  };
+  const lock = lockOf(packageJson);
+  expect(
+    await problemsOf({
+      "recipe/package.json": packageJson,
+      "recipe/bun.lock": {
+        ...lock,
+        packages: {
+          ...lock.packages,
+          "@typescript/old": ["typescript@6.0.2"],
+          "fallow-type-aware/@typescript/old": ["typescript@6.0.3"],
+        },
+      },
+    }),
+  ).toEqual([
+    `recipe/bun.lock resolves fallow-type-aware/@typescript/old to typescript@6.0.3, and overrides.${OVERRIDE} installs typescript@6.0.2. ${RELOCK}`,
   ]);
 });
 

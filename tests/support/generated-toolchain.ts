@@ -13,6 +13,7 @@ export type PackageJson = {
   devDependencies: Record<string, string>;
   optionalDependencies: Record<string, string>;
   peerDependencies: Record<string, string>;
+  peerDependenciesMeta: Record<string, { optional?: boolean }>;
   overrides: Record<string, string>;
 };
 export type LockFile = {
@@ -32,6 +33,8 @@ type Entry = {
 type VersionedEntry = Entry & { range: string };
 
 const SELF = "tests/support/generated-toolchain.ts";
+const EXACT_VERSION =
+  /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const GROUPS = [
   "dependencies",
   "devDependencies",
@@ -47,6 +50,7 @@ const NO_PACKAGE_JSON: PackageJson = {
   devDependencies: {},
   optionalDependencies: {},
   peerDependencies: {},
+  peerDependenciesMeta: {},
   overrides: {},
 };
 const NO_LOCK: LockFile = {
@@ -70,7 +74,7 @@ async function readPackageJson(path: string): Promise<PackageJson> {
 
 function split(target: string): [string, string] {
   const at = target.lastIndexOf("@");
-  return [target.slice(0, at), target.slice(at + 1)];
+  return at < 0 ? [target, ""] : [target.slice(0, at), target.slice(at + 1)];
 }
 
 function overriddenPackage(selector: string): string {
@@ -94,9 +98,17 @@ function entries(packageJson: PackageJson, catalog: Ranges): Entry[] {
 }
 
 function comparable(entry: Entry): entry is VersionedEntry {
-  const { range } = entry;
+  const { name, range } = entry;
+  if (range === undefined || (range.includes(":") && !range.startsWith("npm:")))
+    return false;
+  const [, version] = split(installedPackage(name, range));
+  return EXACT_VERSION.test(version);
+}
+
+function optionalPeer(packageJson: PackageJson, place: string, name: string) {
   return (
-    range !== undefined && (!range.includes(":") || range.startsWith("npm:"))
+    place.startsWith("peerDependencies.") &&
+    own(packageJson.peerDependenciesMeta, name)?.optional === true
   );
 }
 
@@ -115,7 +127,9 @@ export function recipeFolders(tree: string): string[] {
 
 function memberPatterns(workspaces: unknown): string[] | undefined {
   return Array.isArray(workspaces) &&
-    workspaces.every((pattern) => typeof pattern === "string")
+    workspaces.every(
+      (pattern) => typeof pattern === "string" && !pattern.startsWith("!"),
+    )
     ? workspaces
     : undefined;
 }
@@ -161,7 +175,7 @@ function versionProblems(
     )
     .map(
       ({ place, given }) =>
-        `${where} ${place} is ${given}, which this test cannot compare with the template's version. Repair: use a plain version, an npm: alias or an entry of the default catalog, or teach ${SELF} to read it.`,
+        `${where} ${place} is ${given}, which this test cannot compare with the template's version: it reads an exact version, an npm: alias to one, or an entry of the default catalog. Repair: use one of those, or teach ${SELF} to read it.`,
     );
   return [...drift, ...unread];
 }
@@ -220,7 +234,8 @@ function workspaceLockProblems(
     const entry =
       own(lock.packages, `${packageJson.name}/${name}`) ??
       own(lock.packages, name);
-    return entry?.[0] === wanted
+    return entry?.[0] === wanted ||
+      (entry === undefined && optionalPeer(packageJson, place, name))
       ? []
       : [
           `${folder}/bun.lock resolves ${file} ${place} to ${String(entry?.[0])}, not ${wanted}. ${relock(folder)}`,
@@ -238,6 +253,21 @@ function lockProblems(
   const overrides = Object.fromEntries(
     Object.entries(top.overrides).map(([key, range]) => [key, { ".": range }]),
   );
+  const overridden = Object.entries(top.overrides).flatMap(
+    ([selector, range]) => {
+      const name = overriddenPackage(selector);
+      const wanted = installedPackage(name, range);
+      return Object.entries(lock.packages)
+        .filter(([key]) => key === name || key.endsWith(`/${name}`))
+        .flatMap(([key, entry]) =>
+          entry[0] === wanted
+            ? []
+            : [
+                `${folder}/bun.lock resolves ${key} to ${String(entry[0])}, and overrides.${selector} installs ${wanted}. ${relock(folder)}`,
+              ],
+        );
+    },
+  );
   return [
     ...(Bun.deepEquals(lock.catalog, top.catalog)
       ? []
@@ -245,6 +275,7 @@ function lockProblems(
     ...(Bun.deepEquals(lock.overrides, overrides)
       ? []
       : [`${folder}/bun.lock records other overrides. ${relock(folder)}`]),
+    ...overridden,
     ...listed.flatMap((entry) =>
       workspaceLockProblems(folder, lock, entry, top.catalog),
     ),
@@ -276,7 +307,7 @@ async function folderProblems(
     ...(patterns
       ? []
       : [
-          `${folder}/package.json workspaces is not a list of folders, the only form this test reads. Repair: list member folders in workspaces, or teach ${SELF} to read it.`,
+          `${folder}/package.json workspaces is not a plain list of member folders (an object, or an exclusion starting with !), the only form this test reads. Repair: list member folders in workspaces, or teach ${SELF} to read it.`,
         ]),
     ...listed.flatMap((entry) =>
       versionProblems(folder, entry, top.catalog, template),
