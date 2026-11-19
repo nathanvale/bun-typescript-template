@@ -8,7 +8,9 @@ here.
   module. Witnessed: [56aee86], [e7c771c].
 - Run a format or shape rule through its one helper. A second copy of a
   constructor's shape rule gave admission a different refusal text.
-  Witnessed: [892a700], [f2270b3].
+  Witnessed: [892a700], [f2270b3], [#113-path] (the kernel reader returned a
+  file name with a backslash, which the stamp record's path rule refuses,
+  until the reader ran that rule's helper too).
 - Import shared test fakes and fixtures from
   `tests/kernel/kernel-repair/handlers.ts` and `shapes.ts`. Witnessed:
   [810345d], [cf72627].
@@ -47,3 +49,4 @@ here.
 [#101-git]: https://github.com/nathanvale/bun-typescript-template/pull/101#discussion_r4609075462
 [def3ec4]: https://github.com/nathanvale/bun-typescript-template/commit/def3ec4a0b0bbe9047f9296dc0bbf6424c44a807
 [#109-git]: https://github.com/nathanvale/bun-typescript-template/pull/109#discussion_r4609955976
+[#113-path]: https://github.com/nathanvale/bun-typescript-template/pull/113#pullrequestreview-5971206975

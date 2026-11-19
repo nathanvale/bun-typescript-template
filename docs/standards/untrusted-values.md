@@ -35,7 +35,10 @@ boundary trusts the types.
 - Bound every wait, including the settle after a handler returns. Witnessed:
   [b54d325], [1d03d99], [8de7e09] (a test's ledger poll had no bound),
   [r4625304827] (a synchronous read of a named pipe waits for a writer and
-  takes no bound, so open only a plain file).
+  takes no bound, so open only a plain file), [r4625592689] (a check of the
+  path and then an open of the path left a gap in which the entry could
+  become a named pipe, so open with `O_NONBLOCK` first, then check the open
+  file with `fstatSync`).
 - State a complexity bound for each traversal and append. Witnessed:
   [r4580077771] (a shared subgraph cost about 2^35 visits), [d972ded]
   (quadratic append).
@@ -48,19 +51,29 @@ boundary trusts the types.
   its result cannot tell that byte from text that holds U+FFFD. Witnessed:
   [r4625243717], [r4625304816] (a kernel declaration with a byte that is not
   UTF-8 was decoded and read), [r4625243680], [r4625304810] (a file name
-  that holds U+FFFD itself was refused as not UTF-8).
+  that holds U+FFFD itself was refused as not UTF-8), [r4625592501] (paths
+  that were not UTF-8 were matched against a stamp root through their lossy
+  decoding, so one outside a stamp root whose name holds U+FFFD was refused;
+  compare bytes with bytes before decoding).
+- Decode a name with `ignoreBOM: true`, so that every character of it is
+  kept. A strict decoder still drops a byte-order mark at the start of its
+  input. Witnessed: [r4625804683] (a path that starts with U+FEFF lost its
+  first character, so its kernel declaration was reported missing).
 
 ## Separators
 
 - Let a path or file name hold any byte but NUL: a tab, a line feed and a
   colon included. End a raw name with NUL, and split a tool's record at its
   first separator only. Where a tool takes paths in a list that a path can
-  split, confirm what the tool found. Witnessed: [r4625304844] (a
+  split, confirm what the tool found, in each form it can find. Witnessed:
+  [r4625304844] (a
   `git ls-tree -z` record split at every tab cut a file name that held one),
   [r4625304853] (a raw path ended with a line feed could not hold one),
   [r4625304781] (a colon in the path above a folder defeated
   `GIT_CEILING_DIRECTORIES`, a colon-separated list, so a folder inside a
-  repository was read as that repository).
+  repository was read as that repository), [r4625593933] (the confirmation
+  read a working tree's prefix, which git prints empty in a bare repository,
+  so a folder inside a bare repository still passed).
 
 ## Plain paths
 
@@ -76,10 +89,14 @@ boundary trusts the types.
 
 - Inspect the entry at a path itself, with `lstatSync`, before you read
   through it or call it absent. `existsSync`, `statSync` and `readdirSync`
-  follow a symbolic link and answer for what it points to. Witnessed:
+  follow a symbolic link and answer for what it points to. Open a file with
+  `O_NOFOLLOW`, so the open itself fails on a link. Witnessed:
   [r4625243750] (a stamp root replaced by a link to a folder with the same
   files gave `intact`), [r4625304836] (a stamp record that was a link to
-  nothing read as absent, so the verdict was `unstamped`).
+  nothing read as absent, so the verdict was `unstamped`), [r4625772395]
+  (the reader checked a file with `statSync` and opened what a link pointed
+  to, so a stamp checker that was a link to a file with the recorded bytes
+  outside the folder gave `intact`).
 
 ## Failed reads
 
@@ -89,6 +106,11 @@ boundary trusts the types.
   replay reported that it held no hunk and `--changed-since` skipped its
   fault), [r4625304821] (a folder in a stamp root that could not be listed
   read as empty, so the stamp check passed without reading it).
+- Call an entry absent only when its lookup fails because nothing has that
+  name: `ENOENT`, or `ENOTDIR` for a name on the way. Report every other
+  lookup failure. Witnessed: [r4625594357], [r4625772325] (every failed
+  `lstatSync` read as absent, so a stamp record in a folder that may not be
+  searched gave `unstamped`).
 
 [r4580070968]: https://github.com/nathanvale/bun-typescript-template/pull/6#discussion_r4580070968
 [r4580070979]: https://github.com/nathanvale/bun-typescript-template/pull/6#discussion_r4580070979
@@ -116,6 +138,13 @@ boundary trusts the types.
 [r4625304836]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625304836
 [r4625304844]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625304844
 [r4625304853]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625304853
+[r4625592501]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625592501
+[r4625592689]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625592689
+[r4625593933]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625593933
+[r4625594357]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625594357
+[r4625772325]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625772325
+[r4625772395]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625772395
+[r4625804683]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625804683
 [75b4bc0]: https://github.com/nathanvale/bun-typescript-template/commit/75b4bc045d038970858b95b136f9f176fd3fc4cc
 [57c8c8b]: https://github.com/nathanvale/bun-typescript-template/commit/57c8c8b881c66e967688d05a3a70e1ef487c5553
 [5cbff3a]: https://github.com/nathanvale/bun-typescript-template/commit/5cbff3a87746defffd2672320038c48fbd1ddbc6

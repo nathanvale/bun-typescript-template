@@ -62,6 +62,10 @@ this file.
   before you trust it. Witnessed: [r4625304802] (`git ls-tree -r` lists no
   empty folder, so a tree identity built from the listed files was not
   git's).
+- Allow nothing with an empty allowlist, not with a name you expect to match
+  nothing, since the tool looks that name up too. Witnessed: [r4625603158]
+  (`GIT_ALLOW_PROTOCOL=none` let git run a `git-remote-none` helper found on
+  `PATH`).
 
 [ac11ed9]: https://github.com/nathanvale/bun-typescript-template/commit/ac11ed98b7d538e8a304cac053aaefcaaf6b2cb3
 [cd2498b]: https://github.com/nathanvale/bun-typescript-template/commit/cd2498b7189a2d45d1906b9c870e8d13da6cd2dd
@@ -79,3 +83,4 @@ this file.
 [r4623566979]: https://github.com/nathanvale/bun-typescript-template/pull/111#discussion_r4623566979
 [r4625304791]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625304791
 [r4625304802]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625304802
+[r4625603158]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625603158
