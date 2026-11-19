@@ -56,6 +56,11 @@ const faults: readonly (readonly [
     'files[0].path is "lib/core/../../out.ts", which is not a plain path: it has an empty, "." or ".." part.',
   ],
   [
+    "a file path written with a backslash",
+    ({ files }) => withField(files[0] ?? {}, "path", "lib\\core\\leaf.ts"),
+    'files[0].path is "lib\\core\\leaf.ts", which is not a plain path: it has a backslash.',
+  ],
+  [
     "a file mode that is not a plain file's",
     ({ files }) => withField(files[0] ?? {}, "mode", "120000"),
     'files[0].mode is "120000", and a stamped file is 100644 or 100755.',

@@ -1,13 +1,13 @@
 diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
-index 94c1df2..34df328 100644
+index 9f5f56c..807bc10 100644
 --- a/src/kernel-reader.ts
 +++ b/src/kernel-reader.ts
-@@ -245,7 +245,7 @@ function blobsOf(
- }
- 
- function plainFile({ path, mode, id }: Entry, commit: string): StampedFile {
--  if (path.includes(replacementCharacter))
-+  if (path === replacementCharacter)
+@@ -287,7 +287,7 @@ function plainFile(
+   { path, utf8, mode, id }: Entry,
+   commit: string,
+ ): StampedFile {
+-  if (!utf8)
++  if (!utf8 && path === "")
      throw new KernelRefusal(
        "kernel_entry_unsupported",
        `${path} in commit ${commit} has a name that is not UTF-8 text, and a stamp root holds files with UTF-8 names only.`,

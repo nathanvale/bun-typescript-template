@@ -88,6 +88,7 @@ export class KernelRefusal extends Error {
 
 type Entry = {
   readonly path: string;
+  readonly utf8: boolean;
   readonly mode: string;
   readonly id: string;
 };
@@ -104,7 +105,7 @@ type Declaration = Requirements & {
 };
 
 const gitMilliseconds = 4_000;
-const replacementCharacter = "�";
+const strictUtf8 = new TextDecoder("utf-8", { fatal: true });
 const linkKinds = new Map([
   ["120000", "a symbolic link"],
   ["160000", "a submodule"],
@@ -113,9 +114,11 @@ const linkKinds = new Map([
 // Platform: git reads objects only through rev-parse, ls-tree and cat-file
 // here, none of which reads the working tree or the network. The environment
 // holds nothing of the caller's but PATH: a replace ref cannot swap an object,
-// a partial clone cannot fetch one, no prompt can open, no configuration file
-// outside the repository applies, and git looks for the repository in the
-// given folder alone, never in a folder above it.
+// no prompt can open, no configuration file outside the repository applies,
+// and git looks for the repository in the given folder alone. A partial clone
+// cannot fetch an object: GIT_NO_LAZY_FETCH stops the attempt on git 2.45 and
+// later, and GIT_ALLOW_PROTOCOL, which older git reads too, allows no
+// transport at all.
 function git(
   repository: string,
   command: "rev-parse" | "ls-tree" | "cat-file",
@@ -129,6 +132,7 @@ function git(
       GIT_CEILING_DIRECTORIES: dirname(repository),
       GIT_NO_REPLACE_OBJECTS: "1",
       GIT_NO_LAZY_FETCH: "1",
+      GIT_ALLOW_PROTOCOL: "none",
       GIT_TERMINAL_PROMPT: "0",
       GIT_CONFIG_NOSYSTEM: "1",
       GIT_CONFIG_GLOBAL: "/dev/null",
@@ -160,9 +164,14 @@ function repositoryAt(path: string): string {
   if (!statSync(path).isDirectory())
     throw missing("that path is not a folder.");
   const repository = realpathSync(path);
-  const format = git(repository, "rev-parse", ["--show-object-format"]);
-  if (!format.ok) throw missing(`git says "${format.said}".`);
-  const name = format.stdout.toString().trim();
+  const found = git(repository, "rev-parse", [
+    "--show-object-format",
+    "--show-prefix",
+  ]);
+  if (!found.ok) throw missing(`git says "${found.said}".`);
+  const [name = "", inside = ""] = found.stdout.toString().split("\n");
+  if (inside !== "")
+    throw missing("that folder is inside the repository above it.");
   if (name !== "sha1")
     throw new KernelRefusal(
       "kernel_object_format_unsupported",
@@ -198,15 +207,45 @@ function entriesAt(repository: string, seam: KernelSeam): Entry[] {
       "kernel_commit_missing",
       `Commit ${seam.commit} is in the git repository at ${seam.repository}, and its list of files is not: git says "${listing.said}".`,
     );
-  return listing.stdout
-    .toString()
-    .split("\0")
-    .filter((line) => line !== "")
-    .map((line) => {
-      const tab = line.indexOf("\t");
-      const [mode = "", , id = ""] = line.slice(0, tab).split(" ");
-      return { path: line.slice(tab + 1), mode, id };
-    });
+  return recordsOf(listing.stdout).map((record) => {
+    const tab = record.indexOf(9);
+    const [mode = "", , id = ""] = record
+      .subarray(0, tab)
+      .toString()
+      .split(" ");
+    const name = record.subarray(tab + 1);
+    const path = utf8Of(name);
+    return {
+      path: path ?? name.toString(),
+      utf8: path !== undefined,
+      mode,
+      id,
+    };
+  });
+}
+
+function utf8Of(bytes: Uint8Array): string | undefined {
+  try {
+    return strictUtf8.decode(bytes);
+  } catch {
+    return undefined;
+  }
+}
+
+// Platform: `git ls-tree -z` ends each entry with a NUL byte and prints its
+// path as the bytes git stores, which need not be UTF-8 text.
+function recordsOf(listing: Buffer): Buffer[] {
+  const records: Buffer[] = [];
+  let offset = 0;
+  for (
+    let end = listing.indexOf(0);
+    end >= 0;
+    end = listing.indexOf(0, offset)
+  ) {
+    records.push(listing.subarray(offset, end));
+    offset = end + 1;
+  }
+  return records;
 }
 
 // Platform: for each identity it is given, `git cat-file --batch` prints a
@@ -244,8 +283,11 @@ function blobsOf(
   return blobs;
 }
 
-function plainFile({ path, mode, id }: Entry, commit: string): StampedFile {
-  if (path.includes(replacementCharacter))
+function plainFile(
+  { path, utf8, mode, id }: Entry,
+  commit: string,
+): StampedFile {
+  if (!utf8)
     throw new KernelRefusal(
       "kernel_entry_unsupported",
       `${path} in commit ${commit} has a name that is not UTF-8 text, and a stamp root holds files with UTF-8 names only.`,
@@ -404,6 +446,64 @@ function declared<Result>(
   }
 }
 
+// Platform: git names a folder by the tree of everything in it. A tree can
+// hold an entry that a list of files does not show, such as an empty folder
+// made with git's plumbing, and its identity then differs from the one the
+// listed files give.
+function requireWholeRoots(
+  repository: string,
+  seam: KernelSeam,
+  sourceRoot: string,
+  roots: readonly StampRoot[],
+): void {
+  const source = sourceRoot === "" ? "" : `${sourceRoot}/`;
+  const named = git(
+    repository,
+    "rev-parse",
+    roots.map(({ path }) => `${seam.commit}:${source}${path}`),
+  )
+    .stdout.toString()
+    .split("\n");
+  for (const [index, { path, tree }] of roots.entries())
+    if (named[index] !== tree)
+      throw new KernelRefusal(
+        "kernel_entry_unsupported",
+        `${source}${path} in commit ${seam.commit} holds an entry that is not a file, such as an empty folder, and a stamp root holds plain files only.`,
+      );
+}
+
+function stampRootsOf(
+  repository: string,
+  seam: KernelSeam,
+  sourceRoot: string,
+  listed: ReadonlyMap<string, readonly Listed[]>,
+): Map<string, StampRoot> {
+  const every = [...listed.values()].flat();
+  refuseCollisions(every, seam.commit);
+  const blobs = blobsOf(
+    repository,
+    seam,
+    every.map(({ file }) => file.blob),
+  );
+  const roots = new Map(
+    [...listed].map(([path, files]): [string, StampRoot] => {
+      const held = files.map(({ file }) => ({
+        ...file,
+        bytes: blobs.get(file.blob) ?? new Uint8Array(),
+      }));
+      return [path, { path, tree: treeIdentity(held, path), files: held }];
+    }),
+  );
+  requireWholeRoots(repository, seam, sourceRoot, [...roots.values()]);
+  return roots;
+}
+
+function utf8TextOf(bytes: Uint8Array | undefined): string {
+  const text = utf8Of(bytes ?? new Uint8Array());
+  if (text === undefined) throw new Error("it is not UTF-8 text.");
+  return text;
+}
+
 // Interface: reads the kernel at one full commit from the git objects of the
 // repository at a local path, and never from its working tree, so the
 // repository may sit on another commit with edits in progress. It reads the
@@ -440,7 +540,7 @@ export function readKernel(
     declarationPath,
     commit,
     () => {
-      const declaration = declarationOf(new TextDecoder().decode(text));
+      const declaration = declarationOf(utf8TextOf(text));
       const sourceRoot = sourceRootOf(declarationPath, declaration.roots);
       const listed = new Map(
         everyRoot(declaration).map((root) => [
@@ -451,20 +551,9 @@ export function readKernel(
       return { declaration, sourceRoot, listed };
     },
   );
-  const every = [...listed.values()].flat();
-  refuseCollisions(every, commit);
-  const blobs = blobsOf(
-    repository,
-    seam,
-    every.map(({ file }) => file.blob),
-  );
-  const stampRoot = (path: string): StampRoot => {
-    const files = (listed.get(path) ?? []).map(({ file }) => ({
-      ...file,
-      bytes: blobs.get(file.blob) ?? new Uint8Array(),
-    }));
-    return { path, tree: treeIdentity(files, path), files };
-  };
+  const roots = stampRootsOf(repository, seam, sourceRoot, listed);
+  const stampRoot = (path: string): StampRoot =>
+    roots.get(path) ?? { path, tree: "", files: [] };
   return {
     commit,
     sourceRoot,

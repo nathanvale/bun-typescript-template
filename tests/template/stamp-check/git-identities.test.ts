@@ -24,6 +24,7 @@ const hardCases: readonly ObjectEntry[] = [
   { path: "lib/nested/sibling.ts", bytes: "export const sibling = 2;\n" },
   { path: "lib/run.sh", bytes: "#!/bin/sh\nexit 0\n", mode: "100755" },
   { path: "lib/empty", bytes: "" },
+  { path: "lib/a tab\there.txt", bytes: "tab\n" },
   { path: "lib/crlf.txt", bytes: "one\r\ntwo\r\n" },
   { path: "lib/latin-1.txt", bytes: notUtf8 },
   { path: "lib/marked.txt", bytes: byteOrderMark },

@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
 import {
-  existsSync,
   lstatSync,
   readdirSync,
   readFileSync,
   type Stats,
+  statSync,
 } from "node:fs";
 import { join } from "node:path";
 
@@ -58,11 +58,18 @@ export function fileModeOf(mode: unknown): FileMode | undefined {
   return mode === "100644" || mode === "100755" ? mode : undefined;
 }
 
+// Interface: a path from a folder's top, written with "/" between its parts,
+// that cannot leave the folder on any host: no empty, "." or ".." part, and no
+// backslash, which Windows reads as a separator.
 export function plainPath(value: unknown, where: string): string {
   const path = textOf(value, where);
   if (path.split("/").some((part) => ["", ".", ".."].includes(part)))
     throw new Error(
       `${where} is "${path}", which is not a plain path: it has an empty, "." or ".." part.`,
+    );
+  if (path.includes("\\"))
+    throw new Error(
+      `${where} is "${path}", which is not a plain path: it has a backslash.`,
     );
   return path;
 }
@@ -156,6 +163,8 @@ export type StampFinding = {
     | "extra"
     | "mode"
     | "not-a-file"
+    | "not-a-folder"
+    | "unreadable"
     | "requirement"
     | "stamp-checker"
     | "stamp-record";
@@ -279,9 +288,21 @@ function attempt<Result>(read: () => Result, otherwise: Result): Result {
   }
 }
 
+function entryAt(path: string): Stats | undefined {
+  return attempt<Stats | undefined>(() => lstatSync(path), undefined);
+}
+
+// Platform: reading a named pipe waits for a writer, and reading a folder
+// fails. Only a plain file, or a link to one, is opened.
+function plainBytes(path: string): Buffer {
+  if (!attempt(() => statSync(path).isFile(), false))
+    throw new Error("it is not a plain file that can be read.");
+  return readFileSync(path);
+}
+
 function fileFindings(folder: string, file: StampedFile): StampFinding[] {
   const at = join(folder, file.path);
-  const found = attempt<Stats | undefined>(() => lstatSync(at), undefined);
+  const found = entryAt(at);
   if (found === undefined)
     return [
       {
@@ -317,15 +338,63 @@ function fileFindings(folder: string, file: StampedFile): StampFinding[] {
   return findings;
 }
 
-function entriesUnder(folder: string, path: string): string[] {
-  return attempt(
+// Interface: every folder on the way from the top of `folder` to each stamp
+// root, the stamp root included, must be a folder itself. A link there would
+// let the files of another folder pass as the stamped ones.
+function folderFindings(folder: string, roots: readonly string[]) {
+  const onTheWay = new Set(
+    roots.flatMap((root) =>
+      root
+        .split("/")
+        .map((_part, depth, parts) => parts.slice(0, depth + 1).join("/")),
+    ),
+  );
+  return [...onTheWay]
+    .filter((path) => entryAt(join(folder, path))?.isDirectory() === false)
+    .map(
+      (path): StampFinding => ({
+        kind: "not-a-folder",
+        path,
+        detail: "it leads to a stamp root and is not a folder itself.",
+      }),
+    );
+}
+
+type Under = { readonly at: string; readonly listed: boolean };
+
+function entriesUnder(folder: string, path: string): Under[] {
+  if (entryAt(join(folder, path))?.isDirectory() !== true) return [];
+  const entries = attempt(
     () => readdirSync(join(folder, path), { withFileTypes: true }),
-    [],
-  )
+    undefined,
+  );
+  if (entries === undefined) return [{ at: path, listed: false }];
+  return entries
     .map((entry) => ({ entry, at: `${path}/${entry.name}` }))
     .sort((one, other) => (one.at < other.at ? -1 : 1))
     .flatMap(({ entry, at }) =>
-      entry.isDirectory() ? entriesUnder(folder, at) : [at],
+      entry.isDirectory() ? entriesUnder(folder, at) : [{ at, listed: true }],
+    );
+}
+
+function extraFindings(folder: string, record: StampRecord): StampFinding[] {
+  const recorded = new Set(record.files.map(({ path }) => path));
+  return record.roots
+    .flatMap((root) => entriesUnder(folder, root))
+    .filter(({ at, listed }) => !listed || !recorded.has(at))
+    .map(
+      ({ at, listed }): StampFinding =>
+        listed
+          ? {
+              kind: "extra",
+              path: at,
+              detail: "it is in a stamp root and is not recorded.",
+            }
+          : {
+              kind: "unreadable",
+              path: at,
+              detail: "it is a folder in a stamp root and cannot be listed.",
+            },
     );
 }
 
@@ -334,7 +403,7 @@ function entriesUnder(folder: string, path: string): string[] {
 // not a JSON object.
 function mergedInto(folder: string, file: string, key: string) {
   const held = attempt(
-    () => fieldsOf(jsonOf(readFileSync(join(folder, file), "utf8")), file),
+    () => fieldsOf(jsonOf(plainBytes(join(folder, file)).toString()), file),
     undefined,
   );
   const unreadable: StampFinding[] =
@@ -383,22 +452,15 @@ function deadCodeFindings(folder: string, record: StampRecord): StampFinding[] {
 }
 
 function findingsIn(folder: string, record: StampRecord): StampFinding[] {
-  const recorded = new Set(record.files.map(({ path }) => path));
   const { path, blob } = record.stampChecker;
   const stampChecker = attempt(
-    () => blobIdentity(readFileSync(join(folder, path))),
+    () => blobIdentity(plainBytes(join(folder, path))),
     "",
   );
   return [
+    ...folderFindings(folder, record.roots),
     ...record.files.flatMap((file) => fileFindings(folder, file)),
-    ...record.roots
-      .flatMap((root) => entriesUnder(folder, root))
-      .filter((at) => !recorded.has(at))
-      .map((at) => ({
-        kind: "extra" as const,
-        path: at,
-        detail: "it is in a stamp root and is not recorded.",
-      })),
+    ...extraFindings(folder, record),
     ...packageFindings(folder, record),
     ...deadCodeFindings(folder, record),
     ...(stampChecker === blob
@@ -422,10 +484,10 @@ function findingsIn(folder: string, record: StampRecord): StampFinding[] {
 // stamped file on purpose can edit the stamp record too.
 export function checkStamp(folder: string): StampVerdict {
   const recordAt = join(folder, stampRecordPath);
-  if (!existsSync(recordAt)) return { status: "unstamped" };
+  if (entryAt(recordAt) === undefined) return { status: "unstamped" };
   let record: StampRecord;
   try {
-    record = recordOf(readFileSync(recordAt, "utf8"));
+    record = recordOf(plainBytes(recordAt).toString());
   } catch (error) {
     return {
       status: "broken",

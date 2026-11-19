@@ -85,7 +85,10 @@ export function kernelEntries(
     { path: `${settings}/rules.mjs`, bytes: sources.rules },
     {
       path: `${settings}/kernel-declaration.json`,
-      bytes: declarationText(declaration),
+      bytes:
+        declaration instanceof Uint8Array
+          ? declaration
+          : declarationText(declaration),
     },
     { path: `${extras}/alpha/index.ts`, bytes: sources.alpha },
     { path: `${extras}/beta/index.ts`, bytes: sources.beta },

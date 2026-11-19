@@ -1,13 +1,13 @@
 diff --git a/src/stamp-check.ts b/src/stamp-check.ts
-index fa60315..40fb96c 100644
+index 72a5d1a..0184862 100644
 --- a/src/stamp-check.ts
 +++ b/src/stamp-check.ts
-@@ -400,7 +400,7 @@ function findingsIn(folder: string, record: StampRecord): StampFinding[] {
+@@ -484,7 +484,7 @@ function findingsIn(folder: string, record: StampRecord): StampFinding[] {
  // stamped file on purpose can edit the stamp record too.
  export function checkStamp(folder: string): StampVerdict {
    const recordAt = join(folder, stampRecordPath);
--  if (!existsSync(recordAt)) return { status: "unstamped" };
-+  if (!existsSync(folder)) return { status: "unstamped" };
+-  if (entryAt(recordAt) === undefined) return { status: "unstamped" };
++  if (entryAt(folder) === undefined) return { status: "unstamped" };
    let record: StampRecord;
    try {
-     record = recordOf(readFileSync(recordAt, "utf8"));
+     record = recordOf(plainBytes(recordAt).toString());

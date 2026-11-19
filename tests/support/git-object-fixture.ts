@@ -54,7 +54,9 @@ export function listedFiles(root: string, commit: string): ListedFile[] {
     .split("\0")
     .filter((line) => line !== "")
     .map((line) => {
-      const [facts = "", path = ""] = line.split("\t");
+      const tab = line.indexOf("\t");
+      const facts = line.slice(0, tab);
+      const path = line.slice(tab + 1);
       const [mode = "", , blob = ""] = facts.split(" ");
       return { path, mode, blob };
     });
@@ -68,9 +70,28 @@ export function treeOf(root: string, commit: string, folder: string): string {
   );
 }
 
+function gitWithInput(
+  root: string,
+  input: string | Uint8Array,
+  ...args: string[]
+): string {
+  const run = Bun.spawnSync(["git", ...args], {
+    cwd: root,
+    env: { ...inherited(), ...gitEnv },
+    stdin: Buffer.from(input),
+    stdout: "pipe",
+    stderr: "pipe",
+    timeout: 4_000,
+    killSignal: "SIGKILL",
+  });
+  if (run.exitCode !== 0)
+    throw new Error(`git ${args.join(" ")}: ${run.stderr.toString()}`);
+  return run.stdout.toString().trim();
+}
+
 // Interface: stages one file whose path is given as raw bytes, so a name that
-// is not UTF-8 text reaches the next commit. Only git's own index reader takes
-// such a path: a process argument is always text.
+// is not UTF-8 text, or that holds a line feed, reaches the next commit. Only
+// git's own index reader takes such a path: a process argument is always text.
 export function stageRawPath(
   root: string,
   rawPath: Uint8Array,
@@ -79,21 +100,57 @@ export function stageRawPath(
   const [mode = "", blob = ""] = cacheInfo(root, { path: "", bytes }).split(
     ",",
   );
-  const staged = Bun.spawnSync(["git", "update-index", "--index-info"], {
-    cwd: root,
-    env: { ...inherited(), ...gitEnv },
-    stdin: Buffer.concat([
+  gitWithInput(
+    root,
+    Buffer.concat([
       Buffer.from(`${mode} ${blob}\t`),
       rawPath,
-      Buffer.from("\n"),
+      Buffer.from([0]),
     ]),
-    stdout: "pipe",
-    stderr: "pipe",
-    timeout: 4_000,
-    killSignal: "SIGKILL",
-  });
-  if (staged.exitCode !== 0)
-    throw new Error(
-      `git update-index --index-info: ${staged.stderr.toString()}`,
-    );
+    "update-index",
+    "-z",
+    "--index-info",
+  );
+}
+
+function treeWith(
+  root: string,
+  tree: string,
+  [name = "", ...deeper]: readonly string[],
+  added: string,
+): string {
+  const kept = gitOutput(root, "ls-tree", tree)
+    .split("\n")
+    .filter((line) => line !== "" && !line.endsWith(`\t${name}`));
+  const child =
+    deeper.length === 0
+      ? added
+      : treeWith(
+          root,
+          git(root, "rev-parse", `${tree}:${name}`),
+          deeper,
+          added,
+        );
+  return gitWithInput(
+    root,
+    `${[...kept, `040000 tree ${child}\t${name}`].join("\n")}\n`,
+    "mktree",
+  );
+}
+
+// Interface: a new commit on top of `commit` whose tree holds one more entry,
+// an empty folder at `folder`. Only git's plumbing can make one: the index
+// and a working tree hold files, never an empty folder.
+export function commitEmptyFolder(
+  root: string,
+  commit: string,
+  folder: string,
+): string {
+  const tree = treeWith(
+    root,
+    git(root, "rev-parse", `${commit}^{tree}`),
+    folder.split("/"),
+    gitWithInput(root, "", "mktree"),
+  );
+  return git(root, "commit-tree", tree, "-p", commit, "-m", "an empty folder");
 }
