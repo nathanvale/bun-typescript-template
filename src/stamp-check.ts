@@ -315,12 +315,17 @@ function folderAt(path: string): boolean | undefined {
 // Platform: opening a named pipe to read waits for a writer unless the open
 // is non-blocking, and the entry at a path can change between a look and an
 // open. So the file is opened without waiting, and the open file itself is
-// checked before it is read.
+// checked before it is read. O_NOFOLLOW makes the open fail on a link, so a
+// link to a file outside the folder never stands in for the file named.
 function plainBytes(path: string): Buffer {
   const unreadable = () =>
     new Error("it is not a plain file that can be read.");
   const file = attempt(
-    () => openSync(path, constants.O_RDONLY | constants.O_NONBLOCK),
+    () =>
+      openSync(
+        path,
+        constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOFOLLOW,
+      ),
     undefined,
   );
   if (file === undefined) throw unreadable();
@@ -391,11 +396,13 @@ function fileFindings(folder: string, file: StampedFile): StampFinding[] {
 }
 
 // Interface: every folder on the way from the top of `folder` to each stamp
-// root, the stamp root included, must be a folder itself. A link there would
-// let the files of another folder pass as the stamped ones.
-function folderFindings(folder: string, roots: readonly string[]) {
+// root, the stamp root included, and to the stamp checker, must be a folder
+// itself. A link there would let the files of another folder pass as the
+// stamped ones.
+function folderFindings(folder: string, record: StampRecord) {
+  const checkerFolder = record.stampChecker.path.split("/").slice(0, -1);
   const onTheWay = new Set(
-    roots.flatMap((root) =>
+    [...record.roots, checkerFolder.join("/")].flatMap((root) =>
       root
         .split("/")
         .map((_part, depth, parts) => parts.slice(0, depth + 1).join("/")),
@@ -407,7 +414,8 @@ function folderFindings(folder: string, roots: readonly string[]) {
       (path): StampFinding => ({
         kind: "not-a-folder",
         path,
-        detail: "it leads to a stamp root and is not a folder itself.",
+        detail:
+          "it leads to a stamp root or the stamp checker and is not a folder itself.",
       }),
     );
 }
@@ -510,7 +518,7 @@ function findingsIn(folder: string, record: StampRecord): StampFinding[] {
     "",
   );
   return [
-    ...folderFindings(folder, record.roots),
+    ...folderFindings(folder, record),
     ...record.files.flatMap((file) => fileFindings(folder, file)),
     ...extraFindings(folder, record),
     ...packageFindings(folder, record),

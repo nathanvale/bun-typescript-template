@@ -46,7 +46,8 @@ describe("the stamp check returns broken", () => {
         {
           kind: "not-a-folder",
           path: "settings",
-          detail: "it leads to a stamp root and is not a folder itself.",
+          detail:
+            "it leads to a stamp root or the stamp checker and is not a folder itself.",
         },
       ],
     });
@@ -61,7 +62,8 @@ describe("the stamp check returns broken", () => {
         {
           kind: "not-a-folder",
           path: "lib",
-          detail: "it leads to a stamp root and is not a folder itself.",
+          detail:
+            "it leads to a stamp root or the stamp checker and is not a folder itself.",
         },
       ],
     });
@@ -210,5 +212,57 @@ describe("the stamp check, where an entry cannot be looked up", () => {
     } finally {
       chmodSync(locked, 0o755);
     }
+  });
+});
+
+describe("the stamp check opens no link", () => {
+  test("a stamp checker that is a link to a file with the same bytes outside the folder is broken, naming the stamp checker", () => {
+    const folder = stamped();
+    const outside = join(owned("stamp-check-elsewhere-"), "check-stamp.ts");
+    renameSync(join(folder, stampCheckerPath), outside);
+    symlinkSync(outside, join(folder, stampCheckerPath));
+    expect(checkStamp(folder)).toEqual({
+      status: "broken",
+      findings: [
+        {
+          kind: "stamp-checker",
+          path: stampCheckerPath,
+          detail: "it is not the stamp checker the stamp record names.",
+        },
+      ],
+    });
+  });
+
+  test("a stamp record that is a link to a stamp record outside the folder is broken, naming the stamp record", () => {
+    const folder = stamped();
+    const outside = join(owned("stamp-check-elsewhere-"), "record.json");
+    renameSync(join(folder, stampRecordName), outside);
+    symlinkSync(outside, join(folder, stampRecordName));
+    expect(checkStamp(folder)).toEqual({
+      status: "broken",
+      findings: [
+        {
+          kind: "stamp-record",
+          path: stampRecordName,
+          detail: "it is not a plain file that can be read.",
+        },
+      ],
+    });
+  });
+
+  test("a folder above the stamp checker replaced by a link is broken, naming that folder", () => {
+    const folder = stamped();
+    linkAway(folder, "scripts");
+    expect(checkStamp(folder)).toEqual({
+      status: "broken",
+      findings: [
+        {
+          kind: "not-a-folder",
+          path: "scripts",
+          detail:
+            "it leads to a stamp root or the stamp checker and is not a folder itself.",
+        },
+      ],
+    });
   });
 });
