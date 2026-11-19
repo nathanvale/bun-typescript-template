@@ -845,5 +845,54 @@
     "testFile": "tests/template/toolchain/generated-toolchain.test.ts",
     "title": "^an optional peer dependency that bun\\.lock does not install passes$",
     "source": "d7aa03e test(toolchain): compare resolved overrides, exact versions only, peers and workspace exclusions"
+  },
+  {
+    "id": "ad40eef-kernel-pin-abbreviated",
+    "patch": "tests/planted-faults/patches/ad40eef-kernel-pin-abbreviated.patch",
+    "testFile": "tests/template/kernel-pin/kernel-pin.test.ts",
+    "title": "^an abbreviated pinned commit is refused",
+    "source": "ad40eef chore(kernel-split): drop the kernel and hold a kernel pin (MAG-124)"
+  },
+  {
+    "id": "ad40eef-kernel-pin-unknown-key",
+    "patch": "tests/planted-faults/patches/ad40eef-kernel-pin-unknown-key.patch",
+    "testFile": "tests/template/kernel-pin/kernel-pin.test.ts",
+    "title": "^a derived hash beside the five fields is refused",
+    "source": "ad40eef chore(kernel-split): drop the kernel and hold a kernel pin (MAG-124)"
+  },
+  {
+    "id": "ad40eef-kernel-pin-not-text",
+    "patch": "tests/planted-faults/patches/ad40eef-kernel-pin-not-text.patch",
+    "testFile": "tests/template/kernel-pin/kernel-pin.test.ts",
+    "title": "^a commit that is not a string is refused",
+    "source": "ad40eef chore(kernel-split): drop the kernel and hold a kernel pin (MAG-124)"
+  },
+  {
+    "id": "ad40eef-kernel-pin-shape",
+    "patch": "tests/planted-faults/patches/ad40eef-kernel-pin-shape.patch",
+    "testFile": "tests/template/kernel-pin/kernel-pin.test.ts",
+    "title": "^a remote address that is not an https clone address is refused",
+    "source": "ad40eef chore(kernel-split): drop the kernel and hold a kernel pin (MAG-124)"
+  },
+  {
+    "id": "ad40eef-kernel-pin-not-object",
+    "patch": "tests/planted-faults/patches/ad40eef-kernel-pin-not-object.patch",
+    "testFile": "tests/template/kernel-pin/kernel-pin.test.ts",
+    "title": "^a list is refused",
+    "source": "ad40eef chore(kernel-split): drop the kernel and hold a kernel pin (MAG-124)"
+  },
+  {
+    "id": "ad40eef-kernel-pin-not-json",
+    "patch": "tests/planted-faults/patches/ad40eef-kernel-pin-not-json.patch",
+    "testFile": "tests/template/kernel-pin/kernel-pin.test.ts",
+    "title": "^a kernel pin that is not JSON is refused",
+    "source": "ad40eef chore(kernel-split): drop the kernel and hold a kernel pin (MAG-124)"
+  },
+  {
+    "id": "ad40eef-kernel-pin-missing",
+    "patch": "tests/planted-faults/patches/ad40eef-kernel-pin-missing.patch",
+    "testFile": "tests/template/kernel-pin/kernel-pin.test.ts",
+    "title": "^a missing kernel pin is refused",
+    "source": "ad40eef chore(kernel-split): drop the kernel and hold a kernel pin (MAG-124)"
   }
 ]

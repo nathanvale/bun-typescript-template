@@ -12,11 +12,6 @@
       "ticket": "MAG-108"
     },
     {
-      "term": "Kernel split",
-      "reason": "Names the whole change. No ticket is known to bring it into a tracked file here; MAG-114 is the kernel split spec, which uses the word.",
-      "ticket": "MAG-114"
-    },
-    {
       "term": "Sibling repository",
       "reason": "The kernel reader reads the kernel repository as a sibling repository. MAG-123 builds the kernel reader.",
       "ticket": "MAG-123"

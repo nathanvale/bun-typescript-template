@@ -1,0 +1,13 @@
+diff --git a/src/kernel-pin.ts b/src/kernel-pin.ts
+index be835a5..48659b9 100644
+--- a/src/kernel-pin.ts
++++ b/src/kernel-pin.ts
+@@ -43,7 +43,7 @@ function entriesOf(text: string): Map<string, unknown> {
+ 
+ function text(entries: Map<string, unknown>, key: keyof typeof shapes): string {
+   const value = entries.get(key);
+-  if (typeof value !== "string")
++  if (value === undefined)
+     fail(`needs key "${key}" as a string. Repair: add that key.`);
+   if (shapes[key].test(value)) return value;
+   return fail(

@@ -1,0 +1,13 @@
+diff --git a/src/kernel-pin.ts b/src/kernel-pin.ts
+index be835a5..74f8e0d 100644
+--- a/src/kernel-pin.ts
++++ b/src/kernel-pin.ts
+@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
+ import { join } from "node:path";
+ 
+ const file = "kernel-pin.json";
+-const fullCommit = /^[0-9a-f]{40}$/;
++const fullCommit = /^[0-9a-f]{7,40}$/;
+ const shapes = {
+   repository: /^[\w.-]+$/,
+   remote: /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\.git$/,

@@ -1,0 +1,14 @@
+diff --git a/src/kernel-pin.ts b/src/kernel-pin.ts
+index be835a5..8683521 100644
+--- a/src/kernel-pin.ts
++++ b/src/kernel-pin.ts
+@@ -29,7 +29,8 @@ function entriesOf(text: string): Map<string, unknown> {
+   let parsed: unknown;
+   try {
+     parsed = JSON.parse(text);
+-  } catch {
++  } catch (error) {
++    if (error instanceof SyntaxError) throw error;
+     fail(
+       `is not JSON. Repair: restore it from the last commit that changed it. ${moved}`,
+     );

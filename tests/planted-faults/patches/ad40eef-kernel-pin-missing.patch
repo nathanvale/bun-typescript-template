@@ -1,0 +1,13 @@
+diff --git a/src/kernel-pin.ts b/src/kernel-pin.ts
+index be835a5..031e516 100644
+--- a/src/kernel-pin.ts
++++ b/src/kernel-pin.ts
+@@ -69,7 +69,7 @@ export function parseKernelPin(source: string): KernelPin {
+ 
+ export function readKernelPin(root: string): KernelPin {
+   const path = join(root, file);
+-  if (!existsSync(path))
++  if (existsSync(path))
+     fail(
+       `is missing at ${root}. The template holds no kernel source, so this kernel pin is its only record of the kernel repository. Repair: restore it from the last commit that changed it. ${moved}`,
+     );

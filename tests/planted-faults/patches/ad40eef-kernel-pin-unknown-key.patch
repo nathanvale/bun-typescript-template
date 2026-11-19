@@ -1,0 +1,14 @@
+diff --git a/src/kernel-pin.ts b/src/kernel-pin.ts
+index be835a5..ba7cf08 100644
+--- a/src/kernel-pin.ts
++++ b/src/kernel-pin.ts
+@@ -56,8 +56,7 @@ function text(entries: Map<string, unknown>, key: keyof typeof shapes): string {
+ export function parseKernelPin(source: string): KernelPin {
+   const entries = entriesOf(source);
+   for (const key of entries.keys())
+-    if (!keys.includes(key))
+-      fail(`has key "${key}". Repair: use only ${keys.join(", ")}.`);
++    if (!keys.includes(key)) continue;
+   return {
+     repository: text(entries, "repository"),
+     remote: text(entries, "remote"),

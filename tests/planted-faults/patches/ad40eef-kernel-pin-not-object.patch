@@ -1,0 +1,13 @@
+diff --git a/src/kernel-pin.ts b/src/kernel-pin.ts
+index be835a5..83c85e4 100644
+--- a/src/kernel-pin.ts
++++ b/src/kernel-pin.ts
+@@ -34,7 +34,7 @@ function entriesOf(text: string): Map<string, unknown> {
+       `is not JSON. Repair: restore it from the last commit that changed it. ${moved}`,
+     );
+   }
+-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
++  if (typeof parsed !== "object" || parsed === null)
+     fail(
+       `must be an object. Repair: write it as an object with the keys ${keys.join(", ")}.`,
+     );
