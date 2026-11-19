@@ -894,5 +894,19 @@
     "testFile": "tests/template/kernel-pin/kernel-pin.test.ts",
     "title": "^a missing kernel pin is refused",
     "source": "ad40eef chore(kernel-split): drop the kernel and hold a kernel pin (MAG-124)"
+  },
+  {
+    "id": "91f18e7-kernel-pin-missing-key",
+    "patch": "tests/planted-faults/patches/91f18e7-kernel-pin-missing-key.patch",
+    "testFile": "tests/template/kernel-pin/kernel-pin.test.ts",
+    "title": "^a missing branch is refused",
+    "source": "91f18e7 fix(kernel-pin): name each refusal's real cause, and test the branch and the 41st character"
+  },
+  {
+    "id": "91f18e7-kernel-pin-not-full",
+    "patch": "tests/planted-faults/patches/91f18e7-kernel-pin-not-full.patch",
+    "testFile": "tests/template/kernel-pin/kernel-pin.test.ts",
+    "title": "^a pinned commit in upper case is refused",
+    "source": "91f18e7 fix(kernel-pin): name each refusal's real cause, and test the branch and the 41st character"
   }
 ]

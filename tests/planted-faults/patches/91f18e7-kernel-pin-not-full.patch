@@ -1,0 +1,13 @@
+diff --git a/src/kernel-pin.ts b/src/kernel-pin.ts
+index 9e18b3d..8a3f8f3 100644
+--- a/src/kernel-pin.ts
++++ b/src/kernel-pin.ts
+@@ -44,7 +44,7 @@ function entriesOf(source: string): Map<string, unknown> {
+ }
+ 
+ function commitProblem(field: Field, value: string): string {
+-  return abbreviatedCommit.test(value)
++  return abbreviatedCommit.test(value) || fullCommit.test(value.toLowerCase())
+     ? `${field} is "${value}", an abbreviated commit. An abbreviated commit is refused, because it can come to match more than one commit. Repair: write all 40 characters of the commit.`
+     : `${field} is "${value}", which is not a full commit: 40 lowercase hexadecimal characters. Repair: write the commit as git rev-parse prints it.`;
+ }
