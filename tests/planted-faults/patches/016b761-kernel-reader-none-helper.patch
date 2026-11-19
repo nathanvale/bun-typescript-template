@@ -1,0 +1,13 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 0310210..c1e1709 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -133,7 +133,7 @@ function git(
+       PATH: process.env.PATH ?? "",
+       GIT_CEILING_DIRECTORIES: dirname(repository),
+       GIT_NO_REPLACE_OBJECTS: "1",
+-      GIT_ALLOW_PROTOCOL: "",
++      GIT_ALLOW_PROTOCOL: "none",
+       GIT_TERMINAL_PROMPT: "0",
+       GIT_CONFIG_NOSYSTEM: "1",
+       GIT_CONFIG_GLOBAL: "/dev/null",

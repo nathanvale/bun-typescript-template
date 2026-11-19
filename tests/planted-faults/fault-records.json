@@ -1300,5 +1300,26 @@
     "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
     "title": "a file name with a backslash, which a stamp record cannot hold, is refused with its repair line$",
     "source": "4ea996f fix(kernel-reader): answer CodeRabbit's second review of #113"
+  },
+  {
+    "id": "016b761-kernel-reader-line-feed",
+    "patch": "tests/planted-faults/patches/016b761-kernel-reader-line-feed.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
+    "title": "a folder named with a line feed inside a working tree is refused as inside the repository above it$",
+    "source": "016b761 fix(kernel-reader): answer the third review round of #113"
+  },
+  {
+    "id": "016b761-kernel-reader-none-helper",
+    "patch": "tests/planted-faults/patches/016b761-kernel-reader-none-helper.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-clones.test.ts",
+    "title": "does not run git-remote-none, which git runs when the allowlist names none$",
+    "source": "016b761 fix(kernel-reader): answer the third review round of #113"
+  },
+  {
+    "id": "016b761-stamp-check-nul-path",
+    "patch": "tests/planted-faults/patches/016b761-stamp-check-nul-path.patch",
+    "testFile": "tests/template/stamp-check/stamp-record.test.ts",
+    "title": "a stamp checker path that holds a NUL byte$",
+    "source": "016b761 fix(kernel-reader): answer the third review round of #113"
   }
 ]

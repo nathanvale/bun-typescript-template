@@ -1,0 +1,13 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 0310210..f289bf1 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -177,7 +177,7 @@ function repositoryAt(path: string): string {
+   // path as it is stored, line feeds included, so each path is asked for in a
+   // call of its own and only the one line feed git adds is removed.
+   const onePath = (option: string) =>
+-    git(repository, "rev-parse", [option]).stdout.toString().slice(0, -1);
++    git(repository, "rev-parse", [option]).stdout.toString().split("\n")[0];
+   const atTop =
+     inWorkTree === "true"
+       ? onePath("--show-prefix") === ""
