@@ -1,0 +1,13 @@
+diff --git a/tests/template/toolchain/generated-toolchain.test.ts b/tests/template/toolchain/generated-toolchain.test.ts
+index 678e00f..e94c9b1 100644
+--- a/tests/template/toolchain/generated-toolchain.test.ts
++++ b/tests/template/toolchain/generated-toolchain.test.ts
+@@ -165,7 +165,7 @@ function workspaceLockProblems(
+           ];
+     },
+   );
+-  return [...records, ...resolutions];
++  return records;
+ }
+ 
+ function lockProblems(

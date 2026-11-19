@@ -880,5 +880,19 @@
     "testFile": "tests/template/file-size/file-size.test.ts",
     "title": "^the file-size command refuses malformed and excluded recorded hits$",
     "source": "b021da0 fix(gates): refuse excluded recorded hits"
+  },
+  {
+    "id": "a8f6671-generated-toolchain-catalog",
+    "patch": "tests/planted-faults/patches/a8f6671-generated-toolchain-catalog.patch",
+    "testFile": "tests/template/toolchain/generated-toolchain.test.ts",
+    "title": "^a catalog entry older than the template's fails, naming the file and the template's version$",
+    "source": "a8f6671 test(toolchain): fail when a generated repository's toolchain drifts from the template's"
+  },
+  {
+    "id": "a8f6671-generated-toolchain-resolution",
+    "patch": "tests/planted-faults/patches/a8f6671-generated-toolchain-resolution.patch",
+    "testFile": "tests/template/toolchain/generated-toolchain.test.ts",
+    "title": "^a bun\\.lock that was not regenerated after a package\\.json change fails, naming the lock$",
+    "source": "a8f6671 test(toolchain): fail when a generated repository's toolchain drifts from the template's"
   }
 ]
