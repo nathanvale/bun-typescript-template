@@ -17,11 +17,6 @@
       "ticket": "MAG-114"
     },
     {
-      "term": "Sibling repository",
-      "reason": "The kernel reader reads the kernel repository as a sibling repository. MAG-123 builds the kernel reader.",
-      "ticket": "MAG-123"
-    },
-    {
       "term": "Carry-out",
       "reason": "MAG-122 performs the carry-out in the kernel repository. MAG-124 brings the word here with the pin, which records the carry-out identity.",
       "ticket": "MAG-124"
@@ -85,11 +80,6 @@
       "term": "Add-on selection",
       "reason": "MAG-125 makes Bootstrap stamp an add-on selection.",
       "ticket": "MAG-125"
-    },
-    {
-      "term": "Kernel seam",
-      "reason": "The seam is the kernel reader's interface. MAG-123 builds the kernel reader.",
-      "ticket": "MAG-123"
     },
     {
       "term": "Negative control",

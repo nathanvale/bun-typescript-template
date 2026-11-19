@@ -8,6 +8,27 @@ export type StampedFile = {
   readonly blob: string;
 };
 
+// Interface: the three readers below take a value parsed from JSON and return
+// its own data, or throw an Error that starts with `where`, the name of the
+// field.
+export function fieldsOf(value: unknown, where: string): Map<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    throw new Error(`${where} must be an object.`);
+  return new Map(Object.entries(value));
+}
+
+export function listOf(value: unknown, where: string): readonly unknown[] {
+  if (!Array.isArray(value)) throw new Error(`${where} must be a list.`);
+  const items: readonly unknown[] = value;
+  return items;
+}
+
+export function textOf(value: unknown, where: string): string {
+  if (typeof value !== "string" || value === "")
+    throw new Error(`${where} must be a non-empty string.`);
+  return value;
+}
+
 type Tree = Map<string, StampedFile | Tree>;
 
 const encoder = new TextEncoder();
