@@ -5,7 +5,8 @@
     "examples/**",
     "starters/simple/**",
     "starters/complex/**",
-    "starters/shared/**"
+    "starters/shared/**",
+    "generated-repository/**"
   ],
   "ignoreBinaries": ["getconf"],
   "typeAware": {

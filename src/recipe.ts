@@ -28,7 +28,7 @@ export interface Copy {
 export interface ProjectRecipe {
   readonly request: Request;
   readonly copies: readonly [Copy, ...Copy[]];
-  readonly cli: Starter;
+  readonly cli: Starter | "kernel";
   readonly checkCommand: string;
 }
 
@@ -110,6 +110,21 @@ export const RECIPES: readonly ProjectRecipe[] = [
   starterRow("simple"),
   starterRow("complex"),
 ];
+
+// Interface: the kernel row. It copies the template's own files for a
+// generated repository; the stamp adds the kernel and the add-on selection.
+// It is not in RECIPES, so no command-line selection reaches it.
+export const KERNEL_RECIPE: ProjectRecipe = {
+  request: { profile: "durable", layout: "single-package" },
+  copies: [
+    { from: "generated-repository/settings", into: "." },
+    { from: "generated-repository/application", into: "." },
+    TEST_FOLDER,
+    LINT_RULES,
+  ],
+  cli: "kernel",
+  checkCommand: "bun run check",
+};
 
 export function lintsCode(recipe: ProjectRecipe): boolean {
   return recipe.copies.includes(LINT_RULES);

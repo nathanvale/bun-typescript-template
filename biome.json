@@ -13,6 +13,7 @@
       "!!profiles",
       "!!examples",
       "!!proofs",
+      "!!generated-repository",
       "!!.worktrees",
       "!!.agents/skills/fallow",
       "!!.agents/skills/fallow-setup",

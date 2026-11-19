@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+.fallow/
+.DS_Store
+
+.env
+.env.*
+!.env.example

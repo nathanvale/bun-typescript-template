@@ -171,8 +171,8 @@ export function treeIdentity(
 // Interface: a generated repository's stamp record and the two files the
 // stamp merges requirements into.
 export const stampRecordPath = ".kernel-stamp.json";
-const packageFile = "package.json";
-const deadCodeFile = ".fallowrc.json";
+export const packageFile = "package.json";
+export const deadCodeFile = ".fallowrc.json";
 
 export type StampFinding = {
   readonly kind:
