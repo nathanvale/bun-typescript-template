@@ -1,0 +1,13 @@
+diff --git a/src/bootstrap.ts b/src/bootstrap.ts
+index 3c42895..5585286 100644
+--- a/src/bootstrap.ts
++++ b/src/bootstrap.ts
+@@ -530,7 +530,7 @@ async function requireSourceFile(source: string): Promise<void> {
+       "profile_source_missing",
+       "recipe file is missing",
+     );
+-  if (!stats.isFile())
++  if (stats.isSymbolicLink())
+     throw sourceRefusal(
+       source,
+       "profile_source_wrong_type",

@@ -999,5 +999,19 @@
     "testFile": "tests/template/toolchain/generated-lint.test.ts",
     "title": "^a generated tree that leaves a lint rule off names it for each file and probe path it misses$",
     "source": "815691a test(toolchain): probe every file form the anti-slop lint rules cover"
+  },
+  {
+    "id": "3d754ed-bootstrap-file-type",
+    "patch": "tests/planted-faults/patches/3d754ed-bootstrap-file-type.patch",
+    "testFile": "tests/template/bootstrap/recipe.test.ts",
+    "title": "refuses a folder where a template source file belongs before any file is copied$",
+    "source": "3d754ed fix(bootstrap): refuse a recipe source of the wrong type"
+  },
+  {
+    "id": "3d754ed-bootstrap-folder-type",
+    "patch": "tests/planted-faults/patches/3d754ed-bootstrap-folder-type.patch",
+    "testFile": "tests/template/bootstrap/recipe.test.ts",
+    "title": "refuses a file where a template source folder belongs before any file is copied$",
+    "source": "3d754ed fix(bootstrap): refuse a recipe source of the wrong type"
   }
 ]
