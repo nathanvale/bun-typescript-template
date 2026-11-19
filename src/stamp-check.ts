@@ -1,4 +1,12 @@
 import { createHash } from "node:crypto";
+import {
+  existsSync,
+  lstatSync,
+  readdirSync,
+  readFileSync,
+  type Stats,
+} from "node:fs";
+import { join } from "node:path";
 
 export type FileMode = "100644" | "100755";
 
@@ -27,6 +35,27 @@ export function textOf(value: unknown, where: string): string {
   if (typeof value !== "string" || value === "")
     throw new Error(`${where} must be a non-empty string.`);
   return value;
+}
+
+export function jsonOf(text: string): unknown {
+  try {
+    const parsed: unknown = JSON.parse(text);
+    return parsed;
+  } catch (error) {
+    throw new Error(
+      `it is not JSON (${String(Reflect.get(Object(error), "message"))}).`,
+      { cause: error },
+    );
+  }
+}
+
+export function plainPath(value: unknown, where: string): string {
+  const path = textOf(value, where);
+  if (path.split("/").some((part) => ["", ".", ".."].includes(part)))
+    throw new Error(
+      `${where} is "${path}", which is not a plain path: it has an empty, "." or ".." part.`,
+    );
+  return path;
 }
 
 type Tree = Map<string, StampedFile | Tree>;
@@ -103,4 +132,297 @@ export function treeIdentity(
       place(top, file.path.slice(prefix.length).split("/"), file);
   if (top.size === 0) throw new Error(`No listed file is under "${root}".`);
   return identityOfTree(top);
+}
+
+// Interface: where a generated repository keeps its stamp record, and the two
+// files the stamp merges requirements into.
+export const stampRecordPath = ".kernel-stamp.json";
+const packageFile = "package.json";
+const deadCodeFile = ".fallowrc.json";
+
+export type StampFinding = {
+  readonly kind:
+    | "modified"
+    | "missing"
+    | "extra"
+    | "mode"
+    | "not-a-file"
+    | "requirement"
+    | "stamp-checker"
+    | "stamp-record";
+  readonly path: string;
+  readonly detail: string;
+};
+
+export type StampVerdict =
+  | {
+      readonly status: "intact";
+      readonly commit: string;
+      readonly addons: readonly string[];
+      readonly fileCount: number;
+    }
+  | { readonly status: "broken"; readonly findings: readonly StampFinding[] }
+  | { readonly status: "unstamped" };
+
+type StampRecord = {
+  readonly commit: string;
+  readonly addons: readonly string[];
+  readonly roots: readonly string[];
+  readonly files: readonly StampedFile[];
+  readonly packages: readonly (readonly [string, string])[];
+  readonly deadCodeEntries: readonly string[];
+  readonly stampChecker: { readonly path: string; readonly blob: string };
+};
+
+const fullIdentity = /^[0-9a-f]{40}$/;
+
+function identityOf(value: unknown, where: string): string {
+  const text = textOf(value, where);
+  if (!fullIdentity.test(text))
+    throw new Error(`${where} must be 40 lowercase hexadecimal characters.`);
+  return text;
+}
+
+function only(value: unknown, read: unknown, where: string, what: string) {
+  if (value !== read)
+    throw new Error(
+      `${where} is ${JSON.stringify(value)}, and the stamp check reads ${what} only.`,
+    );
+}
+
+function recordedFile(value: unknown, where: string): StampedFile {
+  const file = fieldsOf(value, where);
+  const mode = file.get("mode");
+  if (mode !== "100644" && mode !== "100755")
+    throw new Error(
+      `${where}.mode is ${JSON.stringify(mode)}, and a stamped file is 100644 or 100755.`,
+    );
+  return {
+    path: plainPath(file.get("path"), `${where}.path`),
+    mode,
+    blob: identityOf(file.get("blob"), `${where}.blob`),
+  };
+}
+
+function recordedRoots(
+  value: unknown,
+  files: readonly StampedFile[],
+): string[] {
+  const roots = listOf(value, "roots").map((item, index) => {
+    const root = fieldsOf(item, `roots[${index}]`);
+    return {
+      path: plainPath(root.get("path"), `roots[${index}].path`),
+      tree: identityOf(root.get("tree"), `roots[${index}].tree`),
+    };
+  });
+  for (const [index, { path }] of files.entries())
+    if (!roots.some((root) => path.startsWith(`${root.path}/`)))
+      throw new Error(
+        `files[${index}].path is "${path}", which is in none of the recorded stamp roots.`,
+      );
+  for (const [index, { path, tree }] of roots.entries())
+    if (treeIdentity(files, path) !== tree)
+      throw new Error(
+        `roots[${index}].tree is not the tree identity of the files recorded under "${path}".`,
+      );
+  return roots.map(({ path }) => path);
+}
+
+function recordOf(text: string): StampRecord {
+  const record = fieldsOf(jsonOf(text), "the stamp record");
+  only(record.get("schemaVersion"), 1, "schemaVersion", "version 1");
+  const kernel = fieldsOf(record.get("kernel"), "kernel");
+  only(kernel.get("objectFormat"), "sha1", "kernel.objectFormat", "sha1");
+  const requirements = fieldsOf(record.get("requirements"), "requirements");
+  const stampChecker = fieldsOf(record.get("stampChecker"), "stampChecker");
+  const files = listOf(record.get("files"), "files").map((file, index) =>
+    recordedFile(file, `files[${index}]`),
+  );
+  return {
+    commit: identityOf(kernel.get("commit"), "kernel.commit"),
+    addons: listOf(record.get("addons"), "addons").map((addon, index) =>
+      textOf(addon, `addons[${index}]`),
+    ),
+    roots: recordedRoots(record.get("roots"), files),
+    files,
+    packages: [
+      ...fieldsOf(requirements.get("packages"), "requirements.packages"),
+    ].map(([name, version]) => [
+      name,
+      textOf(version, `requirements.packages.${name}`),
+    ]),
+    deadCodeEntries: listOf(
+      requirements.get("deadCodeEntries"),
+      "requirements.deadCodeEntries",
+    ).map((entry, index) =>
+      textOf(entry, `requirements.deadCodeEntries[${index}]`),
+    ),
+    stampChecker: {
+      path: plainPath(stampChecker.get("path"), "stampChecker.path"),
+      blob: identityOf(stampChecker.get("blob"), "stampChecker.blob"),
+    },
+  };
+}
+
+function attempt<Result>(read: () => Result, otherwise: Result): Result {
+  try {
+    return read();
+  } catch {
+    return otherwise;
+  }
+}
+
+function fileFindings(folder: string, file: StampedFile): StampFinding[] {
+  const at = join(folder, file.path);
+  const found = attempt<Stats | undefined>(() => lstatSync(at), undefined);
+  if (found === undefined)
+    return [
+      {
+        kind: "missing",
+        path: file.path,
+        detail: "it is recorded and is not in the folder.",
+      },
+    ];
+  if (!found.isFile())
+    return [
+      {
+        kind: "not-a-file",
+        path: file.path,
+        detail: "it is recorded as a plain file and is not one.",
+      },
+    ];
+  // Platform: git records one bit of a file's mode, whether its owner may
+  // execute it.
+  const mode: FileMode = (found.mode & 0o100) === 0 ? "100644" : "100755";
+  const findings: StampFinding[] = [];
+  if (blobIdentity(readFileSync(at)) !== file.blob)
+    findings.push({
+      kind: "modified",
+      path: file.path,
+      detail: "its bytes are not the stamped ones.",
+    });
+  if (mode !== file.mode)
+    findings.push({
+      kind: "mode",
+      path: file.path,
+      detail: `its git mode is ${mode}, and the stamp record says ${file.mode}.`,
+    });
+  return findings;
+}
+
+function entriesUnder(folder: string, path: string): string[] {
+  return attempt(
+    () => readdirSync(join(folder, path), { withFileTypes: true }),
+    [],
+  )
+    .map((entry) => ({ entry, at: `${path}/${entry.name}` }))
+    .sort((one, other) => (one.at < other.at ? -1 : 1))
+    .flatMap(({ entry, at }) =>
+      entry.isDirectory() ? entriesUnder(folder, at) : [at],
+    );
+}
+
+function requirementFindings(
+  folder: string,
+  record: StampRecord,
+): StampFinding[] {
+  const fieldOf = (file: string, key: string): unknown =>
+    attempt(
+      () =>
+        fieldsOf(
+          JSON.parse(readFileSync(join(folder, file), "utf8")),
+          file,
+        ).get(key),
+      undefined,
+    );
+  const dependencies = attempt(
+    () => fieldsOf(fieldOf(packageFile, "dependencies"), "dependencies"),
+    new Map<string, unknown>(),
+  );
+  const entries = attempt(
+    () => listOf(fieldOf(deadCodeFile, "entry"), "entry"),
+    [],
+  );
+  return [
+    ...record.packages
+      .filter(([name, version]) => dependencies.get(name) !== version)
+      .map(([name, version]) => ({
+        kind: "requirement" as const,
+        path: packageFile,
+        detail: `the stamp merged dependency "${name}" at "${version}", and it is now ${dependencies.has(name) ? JSON.stringify(dependencies.get(name)) : "absent"}.`,
+      })),
+    ...record.deadCodeEntries
+      .filter((entry) => !entries.includes(entry))
+      .map((entry) => ({
+        kind: "requirement" as const,
+        path: deadCodeFile,
+        detail: `the stamp merged dead-code entry "${entry}", and it is now absent.`,
+      })),
+  ];
+}
+
+function findingsIn(folder: string, record: StampRecord): StampFinding[] {
+  const recorded = new Set(record.files.map(({ path }) => path));
+  const { path, blob } = record.stampChecker;
+  const stampChecker = attempt(
+    () => blobIdentity(readFileSync(join(folder, path))),
+    "",
+  );
+  return [
+    ...record.files.flatMap((file) => fileFindings(folder, file)),
+    ...record.roots
+      .flatMap((root) => entriesUnder(folder, root))
+      .filter((at) => !recorded.has(at))
+      .map((at) => ({
+        kind: "extra" as const,
+        path: at,
+        detail: "it is in a stamp root and is not recorded.",
+      })),
+    ...requirementFindings(folder, record),
+    ...(stampChecker === blob
+      ? []
+      : [
+          {
+            kind: "stamp-checker" as const,
+            path,
+            detail: "it is not the stamp checker the stamp record names.",
+          },
+        ]),
+  ];
+}
+
+// Interface: the stamp check. It compares `folder` with the stamp record it
+// holds and returns a verdict: unstamped when the folder holds no stamp
+// record; intact when every stamped file, every merged requirement and the
+// stamp checker equal the record; broken otherwise, with one finding for each
+// fault, naming the file. It reads only, and needs no git, no network and no
+// kernel repository. It guards against accidental edits: whoever edits a
+// stamped file on purpose can edit the stamp record too.
+export function checkStamp(folder: string): StampVerdict {
+  const recordAt = join(folder, stampRecordPath);
+  if (!existsSync(recordAt)) return { status: "unstamped" };
+  let record: StampRecord;
+  try {
+    record = recordOf(readFileSync(recordAt, "utf8"));
+  } catch (error) {
+    return {
+      status: "broken",
+      findings: [
+        {
+          kind: "stamp-record",
+          path: stampRecordPath,
+          detail: String(Reflect.get(Object(error), "message")),
+        },
+      ],
+    };
+  }
+  const findings = findingsIn(folder, record);
+  return findings.length === 0
+    ? {
+        status: "intact",
+        commit: record.commit,
+        addons: record.addons,
+        fileCount: record.files.length,
+      }
+    : { status: "broken", findings };
 }

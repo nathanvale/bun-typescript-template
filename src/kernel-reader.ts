@@ -3,7 +3,9 @@ import { dirname } from "node:path";
 import {
   type FileMode,
   fieldsOf,
+  jsonOf,
   listOf,
+  plainPath,
   type StampedFile,
   textOf,
   treeIdentity,
@@ -225,15 +227,6 @@ function plainFile({ path, mode, id }: Entry, commit: string): StampedFile {
   return { path, mode: plain, blob: id };
 }
 
-function plainPath(value: unknown, where: string): string {
-  const path = textOf(value, where);
-  if (path.split("/").some((part) => ["", ".", ".."].includes(part)))
-    throw new Error(
-      `${where} is "${path}", which is not a plain path: it has an empty, "." or ".." part.`,
-    );
-  return path;
-}
-
 function requirementsOf(
   owner: Map<string, unknown>,
   where: string,
@@ -267,16 +260,7 @@ function checkRoots(roots: readonly string[]): void {
 }
 
 function declarationOf(text: string): Declaration {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch (error) {
-    throw new Error(
-      `it is not JSON (${String(Reflect.get(Object(error), "message"))}).`,
-      { cause: error },
-    );
-  }
-  const file = fieldsOf(parsed, "the file");
+  const file = fieldsOf(jsonOf(text), "the file");
   if (file.get("schemaVersion") !== 2)
     throw new Error(
       `schemaVersion is ${JSON.stringify(file.get("schemaVersion"))}, and the kernel reader reads version 2 only.`,

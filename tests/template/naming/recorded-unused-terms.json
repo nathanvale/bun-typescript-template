@@ -62,24 +62,9 @@
       "ticket": "MAG-126"
     },
     {
-      "term": "Stamp record",
-      "reason": "The stamp check compares a folder with its stamp record. MAG-123 builds the stamp check.",
-      "ticket": "MAG-123"
-    },
-    {
-      "term": "Stamp checker",
-      "reason": "MAG-123 builds the stamp checker that a generated repository carries.",
-      "ticket": "MAG-123"
-    },
-    {
       "term": "Restamp",
       "reason": "MAG-128 builds Restamp.",
       "ticket": "MAG-128"
-    },
-    {
-      "term": "Add-on selection",
-      "reason": "MAG-125 makes Bootstrap stamp an add-on selection.",
-      "ticket": "MAG-125"
     },
     {
       "term": "Negative control",
