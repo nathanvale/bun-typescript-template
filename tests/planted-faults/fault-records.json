@@ -868,8 +868,8 @@
     "source": "ad40eef chore(kernel-split): drop the kernel and hold a kernel pin (MAG-124)"
   },
   {
-    "id": "ad40eef-kernel-pin-shape",
-    "patch": "tests/planted-faults/patches/ad40eef-kernel-pin-shape.patch",
+    "id": "ad40eef-kernel-pin-pattern",
+    "patch": "tests/planted-faults/patches/ad40eef-kernel-pin-pattern.patch",
     "testFile": "tests/template/kernel-pin/kernel-pin.test.ts",
     "title": "^a remote address that is not an https clone address is refused",
     "source": "ad40eef chore(kernel-split): drop the kernel and hold a kernel pin (MAG-124)"

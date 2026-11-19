@@ -15,7 +15,9 @@ const valid = {
 };
 const keys = "repository, remote, commit, branch, carryOutIdentity";
 const abbreviated = (key: string, value: string) =>
-  `Error: kernel-pin.json: ${key} is "${value}", which is not a full commit. An abbreviated commit is refused, because it can come to match more than one commit. Repair: write all 40 lowercase hexadecimal characters.`;
+  `Error: kernel-pin.json: ${key} is "${value}", an abbreviated commit. An abbreviated commit is refused, because it can come to match more than one commit. Repair: write all 40 characters of the commit.`;
+const notFull = (key: string, value: string) =>
+  `Error: kernel-pin.json: ${key} is "${value}", which is not a full commit: 40 lowercase hexadecimal characters. Repair: write the commit as git rev-parse prints it.`;
 
 function refusalFor(source: string): string {
   try {
@@ -51,7 +53,12 @@ test.each([
   [
     "a pinned commit in upper case",
     { ...valid, commit: full.toUpperCase() },
-    abbreviated("commit", full.toUpperCase()),
+    notFull("commit", full.toUpperCase()),
+  ],
+  [
+    "a pinned commit one character too long",
+    { ...valid, commit: `${full}0` },
+    notFull("commit", `${full}0`),
   ],
   [
     "an abbreviated carry-out identity",
@@ -66,12 +73,22 @@ test.each([
   [
     "a missing branch",
     { ...valid, branch: undefined },
-    'Error: kernel-pin.json: needs key "branch" as a string. Repair: add that key.',
+    'Error: kernel-pin.json: needs key "branch". Repair: add that key.',
   ],
   [
     "a commit that is not a string",
     { ...valid, commit: 4 },
-    'Error: kernel-pin.json: needs key "commit" as a string. Repair: add that key.',
+    "Error: kernel-pin.json: commit is 4, which is not a string. Repair: write it as a string.",
+  ],
+  [
+    "a branch that is null",
+    { ...valid, branch: null },
+    "Error: kernel-pin.json: branch is null, which is not a string. Repair: write it as a string.",
+  ],
+  [
+    "a branch with a space in it",
+    { ...valid, branch: "main branch" },
+    'Error: kernel-pin.json: branch is "main branch", which does not match /^[\\w./-]+$/. Repair: write a value that pattern matches.',
   ],
   [
     "a remote address that is not an https clone address",
