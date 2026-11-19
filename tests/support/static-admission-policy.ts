@@ -1,5 +1,6 @@
 import { expect } from "bun:test";
 import { join, relative } from "node:path";
+import { installedPackage } from "../../src/static-admission.ts";
 import { type Profile, readJson } from "./static-admission-project.ts";
 
 export const EXPECTED_COMPILER_OPTIONS: Record<string, unknown> = {
@@ -314,11 +315,7 @@ async function assertLockPolicy(
     if (!Array.isArray(resolved)) {
       throw new Error(`bun.lock is missing ${packageName}'s resolved record`);
     }
-    expect(resolved[0]).toBe(
-      version.startsWith("npm:")
-        ? version.slice(4)
-        : `${packageName}@${version}`,
-    );
+    expect(resolved[0]).toBe(installedPackage(packageName, version));
   }
 }
 

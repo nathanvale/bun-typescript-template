@@ -885,7 +885,7 @@
     "id": "a8f6671-generated-toolchain-catalog",
     "patch": "tests/planted-faults/patches/a8f6671-generated-toolchain-catalog.patch",
     "testFile": "tests/template/toolchain/generated-toolchain.test.ts",
-    "title": "^a catalog entry older than the template's fails, naming the file and the template's version$",
+    "title": "^a catalog entry older than the template's fails, naming the file and what to change$",
     "source": "a8f6671 test(toolchain): fail when a generated repository's toolchain drifts from the template's"
   },
   {

@@ -64,8 +64,9 @@ for formatting only, and native Fallow plus its semantic companion at 3.43.2.
 The companion keeps its own TypeScript 7.0.2. Generated repositories get the
 same versions: `tests/template/toolchain/generated-toolchain.test.ts` fails when
 a recipe folder's `package.json` or `bun.lock` installs another version of a
-package this repository uses. Generated scratch repositories intentionally omit
-Biome, Fallow, CI, hooks, release tooling, and monorepo structure.
+package this repository uses, or lacks one of its overrides. Generated scratch
+repositories intentionally omit Biome, Fallow, CI, hooks, release tooling, and
+monorepo structure.
 
 The TypeScript 6 compatibility wrapper has its own version and delegates to
 `@typescript/old`. The alias-specific override pins that underlying API to

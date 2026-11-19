@@ -1,11 +1,11 @@
-diff --git a/tests/template/toolchain/generated-toolchain.test.ts b/tests/template/toolchain/generated-toolchain.test.ts
-index 678e00f..e94c9b1 100644
---- a/tests/template/toolchain/generated-toolchain.test.ts
-+++ b/tests/template/toolchain/generated-toolchain.test.ts
-@@ -165,7 +165,7 @@ function workspaceLockProblems(
-           ];
-     },
-   );
+diff --git a/tests/support/generated-toolchain.ts b/tests/support/generated-toolchain.ts
+index 081b6f8..53a4eb2 100644
+--- a/tests/support/generated-toolchain.ts
++++ b/tests/support/generated-toolchain.ts
+@@ -226,7 +226,7 @@ function workspaceLockProblems(
+           `${folder}/bun.lock resolves ${file} ${place} to ${String(entry?.[0])}, not ${wanted}. ${relock(folder)}`,
+         ];
+   });
 -  return [...records, ...resolutions];
 +  return records;
  }
