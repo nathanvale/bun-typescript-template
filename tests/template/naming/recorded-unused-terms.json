@@ -72,11 +72,6 @@
       "ticket": "MAG-123"
     },
     {
-      "term": "Stamp check",
-      "reason": "MAG-123 builds the stamp check.",
-      "ticket": "MAG-123"
-    },
-    {
       "term": "Stamp checker",
       "reason": "MAG-123 builds the stamp checker that a generated repository carries.",
       "ticket": "MAG-123"
