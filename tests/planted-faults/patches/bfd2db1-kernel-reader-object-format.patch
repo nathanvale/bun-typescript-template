@@ -1,0 +1,13 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 060d4a8..8f2afee 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -159,7 +159,7 @@ function repositoryAt(path: string): string {
+   const format = git(repository, "rev-parse", ["--show-object-format"]);
+   if (!format.ok) throw missing(`git says "${format.said}".`);
+   const name = format.stdout.toString().trim();
+-  if (name !== "sha1")
++  if (name === "")
+     throw new KernelRefusal(
+       "kernel_object_format_unsupported",
+       `The git repository at ${path} uses the ${name} object format, and the kernel reader reads sha1 only.`,

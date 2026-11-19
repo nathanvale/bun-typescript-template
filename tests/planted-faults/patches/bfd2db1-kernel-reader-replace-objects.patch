@@ -1,0 +1,12 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 060d4a8..4146e23 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -125,7 +125,6 @@ function git(
+     env: {
+       PATH: process.env.PATH ?? "",
+       GIT_CEILING_DIRECTORIES: dirname(repository),
+-      GIT_NO_REPLACE_OBJECTS: "1",
+       GIT_NO_LAZY_FETCH: "1",
+       GIT_TERMINAL_PROMPT: "0",
+       GIT_CONFIG_NOSYSTEM: "1",

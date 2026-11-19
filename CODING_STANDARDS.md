@@ -57,6 +57,11 @@ row's guide or gate note cites two distinct witnesses.
 | Every exit path emits exactly one envelope                   | Review only | None                                                                                                                      | None                                       | [Failure envelopes](docs/standards/failure-envelopes.md)            |
 | Untrusted values are read once, as own data                  | Partial     | [lint `repository/no-locale-compare`, lint `repository/no-in-operator`, fault `b9e392f-payload-rules`](#untrusted-values) | None                                       | [Untrusted values](docs/standards/untrusted-values.md#object-model) |
 | Delays, waits, and work have stated bounds                   | Review only | None                                                                                                                      | `Milliseconds` and `Bound` brands          | [Untrusted values](docs/standards/untrusted-values.md#bounds)       |
+| Untrusted bytes are decoded strictly                         | Review only | None                                                                                                                      | Gate job for its planted faults            | [Untrusted values](docs/standards/untrusted-values.md#bytes)        |
+| A path or file name may hold any byte but NUL                | Review only | None                                                                                                                      | Gate job for its planted faults            | [Untrusted values](docs/standards/untrusted-values.md#separators)   |
+| A path is refused in every spelling but the plain one        | Review only | None                                                                                                                      | Gate job for its planted faults            | [Untrusted values](docs/standards/untrusted-values.md#plain-paths)  |
+| An entry is inspected itself, not what a link points to      | Review only | None                                                                                                                      | Gate job for its planted faults            | [Untrusted values](docs/standards/untrusted-values.md#links)        |
+| An unreadable input is reported, never read as empty         | Review only | None                                                                                                                      | Gate job for its planted faults            | [Untrusted values](docs/standards/untrusted-values.md#failed-reads) |
 | Behaviour holds on Linux and macOS                           | Partial     | [job `test`, lint `repository/no-host-path-literal`, fault `b79a4ac-platform-rules`](#linux-and-macos)                    | None                                       | [Platform parity](docs/standards/platform-parity.md)                |
 | Glossary terms only                                          | Partial     | [job `test`](#glossary)                                                                                                   | Lint `glossary-term`                       | [Glossary map](GLOSSARY-MAP.md)                                     |
 | One owner per constant, fake, and helper                     | Partial     | [lint `repository/tests-use-test-folder`](#one-owner)                                                                     | None                                       | [One owner](docs/standards/one-owner.md)                            |
@@ -72,16 +77,11 @@ row's guide or gate note cites two distinct witnesses.
 - `.github/workflows/ci.yml` runs on every pull request.
 - `.github/workflows/macos-nightly.yml` runs on schedule once it reaches
   `main`.
-- Lint `repository/no-host-path-literal` refuses a string, or the head of a
-  template literal, that starts at `/private`, `/usr`, `/var`, `/tmp`,
-  `/etc`, `/opt`, `/Users`, `/home`, `/Library` or `/System`, in every file
-  `eslint.config.mjs` lints. `/dev/null`, `/bin/sh` and a shebang pass: both
-  hosts have them.
+- Lint `repository/no-host-path-literal` refuses a host path written as a
+  literal. Review a path built at run time. See
+  [the gate's coverage](docs/standards/gate-coverage.md#host-path-lint).
 - Fault `b79a4ac-platform-rules` drops `/private` from that list; the lint
   case for the [ff5fffe] shape kills it.
-- Review only: a path built at run time, such as `"/" + "tmp"` or
-  `join("/", "usr")`; a host path after a template expression; other roots,
-  such as `/proc` or `/run`; and `starters/`, which ESLint skips.
 - Witnessed: [8e4ec47], [ff5fffe].
 
 ### Glossary
@@ -115,21 +115,9 @@ row's guide or gate note cites two distinct witnesses.
   request.
 - Pre-push runs `bun run fault-replay --changed-since <base>` for faults
   affected by the push. The hosted `fault-replay` check replays every fault record.
-- Fault replay fails on a fault record whose named test passes with the
-  planted fault applied or fails without it, or whose patch file is
-  missing. A patch also fails replay when it creates or deletes a whole
-  file, or when a changed region's anchor is in no file replay searches, or
-  is at more than one place and its context lines do not choose one.
-- Replay places each changed region of a hunk by its anchor: the lines it
-  removes, or, for a region that only inserts, the context lines next to
-  it. A region lands wherever its anchor occurs once, even if its other
-  context moved. Only a region that removes lines is searched for in
-  other tracked files when its recorded file lacks the anchor; a region
-  that only inserts stays in its recorded file. Context chooses between
-  places only when one matches at least as far as every other on both
-  sides, and further on one.
-- Whether the chosen place is the one the fault meant stays review: a
-  fault in the wrong place still fails its test.
+- Fault replay fails on a fault record it cannot judge or place. Review
+  whether the place it chose is the one the fault meant. See
+  [the gate's coverage](docs/standards/gate-coverage.md#fault-replay).
 - A new refusal or bound with no fault record stays review. So does a fault
   record whose test title matches more tests than the planted fault reaches.
 - Witnessed: [d72cd9e], [640ba05].

@@ -1,0 +1,13 @@
+diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+index 3356472..66d26e5 100644
+--- a/src/stamp-check.ts
++++ b/src/stamp-check.ts
+@@ -381,7 +381,7 @@ function plainText(path: string): string {
+ }
+ 
+ const unopened = {
+-  absent: ["missing", "it is recorded and is not in the folder."],
++  absent: ["modified", "it is recorded and is not in the folder."],
+   unreadable: ["unreadable", "it is recorded and cannot be looked up."],
+   "not-a-file": [
+     "not-a-file",

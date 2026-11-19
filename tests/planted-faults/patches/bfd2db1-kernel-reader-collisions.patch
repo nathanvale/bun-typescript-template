@@ -1,0 +1,12 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 9f5f56c..d890b66 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -479,7 +479,6 @@ function stampRootsOf(
+   listed: ReadonlyMap<string, readonly Listed[]>,
+ ): Map<string, StampRoot> {
+   const every = [...listed.values()].flat();
+-  refuseCollisions(every, seam.commit);
+   const blobs = blobsOf(
+     repository,
+     seam,

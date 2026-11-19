@@ -1,0 +1,13 @@
+diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+index 2929c3e..de9be2a 100644
+--- a/src/stamp-check.ts
++++ b/src/stamp-check.ts
+@@ -536,7 +536,7 @@ function findingsIn(folder: string, record: StampRecord): StampFinding[] {
+ // stamped file on purpose can edit the stamp record too.
+ export function checkStamp(folder: string): StampVerdict {
+   const recordAt = join(folder, stampRecordPath);
+-  if (entryAt(recordAt) === "absent") return { status: "unstamped" };
++  if (entryAt(folder) === "absent") return { status: "unstamped" };
+   let record: StampRecord;
+   try {
+     record = recordOf(plainText(recordAt));

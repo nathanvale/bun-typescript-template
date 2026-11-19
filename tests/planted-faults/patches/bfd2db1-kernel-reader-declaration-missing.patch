@@ -1,0 +1,13 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 94c1df2..7431df9 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -430,7 +430,7 @@ export function readKernel(
+   const held = entries.find(({ path }) => path === declarationPath);
+   if (held === undefined)
+     throw new KernelRefusal(
+-      "kernel_declaration_missing",
++      "kernel_declaration_invalid",
+       `Commit ${commit} holds no kernel declaration at ${declarationPath}.`,
+     );
+   const text = blobsOf(repository, seam, [plainFile(held, commit).blob]).get(

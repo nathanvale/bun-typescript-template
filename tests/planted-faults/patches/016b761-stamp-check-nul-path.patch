@@ -1,0 +1,12 @@
+diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+index 37a61fa..4968ffd 100644
+--- a/src/stamp-check.ts
++++ b/src/stamp-check.ts
+@@ -80,7 +80,6 @@ export function plainPathFault(path: string): string | undefined {
+   if (path.split("/").some((part) => ["", ".", ".."].includes(part)))
+     return 'it has an empty, "." or ".." part.';
+   if (path.includes("\\")) return "it has a backslash.";
+-  if (path.includes("\0")) return "it has a NUL byte.";
+   return undefined;
+ }
+ 

@@ -1,0 +1,13 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 94c1df2..bb950b8 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -174,7 +174,7 @@ function repositoryAt(path: string): string {
+ function requireCommit(repository: string, seam: KernelSeam): void {
+   const kind = git(repository, "cat-file", ["-t", seam.commit]);
+   const named = kind.stdout.toString().trim();
+-  if (!kind.ok)
++  if (kind.said === "never")
+     throw new KernelRefusal(
+       "kernel_commit_missing",
+       `Commit ${seam.commit} is not in the git repository at ${seam.repository}.`,

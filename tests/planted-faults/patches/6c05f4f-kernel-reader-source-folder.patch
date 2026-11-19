@@ -1,0 +1,17 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index a86ad13..7e40af2 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -402,7 +402,11 @@ function listedUnder(
+   const source = sourceRoot === "" ? "" : `${sourceRoot}/`;
+   const under = Buffer.from(`${source}${root}/`);
+   const listed = entries
+-    .filter(({ name }) => name.subarray(0, under.length).equals(under))
++    .filter(({ name }) =>
++      name
++        .subarray(source.length, under.length)
++        .equals(under.subarray(source.length)),
++    )
+     .map((entry) => {
+       const file = plainFile(entry, commit);
+       return {

@@ -1,0 +1,13 @@
+diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+index d2f8eda..0e60b21 100644
+--- a/src/stamp-check.ts
++++ b/src/stamp-check.ts
+@@ -122,7 +122,7 @@ function place(top: Tree, names: readonly string[], file: StampedFile): void {
+   const held = tree.get(leaf);
+   if (held instanceof Map)
+     throw new Error(`${file.path} is both a file and a folder.`);
+-  if (held !== undefined) throw new Error(`${file.path} is listed twice.`);
++  if (held === null) throw new Error(`${file.path} is listed twice.`);
+   tree.set(leaf, file);
+ }
+ 

@@ -1,0 +1,13 @@
+diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+index fa60315..2a2e599 100644
+--- a/src/stamp-check.ts
++++ b/src/stamp-check.ts
+@@ -82,7 +82,7 @@ function identityOfTree(tree: Tree): string {
+     .map(([name, held]) => {
+       const folder = held instanceof Map;
+       return {
+-        order: Buffer.from(folder ? `${name}/` : name),
++        order: Buffer.from(name),
+         head: encoder.encode(`${folder ? "40000" : held.mode} ${name}\0`),
+         id: Buffer.from(folder ? identityOfTree(held) : held.blob, "hex"),
+       };

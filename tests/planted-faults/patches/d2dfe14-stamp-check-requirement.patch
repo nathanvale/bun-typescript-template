@@ -1,0 +1,13 @@
+diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+index d2f8eda..213621f 100644
+--- a/src/stamp-check.ts
++++ b/src/stamp-check.ts
+@@ -360,7 +360,7 @@ function packageFindings(folder: string, record: StampRecord): StampFinding[] {
+     new Map<string, unknown>(),
+   );
+   return record.packages
+-    .filter(([name, version]) => held.get(name) !== version)
++    .filter(([name, version]) => name === version)
+     .map(([name, version]) => ({
+       kind: "requirement",
+       path: packageFile,

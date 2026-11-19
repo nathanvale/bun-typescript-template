@@ -1,0 +1,13 @@
+diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+index b3a5b15..73fe5a4 100644
+--- a/src/stamp-check.ts
++++ b/src/stamp-check.ts
+@@ -304,7 +304,7 @@ function plainBytes(path: string): Buffer {
+ // not replaced, so a value read from the file is the one the file holds.
+ function plainText(path: string): string {
+   try {
+-    return new TextDecoder("utf-8", { fatal: true }).decode(plainBytes(path));
++    return new TextDecoder("utf-8", { fatal: false }).decode(plainBytes(path));
+   } catch (error) {
+     if (error instanceof TypeError)
+       throw new Error("it is not UTF-8 text.", { cause: error });

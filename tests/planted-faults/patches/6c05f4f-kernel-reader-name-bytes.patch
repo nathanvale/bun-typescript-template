@@ -1,0 +1,13 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 9f5f56c..807bc10 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -287,7 +287,7 @@ function plainFile(
+   { path, utf8, mode, id }: Entry,
+   commit: string,
+ ): StampedFile {
+-  if (!utf8)
++  if (!utf8 && path === "")
+     throw new KernelRefusal(
+       "kernel_entry_unsupported",
+       `${path} in commit ${commit} has a name that is not UTF-8 text, and a stamp root holds files with UTF-8 names only.`,

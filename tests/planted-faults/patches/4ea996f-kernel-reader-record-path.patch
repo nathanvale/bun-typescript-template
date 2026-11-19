@@ -1,0 +1,13 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 1495588..acea2c0 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -411,7 +411,7 @@ function listedUnder(
+     .map((entry) => {
+       const file = plainFile(entry, commit);
+       const path = entry.path.slice(source.length);
+-      const fault = plainPathFault(path);
++      const fault = plainPathFault("plain");
+       if (fault !== undefined)
+         throw new KernelRefusal(
+           "kernel_entry_unsupported",

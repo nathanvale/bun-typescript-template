@@ -1,0 +1,13 @@
+diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+index 37a61fa..e081a0d 100644
+--- a/src/stamp-check.ts
++++ b/src/stamp-check.ts
+@@ -484,7 +484,7 @@ function extraFindings(folder: string, record: StampRecord): StampFinding[] {
+   const recorded = new Set(record.files.map(({ path }) => path));
+   return record.roots
+     .flatMap((root) => entriesUnder(folder, root))
+-    .filter(({ at, listed, utf8 }) => !listed || !utf8 || !recorded.has(at))
++    .filter(({ listed, utf8 }) => !listed || !utf8)
+     .map(extraFinding);
+ }
+ 

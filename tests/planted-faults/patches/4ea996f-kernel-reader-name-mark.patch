@@ -1,0 +1,13 @@
+diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+index 37a61fa..2d16160 100644
+--- a/src/stamp-check.ts
++++ b/src/stamp-check.ts
+@@ -63,7 +63,7 @@ export function fileModeOf(mode: unknown): FileMode | undefined {
+ 
+ // Platform: a decoder drops a leading byte-order mark unless told to keep it,
+ // and in a name it is a character.
+-const strictName = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
++const strictName = new TextDecoder("utf-8", { fatal: true });
+ 
+ // Interface: a name's text from its stored bytes, or undefined if not UTF-8.
+ export function nameText(bytes: Uint8Array): string | undefined {

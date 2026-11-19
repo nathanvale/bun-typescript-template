@@ -1,0 +1,13 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 94c1df2..39b1345 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -179,7 +179,7 @@ function requireCommit(repository: string, seam: KernelSeam): void {
+       "kernel_commit_missing",
+       `Commit ${seam.commit} is not in the git repository at ${seam.repository}.`,
+     );
+-  if (named !== "commit")
++  if (named === "")
+     throw new KernelRefusal(
+       "kernel_commit_missing",
+       `${seam.commit} names a ${named}, not a commit, in the git repository at ${seam.repository}.`,

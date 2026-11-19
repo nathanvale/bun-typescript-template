@@ -1,0 +1,13 @@
+diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+index 3356472..291a696 100644
+--- a/src/stamp-check.ts
++++ b/src/stamp-check.ts
+@@ -344,7 +344,7 @@ function openedFile(path: string): Opened {
+   try {
+     file = openSync(
+       path,
+-      constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOFOLLOW,
++      constants.O_RDONLY | constants.O_NONBLOCK,
+     );
+   } catch (error) {
+     const code = String(Reflect.get(Object(error), "code"));

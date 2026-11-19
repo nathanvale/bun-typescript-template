@@ -8,10 +8,10 @@ repository broke it.
 
 - Assert the exact refusal the named guard produces. An assertion that only
   something threw stays green when another guard refuses. Witnessed: [#91-count],
-  [185c90d], [5990897], [fa359ec] (the repository description parser had
-  five refusals and no test), [97f9e9b] (a length check accepted any reason
-  for a parse failure; take the reason from an independent call of the
-  parser), [#90-inventory] (exit 1 also covered unrelated inventory errors).
+  [185c90d], [5990897], [fa359ec] (a parser's five refusals had no test),
+  [97f9e9b] (a length check accepted any parse failure; take the reason from
+  an independent parser call), [#90-inventory] (exit 1 also covered other
+  errors).
 - Assert the route's response when a test says a command remains available.
   Exit zero with empty output can pass without a response. Witnessed:
   [#90-routes].
@@ -45,7 +45,7 @@ repository broke it.
 - Show that a planted input changes the result when nothing blocks it, with
   a control, before asserting the subject ignores it. A `HOME` change under
   `GIT_CONFIG_GLOBAL=/dev/null` hides the planted `.gitconfig` whether or not
-  the isolation works. Witnessed: [315de28].
+  the isolation works. Witnessed: [315de28], [r4625961328].
 
 ## Production entry
 
@@ -144,9 +144,8 @@ repository broke it.
   once, a type argument that repeats its alias, an alias whose parameter
   shares a name with an outer one, a spread into call arguments, and a
   member key written as a template literal. A port inherits its source's
-  gaps; the rule each port copies (oxc's `no_accumulating_spread` at
-  `oxlint_v1.93.0`, or the anti-slop source that
-  `config/anti-slop-rules.mjs` pins) shares each witnessed one.
+  gaps: oxc's `no_accumulating_spread` at `oxlint_v1.93.0`, or the source
+  `config/anti-slop-rules.mjs` pins, shares each witnessed one.
   Witnessed: [#102-parameters] (a reducer that also takes the index passed
   `no-accumulating-spread`), [#102-alias] (`Identity<Identity<unknown>>`
   passed `no-unknown-type-aliases`), [#102-nested] (a spread in a `map`
@@ -197,6 +196,7 @@ repository broke it.
 [#91-bound]: https://github.com/nathanvale/bun-typescript-template/pull/91#discussion_r4607744346
 [7623343]: https://github.com/nathanvale/bun-typescript-template/commit/76233438395b1e967f461ded4a34f6c1d2c8a533
 [315de28]: https://github.com/nathanvale/bun-typescript-template/commit/315de28d3e1da69a4e8d65923654846405a3d1c8
+[r4625961328]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4625961328
 [dbd196e]: https://github.com/nathanvale/bun-typescript-template/commit/dbd196e8dd2dc19163d201cfb4f089952f1c471f
 [#91-projects]: https://github.com/nathanvale/bun-typescript-template/pull/91#discussion_r4607744327
 [9ad6bf2]: https://github.com/nathanvale/bun-typescript-template/commit/9ad6bf2528f0c65fc5106e8377c469b2e48b1743

@@ -1,0 +1,13 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 94c1df2..4ed4e74 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -136,7 +136,7 @@ function git(
+     stdin: stdin ?? "ignore",
+     stdout: "pipe",
+     stderr: "pipe",
+-    timeout: gitMilliseconds,
++    timeout: 3 * gitMilliseconds,
+     killSignal: "SIGKILL",
+   });
+   if (result.exitedDueToTimeout)

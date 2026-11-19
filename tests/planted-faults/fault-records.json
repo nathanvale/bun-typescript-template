@@ -985,5 +985,404 @@
     "testFile": "tests/template/kernel-pin/kernel-pin.test.ts",
     "title": "^a branch with two dots in a row is refused",
     "source": "0b40120 fix(kernel-pin): freeze the parsed pin, and refuse a branch git cannot use"
+  },
+  {
+    "id": "12232bd-stamp-check-folder-order",
+    "patch": "tests/planted-faults/patches/12232bd-stamp-check-folder-order.patch",
+    "testFile": "tests/template/stamp-check/git-identities.test.ts",
+    "title": "a folder sorts differently from a file of the same name$",
+    "source": "12232bd feat(stamp-check): compute git blob and tree identities in process"
+  },
+  {
+    "id": "bfd2db1-kernel-reader-replace-objects",
+    "patch": "tests/planted-faults/patches/bfd2db1-kernel-reader-replace-objects.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader.test.ts",
+    "title": "holds a replace ref that swaps them$",
+    "source": "bfd2db1 feat(kernel-reader): read the kernel from git objects at one commit"
+  },
+  {
+    "id": "bfd2db1-kernel-reader-folders-above",
+    "patch": "tests/planted-faults/patches/bfd2db1-kernel-reader-folders-above.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-refusals.test.ts",
+    "title": "a folder that is not a repository, even inside a repository that holds the commit$",
+    "source": "bfd2db1 feat(kernel-reader): read the kernel from git objects at one commit"
+  },
+  {
+    "id": "bfd2db1-kernel-reader-abbreviated",
+    "patch": "tests/planted-faults/patches/bfd2db1-kernel-reader-abbreviated.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-refusals.test.ts",
+    "title": "an identity that is not 40 characters: 39, 41 and git's short form are refused, 40 are read$",
+    "source": "bfd2db1 feat(kernel-reader): read the kernel from git objects at one commit"
+  },
+  {
+    "id": "bfd2db1-kernel-reader-object-format",
+    "patch": "tests/planted-faults/patches/bfd2db1-kernel-reader-object-format.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-refusals.test.ts",
+    "title": "a repository in the sha256 object format, given the first 40 characters of its commit$",
+    "source": "bfd2db1 feat(kernel-reader): read the kernel from git objects at one commit"
+  },
+  {
+    "id": "bfd2db1-kernel-reader-links",
+    "patch": "tests/planted-faults/patches/bfd2db1-kernel-reader-links.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-refusals.test.ts",
+    "title": "with its repair line, that holds a symbolic link$",
+    "source": "bfd2db1 feat(kernel-reader): read the kernel from git objects at one commit"
+  },
+  {
+    "id": "bfd2db1-kernel-reader-collisions",
+    "patch": "tests/planted-faults/patches/bfd2db1-kernel-reader-collisions.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-refusals.test.ts",
+    "title": "two paths that differ only in letter case$",
+    "source": "bfd2db1 feat(kernel-reader): read the kernel from git objects at one commit"
+  },
+  {
+    "id": "d2dfe14-stamp-check-unstamped",
+    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-unstamped.patch",
+    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
+    "title": "returns unstamped on a folder with no stamp record",
+    "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
+  },
+  {
+    "id": "d2dfe14-stamp-check-bytes",
+    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-bytes.patch",
+    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
+    "title": "returns broken for one changed byte, naming the file$",
+    "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
+  },
+  {
+    "id": "d2dfe14-stamp-check-extra",
+    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-extra.patch",
+    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
+    "title": "returns broken for an extra file in a stamp root, naming the file$",
+    "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
+  },
+  {
+    "id": "d2dfe14-stamp-check-mode",
+    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-mode.patch",
+    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
+    "title": "returns broken for an executable bit cleared, naming the file$",
+    "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
+  },
+  {
+    "id": "d2dfe14-stamp-check-requirement",
+    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-requirement.patch",
+    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
+    "title": "returns broken for a changed merged package version, naming the file and the package$",
+    "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
+  },
+  {
+    "id": "d2dfe14-stamp-check-stamp-checker",
+    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-stamp-checker.patch",
+    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
+    "title": "returns broken for an edited stamp checker, naming the file$",
+    "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
+  },
+  {
+    "id": "d2dfe14-stamp-check-tree",
+    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-tree.patch",
+    "testFile": "tests/template/stamp-check/stamp-record.test.ts",
+    "title": "a file identity that its stamp root's tree identity does not cover$",
+    "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
+  },
+  {
+    "id": "6c05f4f-kernel-reader-folder-collisions",
+    "patch": "tests/planted-faults/patches/6c05f4f-kernel-reader-folder-collisions.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-entries.test.ts",
+    "title": "two folders that differ only in letter case$",
+    "source": "6c05f4f fix(kernel-reader): refuse what three reviews found it read wrong"
+  },
+  {
+    "id": "6c05f4f-kernel-reader-lazy-fetch",
+    "patch": "tests/planted-faults/patches/6c05f4f-kernel-reader-lazy-fetch.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-clones.test.ts",
+    "title": "does not fetch them as plain git then does$",
+    "source": "6c05f4f fix(kernel-reader): refuse what three reviews found it read wrong"
+  },
+  {
+    "id": "6c05f4f-kernel-reader-partial-listing",
+    "patch": "tests/planted-faults/patches/6c05f4f-kernel-reader-partial-listing.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-clones.test.ts",
+    "title": "refuses one that lacks the commit's list of files$",
+    "source": "6c05f4f fix(kernel-reader): refuse what three reviews found it read wrong"
+  },
+  {
+    "id": "6c05f4f-kernel-reader-caller-environment",
+    "patch": "tests/planted-faults/patches/6c05f4f-kernel-reader-caller-environment.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-clones.test.ts",
+    "title": "when the caller's environment names another repository, as a git hook's does$",
+    "source": "6c05f4f fix(kernel-reader): refuse what three reviews found it read wrong"
+  },
+  {
+    "id": "6c05f4f-kernel-reader-git-bound",
+    "patch": "tests/planted-faults/patches/6c05f4f-kernel-reader-git-bound.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-clones.test.ts",
+    "title": "stops a git that never answers at its bound",
+    "source": "6c05f4f fix(kernel-reader): refuse what three reviews found it read wrong"
+  },
+  {
+    "id": "6c05f4f-kernel-reader-tag",
+    "patch": "tests/planted-faults/patches/6c05f4f-kernel-reader-tag.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-refusals.test.ts",
+    "title": "the identity of a tag, which is not a commit$",
+    "source": "6c05f4f fix(kernel-reader): refuse what three reviews found it read wrong"
+  },
+  {
+    "id": "6c05f4f-kernel-reader-commit-missing",
+    "patch": "tests/planted-faults/patches/6c05f4f-kernel-reader-commit-missing.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-refusals.test.ts",
+    "title": "a commit that a clone lacks because no branch or tag reaches it$",
+    "source": "6c05f4f fix(kernel-reader): refuse what three reviews found it read wrong"
+  },
+  {
+    "id": "6c05f4f-kernel-reader-not-a-folder",
+    "patch": "tests/planted-faults/patches/6c05f4f-kernel-reader-not-a-folder.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-refusals.test.ts",
+    "title": "a path that is a file$",
+    "source": "6c05f4f fix(kernel-reader): refuse what three reviews found it read wrong"
+  },
+  {
+    "id": "6c05f4f-kernel-reader-name-bytes",
+    "patch": "tests/planted-faults/patches/6c05f4f-kernel-reader-name-bytes.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-entries.test.ts",
+    "title": "a file whose name is not UTF-8 text$",
+    "source": "6c05f4f fix(kernel-reader): refuse what three reviews found it read wrong"
+  },
+  {
+    "id": "6c05f4f-kernel-reader-source-folder",
+    "patch": "tests/planted-faults/patches/6c05f4f-kernel-reader-source-folder.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-entries.test.ts",
+    "title": "not from a folder whose name is as long$",
+    "source": "6c05f4f fix(kernel-reader): refuse what three reviews found it read wrong"
+  },
+  {
+    "id": "bfd2db1-kernel-reader-repository-missing",
+    "patch": "tests/planted-faults/patches/bfd2db1-kernel-reader-repository-missing.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-refusals.test.ts",
+    "title": "a path that does not exist$",
+    "source": "bfd2db1 feat(kernel-reader): read the kernel from git objects at one commit"
+  },
+  {
+    "id": "bfd2db1-kernel-reader-declaration-missing",
+    "patch": "tests/planted-faults/patches/bfd2db1-kernel-reader-declaration-missing.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-refusals.test.ts",
+    "title": "a commit that holds no kernel declaration$",
+    "source": "bfd2db1 feat(kernel-reader): read the kernel from git objects at one commit"
+  },
+  {
+    "id": "bfd2db1-kernel-reader-declaration-version",
+    "patch": "tests/planted-faults/patches/bfd2db1-kernel-reader-declaration-version.patch",
+    "testFile": "tests/template/kernel-reader/kernel-declaration.test.ts",
+    "title": "a schema version the kernel reader does not read$",
+    "source": "bfd2db1 feat(kernel-reader): read the kernel from git objects at one commit"
+  },
+  {
+    "id": "bfd2db1-kernel-reader-declaration-roots",
+    "patch": "tests/planted-faults/patches/bfd2db1-kernel-reader-declaration-roots.patch",
+    "testFile": "tests/template/kernel-reader/kernel-declaration.test.ts",
+    "title": "a stamp root inside another$",
+    "source": "bfd2db1 feat(kernel-reader): read the kernel from git objects at one commit"
+  },
+  {
+    "id": "d2dfe14-stamp-check-missing",
+    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-missing.patch",
+    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
+    "title": "returns broken for a deleted file, naming the file$",
+    "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
+  },
+  {
+    "id": "d2dfe14-stamp-check-not-a-file",
+    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-not-a-file.patch",
+    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
+    "title": "for a stamp record that is a folder, naming the stamp record$",
+    "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
+  },
+  {
+    "id": "6c05f4f-stamp-check-dead-code",
+    "patch": "tests/planted-faults/patches/6c05f4f-stamp-check-dead-code.patch",
+    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
+    "title": "returns broken for a removed merged dead-code entry, naming the file and the entry$",
+    "source": "6c05f4f fix(kernel-reader): refuse what three reviews found it read wrong"
+  },
+  {
+    "id": "6c05f4f-stamp-check-unreadable-requirements",
+    "patch": "tests/planted-faults/patches/6c05f4f-stamp-check-unreadable-requirements.patch",
+    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
+    "title": "returns broken for a package file that is no longer JSON, naming the file and not its packages$",
+    "source": "6c05f4f fix(kernel-reader): refuse what three reviews found it read wrong"
+  },
+  {
+    "id": "d2dfe14-stamp-check-record-version",
+    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-record-version.patch",
+    "testFile": "tests/template/stamp-check/stamp-record.test.ts",
+    "title": "a schema version the stamp check does not read$",
+    "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
+  },
+  {
+    "id": "d2dfe14-stamp-check-plain-path",
+    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-plain-path.patch",
+    "testFile": "tests/template/stamp-check/stamp-record.test.ts",
+    "title": "a stamp checker path that climbs out of the folder$",
+    "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
+  },
+  {
+    "id": "12232bd-stamp-check-listed-twice",
+    "patch": "tests/planted-faults/patches/12232bd-stamp-check-listed-twice.patch",
+    "testFile": "tests/template/stamp-check/git-identities.test.ts",
+    "title": "refuses a path listed twice$",
+    "source": "12232bd feat(stamp-check): compute git blob and tree identities in process"
+  },
+  {
+    "id": "95100e0-kernel-reader-inside-repository",
+    "patch": "tests/planted-faults/patches/95100e0-kernel-reader-inside-repository.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
+    "title": "a folder inside a repository is refused where a colon in the path above it defeats git's own limit on looking upward$",
+    "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
+  },
+  {
+    "id": "95100e0-kernel-reader-name-replacement",
+    "patch": "tests/planted-faults/patches/95100e0-kernel-reader-name-replacement.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
+    "title": "a file whose name holds the replacement character itself is read",
+    "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
+  },
+  {
+    "id": "95100e0-kernel-reader-declaration-bytes",
+    "patch": "tests/planted-faults/patches/95100e0-kernel-reader-declaration-bytes.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
+    "title": "a kernel declaration with a byte that is not UTF-8 is refused, with its repair line$",
+    "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
+  },
+  {
+    "id": "95100e0-kernel-reader-whole-roots",
+    "patch": "tests/planted-faults/patches/95100e0-kernel-reader-whole-roots.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
+    "title": "a stamp root that holds an empty folder, which no list of files shows, is refused with its repair line$",
+    "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
+  },
+  {
+    "id": "95100e0-stamp-check-backslash",
+    "patch": "tests/planted-faults/patches/95100e0-stamp-check-backslash.patch",
+    "testFile": "tests/template/stamp-check/stamp-record.test.ts",
+    "title": "a file path written with a backslash$",
+    "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
+  },
+  {
+    "id": "95100e0-stamp-check-linked-root",
+    "patch": "tests/planted-faults/patches/95100e0-stamp-check-linked-root.patch",
+    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
+    "title": "for a stamp root replaced by a link to a folder that holds the same files, naming the stamp root$",
+    "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
+  },
+  {
+    "id": "95100e0-stamp-check-unlistable",
+    "patch": "tests/planted-faults/patches/95100e0-stamp-check-unlistable.patch",
+    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
+    "title": "for a folder in a stamp root that cannot be listed, naming the folder$",
+    "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
+  },
+  {
+    "id": "95100e0-stamp-check-record-link",
+    "patch": "tests/planted-faults/patches/95100e0-stamp-check-record-link.patch",
+    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
+    "title": "for a stamp record that is a link to nothing, naming the stamp record",
+    "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
+  },
+  {
+    "id": "e4493d7-stamp-check-record-bytes",
+    "patch": "tests/planted-faults/patches/e4493d7-stamp-check-record-bytes.patch",
+    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
+    "title": "for a stamp record with a byte that is not UTF-8, naming the stamp record$",
+    "source": "e4493d7 fix(stamp-check): decode the stamp record and requirement files strictly"
+  },
+  {
+    "id": "1bf0634-kernel-reader-bare-folder",
+    "patch": "tests/planted-faults/patches/1bf0634-kernel-reader-bare-folder.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
+    "title": "refuses a folder inside it, where a colon in the path above defeats git's own limit on looking upward$",
+    "source": "1bf0634 fix(kernel-reader): answer CodeRabbit's replies on the first round of #113"
+  },
+  {
+    "id": "1bf0634-kernel-reader-path-bytes",
+    "patch": "tests/planted-faults/patches/1bf0634-kernel-reader-path-bytes.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
+    "title": "outside a stamp root whose own name holds the replacement character, is left out and not refused$",
+    "source": "1bf0634 fix(kernel-reader): answer CodeRabbit's replies on the first round of #113"
+  },
+  {
+    "id": "1bf0634-stamp-check-lookup-failure",
+    "patch": "tests/planted-faults/patches/1bf0634-stamp-check-lookup-failure.patch",
+    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
+    "title": "naming the stamp record, for a folder that may not be searched, and not unstamped$",
+    "source": "1bf0634 fix(kernel-reader): answer CodeRabbit's replies on the first round of #113"
+  },
+  {
+    "id": "5b40c83-stamp-check-linked-file",
+    "patch": "tests/planted-faults/patches/5b40c83-stamp-check-linked-file.patch",
+    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
+    "title": "a stamp checker that is a link to a file with the same bytes outside the folder is broken, naming the stamp checker$",
+    "source": "5b40c83 fix(stamp-check): open no link, in answer to Copilot's second review of #113"
+  },
+  {
+    "id": "5b40c83-stamp-check-linked-checker-folder",
+    "patch": "tests/planted-faults/patches/5b40c83-stamp-check-linked-checker-folder.patch",
+    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
+    "title": "a folder above the stamp checker replaced by a link is broken, naming that folder$",
+    "source": "5b40c83 fix(stamp-check): open no link, in answer to Copilot's second review of #113"
+  },
+  {
+    "id": "4ea996f-kernel-reader-name-mark",
+    "patch": "tests/planted-faults/patches/4ea996f-kernel-reader-name-mark.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
+    "title": "a source folder whose name starts with a byte-order mark is read under that name$",
+    "source": "4ea996f fix(kernel-reader): answer CodeRabbit's second review of #113"
+  },
+  {
+    "id": "4ea996f-kernel-reader-record-path",
+    "patch": "tests/planted-faults/patches/4ea996f-kernel-reader-record-path.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
+    "title": "a file name with a backslash, which a stamp record cannot hold, is refused with its repair line$",
+    "source": "4ea996f fix(kernel-reader): answer CodeRabbit's second review of #113"
+  },
+  {
+    "id": "016b761-kernel-reader-line-feed",
+    "patch": "tests/planted-faults/patches/016b761-kernel-reader-line-feed.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
+    "title": "a folder named with a line feed inside a working tree is refused as inside the repository above it$",
+    "source": "016b761 fix(kernel-reader): answer the third review round of #113"
+  },
+  {
+    "id": "016b761-kernel-reader-none-helper",
+    "patch": "tests/planted-faults/patches/016b761-kernel-reader-none-helper.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-clones.test.ts",
+    "title": "does not run git-remote-none, which git runs when the allowlist names none$",
+    "source": "016b761 fix(kernel-reader): answer the third review round of #113"
+  },
+  {
+    "id": "016b761-stamp-check-nul-path",
+    "patch": "tests/planted-faults/patches/016b761-stamp-check-nul-path.patch",
+    "testFile": "tests/template/stamp-check/stamp-record.test.ts",
+    "title": "a stamp checker path that holds a NUL byte$",
+    "source": "016b761 fix(kernel-reader): answer the third review round of #113"
+  },
+  {
+    "id": "b3637f2-stamp-check-stamped-link",
+    "patch": "tests/planted-faults/patches/b3637f2-stamp-check-stamped-link.patch",
+    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
+    "title": "returns broken for a symbolic link where a stamped file was, naming the file$",
+    "source": "b3637f2 fix(stamp-check): open each stamped file once"
+  },
+  {
+    "id": "b3637f2-stamp-check-name-bytes",
+    "patch": "tests/planted-faults/patches/b3637f2-stamp-check-name-bytes.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-entries.test.ts",
+    "title": "a file whose name is not UTF-8 text$",
+    "source": "b3637f2 fix(stamp-check): open each stamped file once"
+  },
+  {
+    "id": "126c1a5-stamp-check-empty-folder",
+    "patch": "tests/planted-faults/patches/126c1a5-stamp-check-empty-folder.patch",
+    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
+    "title": "returns broken for an empty folder in a stamp root, naming the folder$",
+    "source": "126c1a5 fix(stamp-check): report an empty folder in a stamp root"
   }
 ]

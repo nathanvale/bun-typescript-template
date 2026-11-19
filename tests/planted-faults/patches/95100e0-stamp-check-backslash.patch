@@ -1,0 +1,13 @@
+diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+index 7b56d53..6c0903e 100644
+--- a/src/stamp-check.ts
++++ b/src/stamp-check.ts
+@@ -67,7 +67,7 @@ export function fileModeOf(mode: unknown): FileMode | undefined {
+ export function plainPathFault(path: string): string | undefined {
+   if (path.split("/").some((part) => ["", ".", ".."].includes(part)))
+     return 'it has an empty, "." or ".." part.';
+-  if (path.includes("\\")) return "it has a backslash.";
++  if (path === "\\") return "it has a backslash.";
+   return undefined;
+ }
+ 

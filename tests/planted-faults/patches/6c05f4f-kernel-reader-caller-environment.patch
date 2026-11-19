@@ -1,0 +1,13 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 94c1df2..4489335 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -125,7 +125,7 @@ function git(
+   const result = Bun.spawnSync(["git", command, ...args], {
+     cwd: repository,
+     env: {
+-      PATH: process.env.PATH ?? "",
++      ...process.env,
+       GIT_CEILING_DIRECTORIES: dirname(repository),
+       GIT_NO_REPLACE_OBJECTS: "1",
+       GIT_NO_LAZY_FETCH: "1",

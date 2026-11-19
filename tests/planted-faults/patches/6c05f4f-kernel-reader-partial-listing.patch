@@ -1,0 +1,13 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 94c1df2..c6beb03 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -193,7 +193,7 @@ function entriesAt(repository: string, seam: KernelSeam): Entry[] {
+     "--full-tree",
+     seam.commit,
+   ]);
+-  if (!listing.ok)
++  if (listing.said === "never")
+     throw new KernelRefusal(
+       "kernel_commit_missing",
+       `Commit ${seam.commit} is in the git repository at ${seam.repository}, and its list of files is not: git says "${listing.said}".`,

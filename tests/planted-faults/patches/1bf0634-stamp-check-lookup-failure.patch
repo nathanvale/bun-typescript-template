@@ -1,0 +1,13 @@
+diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+index 2929c3e..7d849af 100644
+--- a/src/stamp-check.ts
++++ b/src/stamp-check.ts
+@@ -303,7 +303,7 @@ function entryAt(path: string): Stats | "absent" | "unreadable" {
+       String(Reflect.get(Object(error), "code")),
+     )
+       ? "absent"
+-      : "unreadable";
++      : "absent";
+   }
+ }
+ 

@@ -1,0 +1,13 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 0310210..6ffd89e 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -181,7 +181,7 @@ function repositoryAt(path: string): string {
+   const atTop =
+     inWorkTree === "true"
+       ? onePath("--show-prefix") === ""
+-      : onePath("--absolute-git-dir") === repository;
++      : onePath("--absolute-git-dir") !== "";
+   if (!atTop) throw missing("that folder is inside the repository above it.");
+   if (name !== "sha1")
+     throw new KernelRefusal(

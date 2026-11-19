@@ -12,11 +12,6 @@
       "ticket": "MAG-108"
     },
     {
-      "term": "Sibling repository",
-      "reason": "The kernel reader reads the kernel repository as a sibling repository. MAG-123 builds the kernel reader.",
-      "ticket": "MAG-123"
-    },
-    {
       "term": "Prepared parent",
       "reason": "MAG-122 makes the carry-out commit on top of it, in the kernel repository. No ticket is known to name it in a tracked file here.",
       "ticket": "MAG-122"
@@ -42,34 +37,9 @@
       "ticket": "MAG-126"
     },
     {
-      "term": "Stamp record",
-      "reason": "The stamp check compares a folder with its stamp record. MAG-123 builds the stamp check.",
-      "ticket": "MAG-123"
-    },
-    {
-      "term": "Stamp check",
-      "reason": "MAG-123 builds the stamp check.",
-      "ticket": "MAG-123"
-    },
-    {
-      "term": "Stamp checker",
-      "reason": "MAG-123 builds the stamp checker that a generated repository carries.",
-      "ticket": "MAG-123"
-    },
-    {
       "term": "Restamp",
       "reason": "MAG-128 builds Restamp.",
       "ticket": "MAG-128"
-    },
-    {
-      "term": "Add-on selection",
-      "reason": "MAG-125 makes Bootstrap stamp an add-on selection.",
-      "ticket": "MAG-125"
-    },
-    {
-      "term": "Kernel seam",
-      "reason": "The seam is the kernel reader's interface. MAG-123 builds the kernel reader.",
-      "ticket": "MAG-123"
     },
     {
       "term": "Negative control",
@@ -87,34 +57,9 @@
       "ticket": "MAG-114"
     },
     {
-      "term": "Stamp",
-      "reason": "MAG-125 makes Bootstrap stamp the kernel. Kernel files used the word until the kernel left with MAG-124.",
-      "ticket": "MAG-125"
-    },
-    {
-      "term": "Stamped source",
-      "reason": "MAG-125 makes Bootstrap write stamped source into a generated repository.",
-      "ticket": "MAG-125"
-    },
-    {
-      "term": "Stamp root",
-      "reason": "The stamp check compares each stamp root with its stamp record. MAG-123 builds the stamp check.",
-      "ticket": "MAG-123"
-    },
-    {
       "term": "Add-on requirement",
       "reason": "The kernel declaration names each add-on requirement. MAG-125 makes Bootstrap merge them when it stamps an add-on selection.",
       "ticket": "MAG-125"
-    },
-    {
-      "term": "Kernel declaration",
-      "reason": "The kernel reader reads the kernel declaration at one kernel commit. MAG-123 builds the kernel reader. The file itself left with the kernel in MAG-124.",
-      "ticket": "MAG-123"
-    },
-    {
-      "term": "Kernel reader",
-      "reason": "MAG-123 builds the kernel reader.",
-      "ticket": "MAG-123"
     }
   ]
 }
