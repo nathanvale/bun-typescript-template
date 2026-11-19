@@ -32,15 +32,21 @@ function isOn(setting: unknown): boolean {
   return level === 2 || level === "error";
 }
 
-async function turnedOn(eslint: ESLint, file: string): Promise<Settings> {
+async function settingsFor(eslint: ESLint, file: string): Promise<Settings> {
   const config = (await eslint.calculateConfigForFile(file)) as
     | { rules?: Record<string, unknown> }
     | undefined;
   return new Map(
     Object.entries(config?.rules ?? {}).filter(
-      ([rule, setting]) =>
-        (TEMPLATE_RULE.test(rule) || rule === "no-restricted-syntax") &&
-        isOn(setting),
+      ([rule]) => TEMPLATE_RULE.test(rule) || rule === "no-restricted-syntax",
+    ),
+  );
+}
+
+async function turnedOn(eslint: ESLint, file: string): Promise<Settings> {
+  return new Map(
+    [...(await settingsFor(eslint, file))].filter(([, setting]) =>
+      isOn(setting),
     ),
   );
 }
@@ -101,7 +107,7 @@ async function ruleSettingProblems(
   };
   const problems: string[] = [];
   for (const file of await lintedFiles(generated)) {
-    const given = await turnedOn(theirs, file);
+    const given = await settingsFor(theirs, file);
     for (const kind of kindsOf(file))
       for (const [rule, setting] of wanted[kind])
         if (!Bun.deepEquals(given.get(rule), setting))
