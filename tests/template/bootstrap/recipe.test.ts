@@ -4,6 +4,7 @@ import { cp, mkdir, readdir, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
   LINT_RULE_FILES,
+  lintsCode,
   PROFILES,
   type ProjectRecipe,
   RECIPES,
@@ -228,13 +229,14 @@ describe("project recipe", () => {
     const copied: Record<string, unknown> = {};
     for (const recipe of RECIPES)
       copied[rowKey(recipe)] = {
+        lintsCode: lintsCode(recipe),
         ruleFiles: (await copiedFiles(recipe))
           .filter((file) => file.startsWith("config/"))
           .toSorted(),
       };
-    const linted = { ruleFiles };
+    const linted = { lintsCode: true, ruleFiles };
     expect(copied).toEqual({
-      "scratch single-package": { ruleFiles: [] },
+      "scratch single-package": { lintsCode: false, ruleFiles: [] },
       "durable single-package": linted,
       "durable monorepo": linted,
       "durable single-package simple": linted,

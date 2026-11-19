@@ -111,6 +111,10 @@ export const RECIPES: readonly ProjectRecipe[] = [
   starterRow("complex"),
 ];
 
+export function lintsCode(recipe: ProjectRecipe): boolean {
+  return recipe.copies.includes(LINT_RULES);
+}
+
 function distinct<T>(values: readonly (T | undefined)[]): T[] {
   return [
     ...new Set(values.filter((value): value is T => value !== undefined)),

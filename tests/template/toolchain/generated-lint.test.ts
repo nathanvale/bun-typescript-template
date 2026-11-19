@@ -332,3 +332,41 @@ test.each(LINTED)(
   },
   generationTimeout,
 );
+
+const MARKERS =
+  "A comment that opens with `Platform:` or `Interface:` makes a claim that a reviewer checks. It is not a way to keep a comment.";
+const LINTED_GUIDANCE = `## Comments
+
+Lint refuses a comment in code, so say it in a name, a type or a test title.
+${MARKERS}
+
+The rule files in config/ are the template's. Change a rule in the template, not here.
+`;
+const UNLINTED_GUIDANCE = `## Comments
+
+Write no comment in code. Say it in a name, a type or a test title.
+${MARKERS}
+`;
+
+test(
+  "every generated AGENTS.md ends with the comment guidance its recipe's lint can back",
+  async () => {
+    const guidance: Record<string, string> = {};
+    for (const recipe of RECIPES) {
+      const text = readFileSync(
+        join(await generatedFrom(rowKey(recipe)), "AGENTS.md"),
+        "utf8",
+      );
+      guidance[rowKey(recipe)] = text.slice(text.indexOf("## Comments"));
+    }
+    expect(guidance).toEqual(
+      Object.fromEntries(
+        RECIPES.map((recipe) => [
+          rowKey(recipe),
+          LINTED.includes(rowKey(recipe)) ? LINTED_GUIDANCE : UNLINTED_GUIDANCE,
+        ]),
+      ),
+    );
+  },
+  generationTimeout,
+);

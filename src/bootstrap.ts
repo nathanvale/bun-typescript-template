@@ -23,6 +23,7 @@ import { fileURLToPath } from "node:url";
 import {
   type Copy,
   type Layout,
+  lintsCode,
   PROFILES,
   type Profile,
   type ProjectRecipe,
@@ -571,6 +572,19 @@ function templateIdentity(args: string[]) {
   return child.stdout.toString().trim();
 }
 
+const MARKER_GUIDANCE =
+  "A comment that opens with `Platform:` or `Interface:` makes a claim that a reviewer checks. It is not a way to keep a comment.";
+
+function commentGuidance(recipe: ProjectRecipe): string {
+  const refusal = lintsCode(recipe)
+    ? "Lint refuses a comment in code, so say it in a name, a type or a test title."
+    : "Write no comment in code. Say it in a name, a type or a test title.";
+  const owner = lintsCode(recipe)
+    ? "\nThe rule files in config/ are the template's. Change a rule in the template, not here.\n"
+    : "";
+  return `## Comments\n\n${refusal}\n${MARKER_GUIDANCE}\n${owner}`;
+}
+
 async function writeRepositoryContext(
   staging: string,
   options: BootstrapOptions,
@@ -595,7 +609,7 @@ async function writeRepositoryContext(
   const check = options.recipe.checkCommand;
   await writeFile(
     join(staging, "AGENTS.md"),
-    `# Repository commands\n\nUse the existing repository CLI at src/cli.ts. Add commands through src/commands.ts.\nKeep domain implementation in separate files and preserve one public application CLI.\n\nCheck command: ${check}\nSmoke: bun run start --help\nSource packet: ${options.sourcePacket}\nTemplate source: ${metadata.templateRevision}\n`,
+    `# Repository commands\n\nUse the existing repository CLI at src/cli.ts. Add commands through src/commands.ts.\nKeep domain implementation in separate files and preserve one public application CLI.\n\nCheck command: ${check}\nSmoke: bun run start --help\nSource packet: ${options.sourcePacket}\nTemplate source: ${metadata.templateRevision}\n\n${commentGuidance(options.recipe)}`,
   );
 }
 
