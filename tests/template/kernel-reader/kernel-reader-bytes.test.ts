@@ -166,3 +166,32 @@ describe("the kernel reader, given a bare repository", () => {
     );
   });
 });
+
+describe("the kernel reader keeps a path as git stores it", () => {
+  test("a source folder whose name starts with a byte-order mark is read under that name", () => {
+    const layout: Layout = { ...firstLayout, sourceRoot: "\uFEFFengine" };
+    const repository = folder("kernel-reader-bytes-");
+    const commit = kernelRepository(repository, kernelEntries(layout));
+    const kernel = readKernel(
+      { repository, commit },
+      declarationPathIn(layout),
+    );
+    expect(kernel.sourceRoot).toBe("\uFEFFengine");
+    expect(kernel.sourceRoot).toHaveLength("engine".length + 1);
+  });
+
+  test("a file name with a backslash, which a stamp record cannot hold, is refused with its repair line", () => {
+    const repository = folder("kernel-reader-bytes-");
+    const commit = kernelRepository(repository, [
+      ...kernelEntries(),
+      { path: "engine/lib/core/a\\b.ts", bytes: "export const odd = 1;\n" },
+    ]);
+    expect(refusalOf(() => readKernel({ repository, commit }, path))).toEqual(
+      refused(
+        "kernel_entry_unsupported",
+        `engine/lib/core/a\\b.ts in commit ${commit} has a name a stamp record cannot hold: it has a backslash.`,
+        repairs.entry,
+      ),
+    );
+  });
+});

@@ -1,12 +1,12 @@
 diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
-index 9f5f56c..d261034 100644
+index 1495588..01833ad 100644
 --- a/src/kernel-reader.ts
 +++ b/src/kernel-reader.ts
-@@ -499,7 +499,7 @@ function stampRootsOf(
+@@ -517,7 +517,7 @@ function stampRootsOf(
  }
  
  function utf8TextOf(bytes: Uint8Array | undefined): string {
--  const text = utf8Of(bytes ?? new Uint8Array());
+-  const text = utf8Of(bytes ?? new Uint8Array(), strictText);
 +  const text = new TextDecoder().decode(bytes);
    if (text === undefined) throw new Error("it is not UTF-8 text.");
    return text;

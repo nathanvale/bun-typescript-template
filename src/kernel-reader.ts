@@ -8,6 +8,7 @@ import {
   listOf,
   messageOf,
   plainPath,
+  plainPathFault,
   type StampedFile,
   textOf,
   treeIdentity,
@@ -106,7 +107,11 @@ type Declaration = Requirements & {
 };
 
 const gitMilliseconds = 4_000;
-const strictUtf8 = new TextDecoder("utf-8", { fatal: true });
+// Platform: a decoder drops a byte-order mark at the start of its input
+// unless told to keep it. A path may start with one, and it is part of the
+// name. At the start of a file's text it is a mark, and is dropped.
+const strictName = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+const strictText = new TextDecoder("utf-8", { fatal: true });
 const linkKinds = new Map([
   ["120000", "a symbolic link"],
   ["160000", "a submodule"],
@@ -221,7 +226,7 @@ function entriesAt(repository: string, seam: KernelSeam): Entry[] {
       .toString()
       .split(" ");
     const name = record.subarray(tab + 1);
-    const path = utf8Of(name);
+    const path = utf8Of(name, strictName);
     return {
       name,
       path: path ?? name.toString(),
@@ -232,9 +237,9 @@ function entriesAt(repository: string, seam: KernelSeam): Entry[] {
   });
 }
 
-function utf8Of(bytes: Uint8Array): string | undefined {
+function utf8Of(bytes: Uint8Array, strict: TextDecoder): string | undefined {
   try {
-    return strictUtf8.decode(bytes);
+    return strict.decode(bytes);
   } catch {
     return undefined;
   }
@@ -405,10 +410,14 @@ function listedUnder(
     .filter(({ name }) => name.subarray(0, under.length).equals(under))
     .map((entry) => {
       const file = plainFile(entry, commit);
-      return {
-        entry,
-        file: { ...file, path: entry.path.slice(source.length) },
-      };
+      const path = entry.path.slice(source.length);
+      const fault = plainPathFault(path);
+      if (fault !== undefined)
+        throw new KernelRefusal(
+          "kernel_entry_unsupported",
+          `${entry.path} in commit ${commit} has a name a stamp record cannot hold: ${fault}`,
+        );
+      return { entry, file: { ...file, path } };
     });
   if (listed.length === 0)
     throw new Error(
@@ -508,7 +517,7 @@ function stampRootsOf(
 }
 
 function utf8TextOf(bytes: Uint8Array | undefined): string {
-  const text = utf8Of(bytes ?? new Uint8Array());
+  const text = utf8Of(bytes ?? new Uint8Array(), strictText);
   if (text === undefined) throw new Error("it is not UTF-8 text.");
   return text;
 }

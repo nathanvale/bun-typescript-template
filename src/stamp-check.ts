@@ -64,15 +64,19 @@ export function fileModeOf(mode: unknown): FileMode | undefined {
 // Interface: a path from a folder's top, written with "/" between its parts,
 // that cannot leave the folder on any host: no empty, "." or ".." part, and no
 // backslash, which Windows reads as a separator.
+export function plainPathFault(path: string): string | undefined {
+  if (path.split("/").some((part) => ["", ".", ".."].includes(part)))
+    return 'it has an empty, "." or ".." part.';
+  if (path.includes("\\")) return "it has a backslash.";
+  return undefined;
+}
+
 export function plainPath(value: unknown, where: string): string {
   const path = textOf(value, where);
-  if (path.split("/").some((part) => ["", ".", ".."].includes(part)))
+  const fault = plainPathFault(path);
+  if (fault !== undefined)
     throw new Error(
-      `${where} is "${path}", which is not a plain path: it has an empty, "." or ".." part.`,
-    );
-  if (path.includes("\\"))
-    throw new Error(
-      `${where} is "${path}", which is not a plain path: it has a backslash.`,
+      `${where} is "${path}", which is not a plain path: ${fault}`,
     );
   return path;
 }
