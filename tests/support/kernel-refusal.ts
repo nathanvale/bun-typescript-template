@@ -37,10 +37,10 @@ export function refusalOf(read: () => unknown): Refusal {
   throw new Error("The read was not refused.");
 }
 
-export function refused(
-  code: KernelRefusalCode,
+export function refused<Code extends string>(
+  code: Code,
   cause: string,
   repair: string,
-): Refusal {
+) {
   return { code, message: `${cause} Repair: ${repair}`, repair };
 }

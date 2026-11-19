@@ -5,7 +5,6 @@ import {
   mkdir,
   mkdtemp,
   readdir,
-  readFile,
   rename,
   rm,
   rmdir,
@@ -20,8 +19,11 @@ import {
   resolve,
 } from "node:path";
 import { fileURLToPath } from "node:url";
+import { CliError } from "./cli-error.ts";
+import { type KernelSeam, readKernel } from "./kernel-reader.ts";
 import {
   type Copy,
+  KERNEL_RECIPE,
   type Layout,
   lintsCode,
   PROFILES,
@@ -32,11 +34,20 @@ import {
   selectRecipe,
   UNCOPIED_NAMES,
 } from "./recipe.ts";
+import {
+  type LockfileInput,
+  lockfileFor,
+  placeLockfile,
+  selectAddons,
+  stampKernel,
+} from "./stamping.ts";
+import {
+  type RenderedStaging,
+  substituteTokens,
+} from "./token-substitution.ts";
 
 const SCHEMA_VERSION = 1;
 const TEMPLATE_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const NAME_TOKEN = "__REPOSITORY_NAME__";
-const PACKET_TOKEN = "__SOURCE_PACKET__";
 
 interface BootstrapOptions {
   destination: string;
@@ -63,7 +74,7 @@ type ValueFlag =
   | "sourcePacket"
   | "starter";
 
-interface BootstrapResult {
+export interface BootstrapResult {
   destination: string;
   generatedFiles: number;
   profile: Profile;
@@ -73,18 +84,6 @@ interface BootstrapResult {
   starter?: Starter;
   status: "created";
   variant: Layout;
-}
-
-class CliError extends Error {
-  constructor(
-    readonly code: string,
-    message: string,
-    readonly repair: string,
-    readonly exitCode: number,
-    readonly retrySafe: boolean,
-  ) {
-    super(message);
-  }
 }
 
 const RUNTIME_FAILURE_REPAIR =
@@ -465,36 +464,6 @@ async function copyDirectoryContents(
   }
 }
 
-async function substituteTokens(
-  root: string,
-  options: BootstrapOptions,
-): Promise<number> {
-  let count = 0;
-  for (const entry of await readdir(root, { withFileTypes: true })) {
-    const path = join(root, entry.name);
-    if (entry.isDirectory()) {
-      count += await substituteTokens(path, options);
-      continue;
-    }
-    if (!entry.isFile()) {
-      throw new CliError(
-        "unsupported_template_entry",
-        `template entry is not a regular file: ${relative(root, path)}`,
-        "replace the entry with a regular file",
-        1,
-        false,
-      );
-    }
-    const current = await readFile(path, "utf8");
-    const rendered = current
-      .replaceAll(NAME_TOKEN, options.name)
-      .replaceAll(PACKET_TOKEN, options.sourcePacket);
-    await writeFile(path, rendered, "utf8");
-    count += 1;
-  }
-  return count;
-}
-
 function sourceRefusal(source: string, code: string, message: string) {
   const path = relative(TEMPLATE_ROOT, source);
   return new CliError(
@@ -640,7 +609,10 @@ async function writeRepositoryContext(
   );
 }
 
-async function bootstrap(options: BootstrapOptions): Promise<BootstrapResult> {
+async function bootstrap(
+  options: BootstrapOptions,
+  afterTokens?: (staging: RenderedStaging) => Promise<number>,
+): Promise<BootstrapResult> {
   const destinationState = await validateDestination(options.destination);
   const { recipe } = options;
   await requireProfileSources(recipe);
@@ -652,7 +624,9 @@ async function bootstrap(options: BootstrapOptions): Promise<BootstrapResult> {
   try {
     await copyRecipe(recipe, staging);
     await writeRepositoryContext(staging, options);
-    const generatedFiles = await substituteTokens(staging, options);
+    const rendered = await substituteTokens(staging, options);
+    const generatedFiles =
+      rendered.fileCount + ((await afterTokens?.(rendered.staging)) ?? 0);
     await installStaging(staging, options.destination, destinationState);
     return {
       destination: options.destination,
@@ -668,6 +642,47 @@ async function bootstrap(options: BootstrapOptions): Promise<BootstrapResult> {
   } finally {
     await rm(staging, { force: true, recursive: true });
   }
+}
+
+export type KernelBootstrap = {
+  readonly destination: string;
+  readonly name?: string;
+  readonly sourcePacket: string;
+  readonly kernel: KernelSeam;
+  readonly kernelRepository: string;
+  readonly declarationPath?: string;
+  readonly addons: readonly string[];
+  readonly lockfile: LockfileInput;
+};
+
+// Interface: Bootstrap through the kernel row, which the command line does
+// not offer yet. It reads the whole kernel commit, checks the add-on
+// selection and finds the lockfile before any staging folder exists, so each
+// of those refusals leaves nothing behind. The lockfile and the stamp follow
+// token substitution, and the stamp record is the last file written.
+export async function bootstrapWithKernel(
+  request: KernelBootstrap,
+): Promise<BootstrapResult> {
+  validateSourcePacket(request.sourcePacket);
+  const name = resolveRepositoryName(request.destination, request.name);
+  const kernel = readKernel(request.kernel, request.declarationPath);
+  const selection = selectAddons(kernel, request.addons);
+  const lockfile = lockfileFor(request.lockfile, selection, TEMPLATE_ROOT);
+  const options = {
+    destination: resolve(request.destination),
+    json: false,
+    name,
+    recipe: KERNEL_RECIPE,
+    sourcePacket: request.sourcePacket,
+  };
+  return bootstrap(options, async (staging) => {
+    if (lockfile !== undefined) await placeLockfile(staging, lockfile);
+    const stamped = await stampKernel(staging, kernel, selection, {
+      kernelRepository: request.kernelRepository,
+      stampCheckSource: join(TEMPLATE_ROOT, "src/stamp-check.ts"),
+    });
+    return stamped + (lockfile === undefined ? 0 : 1);
+  });
 }
 
 function writeError(error: unknown, json: boolean): number {

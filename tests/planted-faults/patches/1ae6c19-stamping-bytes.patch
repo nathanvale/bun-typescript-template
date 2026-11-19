@@ -1,0 +1,13 @@
+diff --git a/src/stamping.ts b/src/stamping.ts
+index 000dcd7..7f6b6b8 100644
+--- a/src/stamping.ts
++++ b/src/stamping.ts
+@@ -224,7 +224,7 @@ export async function stampKernel(
+       Buffer.compare(Buffer.from(one.path), Buffer.from(other.path)),
+     );
+   for (const { path, bytes, mode } of files)
+-    await writeNew(folder, path, bytes, mode);
++    await writeNew(folder, path, new TextDecoder().decode(bytes), mode);
+   const stampChecker = await readFile(origin.stampCheckSource);
+   await writeNew(folder, stampCheckerPath, stampChecker, "100644");
+   const merged = await mergeRequirements(folder, required);

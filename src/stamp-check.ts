@@ -168,11 +168,11 @@ export function treeIdentity(
   return identityOfTree(top);
 }
 
-// Interface: where a generated repository keeps its stamp record, and the two
-// files the stamp merges requirements into.
+// Interface: a generated repository's stamp record and the two files the
+// stamp merges requirements into.
 export const stampRecordPath = ".kernel-stamp.json";
-const packageFile = "package.json";
-const deadCodeFile = ".fallowrc.json";
+export const packageFile = "package.json";
+export const deadCodeFile = ".fallowrc.json";
 
 export type StampFinding = {
   readonly kind:
@@ -569,8 +569,7 @@ function findingsIn(folder: string, record: StampRecord): StampFinding[] {
 // intact when every stamped file, merged requirement and the stamp checker
 // equal it; broken otherwise, with one finding per fault naming the file. It
 // only reads, with no git, network or kernel repository. It guards against
-// accidental edits: whoever edits stamped source on purpose can edit the
-// record too.
+// accidental edits, not deliberate ones.
 export function checkStamp(folder: string): StampVerdict {
   const recordAt = join(folder, stampRecordPath);
   if (entryAt(recordAt) === "absent") return { status: "unstamped" };
@@ -598,4 +597,10 @@ export function checkStamp(folder: string): StampVerdict {
         fileCount: record.files.length,
       }
     : { status: "broken", findings };
+}
+
+if (import.meta.main) {
+  const verdict = checkStamp(".");
+  process.stdout.write(`${JSON.stringify(verdict, null, 2)}\n`);
+  process.exitCode = Number(verdict.status !== "intact");
 }

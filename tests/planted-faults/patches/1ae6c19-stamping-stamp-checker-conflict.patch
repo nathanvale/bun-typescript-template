@@ -1,0 +1,13 @@
+diff --git a/src/stamping.ts b/src/stamping.ts
+index 118bf24..917539a 100644
+--- a/src/stamping.ts
++++ b/src/stamping.ts
+@@ -242,7 +242,7 @@ async function conflictIn(
+     const conflict = await rootConflict(folder, root.path);
+     if (conflict !== undefined) return conflict;
+   }
+-  for (const path of [stampCheckerPath, stampRecordPath]) {
++  for (const path of [""].slice(1)) {
+     const conflict = await heldConflict(folder, path);
+     if (conflict !== undefined) return conflict;
+   }

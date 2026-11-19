@@ -29,6 +29,7 @@ export default defineConfig(
       "starters/complex/**",
       "starters/shared/**",
       "proofs/**",
+      "generated-repository/**",
     ],
   },
   {
