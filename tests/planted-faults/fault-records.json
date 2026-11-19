@@ -1193,7 +1193,7 @@
     "id": "95100e0-kernel-reader-inside-repository",
     "patch": "tests/planted-faults/patches/95100e0-kernel-reader-inside-repository.patch",
     "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
-    "title": "a colon in the path above it defeats git's own limit on looking upward$",
+    "title": "a folder inside a repository is refused where a colon in the path above it defeats git's own limit on looking upward$",
     "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
   },
   {
@@ -1251,5 +1251,26 @@
     "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
     "title": "for a stamp record with a byte that is not UTF-8, naming the stamp record$",
     "source": "e4493d7 fix(stamp-check): decode the stamp record and requirement files strictly"
+  },
+  {
+    "id": "1bf0634-kernel-reader-bare-folder",
+    "patch": "tests/planted-faults/patches/1bf0634-kernel-reader-bare-folder.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
+    "title": "refuses a folder inside it, where a colon in the path above defeats git's own limit on looking upward$",
+    "source": "1bf0634 fix(kernel-reader): answer CodeRabbit's replies on the first round of #113"
+  },
+  {
+    "id": "1bf0634-kernel-reader-path-bytes",
+    "patch": "tests/planted-faults/patches/1bf0634-kernel-reader-path-bytes.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
+    "title": "outside a stamp root whose own name holds the replacement character, is left out and not refused$",
+    "source": "1bf0634 fix(kernel-reader): answer CodeRabbit's replies on the first round of #113"
+  },
+  {
+    "id": "1bf0634-stamp-check-lookup-failure",
+    "patch": "tests/planted-faults/patches/1bf0634-stamp-check-lookup-failure.patch",
+    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
+    "title": "naming the stamp record, for a folder that may not be searched, and not unstamped$",
+    "source": "1bf0634 fix(kernel-reader): answer CodeRabbit's replies on the first round of #113"
   }
 ]

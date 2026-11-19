@@ -1,0 +1,13 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index a86ad13..3da2038 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -177,7 +177,7 @@ function repositoryAt(path: string): string {
+   // bare repository, or in a .git folder, there is no working tree, and the
+   // folder is the repository only when it is git's own folder.
+   const atTop =
+-    inWorkTree === "true" ? prefix === "" : gitFolder === repository;
++    inWorkTree === "true" ? prefix === "" : gitFolder !== "";
+   if (!atTop) throw missing("that folder is inside the repository above it.");
+   if (name !== "sha1")
+     throw new KernelRefusal(
