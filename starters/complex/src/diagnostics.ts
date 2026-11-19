@@ -84,8 +84,7 @@ function projectObject(
   const entries: Record<string, unknown> = {};
   let truncated = false;
   let count = 0;
-  for (const key in value) {
-    if (!Object.hasOwn(value, key)) continue;
+  for (const key of Object.keys(value)) {
     if (++count > 128 || budget.nodes <= 0) {
       truncated = true;
       break;

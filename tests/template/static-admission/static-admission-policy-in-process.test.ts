@@ -10,12 +10,14 @@ import { test, expect } from "bun:test";
 import {
   createAdmissionFolder,
   policyFiles,
+  copyRuleFiles,
   packet,
   causeOf,
   optionsFor,
   fields,
   editJson,
 } from "../../support/static-admission-in-process-fixture.ts";
+import { EXPECTED_RULE_FILES } from "../../support/lint-rule-files.ts";
 
 const folder = createAdmissionFolder();
 
@@ -23,6 +25,7 @@ function policyProject(profile: Profile = "simple"): string {
   const root = folder();
   for (const file of policyFiles)
     copyFileSync(join(packet, profile, file), join(root, file));
+  copyRuleFiles(root);
   return root;
 }
 
@@ -143,6 +146,29 @@ test("checkPolicy names each text policy file that changed", async () => {
     expect(await causeOf(() => checkPolicy(optionsFor(root)))).toBe(
       `policy:${file}`,
     );
+  }
+});
+
+test("checkPolicy names each lint rule file that differs from the template's", async () => {
+  const causes: unknown[] = [];
+  for (const file of EXPECTED_RULE_FILES) {
+    const root = policyProject("simple");
+    writeFileSync(
+      join(root, file),
+      `${readFileSync(join(root, file), "utf8")}\nextra\n`,
+    );
+    causes.push(await causeOf(() => checkPolicy(optionsFor(root))));
+  }
+  expect(causes).toEqual(EXPECTED_RULE_FILES.map((file) => `policy:${file}`));
+});
+
+test("checkPolicy passes on the read error of a missing lint rule file", async () => {
+  for (const file of EXPECTED_RULE_FILES) {
+    const root = policyProject("simple");
+    rmSync(join(root, file));
+    const cause = await causeOf(() => checkPolicy(optionsFor(root)));
+    expect(cause).toBeInstanceOf(Error);
+    expect(cause).toHaveProperty("code", "ENOENT");
   }
 });
 

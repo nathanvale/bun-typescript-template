@@ -1,5 +1,13 @@
 {
   "$schema": "./node_modules/fallow/schema.json",
+  "ignorePatterns": [
+    "config/anti-slop-bindings.mjs",
+    "config/anti-slop-rules.mjs",
+    "config/anti-slop-type-rules.mjs",
+    "config/payload-rules.mjs",
+    "config/platform-rules.mjs",
+    "config/template-rules.mjs"
+  ],
   "entry": [
     "tests/unit/**/*.test.ts",
     "tests/integration/**/*.test.ts",
@@ -49,6 +57,10 @@
       {
         "name": "diagnostics",
         "patterns": ["src/diagnostics.ts", "src/diagnostics-custody.ts"]
+      },
+      {
+        "name": "test-support",
+        "patterns": ["tests/support/**/*.ts"]
       },
       {
         "name": "unit-tests",
@@ -109,8 +121,19 @@
         "allow": ["contract"]
       },
       {
+        "from": "test-support",
+        "allow": []
+      },
+      {
         "from": "unit-tests",
-        "allow": ["front-door", "contract", "engine", "runtime", "catalog"]
+        "allow": [
+          "front-door",
+          "contract",
+          "engine",
+          "runtime",
+          "catalog",
+          "test-support"
+        ]
       },
       {
         "from": "integration-tests",
@@ -120,7 +143,8 @@
           "engine",
           "runtime",
           "catalog",
-          "diagnostics"
+          "diagnostics",
+          "test-support"
         ]
       },
       {
@@ -131,7 +155,8 @@
           "engine",
           "runtime",
           "catalog",
-          "diagnostics"
+          "diagnostics",
+          "test-support"
         ]
       },
       {

@@ -847,6 +847,76 @@
     "source": "d7aa03e test(toolchain): compare resolved overrides, exact versions only, peers and workspace exclusions"
   },
   {
+    "id": "19348a4-recipe-rule-file",
+    "patch": "tests/planted-faults/patches/19348a4-recipe-rule-file.patch",
+    "testFile": "tests/template/toolchain/generated-lint.test.ts",
+    "title": "^a repository generated from the durable single-package recipe holds the template's lint rule files and turns on every lint rule the template turns on$",
+    "source": "19348a4 feat(lint): give generated repositories the template lint rules"
+  },
+  {
+    "id": "19348a4-eslint-config-rule-off",
+    "patch": "tests/planted-faults/patches/19348a4-eslint-config-rule-off.patch",
+    "testFile": "tests/template/toolchain/generated-lint.test.ts",
+    "title": "^a repository generated from the durable single-package recipe holds the template's lint rule files and turns on every lint rule the template turns on$",
+    "source": "19348a4 feat(lint): give generated repositories the template lint rules"
+  },
+  {
+    "id": "19348a4-generated-lint-setting",
+    "patch": "tests/planted-faults/patches/19348a4-generated-lint-setting.patch",
+    "testFile": "tests/template/toolchain/generated-lint.test.ts",
+    "title": "^a generated tree that only warns on a lint rule names it for each file and probe path it misses$",
+    "source": "19348a4 feat(lint): give generated repositories the template lint rules"
+  },
+  {
+    "id": "19348a4-generated-lint-text",
+    "patch": "tests/planted-faults/patches/19348a4-generated-lint-text.patch",
+    "testFile": "tests/template/toolchain/generated-lint.test.ts",
+    "title": "^a generated tree whose lint rule file has other text names the file$",
+    "source": "19348a4 feat(lint): give generated repositories the template lint rules"
+  },
+  {
+    "id": "19348a4-generated-lint-missing",
+    "patch": "tests/planted-faults/patches/19348a4-generated-lint-missing.patch",
+    "testFile": "tests/template/toolchain/generated-lint.test.ts",
+    "title": "^a generated tree that lacks a lint rule file names the file and the recipe table$",
+    "source": "19348a4 feat(lint): give generated repositories the template lint rules"
+  },
+  {
+    "id": "19348a4-static-admission-rule-files",
+    "patch": "tests/planted-faults/patches/19348a4-static-admission-rule-files.patch",
+    "testFile": "tests/template/static-admission/static-admission-policy-in-process.test.ts",
+    "title": "^checkPolicy names each lint rule file that differs from the template's$",
+    "source": "19348a4 feat(lint): give generated repositories the template lint rules"
+  },
+  {
+    "id": "b6e4a60-bootstrap-named-file",
+    "patch": "tests/planted-faults/patches/b6e4a60-bootstrap-named-file.patch",
+    "testFile": "tests/template/bootstrap/recipe.test.ts",
+    "title": "refuses a missing template source file before any file is copied$",
+    "source": "b6e4a60 refactor(starters): make starter code pass the template lint rules"
+  },
+  {
+    "id": "815691a-generated-lint-forms",
+    "patch": "tests/planted-faults/patches/815691a-generated-lint-forms.patch",
+    "testFile": "tests/template/toolchain/generated-lint.test.ts",
+    "title": "^a generated tree that leaves a lint rule off names it for each file and probe path it misses$",
+    "source": "815691a test(toolchain): probe every file form the anti-slop lint rules cover"
+  },
+  {
+    "id": "3d754ed-bootstrap-file-type",
+    "patch": "tests/planted-faults/patches/3d754ed-bootstrap-file-type.patch",
+    "testFile": "tests/template/bootstrap/recipe.test.ts",
+    "title": "refuses a folder where a template source file belongs before any file is copied$",
+    "source": "3d754ed fix(bootstrap): refuse a recipe source of the wrong type"
+  },
+  {
+    "id": "3d754ed-bootstrap-folder-type",
+    "patch": "tests/planted-faults/patches/3d754ed-bootstrap-folder-type.patch",
+    "testFile": "tests/template/bootstrap/recipe.test.ts",
+    "title": "refuses a file where a template source folder belongs before any file is copied$",
+    "source": "3d754ed fix(bootstrap): refuse a recipe source of the wrong type"
+  },
+  {
     "id": "ad40eef-kernel-pin-abbreviated",
     "patch": "tests/planted-faults/patches/ad40eef-kernel-pin-abbreviated.patch",
     "testFile": "tests/template/kernel-pin/kernel-pin.test.ts",

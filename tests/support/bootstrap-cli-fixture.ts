@@ -1,11 +1,18 @@
 import { afterEach } from "bun:test";
 import { readdir, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import type { ProjectRecipe } from "../../src/recipe.ts";
 import { gitEnv, inherited } from "./git-fixture.ts";
 import { spawnBounded } from "./process.ts";
 import { testFolder } from "./test-folder.ts";
 
 export const ROOT = resolve(import.meta.dir, "../..");
+
+export function rowKey({ request }: ProjectRecipe): string {
+  return [request.profile, request.layout, request.starter]
+    .filter((word) => word !== undefined)
+    .join(" ");
+}
 
 export function parsePackage(text: string) {
   const value: unknown = JSON.parse(text);

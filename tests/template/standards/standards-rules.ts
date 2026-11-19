@@ -173,7 +173,10 @@ export function rowProblems(repository: string): string[] {
 }
 
 async function lintIds(repository: string): Promise<Set<string>> {
-  const eslint = new ESLint({ cwd: repository });
+  const eslint = new ESLint({
+    cwd: repository,
+    overrideConfigFile: join(repository, "eslint.config.mjs"),
+  });
   const paths = git(
     repository,
     "ls-files",

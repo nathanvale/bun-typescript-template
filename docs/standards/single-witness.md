@@ -67,6 +67,10 @@ this file.
   characters it allows, so the parser admits no name the tool refuses.
   Witnessed: [r4625152049] (the kernel pin's branch pattern `/^[\w./-]+$/`
   admitted `main..next`, which git refuses as a branch name).
+- Check that a declared path is the kind it is declared as, a regular file
+  or a folder, not only that it exists. Witnessed: [#114-types] (Bootstrap
+  took a folder named `config/template-rules.mjs` as a template file, copied
+  it whole, and reported success for a malformed repository).
 
 [ac11ed9]: https://github.com/nathanvale/bun-typescript-template/commit/ac11ed98b7d538e8a304cac053aaefcaaf6b2cb3
 [cd2498b]: https://github.com/nathanvale/bun-typescript-template/commit/cd2498b7189a2d45d1906b9c870e8d13da6cd2dd
@@ -85,3 +89,4 @@ this file.
 [r4623512643]: https://github.com/nathanvale/bun-typescript-template/pull/111#discussion_r4623512643
 [r4623566979]: https://github.com/nathanvale/bun-typescript-template/pull/111#discussion_r4623566979
 [r4625152049]: https://github.com/nathanvale/bun-typescript-template/pull/112#discussion_r4625152049
+[#114-types]: https://github.com/nathanvale/bun-typescript-template/pull/114#pullrequestreview-5971659214

@@ -1,3 +1,4 @@
+import { writeFileSync } from "node:fs";
 import { finishActiveDiagnostics } from "./diagnostics.ts";
 type TimerHandle = ReturnType<typeof setTimeout>;
 
@@ -117,6 +118,11 @@ function createProcessLifecycle(
 }
 
 async function finishDiagnostics(): Promise<void> {
+  const flushing =
+    process.env.NODE_ENV === "test"
+      ? process.env.CLI_EXAMPLE_TEST_DIAGNOSTIC_FLUSH_PATH
+      : undefined;
+  if (flushing !== undefined) writeFileSync(flushing, "flushing\n");
   await finishActiveDiagnostics();
   if (process.env.NODE_ENV !== "test") return;
   const milliseconds = Number(
