@@ -129,7 +129,7 @@ const RULE = "{ create() { return {}; } }";
 const FIXTURE_TEMPLATE_CONFIG = `const rule = ${RULE};
 export default [
   {
-    files: ["**/*.ts", "**/*.mjs"],
+    files: ["**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"],
     plugins: { repository: { rules: { "no-comments": rule, "tests-no-sleep": rule } } },
     rules: { "repository/no-comments": "error" },
   },
@@ -139,13 +139,20 @@ export default [
 const FIXTURE_FILES_WITH_NO_COMMENTS = [
   ...EXPECTED_RULE_FILES,
   "eslint.config.mjs",
+  "probe.cjs",
+  "probe.js",
   "probe.mjs",
   "probe.ts",
   "scripts/probe.ts",
   "src/cli.ts",
+  "src/probe.cts",
+  "src/probe.jsx",
+  "src/probe.mts",
   "src/probe.ts",
+  "src/probe.tsx",
   "tests/cli.test.ts",
   "tests/probe.ts",
+  "tests/support/probe.mts",
 ];
 
 function tree(files: Record<string, string>): string {

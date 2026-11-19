@@ -4,12 +4,16 @@ import { ESLint } from "eslint";
 import { EXPECTED_RULE_FILES } from "./lint-rule-files.ts";
 
 const PROBES = [
+  "probe.cjs",
+  "probe.js",
   "probe.mjs",
   "probe.ts",
   "scripts/probe.ts",
   "src/probe.cts",
+  "src/probe.jsx",
   "src/probe.mts",
   "src/probe.ts",
+  "src/probe.tsx",
   "tests/probe.ts",
   "tests/support/probe.mts",
 ] as const;
@@ -53,7 +57,7 @@ export async function lintRulesOn(
 
 async function lintedFiles(root: string): Promise<string[]> {
   const files = await Array.fromAsync(
-    new Bun.Glob("**/*.{ts,mts,cts,mjs}").scan({ cwd: root }),
+    new Bun.Glob("**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}").scan({ cwd: root }),
   );
   return files.filter((file) => !file.includes("node_modules/"));
 }
