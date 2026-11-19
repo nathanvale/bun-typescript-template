@@ -1,0 +1,13 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 94c1df2..04ebd7b 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -375,7 +375,7 @@ function refuseCollisions(listed: readonly Listed[], commit: string): void {
+   for (const { entry } of listed) {
+     const parts = entry.path.split("/");
+     for (const depth of parts.keys()) {
+-      const path = parts.slice(0, depth + 1).join("/");
++      const path = parts.slice(0, depth + parts.length).join("/");
+       const folded = path.normalize("NFC").toLowerCase();
+       const earlier = spelled.get(folded) ?? path;
+       if (earlier !== path)

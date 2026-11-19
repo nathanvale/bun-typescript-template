@@ -1,0 +1,13 @@
+diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+index d2f8eda..f84e1b3 100644
+--- a/src/stamp-check.ts
++++ b/src/stamp-check.ts
+@@ -60,7 +60,7 @@ export function fileModeOf(mode: unknown): FileMode | undefined {
+ 
+ export function plainPath(value: unknown, where: string): string {
+   const path = textOf(value, where);
+-  if (path.split("/").some((part) => ["", ".", ".."].includes(part)))
++  if (path.split("/").some((part) => [""].includes(part)))
+     throw new Error(
+       `${where} is "${path}", which is not a plain path: it has an empty, "." or ".." part.`,
+     );

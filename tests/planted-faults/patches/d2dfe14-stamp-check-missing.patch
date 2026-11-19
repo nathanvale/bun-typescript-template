@@ -1,0 +1,13 @@
+diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+index d2f8eda..4078f4b 100644
+--- a/src/stamp-check.ts
++++ b/src/stamp-check.ts
+@@ -285,7 +285,7 @@ function fileFindings(folder: string, file: StampedFile): StampFinding[] {
+   if (found === undefined)
+     return [
+       {
+-        kind: "missing",
++        kind: "modified",
+         path: file.path,
+         detail: "it is recorded and is not in the folder.",
+       },

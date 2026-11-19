@@ -1,0 +1,13 @@
+diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+index d2f8eda..98af159 100644
+--- a/src/stamp-check.ts
++++ b/src/stamp-check.ts
+@@ -374,7 +374,7 @@ function deadCodeFindings(folder: string, record: StampRecord): StampFinding[] {
+   if (unreadable.length > 0) return unreadable;
+   const held = attempt(() => listOf(field, "entry"), []);
+   return record.deadCodeEntries
+-    .filter((entry) => !held.includes(entry))
++    .filter((entry) => entry === "")
+     .map((entry) => ({
+       kind: "requirement",
+       path: deadCodeFile,

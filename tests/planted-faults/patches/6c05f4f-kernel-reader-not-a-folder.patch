@@ -1,0 +1,13 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 94c1df2..9eb8632 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -157,7 +157,7 @@ function repositoryAt(path: string): string {
+       `No git repository is at ${path}: ${why}`,
+     );
+   if (!existsSync(path)) throw missing("that path does not exist.");
+-  if (!statSync(path).isDirectory())
++  if (statSync(path).size < 0)
+     throw missing("that path is not a folder.");
+   const repository = realpathSync(path);
+   const format = git(repository, "rev-parse", ["--show-object-format"]);

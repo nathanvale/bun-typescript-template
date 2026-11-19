@@ -1,0 +1,13 @@
+diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+index d2f8eda..3963e6f 100644
+--- a/src/stamp-check.ts
++++ b/src/stamp-check.ts
+@@ -191,7 +191,7 @@ function identityOf(value: unknown, where: string): string {
+ }
+ 
+ function only(value: unknown, read: unknown, where: string, what: string) {
+-  if (value !== read)
++  if (value === where)
+     throw new Error(
+       `${where} is ${JSON.stringify(value)}, and the stamp check reads ${what} only.`,
+     );

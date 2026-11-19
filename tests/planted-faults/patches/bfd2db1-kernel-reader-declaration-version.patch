@@ -1,0 +1,13 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 94c1df2..8c9aef5 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -297,7 +297,7 @@ function everyRoot({ roots, addons }: Declaration): string[] {
+ 
+ function declarationOf(text: string): Declaration {
+   const file = fieldsOf(jsonOf(text), "the file");
+-  if (file.get("schemaVersion") !== 2)
++  if (file.get("schemaVersion") === undefined)
+     throw new Error(
+       `schemaVersion is ${JSON.stringify(file.get("schemaVersion"))}, and the kernel reader reads version 2 only.`,
+     );

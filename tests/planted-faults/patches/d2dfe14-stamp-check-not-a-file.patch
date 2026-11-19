@@ -1,0 +1,13 @@
+diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+index d2f8eda..aa6b626 100644
+--- a/src/stamp-check.ts
++++ b/src/stamp-check.ts
+@@ -290,7 +290,7 @@ function fileFindings(folder: string, file: StampedFile): StampFinding[] {
+         detail: "it is recorded and is not in the folder.",
+       },
+     ];
+-  if (!found.isFile())
++  if (found.isFIFO())
+     return [
+       {
+         kind: "not-a-file",

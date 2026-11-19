@@ -1,0 +1,13 @@
+diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
+index 94c1df2..f58308d 100644
+--- a/src/kernel-reader.ts
++++ b/src/kernel-reader.ts
+@@ -286,7 +286,7 @@ function checkRoots(roots: readonly string[]): void {
+     if (roots.indexOf(root) !== index)
+       throw new Error(`stamp root "${root}" is declared twice.`);
+     const outer = roots.find((other) => root.startsWith(`${other}/`));
+-    if (outer !== undefined)
++    if (outer === "")
+       throw new Error(`stamp root "${root}" is inside stamp root "${outer}".`);
+   }
+ }
