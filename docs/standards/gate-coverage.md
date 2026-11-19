@@ -147,6 +147,36 @@ file extensions in those directories.
   profiles, the `.ts.txt` fixtures, the kernel lint configuration that lints
   a materialised tree, YAML and Markdown.
 
+## Host path lint
+
+- Lint `repository/no-host-path-literal` refuses a string, or the head of a
+  template literal, that starts at `/private`, `/usr`, `/var`, `/tmp`,
+  `/etc`, `/opt`, `/Users`, `/home`, `/Library` or `/System`, in every file
+  `eslint.config.mjs` lints outside the kernel. `/dev/null`, `/bin/sh` and a
+  shebang pass: both hosts have them.
+- Review only: a path built at run time, such as `"/" + "tmp"` or
+  `join("/", "usr")`; a host path after a template expression; other roots,
+  such as `/proc` or `/run`; `kernel/` and `tests/kernel/`, which leave with
+  the kernel; and `starters/`, which ESLint skips.
+
+## Fault replay
+
+- Fault replay fails on a fault record whose named test passes with the
+  planted fault applied or fails without it, or whose patch file is
+  missing. A patch also fails replay when it creates or deletes a whole
+  file, or when a changed region's anchor is in no file replay searches, or
+  is at more than one place and its context lines do not choose one.
+- Replay places each changed region of a hunk by its anchor: the lines it
+  removes, or, for a region that only inserts, the context lines next to
+  it. A region lands wherever its anchor occurs once, even if its other
+  context moved. Only a region that removes lines is searched for in
+  other tracked files when its recorded file lacks the anchor; a region
+  that only inserts stays in its recorded file. Context chooses between
+  places only when one matches at least as far as every other on both
+  sides, and further on one.
+- Whether the chosen place is the one the fault meant stays review: a
+  fault in the wrong place still fails its test.
+
 ## Recorded hits
 
 - `eslint-suppressions.json` holds the recorded hits each lint rule found
