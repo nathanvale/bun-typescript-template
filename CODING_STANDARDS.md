@@ -91,7 +91,9 @@ row's guide or gate note cites two distinct witnesses.
   `GLOSSARY.md`. Pre-commit runs the same names check on staged names.
 - Words inside a file are review only. The test that read kernel files for
   Command Contract 3 terms left with the kernel.
-- Witnessed: [2784de0], [356cce9].
+- Witnessed: [2784de0] (identifiers and comments in kernel files),
+  [356cce9] (a kernel file renamed onto the glossary's words), [cacbf2c]
+  (a template tool and its commands renamed onto the glossary's words).
 
 ### Test proof
 
@@ -230,6 +232,7 @@ when adding, fixing, or pruning a lint hit.
 [e7c771c]: https://github.com/nathanvale/bun-typescript-template/commit/e7c771c89f63ffeeb609b03e4f670e9d43ea53fb
 [2784de0]: https://github.com/nathanvale/bun-typescript-template/commit/2784de083f90d5f72f1b10037bfc64a8eeccff3f
 [356cce9]: https://github.com/nathanvale/bun-typescript-template/commit/356cce90dd2c4a75c7462f5d8f789b52bdaefaed
+[cacbf2c]: https://github.com/nathanvale/bun-typescript-template/commit/cacbf2c98bace062bf11e3520c6ee2a10958d1cd
 [2d0c390]: https://github.com/nathanvale/bun-typescript-template/commit/2d0c3902e6ca538b1e9dfd64c97458bd4b4f88ae
 [258365e]: https://github.com/nathanvale/bun-typescript-template/commit/258365ed51313b4b190361d79609bc93bfc13d6a
 [59d45c1]: https://github.com/nathanvale/bun-typescript-template/commit/59d45c1b84d347e3a8b2d617ac73e36096790dc9
