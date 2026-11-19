@@ -1150,8 +1150,8 @@
   {
     "id": "d2dfe14-stamp-check-not-a-file",
     "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-not-a-file.patch",
-    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
-    "title": "returns broken for a symbolic link where a stamped file was, naming the file$",
+    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
+    "title": "for a stamp record that is a folder, naming the stamp record$",
     "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
   },
   {

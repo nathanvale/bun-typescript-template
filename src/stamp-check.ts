@@ -19,9 +19,8 @@ export type StampedFile = {
   readonly blob: string;
 };
 
-// Interface: the three readers below take a value parsed from JSON and return
-// its own data, or throw an Error that starts with `where`, the name of the
-// field.
+// Interface: these readers return a parsed JSON value's own data, or throw an
+// Error starting with `where`, the field's name.
 export function fieldsOf(value: unknown, where: string): Map<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value))
     throw new Error(`${where} must be an object.`);
@@ -329,31 +328,48 @@ function folderAt(path: string): boolean | undefined {
   return typeof found === "string" ? undefined : found.isDirectory();
 }
 
+type Opened =
+  | { readonly mode: FileMode; readonly bytes: Buffer }
+  | "absent"
+  | "unreadable"
+  | "not-a-file";
+
 // Platform: opening a named pipe waits for a writer unless non-blocking, and
-// an entry can change between a look and an open. So the open waits for
-// nothing, fails on a link (O_NOFOLLOW), and the open file is checked.
-function plainBytes(path: string): Buffer {
-  const unreadable = () =>
-    new Error("it is not a plain file that can be read.");
-  const file = attempt(
-    () =>
-      openSync(
-        path,
-        constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOFOLLOW,
-      ),
-    undefined,
-  );
-  if (file === undefined) throw unreadable();
+// an entry can change between a look and a read. So a file is opened once,
+// waiting for nothing and failing on a link (ELOOP), and its kind, mode and
+// bytes all come from that open. Git records one bit of a mode: whether the
+// owner may execute the file.
+function openedFile(path: string): Opened {
+  let file: number;
   try {
-    if (!fstatSync(file).isFile()) throw unreadable();
-    return readFileSync(file);
+    file = openSync(
+      path,
+      constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOFOLLOW,
+    );
+  } catch (error) {
+    const code = String(Reflect.get(Object(error), "code"));
+    if (["ENOENT", "ENOTDIR"].includes(code)) return "absent";
+    return code === "ELOOP" ? "not-a-file" : "unreadable";
+  }
+  try {
+    const found = fstatSync(file);
+    if (!found.isFile()) return "not-a-file";
+    const mode = (found.mode & 0o100) === 0 ? "100644" : "100755";
+    return { mode, bytes: readFileSync(file) };
   } finally {
     closeSync(file);
   }
 }
 
-// Interface: the text of a plain file. Bytes that are not UTF-8 are refused,
-// not replaced, so a value read from the file is the one the file holds.
+function plainBytes(path: string): Buffer {
+  const opened = openedFile(path);
+  if (typeof opened === "string")
+    throw new Error("it is not a plain file that can be read.");
+  return opened.bytes;
+}
+
+// Interface: a plain file's text. Bytes that are not UTF-8 are refused, not
+// replaced.
 function plainText(path: string): string {
   try {
     return new TextDecoder("utf-8", { fatal: true }).decode(plainBytes(path));
@@ -364,48 +380,33 @@ function plainText(path: string): string {
   }
 }
 
+const unopened = {
+  absent: ["missing", "it is recorded and is not in the folder."],
+  unreadable: ["unreadable", "it is recorded and cannot be looked up."],
+  "not-a-file": [
+    "not-a-file",
+    "it is recorded as a plain file and is not one.",
+  ],
+} as const;
+
 function fileFindings(folder: string, file: StampedFile): StampFinding[] {
-  const at = join(folder, file.path);
-  const found = entryAt(at);
-  if (found === "absent")
-    return [
-      {
-        kind: "missing",
-        path: file.path,
-        detail: "it is recorded and is not in the folder.",
-      },
-    ];
-  if (found === "unreadable")
-    return [
-      {
-        kind: "unreadable",
-        path: file.path,
-        detail: "it is recorded and cannot be looked up.",
-      },
-    ];
-  if (!found.isFile())
-    return [
-      {
-        kind: "not-a-file",
-        path: file.path,
-        detail: "it is recorded as a plain file and is not one.",
-      },
-    ];
-  // Platform: git records one bit of a file's mode, whether its owner may
-  // execute it.
-  const mode: FileMode = (found.mode & 0o100) === 0 ? "100644" : "100755";
+  const opened = openedFile(join(folder, file.path));
+  if (typeof opened === "string") {
+    const [kind, detail] = unopened[opened];
+    return [{ kind, path: file.path, detail }];
+  }
   const findings: StampFinding[] = [];
-  if (attempt(() => blobIdentity(plainBytes(at)), "") !== file.blob)
+  if (blobIdentity(opened.bytes) !== file.blob)
     findings.push({
       kind: "modified",
       path: file.path,
       detail: "its bytes are not the stamped ones.",
     });
-  if (mode !== file.mode)
+  if (opened.mode !== file.mode)
     findings.push({
       kind: "mode",
       path: file.path,
-      detail: `its git mode is ${mode}, and the stamp record says ${file.mode}.`,
+      detail: `its git mode is ${opened.mode}, and the stamp record says ${file.mode}.`,
     });
   return findings;
 }
@@ -565,13 +566,12 @@ function findingsIn(folder: string, record: StampRecord): StampFinding[] {
   ];
 }
 
-// Interface: the stamp check. It compares `folder` with the stamp record it
-// holds and returns a verdict: unstamped when the folder holds no stamp
-// record; intact when every stamped file, every merged requirement and the
-// stamp checker equal the record; broken otherwise, with one finding for each
-// fault, naming the file. It reads only, and needs no git, no network and no
-// kernel repository. It guards against accidental edits: whoever edits a
-// stamped file on purpose can edit the stamp record too.
+// Interface: the stamp check. Unstamped when `folder` holds no stamp record;
+// intact when every stamped file, merged requirement and the stamp checker
+// equal it; broken otherwise, with one finding per fault naming the file. It
+// only reads, with no git, network or kernel repository. It guards against
+// accidental edits: whoever edits stamped source on purpose can edit the
+// record too.
 export function checkStamp(folder: string): StampVerdict {
   const recordAt = join(folder, stampRecordPath);
   if (entryAt(recordAt) === "absent") return { status: "unstamped" };

@@ -1,13 +1,13 @@
 diff --git a/src/stamp-check.ts b/src/stamp-check.ts
-index e718898..4b44a47 100644
+index 3356472..291a696 100644
 --- a/src/stamp-check.ts
 +++ b/src/stamp-check.ts
-@@ -324,7 +324,7 @@ function plainBytes(path: string): Buffer {
-     () =>
-       openSync(
-         path,
--        constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOFOLLOW,
-+        constants.O_RDONLY | constants.O_NONBLOCK,
-       ),
-     undefined,
-   );
+@@ -344,7 +344,7 @@ function openedFile(path: string): Opened {
+   try {
+     file = openSync(
+       path,
+-      constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOFOLLOW,
++      constants.O_RDONLY | constants.O_NONBLOCK,
+     );
+   } catch (error) {
+     const code = String(Reflect.get(Object(error), "code"));

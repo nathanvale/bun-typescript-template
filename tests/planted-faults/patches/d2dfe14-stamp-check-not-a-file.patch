@@ -1,13 +1,13 @@
 diff --git a/src/stamp-check.ts b/src/stamp-check.ts
-index d2f8eda..aa6b626 100644
+index 3356472..cd7c27b 100644
 --- a/src/stamp-check.ts
 +++ b/src/stamp-check.ts
-@@ -290,7 +290,7 @@ function fileFindings(folder: string, file: StampedFile): StampFinding[] {
-         detail: "it is recorded and is not in the folder.",
-       },
-     ];
--  if (!found.isFile())
-+  if (found.isFIFO())
-     return [
-       {
-         kind: "not-a-file",
+@@ -353,7 +353,7 @@ function openedFile(path: string): Opened {
+   }
+   try {
+     const found = fstatSync(file);
+-    if (!found.isFile()) return "not-a-file";
++    if (found.isFIFO()) return "not-a-file";
+     const mode = (found.mode & 0o100) === 0 ? "100644" : "100755";
+     return { mode, bytes: readFileSync(file) };
+   } finally {

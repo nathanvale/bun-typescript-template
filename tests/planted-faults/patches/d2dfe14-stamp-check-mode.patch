@@ -1,13 +1,13 @@
 diff --git a/src/stamp-check.ts b/src/stamp-check.ts
-index fa60315..7001f86 100644
+index 3356472..a5179b4 100644
 --- a/src/stamp-check.ts
 +++ b/src/stamp-check.ts
-@@ -301,7 +301,7 @@ function fileFindings(folder: string, file: StampedFile): StampFinding[] {
+@@ -402,7 +402,7 @@ function fileFindings(folder: string, file: StampedFile): StampFinding[] {
        path: file.path,
        detail: "its bytes are not the stamped ones.",
      });
--  if (mode !== file.mode)
-+  if (mode === file.blob)
+-  if (opened.mode !== file.mode)
++  if (opened.mode === file.blob)
      findings.push({
        kind: "mode",
        path: file.path,
