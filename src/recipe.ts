@@ -21,7 +21,8 @@ export type Request =
 
 export interface Copy {
   readonly from: string;
-  readonly into: "." | "src" | "tests";
+  readonly into: "." | "src" | "tests" | "tests/support";
+  readonly only?: readonly string[];
 }
 
 export interface ProjectRecipe {
@@ -36,10 +37,17 @@ export const UNCOPIED_NAMES: readonly string[] = [
   "composition-tests",
 ];
 
+const TEST_FOLDER: Copy = {
+  from: "tests/support",
+  into: "tests/support",
+  only: ["test-folder.ts"],
+};
+
 const SIMPLE_CLI: readonly Copy[] = [
   { from: "starters/shared/src", into: "src" },
   { from: "starters/simple/src", into: "src" },
   { from: "starters/simple/tests", into: "tests" },
+  TEST_FOLDER,
 ];
 
 function starterRow(starter: Starter): ProjectRecipe {
@@ -49,6 +57,7 @@ function starterRow(starter: Starter): ProjectRecipe {
       { from: `profiles/static-admission/${starter}`, into: "." },
       { from: `starters/${starter}`, into: "." },
       { from: "starters/shared/src", into: "src" },
+      TEST_FOLDER,
     ],
     cli: starter,
     checkCommand: "bun run check",

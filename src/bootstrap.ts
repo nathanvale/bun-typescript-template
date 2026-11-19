@@ -21,6 +21,7 @@ import {
 } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  type Copy,
   type Layout,
   PROFILES,
   type Profile,
@@ -439,12 +440,20 @@ async function validateDestination(
   return "empty";
 }
 
+function isCopied(name: string, only: readonly string[] | undefined): boolean {
+  return (
+    !UNCOPIED_NAMES.includes(name) &&
+    (only === undefined || only.includes(name))
+  );
+}
+
 async function copyDirectoryContents(
   source: string,
   destination: string,
+  only: readonly string[] | undefined,
 ): Promise<void> {
   for (const entry of await readdir(source, { withFileTypes: true })) {
-    if (UNCOPIED_NAMES.includes(entry.name)) {
+    if (!isCopied(entry.name, only)) {
       continue;
     }
     await cp(join(source, entry.name), join(destination, entry.name), {
@@ -485,25 +494,32 @@ async function substituteTokens(
   return count;
 }
 
-async function requireProfileSource(source: string): Promise<void> {
+async function requireProfileSource(
+  source: string,
+  kind: "folder" | "file",
+): Promise<void> {
   if ((await lstatIfPresent(source)) !== undefined) {
     return;
   }
   throw new CliError(
     "profile_source_missing",
-    `recipe folder is missing: ${relative(TEMPLATE_ROOT, source)}`,
+    `recipe ${kind} is missing: ${relative(TEMPLATE_ROOT, source)}`,
     `run git restore ${relative(TEMPLATE_ROOT, source)} in the template repository`,
     1,
     false,
   );
 }
 
+async function requireCopySource(copy: Copy): Promise<void> {
+  const folder = join(TEMPLATE_ROOT, copy.from);
+  await requireProfileSource(folder, "folder");
+  for (const name of copy.only ?? []) {
+    await requireProfileSource(join(folder, name), "file");
+  }
+}
+
 async function requireProfileSources(recipe: ProjectRecipe): Promise<void> {
-  await Promise.all(
-    recipe.copies.map((copy) =>
-      requireProfileSource(join(TEMPLATE_ROOT, copy.from)),
-    ),
-  );
+  await Promise.all(recipe.copies.map(requireCopySource));
 }
 
 async function copyRecipe(
@@ -513,7 +529,11 @@ async function copyRecipe(
   for (const copy of recipe.copies) {
     const into = join(staging, copy.into);
     await mkdir(into, { recursive: true });
-    await copyDirectoryContents(join(TEMPLATE_ROOT, copy.from), into);
+    await copyDirectoryContents(
+      join(TEMPLATE_ROOT, copy.from),
+      into,
+      copy.only,
+    );
   }
 }
 

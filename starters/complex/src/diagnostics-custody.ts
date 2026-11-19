@@ -46,11 +46,9 @@ function trustedDirectory(path: string): void {
   const uid = process.getuid?.();
   if (!info.isDirectory() || (info.uid !== uid && info.uid !== 0))
     throw new Error("untrusted directory");
-  // Root-owned sticky temporary ancestors do not allow replacement of another owner's child.
-  if (
-    (info.mode & 0o022) !== 0 &&
-    !(info.uid === 0 && (info.mode & 0o1000) !== 0)
-  )
+  const writableByOthers = (info.mode & 0o022) !== 0;
+  const rootOwnedSticky = info.uid === 0 && (info.mode & 0o1000) !== 0;
+  if (writableByOthers && !rootOwnedSticky)
     throw new Error("writable ancestor");
 }
 
@@ -190,13 +188,14 @@ function allocate(directory: string, runIdentity: string): DiagnosticFile {
   };
 }
 
+const NO_SUCH_PROCESS = "ESRCH";
+
 function alive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
   } catch (error) {
-    // EPERM is another user's live process; only ESRCH proves the owner is gone.
-    return (error as NodeJS.ErrnoException).code !== "ESRCH";
+    return (error as NodeJS.ErrnoException).code !== NO_SUCH_PROCESS;
   }
 }
 
@@ -259,6 +258,10 @@ function recoverStaleLock(lock: string): void {
   rmdirSync(lock);
 }
 
+function replaceEmptyDirectory(target: string, replacement: string): void {
+  renameSync(replacement, target);
+}
+
 function acquireAllocationLock(directory: string): () => void {
   const lock = join(directory, ".allocation-lock");
   sequence += 1;
@@ -267,13 +270,12 @@ function acquireAllocationLock(directory: string): () => void {
   sweepResidue(directory);
   if (existing(retiring) !== null) discard(retiring);
   const marker = stageAllocationLock(staging);
-  // rename replaces only an empty directory and fails on a populated one, so a live holder is never displaced.
   try {
     try {
-      renameSync(staging, lock);
+      replaceEmptyDirectory(lock, staging);
     } catch {
       recoverStaleLock(lock);
-      renameSync(staging, lock);
+      replaceEmptyDirectory(lock, staging);
     }
   } catch {
     discard(staging);

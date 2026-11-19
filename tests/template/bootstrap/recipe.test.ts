@@ -3,9 +3,11 @@ import { existsSync, statSync } from "node:fs";
 import { cp, mkdir, readdir, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
+  PROFILES,
   type ProjectRecipe,
   RECIPES,
   type Selection,
+  STARTERS,
   selectRecipe,
   UNCOPIED_NAMES,
 } from "../../../src/recipe.ts";
@@ -135,6 +137,7 @@ async function copiedFiles(recipe: ProjectRecipe): Promise<string[]> {
     const source = join(ROOT, copy.from);
     for (const entry of await readdir(source, { withFileTypes: true })) {
       if (UNCOPIED_NAMES.includes(entry.name)) continue;
+      if (copy.only !== undefined && !copy.only.includes(entry.name)) continue;
       const targets = entry.isDirectory()
         ? (await filesUnder(source, entry.name)).map((path) =>
             join(copy.into, path),
@@ -204,6 +207,13 @@ describe("project recipe", () => {
     expect(provenance).toEqual(PROVENANCE);
   });
 
+  test("the profile and starter words Bootstrap accepts are the ones the rows use", () => {
+    expect({ profiles: PROFILES, starters: STARTERS }).toEqual({
+      profiles: ["scratch", "durable"],
+      starters: ["simple", "complex"],
+    });
+  });
+
   test("a selection that no row and no refusal matches throws, naming the selection", () => {
     const withGap = RECIPES.filter(
       ({ request }) => request.profile !== "scratch",
@@ -228,9 +238,12 @@ afterEach(async () => {
 });
 
 describe("Bootstrap carrying out a row", () => {
-  test(
-    "refuses a missing template source folder before any file is copied",
-    async () => {
+  test.each([
+    ["folder", "starters/shared/src", "starters/shared/src"],
+    ["file", "tests/support/test-folder.ts", "tests/support"],
+  ])(
+    "refuses a missing template source %s before any file is copied",
+    async (kind, missing, folder) => {
       const template = testFolder("recipe-template-");
       carryOutFolders.push(template);
       await mkdir(join(template, "src"));
@@ -239,13 +252,14 @@ describe("Bootstrap carrying out a row", () => {
       }
       const durable = selectRecipe({ profile: "durable", monorepo: false });
       if (durable.status !== "selected") throw new Error(durable.message);
-      const missing = "starters/shared/src";
       for (const copy of durable.recipe.copies) {
         if (copy.from === missing) continue;
         await cp(join(ROOT, copy.from), join(template, copy.from), {
           recursive: true,
         });
       }
+      expect(existsSync(join(template, folder))).toBe(kind === "file");
+      if (kind === "file") await rm(join(template, missing));
       const output = testFolder("recipe-out-");
       carryOutFolders.push(output);
       const parent = join(output, "nested");
@@ -279,7 +293,7 @@ describe("Bootstrap carrying out a row", () => {
           status: "refused",
           error: {
             code: "profile_source_missing",
-            message: `recipe folder is missing: ${missing}`,
+            message: `recipe ${kind} is missing: ${missing}`,
             repair: `run git restore ${missing} in the template repository`,
             retrySafe: false,
           },

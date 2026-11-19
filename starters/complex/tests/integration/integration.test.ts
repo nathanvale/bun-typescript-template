@@ -1,17 +1,10 @@
 import { afterEach, expect, test } from "bun:test";
-import {
-  mkdtemp,
-  readdir,
-  realpath,
-  readFile,
-  rm,
-  stat,
-  writeFile,
-} from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { existsSync, readdirSync } from "node:fs";
+import { readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import type { OperationResult } from "../../src/commands-contract.ts";
 import { appendJournal, valueHash } from "../../src/journal.ts";
+import { testFolder } from "../support/test-folder.ts";
 
 interface ObservedDocument {
   result: Omit<OperationResult, "message"> & { runId: string };
@@ -71,32 +64,37 @@ function invoke(state: string, ...args: string[]) {
   };
 }
 
-async function waitFor(path: string): Promise<void> {
-  const deadline = performance.now() + 2_000;
-  while (!(await Bun.file(path).exists())) {
-    if (performance.now() >= deadline) {
-      throw new Error(`process did not reach ${path}`);
-    }
-    await Bun.sleep(2);
-  }
+function reached(met: () => boolean, failure: string): Promise<void> {
+  const started = performance.now();
+  return new Promise((resolve, reject) => {
+    const poll = setInterval(() => {
+      if (met()) resolve();
+      else if (performance.now() - started >= 2_000) reject(new Error(failure));
+      else return;
+      clearInterval(poll);
+    }, 2);
+  });
 }
 
-async function waitForCount(
+function waitFor(path: string): Promise<void> {
+  return reached(() => existsSync(path), `process did not reach ${path}`);
+}
+
+function markers(directory: string, suffix: string): number {
+  if (!existsSync(directory)) return 0;
+  return readdirSync(directory).filter((entry) => entry.endsWith(suffix))
+    .length;
+}
+
+function waitForCount(
   directory: string,
   suffix: string,
   count: number,
 ): Promise<void> {
-  const deadline = performance.now() + 2_000;
-  while (true) {
-    const entries = await readdir(directory).catch(() => []);
-    if (entries.filter((entry) => entry.endsWith(suffix)).length === count) {
-      return;
-    }
-    if (performance.now() >= deadline) {
-      throw new Error(`processes did not produce ${count} ${suffix} markers`);
-    }
-    await Bun.sleep(2);
-  }
+  return reached(
+    () => markers(directory, suffix) === count,
+    `processes did not produce ${count} ${suffix} markers`,
+  );
 }
 
 afterEach(async () => {
@@ -106,9 +104,7 @@ afterEach(async () => {
 });
 
 test("human help and selected-command discovery expose the supported routes", async () => {
-  const root = await realpath(
-    await mkdtemp(join(tmpdir(), "complex-starter-help-")),
-  );
+  const root = testFolder("complex-starter-help-");
   roots.push(root);
   const state = join(root, "state.json");
 
@@ -140,9 +136,7 @@ test("human help and selected-command discovery expose the supported routes", as
 });
 
 test("preview preserves state and apply writes exactly once", async () => {
-  const root = await realpath(
-    await mkdtemp(join(tmpdir(), "complex-starter-")),
-  );
+  const root = testFolder("complex-starter-");
   roots.push(root);
   const state = join(root, "state.json");
   const preview = invoke(
@@ -183,9 +177,7 @@ test.each([
 ])(
   "status reports %s as a deterministic internal failure",
   async (_case, contents) => {
-    const root = await mkdtemp(
-      join(tmpdir(), "complex-starter-invalid-state-"),
-    );
+    const root = testFolder("complex-starter-invalid-state-");
     roots.push(root);
     const state = join(root, "state.json");
     await writeFile(state, contents);
@@ -204,9 +196,7 @@ test.each([
 );
 
 test("two processes serialize one completed set and one safe refusal", async () => {
-  const root = await realpath(
-    await mkdtemp(join(tmpdir(), "complex-starter-concurrent-set-")),
-  );
+  const root = testFolder("complex-starter-concurrent-set-");
   roots.push(root);
   const state = join(root, "state.json");
   const barrier = join(root, "barrier");
@@ -310,9 +300,7 @@ test("two processes serialize one completed set and one safe refusal", async () 
 test.each(["enabled", "next"])(
   "recovery followed by set %s reconciles completion without replaying it",
   async (requestedValue) => {
-    const root = await realpath(
-      await mkdtemp(join(tmpdir(), "complex-starter-recover-")),
-    );
+    const root = testFolder("complex-starter-recover-");
     roots.push(root);
     const state = join(root, "state.json");
     await writeFile(
@@ -382,9 +370,7 @@ test.each(["enabled", "next"])(
 );
 
 test("recover keeps a pending effect unknown when persisted state is invalid", async () => {
-  const root = await mkdtemp(
-    join(tmpdir(), "complex-starter-recover-invalid-"),
-  );
+  const root = testFolder("complex-starter-recover-invalid-");
   roots.push(root);
   const state = join(root, "state.json");
   await appendJournal(state, {
@@ -433,9 +419,7 @@ test("recover keeps a pending effect unknown when persisted state is invalid", a
 });
 
 test("public routes ignore held-open stdin and finish after stdout drains", async () => {
-  const root = await realpath(
-    await mkdtemp(join(tmpdir(), "complex-starter-lifecycle-")),
-  );
+  const root = testFolder("complex-starter-lifecycle-");
   roots.push(root);
   const child = Bun.spawn(
     [process.execPath, "run", "src/cli.ts", "status", "--json"],
@@ -465,9 +449,7 @@ test("public routes ignore held-open stdin and finish after stdout drains", asyn
 test.each(["SIGINT", "SIGTERM"] as const)(
   "%s after handler readiness stops output at the 500ms flush deadline",
   async (signal) => {
-    const root = await realpath(
-      await mkdtemp(join(tmpdir(), "complex-starter-signal-")),
-    );
+    const root = testFolder("complex-starter-signal-");
     roots.push(root);
     const ready = join(root, "ready");
     const child = Bun.spawn(
@@ -506,11 +488,10 @@ test.each(["SIGINT", "SIGTERM"] as const)(
 );
 
 test("a repeated termination exits immediately during diagnostic flush", async () => {
-  const root = await realpath(
-    await mkdtemp(join(tmpdir(), "complex-starter-repeat-")),
-  );
+  const root = testFolder("complex-starter-repeat-");
   roots.push(root);
   const ready = join(root, "ready");
+  const flushing = join(root, "flushing");
   const child = Bun.spawn(
     [process.execPath, "run", "src/cli.ts", "status", "--json"],
     {
@@ -521,6 +502,7 @@ test("a repeated termination exits immediately during diagnostic flush", async (
         XDG_STATE_HOME: join(root, "diagnostics-state"),
         CLI_EXAMPLE_TEST_DELAY_MS: "2000",
         CLI_EXAMPLE_TEST_DIAGNOSTIC_FLUSH_MS: "2000",
+        CLI_EXAMPLE_TEST_DIAGNOSTIC_FLUSH_PATH: flushing,
         CLI_EXAMPLE_TEST_READY_PATH: ready,
         NODE_ENV: "test",
       },
@@ -531,7 +513,7 @@ test("a repeated termination exits immediately during diagnostic flush", async (
   );
   await waitFor(ready);
   child.kill("SIGINT");
-  await Bun.sleep(30);
+  await waitFor(flushing);
   const started = performance.now();
   child.kill("SIGINT");
   const [stdout, stderr, exitCode] = await Promise.all([
@@ -548,9 +530,7 @@ test("a repeated termination exits immediately during diagnostic flush", async (
 test.each(["uncaught", "unhandled"] as const)(
   "%s crash makes one silent emergency exit",
   async (crash) => {
-    const root = await realpath(
-      await mkdtemp(join(tmpdir(), "complex-starter-crash-")),
-    );
+    const root = testFolder("complex-starter-crash-");
     roots.push(root);
     const ready = join(root, "ready");
     const state = join(root, "state.json");
@@ -585,9 +565,7 @@ test.each(["uncaught", "unhandled"] as const)(
 );
 
 test("consumer disappearance before a large stdout drain exits internal", async () => {
-  const root = await realpath(
-    await mkdtemp(join(tmpdir(), "complex-starter-epipe-")),
-  );
+  const root = testFolder("complex-starter-epipe-");
   roots.push(root);
   const child = Bun.spawn(
     [process.execPath, "run", "src/cli.ts", "status", "--json"],
@@ -615,9 +593,7 @@ test("consumer disappearance before a large stdout drain exits internal", async 
 });
 
 test("a live consumer receives the complete large envelope before normal exit", async () => {
-  const root = await realpath(
-    await mkdtemp(join(tmpdir(), "complex-starter-drain-")),
-  );
+  const root = testFolder("complex-starter-drain-");
   roots.push(root);
   const child = Bun.spawn(
     [process.execPath, "run", "src/cli.ts", "status", "--json"],
@@ -648,9 +624,7 @@ test("a live consumer receives the complete large envelope before normal exit", 
 });
 
 test("an interrupted set leaves intent, refuses replay, and recovers read-only", async () => {
-  const root = await realpath(
-    await mkdtemp(join(tmpdir(), "complex-starter-interrupted-")),
-  );
+  const root = testFolder("complex-starter-interrupted-");
   roots.push(root);
   const state = join(root, "state.json");
   const ready = join(root, "intent-ready");

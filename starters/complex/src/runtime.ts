@@ -21,7 +21,11 @@ export async function inspectState(path: string): Promise<string | null> {
   try {
     text = await readFile(path, "utf8");
   } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+    if (
+      error instanceof Error &&
+      Object.hasOwn(error, "code") &&
+      Reflect.get(error, "code") === "ENOENT"
+    ) {
       return null;
     }
     throw error;

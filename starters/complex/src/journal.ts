@@ -78,8 +78,8 @@ export function acquireJournalLock(
     if (
       typeof error === "object" &&
       error !== null &&
-      "code" in error &&
-      error.code === "EEXIST"
+      Object.hasOwn(error, "code") &&
+      Reflect.get(error, "code") === "EEXIST"
     ) {
       throw new JournalLockHeld();
     }
@@ -143,7 +143,11 @@ async function readJournal(statePath: string): Promise<JournalRecord[]> {
   try {
     text = await readFile(journalPath(statePath), "utf8");
   } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+    if (
+      error instanceof Error &&
+      Object.hasOwn(error, "code") &&
+      Reflect.get(error, "code") === "ENOENT"
+    ) {
       return [];
     }
     throw error;

@@ -51,6 +51,10 @@
         "patterns": ["src/diagnostics.ts", "src/diagnostics-custody.ts"]
       },
       {
+        "name": "test-support",
+        "patterns": ["tests/support/**/*.ts"]
+      },
+      {
         "name": "unit-tests",
         "patterns": ["tests/unit/**/*.ts"]
       },
@@ -109,8 +113,19 @@
         "allow": ["contract"]
       },
       {
+        "from": "test-support",
+        "allow": []
+      },
+      {
         "from": "unit-tests",
-        "allow": ["front-door", "contract", "engine", "runtime", "catalog"]
+        "allow": [
+          "front-door",
+          "contract",
+          "engine",
+          "runtime",
+          "catalog",
+          "test-support"
+        ]
       },
       {
         "from": "integration-tests",
@@ -120,7 +135,8 @@
           "engine",
           "runtime",
           "catalog",
-          "diagnostics"
+          "diagnostics",
+          "test-support"
         ]
       },
       {
@@ -131,7 +147,8 @@
           "engine",
           "runtime",
           "catalog",
-          "diagnostics"
+          "diagnostics",
+          "test-support"
         ]
       },
       {
