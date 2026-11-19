@@ -495,27 +495,54 @@ async function substituteTokens(
   return count;
 }
 
-async function requireProfileSource(
-  source: string,
-  kind: "folder" | "file",
-): Promise<void> {
-  if ((await lstatIfPresent(source)) !== undefined) {
-    return;
-  }
-  throw new CliError(
-    "profile_source_missing",
-    `recipe ${kind} is missing: ${relative(TEMPLATE_ROOT, source)}`,
-    `run git restore ${relative(TEMPLATE_ROOT, source)} in the template repository`,
+function sourceRefusal(source: string, code: string, message: string) {
+  const path = relative(TEMPLATE_ROOT, source);
+  return new CliError(
+    code,
+    `${message}: ${path}`,
+    `run git restore ${path} in the template repository`,
     1,
     false,
   );
 }
 
+async function requireSourceFolder(source: string): Promise<void> {
+  const stats = await lstatIfPresent(source);
+  if (stats === undefined)
+    throw sourceRefusal(
+      source,
+      "profile_source_missing",
+      "recipe folder is missing",
+    );
+  if (!stats.isDirectory())
+    throw sourceRefusal(
+      source,
+      "profile_source_wrong_type",
+      "recipe folder is not a folder",
+    );
+}
+
+async function requireSourceFile(source: string): Promise<void> {
+  const stats = await lstatIfPresent(source);
+  if (stats === undefined)
+    throw sourceRefusal(
+      source,
+      "profile_source_missing",
+      "recipe file is missing",
+    );
+  if (!stats.isFile())
+    throw sourceRefusal(
+      source,
+      "profile_source_wrong_type",
+      "recipe file is not a regular file",
+    );
+}
+
 async function requireCopySource(copy: Copy): Promise<void> {
   const folder = join(TEMPLATE_ROOT, copy.from);
-  await requireProfileSource(folder, "folder");
+  await requireSourceFolder(folder);
   for (const name of copy.only ?? []) {
-    await requireProfileSource(join(folder, name), "file");
+    await requireSourceFile(join(folder, name));
   }
 }
 

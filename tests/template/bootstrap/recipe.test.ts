@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, statSync } from "node:fs";
-import { cp, mkdir, readdir, rm } from "node:fs/promises";
+import { cp, mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
   LINT_RULE_FILES,
@@ -257,11 +257,37 @@ afterEach(async () => {
 
 describe("Bootstrap carrying out a row", () => {
   test.each([
-    ["folder", "starters/shared/src", "starters/shared/src"],
-    ["file", "tests/support/test-folder.ts", "tests/support"],
+    {
+      name: "a missing template source folder",
+      path: "starters/shared/src",
+      plant: "remove",
+      code: "profile_source_missing",
+      message: "recipe folder is missing: starters/shared/src",
+    },
+    {
+      name: "a missing template source file",
+      path: "tests/support/test-folder.ts",
+      plant: "remove",
+      code: "profile_source_missing",
+      message: "recipe file is missing: tests/support/test-folder.ts",
+    },
+    {
+      name: "a folder where a template source file belongs",
+      path: "config/payload-rules.mjs",
+      plant: "folder",
+      code: "profile_source_wrong_type",
+      message: "recipe file is not a regular file: config/payload-rules.mjs",
+    },
+    {
+      name: "a file where a template source folder belongs",
+      path: "starters/shared/src",
+      plant: "file",
+      code: "profile_source_wrong_type",
+      message: "recipe folder is not a folder: starters/shared/src",
+    },
   ])(
-    "refuses a missing template source %s before any file is copied",
-    async (kind, missing, folder) => {
+    "refuses $name before any file is copied",
+    async ({ path, plant, code, message }) => {
       const template = testFolder("recipe-template-");
       carryOutFolders.push(template);
       await mkdir(join(template, "src"));
@@ -271,13 +297,16 @@ describe("Bootstrap carrying out a row", () => {
       const durable = selectRecipe({ profile: "durable", monorepo: false });
       if (durable.status !== "selected") throw new Error(durable.message);
       for (const copy of durable.recipe.copies) {
-        if (copy.from === missing) continue;
         await cp(join(ROOT, copy.from), join(template, copy.from), {
           recursive: true,
         });
       }
-      expect(existsSync(join(template, folder))).toBe(kind === "file");
-      if (kind === "file") await rm(join(template, missing));
+      const planted = join(template, path);
+      await rm(planted, { recursive: true });
+      if (plant === "folder")
+        await mkdir(join(planted, "planted"), { recursive: true });
+      if (plant === "file") await writeFile(planted, "planted\n");
+      expect(existsSync(planted)).toBe(plant !== "remove");
       const output = testFolder("recipe-out-");
       carryOutFolders.push(output);
       const parent = join(output, "nested");
@@ -310,9 +339,9 @@ describe("Bootstrap carrying out a row", () => {
           schemaVersion: 1,
           status: "refused",
           error: {
-            code: "profile_source_missing",
-            message: `recipe ${kind} is missing: ${missing}`,
-            repair: `run git restore ${missing} in the template repository`,
+            code,
+            message,
+            repair: `run git restore ${path} in the template repository`,
             retrySafe: false,
           },
         },
