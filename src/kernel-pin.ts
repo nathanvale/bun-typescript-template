@@ -4,11 +4,13 @@ import { join } from "node:path";
 const file = "kernel-pin.json";
 const fullCommit = /^[0-9a-f]{40}$/;
 const abbreviatedCommit = /^[0-9a-f]{1,39}$/;
+const branchName =
+  /^(?![-/])(?!.*\/$)(?!.*\/\/)(?!.*\.\.)(?!.*(?:^|\/)\.)(?!.*\.lock(?:\/|$))(?!.*\.$)[\w./-]+$/;
 const fieldPatterns = {
   repository: /^[\w.-]+$/,
   remote: /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\.git$/,
   commit: fullCommit,
-  branch: /^[\w./-]+$/,
+  branch: branchName,
   carryOutIdentity: fullCommit,
 } as const;
 const fields = Object.keys(fieldPatterns);
@@ -49,6 +51,13 @@ function commitProblem(field: Field, value: string): string {
     : `${field} is "${value}", which is not a full commit: 40 lowercase hexadecimal characters. Repair: write the commit as git rev-parse prints it.`;
 }
 
+function patternProblem(field: Field, value: string): string {
+  if (fieldPatterns[field] === fullCommit) return commitProblem(field, value);
+  return field === "branch"
+    ? `branch is "${value}", which git refuses as a branch name. Repair: write the branch as git branch prints it, such as main or feature/kernel.`
+    : `${field} is "${value}", which does not match ${fieldPatterns[field]}. Repair: write a value that pattern matches.`;
+}
+
 function checkedField(entries: Map<string, unknown>, field: Field): string {
   if (!entries.has(field)) fail(`needs key "${field}". Repair: add that key.`);
   const value = entries.get(field);
@@ -58,11 +67,7 @@ function checkedField(entries: Map<string, unknown>, field: Field): string {
     );
   const pattern = fieldPatterns[field];
   if (pattern.test(value)) return value;
-  return fail(
-    pattern === fullCommit
-      ? commitProblem(field, value)
-      : `${field} is "${value}", which does not match ${pattern}. Repair: write a value that pattern matches.`,
-  );
+  return fail(patternProblem(field, value));
 }
 
 export function parseKernelPin(source: string): KernelPin {
@@ -70,13 +75,13 @@ export function parseKernelPin(source: string): KernelPin {
   for (const key of entries.keys())
     if (!fields.includes(key))
       fail(`has key "${key}". Repair: use only ${fields.join(", ")}.`);
-  return {
+  return Object.freeze({
     repository: checkedField(entries, "repository"),
     remote: checkedField(entries, "remote"),
     commit: checkedField(entries, "commit"),
     branch: checkedField(entries, "branch"),
     carryOutIdentity: checkedField(entries, "carryOutIdentity"),
-  };
+  });
 }
 
 export function readKernelPin(root: string): KernelPin {

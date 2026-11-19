@@ -1,8 +1,8 @@
 diff --git a/src/kernel-pin.ts b/src/kernel-pin.ts
-index 9e18b3d..16d20be 100644
+index 6f7462d..608a207 100644
 --- a/src/kernel-pin.ts
 +++ b/src/kernel-pin.ts
-@@ -81,7 +81,7 @@ export function parseKernelPin(source: string): KernelPin {
+@@ -86,7 +86,7 @@ export function parseKernelPin(source: string): KernelPin {
  
  export function readKernelPin(root: string): KernelPin {
    const path = join(root, file);

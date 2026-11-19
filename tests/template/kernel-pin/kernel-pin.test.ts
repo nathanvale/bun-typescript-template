@@ -16,6 +16,8 @@ const valid = {
 const keys = "repository, remote, commit, branch, carryOutIdentity";
 const abbreviated = (key: string, value: string) =>
   `Error: kernel-pin.json: ${key} is "${value}", an abbreviated commit. An abbreviated commit is refused, because it can come to match more than one commit. Repair: write all 40 characters of the commit.`;
+const notBranch = (value: string) =>
+  `Error: kernel-pin.json: branch is "${value}", which git refuses as a branch name. Repair: write the branch as git branch prints it, such as main or feature/kernel.`;
 const notFull = (key: string, value: string) =>
   `Error: kernel-pin.json: ${key} is "${value}", which is not a full commit: 40 lowercase hexadecimal characters. Repair: write the commit as git rev-parse prints it.`;
 
@@ -35,8 +37,35 @@ test("the template's kernel pin parses, with a full pinned commit that equals it
   expect(pin.commit).toBe(pin.carryOutIdentity);
 });
 
-test("a kernel pin with its five fields is read as written", () => {
-  expect(parseKernelPin(JSON.stringify(valid))).toEqual(valid);
+test("a kernel pin with its five fields is read as written, and frozen", () => {
+  const pin = parseKernelPin(JSON.stringify(valid));
+  expect(pin).toEqual(valid);
+  expect(Object.isFrozen(pin)).toBe(true);
+});
+
+test.each(["main", "feature/kernel", "release-1.2", "v1.x/kernel_split"])(
+  "branch %s is read as written",
+  (branch) => {
+    expect(parseKernelPin(JSON.stringify({ ...valid, branch })).branch).toBe(
+      branch,
+    );
+  },
+);
+
+test.each([
+  ["two dots in a row", "main..next"],
+  ["a leading slash", "/main"],
+  ["a trailing slash", "main/"],
+  ["two slashes in a row", "feature//kernel"],
+  ["a leading dot", ".hidden"],
+  ["a component that starts with a dot", "feature/.hidden"],
+  ["a component that ends in .lock", "main.lock"],
+  ["a trailing dot", "main."],
+  ["a leading hyphen", "-main"],
+])("a branch with %s is refused with its exact message", (_case, branch) => {
+  expect(refusalFor(JSON.stringify({ ...valid, branch }))).toBe(
+    notBranch(branch),
+  );
 });
 
 test.each([
@@ -88,7 +117,7 @@ test.each([
   [
     "a branch with a space in it",
     { ...valid, branch: "main branch" },
-    'Error: kernel-pin.json: branch is "main branch", which does not match /^[\\w./-]+$/. Repair: write a value that pattern matches.',
+    notBranch("main branch"),
   ],
   [
     "a remote address that is not an https clone address",

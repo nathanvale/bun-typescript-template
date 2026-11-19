@@ -1,8 +1,8 @@
 diff --git a/src/kernel-pin.ts b/src/kernel-pin.ts
-index 9e18b3d..8a3f8f3 100644
+index 6f7462d..4be5285 100644
 --- a/src/kernel-pin.ts
 +++ b/src/kernel-pin.ts
-@@ -44,7 +44,7 @@ function entriesOf(source: string): Map<string, unknown> {
+@@ -46,7 +46,7 @@ function entriesOf(source: string): Map<string, unknown> {
  }
  
  function commitProblem(field: Field, value: string): string {

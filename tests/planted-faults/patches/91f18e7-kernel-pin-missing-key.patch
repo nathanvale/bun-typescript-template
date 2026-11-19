@@ -1,8 +1,8 @@
 diff --git a/src/kernel-pin.ts b/src/kernel-pin.ts
-index 9e18b3d..2186ee7 100644
+index 6f7462d..6ae1701 100644
 --- a/src/kernel-pin.ts
 +++ b/src/kernel-pin.ts
-@@ -50,7 +50,6 @@ function commitProblem(field: Field, value: string): string {
+@@ -59,7 +59,6 @@ function patternProblem(field: Field, value: string): string {
  }
  
  function checkedField(entries: Map<string, unknown>, field: Field): string {

@@ -1,8 +1,8 @@
 diff --git a/src/kernel-pin.ts b/src/kernel-pin.ts
-index 9e18b3d..8e463a2 100644
+index 6f7462d..89376cc 100644
 --- a/src/kernel-pin.ts
 +++ b/src/kernel-pin.ts
-@@ -36,7 +36,7 @@ function entriesOf(source: string): Map<string, unknown> {
+@@ -38,7 +38,7 @@ function entriesOf(source: string): Map<string, unknown> {
    } catch {
      fail(`is not JSON. ${restoreRepair}`);
    }

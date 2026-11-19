@@ -1,8 +1,8 @@
 diff --git a/src/kernel-pin.ts b/src/kernel-pin.ts
-index 9e18b3d..35b7e21 100644
+index 6f7462d..1c5ce59 100644
 --- a/src/kernel-pin.ts
 +++ b/src/kernel-pin.ts
-@@ -33,7 +33,8 @@ function entriesOf(source: string): Map<string, unknown> {
+@@ -35,7 +35,8 @@ function entriesOf(source: string): Map<string, unknown> {
    let parsed: unknown;
    try {
      parsed = JSON.parse(source);

@@ -1,14 +1,14 @@
 diff --git a/src/kernel-pin.ts b/src/kernel-pin.ts
-index 9e18b3d..05a2b64 100644
+index 6f7462d..20ce779 100644
 --- a/src/kernel-pin.ts
 +++ b/src/kernel-pin.ts
-@@ -68,8 +68,7 @@ function checkedField(entries: Map<string, unknown>, field: Field): string {
+@@ -73,8 +73,7 @@ function checkedField(entries: Map<string, unknown>, field: Field): string {
  export function parseKernelPin(source: string): KernelPin {
    const entries = entriesOf(source);
    for (const key of entries.keys())
 -    if (!fields.includes(key))
 -      fail(`has key "${key}". Repair: use only ${fields.join(", ")}.`);
 +    if (!fields.includes(key)) continue;
-   return {
+   return Object.freeze({
      repository: checkedField(entries, "repository"),
      remote: checkedField(entries, "remote"),
