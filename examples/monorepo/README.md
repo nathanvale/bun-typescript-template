@@ -5,7 +5,7 @@ single-package use. Adopt only when the durable profile grows into more than
 one package.
 
 Same pinned toolchain and check contract: Bun `1.4.4`, native TypeScript `7.0.2`,
-ESLint `10.15.0` with TypeScript `6.0.2` and typescript-eslint `8.72.2`,
+ESLint `10.15.0` with TypeScript `6.0.2` and typescript-eslint `8.73.0`,
 Biome `2.6.7` for formatting, Fallow and its semantic companion `3.43.2`, one shared `tsconfig.base.json` inherited in
 full (`strict`, `verbatimModuleSyntax`, `exactOptionalPropertyTypes`,
 `noUncheckedIndexedAccess` all on, not relaxed by any member package). Root lint covers source and tests across all packages. Root CLI tests run

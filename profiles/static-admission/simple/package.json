@@ -28,7 +28,7 @@
     "@typescript/native": "npm:typescript@7.0.2",
     "eslint": "10.15.0",
     "@eslint/js": "10.0.1",
-    "typescript-eslint": "8.72.2",
+    "typescript-eslint": "8.73.0",
     "fallow-type-aware": "3.43.2"
   },
   "overrides": {
