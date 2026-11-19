@@ -1,0 +1,13 @@
+diff --git a/tests/support/generated-toolchain.ts b/tests/support/generated-toolchain.ts
+index 081b6f8..a5f7dde 100644
+--- a/tests/support/generated-toolchain.ts
++++ b/tests/support/generated-toolchain.ts
+@@ -83,7 +83,7 @@ function relock(folder: string): string {
+ }
+ 
+ function entries(packageJson: PackageJson, catalog: Ranges): Entry[] {
+-  return [...GROUPS, "catalog" as const].flatMap((group) =>
++  return [...GROUPS].flatMap((group) =>
+     Object.entries(packageJson[group]).map(([name, given]) => ({
+       place: `${group}.${name}`,
+       name,

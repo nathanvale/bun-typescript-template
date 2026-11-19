@@ -1,0 +1,13 @@
+diff --git a/tests/support/generated-toolchain.ts b/tests/support/generated-toolchain.ts
+index 623a453..ff09dea 100644
+--- a/tests/support/generated-toolchain.ts
++++ b/tests/support/generated-toolchain.ts
+@@ -102,7 +102,7 @@ function comparable(entry: Entry): entry is VersionedEntry {
+   if (range === undefined || (range.includes(":") && !range.startsWith("npm:")))
+     return false;
+   const [, version] = split(installedPackage(name, range));
+-  return EXACT_VERSION.test(version);
++  return version !== "";
+ }
+ 
+ function optionalPeer(packageJson: PackageJson, place: string, name: string) {

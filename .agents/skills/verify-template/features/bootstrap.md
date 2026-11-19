@@ -117,8 +117,6 @@ Preconditions:
   and the check exits 2 after the tests pass.
 - The generated CLI calls itself `example` in its usage line, whatever
   `--name` or destination was given.
-- The durable `package.json` pins `@types/bun` 1.4.0 while the template pins
-  1.4.4. Both installs pass today.
 - The `--starter` flags copy from `starters/`, which [MAG-129] removes. This map
   leaves them out until that settles.
 

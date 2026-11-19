@@ -1,5 +1,6 @@
 import { expect } from "bun:test";
 import { join, relative } from "node:path";
+import { installedPackage } from "../../src/static-admission.ts";
 import { type Profile, readJson } from "./static-admission-project.ts";
 
 export const EXPECTED_COMPILER_OPTIONS: Record<string, unknown> = {
@@ -66,13 +67,13 @@ export const EXPECTED_DEPENDENCY_PINS: Record<
     dependencies: {},
     devDependencies: {
       "@biomejs/biome": "2.6.7",
-      "@types/bun": "1.4.0",
+      "@types/bun": "1.4.4",
       fallow: "3.43.2",
-      "@typescript/native": "npm:typescript@7.0.2",
+      "@typescript/native": "npm:typescript@7.1.0-beta",
       typescript: "npm:@typescript/typescript6@6.0.2",
       eslint: "10.15.0",
       "@eslint/js": "10.0.1",
-      "typescript-eslint": "8.72.2",
+      "typescript-eslint": "8.73.0",
       "fallow-type-aware": "3.43.2",
     },
   },
@@ -84,13 +85,13 @@ export const EXPECTED_DEPENDENCY_PINS: Record<
     },
     devDependencies: {
       "@biomejs/biome": "2.6.7",
-      "@types/bun": "1.4.0",
+      "@types/bun": "1.4.4",
       fallow: "3.43.2",
-      "@typescript/native": "npm:typescript@7.0.2",
+      "@typescript/native": "npm:typescript@7.1.0-beta",
       typescript: "npm:@typescript/typescript6@6.0.2",
       eslint: "10.15.0",
       "@eslint/js": "10.0.1",
-      "typescript-eslint": "8.72.2",
+      "typescript-eslint": "8.73.0",
       "fallow-type-aware": "3.43.2",
     },
   },
@@ -314,11 +315,7 @@ async function assertLockPolicy(
     if (!Array.isArray(resolved)) {
       throw new Error(`bun.lock is missing ${packageName}'s resolved record`);
     }
-    expect(resolved[0]).toBe(
-      version.startsWith("npm:")
-        ? version.slice(4)
-        : `${packageName}@${version}`,
-    );
+    expect(resolved[0]).toBe(installedPackage(packageName, version));
   }
 }
 

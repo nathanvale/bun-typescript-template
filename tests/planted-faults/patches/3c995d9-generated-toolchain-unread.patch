@@ -1,0 +1,13 @@
+diff --git a/tests/support/generated-toolchain.ts b/tests/support/generated-toolchain.ts
+index 34c3313..4330429 100644
+--- a/tests/support/generated-toolchain.ts
++++ b/tests/support/generated-toolchain.ts
+@@ -163,7 +163,7 @@ function versionProblems(
+       ({ place, given }) =>
+         `${where} ${place} is ${given}, which this test cannot compare with the template's version. Repair: use a plain version, an npm: alias or an entry of the default catalog, or teach ${SELF} to read it.`,
+     );
+-  return [...drift, ...unread];
++  return drift;
+ }
+ 
+ function overrideProblems(

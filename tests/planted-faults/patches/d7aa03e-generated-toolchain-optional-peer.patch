@@ -1,0 +1,13 @@
+diff --git a/tests/support/generated-toolchain.ts b/tests/support/generated-toolchain.ts
+index 623a453..ab53aca 100644
+--- a/tests/support/generated-toolchain.ts
++++ b/tests/support/generated-toolchain.ts
+@@ -235,7 +235,7 @@ function workspaceLockProblems(
+       own(lock.packages, `${packageJson.name}/${name}`) ??
+       own(lock.packages, name);
+     return entry?.[0] === wanted ||
+-      (entry === undefined && optionalPeer(packageJson, place, name))
++      false
+       ? []
+       : [
+           `${folder}/bun.lock resolves ${file} ${place} to ${String(entry?.[0])}, not ${wanted}. ${relock(folder)}`,

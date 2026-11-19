@@ -880,5 +880,68 @@
     "testFile": "tests/template/file-size/file-size.test.ts",
     "title": "^the file-size command refuses malformed and excluded recorded hits$",
     "source": "b021da0 fix(gates): refuse excluded recorded hits"
+  },
+  {
+    "id": "a8f6671-generated-toolchain-catalog",
+    "patch": "tests/planted-faults/patches/a8f6671-generated-toolchain-catalog.patch",
+    "testFile": "tests/template/toolchain/generated-toolchain.test.ts",
+    "title": "^a catalog entry older than the template's fails, naming the file and what to change$",
+    "source": "a8f6671 test(toolchain): fail when a generated repository's toolchain drifts from the template's"
+  },
+  {
+    "id": "a8f6671-generated-toolchain-resolution",
+    "patch": "tests/planted-faults/patches/a8f6671-generated-toolchain-resolution.patch",
+    "testFile": "tests/template/toolchain/generated-toolchain.test.ts",
+    "title": "^a bun\\.lock that was not regenerated after a package\\.json change fails, naming the lock$",
+    "source": "a8f6671 test(toolchain): fail when a generated repository's toolchain drifts from the template's"
+  },
+  {
+    "id": "3c995d9-generated-toolchain-override",
+    "patch": "tests/planted-faults/patches/3c995d9-generated-toolchain-override.patch",
+    "testFile": "tests/template/toolchain/generated-toolchain.test.ts",
+    "title": "^a recipe folder whose bun\\.lock installs an overridden package without the template's override fails$",
+    "source": "3c995d9 test(toolchain): close the generated toolchain check's silent gaps"
+  },
+  {
+    "id": "3c995d9-generated-toolchain-members",
+    "patch": "tests/planted-faults/patches/3c995d9-generated-toolchain-members.patch",
+    "testFile": "tests/template/toolchain/generated-toolchain.test.ts",
+    "title": "^a workspace member older than the template's fails, naming the member's package\\.json$",
+    "source": "3c995d9 test(toolchain): close the generated toolchain check's silent gaps"
+  },
+  {
+    "id": "3c995d9-generated-toolchain-unread",
+    "patch": "tests/planted-faults/patches/3c995d9-generated-toolchain-unread.patch",
+    "testFile": "tests/template/toolchain/generated-toolchain.test.ts",
+    "title": "^a named catalog fails, naming the file and what to change$",
+    "source": "3c995d9 test(toolchain): close the generated toolchain check's silent gaps"
+  },
+  {
+    "id": "d7aa03e-generated-toolchain-overridden",
+    "patch": "tests/planted-faults/patches/d7aa03e-generated-toolchain-overridden.patch",
+    "testFile": "tests/template/toolchain/generated-toolchain.test.ts",
+    "title": "^a bun\\.lock whose overridden package resolves to another version fails, naming the record$",
+    "source": "d7aa03e test(toolchain): compare resolved overrides, exact versions only, peers and workspace exclusions"
+  },
+  {
+    "id": "d7aa03e-generated-toolchain-exact",
+    "patch": "tests/planted-faults/patches/d7aa03e-generated-toolchain-exact.patch",
+    "testFile": "tests/template/toolchain/generated-toolchain.test.ts",
+    "title": "^a caret range fails, naming the file and what to change$",
+    "source": "d7aa03e test(toolchain): compare resolved overrides, exact versions only, peers and workspace exclusions"
+  },
+  {
+    "id": "d7aa03e-generated-toolchain-exclusions",
+    "patch": "tests/planted-faults/patches/d7aa03e-generated-toolchain-exclusions.patch",
+    "testFile": "tests/template/toolchain/generated-toolchain.test.ts",
+    "title": "^a workspaces exclusion fails, naming the file and what to change$",
+    "source": "d7aa03e test(toolchain): compare resolved overrides, exact versions only, peers and workspace exclusions"
+  },
+  {
+    "id": "d7aa03e-generated-toolchain-optional-peer",
+    "patch": "tests/planted-faults/patches/d7aa03e-generated-toolchain-optional-peer.patch",
+    "testFile": "tests/template/toolchain/generated-toolchain.test.ts",
+    "title": "^an optional peer dependency that bun\\.lock does not install passes$",
+    "source": "d7aa03e test(toolchain): compare resolved overrides, exact versions only, peers and workspace exclusions"
   }
 ]

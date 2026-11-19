@@ -244,15 +244,16 @@ function checkLockedOverrides(
   checkLockedResolutions(packages, pins);
 }
 
+export function installedPackage(name: string, range: string): string {
+  return range.startsWith("npm:") ? range.slice(4) : `${name}@${range}`;
+}
+
 function checkLockedResolutions(packages: Document, pins: Document): void {
   for (const [name, version] of Object.entries(pins)) {
     const resolved = packages[name];
     requireValue(Array.isArray(resolved), `policy:bun.lock.packages.${name}`);
     requireValue(
-      resolved[0] ===
-        (String(version).startsWith("npm:")
-          ? String(version).slice(4)
-          : `${name}@${String(version)}`),
+      resolved[0] === installedPackage(name, String(version)),
       `policy:bun.lock.packages.${name}`,
     );
   }
