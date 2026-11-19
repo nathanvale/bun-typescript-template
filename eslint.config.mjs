@@ -1,7 +1,6 @@
 import js from "@eslint/js";
 import { defineConfig } from "eslint/config";
 import antiSlop, { chainedTypeAssertions } from "./config/anti-slop-rules.mjs";
-import kernel, { kernelPaths } from "./config/kernel-repository-lint.mjs";
 import payloadRules from "./config/payload-rules.mjs";
 import platformRules from "./config/platform-rules.mjs";
 import templateRules from "./config/template-rules.mjs";
@@ -14,18 +13,6 @@ const localRules = {
     ...payloadRules.rules,
   },
 };
-
-function withChainedTypeAssertions(config) {
-  const restricted = config.rules?.["no-restricted-syntax"];
-  if (!Array.isArray(restricted)) return config;
-  return {
-    ...config,
-    rules: {
-      ...config.rules,
-      "no-restricted-syntax": [...restricted, ...chainedTypeAssertions],
-    },
-  };
-}
 
 export default defineConfig(
   {
@@ -64,7 +51,6 @@ export default defineConfig(
   },
   {
     files: ["**/*.{ts,mts,cts,mjs}"],
-    ignores: kernelPaths,
     plugins: { repository: localRules },
     rules: {
       "repository/no-comments": "error",
@@ -86,7 +72,6 @@ export default defineConfig(
   },
   {
     files: ["tests/**/*.{ts,mts,cts}"],
-    ignores: kernelPaths,
     plugins: { repository: localRules },
     rules: {
       "repository/require-to-throw-message": "error",
@@ -123,5 +108,4 @@ export default defineConfig(
       "anti-slop/no-reduce-accumulator-copy": "error",
     },
   },
-  ...kernel.map(withChainedTypeAssertions),
 );

@@ -1,0 +1,13 @@
+diff --git a/src/kernel-pin.ts b/src/kernel-pin.ts
+index 6f7462d..c0d3953 100644
+--- a/src/kernel-pin.ts
++++ b/src/kernel-pin.ts
+@@ -66,7 +66,7 @@ function checkedField(entries: Map<string, unknown>, field: Field): string {
+       `${field} is ${JSON.stringify(value)}, which is not a string. Repair: write it as a string.`,
+     );
+   const pattern = fieldPatterns[field];
+-  if (pattern.test(value)) return value;
++  if (pattern.test(value) || pattern !== fullCommit) return value;
+   return fail(patternProblem(field, value));
+ }
+ 

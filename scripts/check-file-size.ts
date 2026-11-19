@@ -45,7 +45,6 @@ function readRecordedHits(bytes: Uint8Array | undefined): RecordedHits {
   return hits;
 }
 
-const excludedFolders = ["kernel/", "tests/kernel/"];
 const generatedHooks = new Set([
   ".claude/hooks/fallow-gate.sh",
   ".codex/hooks/fallow-gate.sh",
@@ -55,8 +54,7 @@ function excluded(path: string): boolean {
   return (
     basename(path) === "bun.lock" ||
     generatedHooks.has(path) ||
-    path.split("/").slice(0, -1).includes("vendor") ||
-    excludedFolders.some((folder) => path.startsWith(folder))
+    path.split("/").slice(0, -1).includes("vendor")
   );
 }
 

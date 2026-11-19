@@ -27,16 +27,12 @@
         "patterns": ["scripts/**"]
       },
       {
-        "name": "kernel",
-        "patterns": ["kernel/**"]
-      },
-      {
         "name": "tests",
         "patterns": ["tests/**"]
       },
       {
         "name": "lint-config",
-        "patterns": ["eslint.config.mjs", "eslint-rules.mjs", "config/**"]
+        "patterns": ["eslint.config.mjs", "config/**"]
       }
     ],
     "rules": [
@@ -49,32 +45,17 @@
         "allow": ["cli"]
       },
       {
-        "from": "kernel",
-        "allow": []
-      },
-      {
         "from": "tests",
-        "allow": ["cli", "scripts", "kernel", "lint-config"]
+        "allow": ["cli", "scripts", "lint-config"]
       },
       {
         "from": "lint-config",
-        "allow": ["kernel"]
+        "allow": []
       }
     ],
     "coverage": {
       "requireAllFiles": true
     }
-  },
-  "duplicates": {
-    "ignoredClones": [
-      "dup:9d3337d0:2",
-      "dup:1ee378cf:2",
-      "dup:16ad2cee:2",
-      "dup:a7b229c2:2",
-      "dup:6d052765:2",
-      "dup:cd842ae0:2",
-      "dup:6cb4227b:2"
-    ]
   },
   "rules": {
     "dev-dependencies-in-production": "error",
@@ -95,17 +76,6 @@
     "scripts/check-commits.ts",
     "scripts/check-names.ts",
     "scripts/planted-faults.ts",
-    "scripts/test-area.ts",
-    "kernel/src/kernel/index.ts",
-    "kernel/src/kernel/pattern-worker.ts",
-    "kernel/src/addons/programs/index.ts",
-    "kernel/src/addons/diagnostics/index.ts",
-    "tests/kernel/**/fixtures/*-cli.ts",
-    "tests/kernel/**/fixtures/*-worker.ts",
-    "tests/kernel/lifecycle/fixtures/declining-host.ts",
-    "tests/kernel/state/fixtures/specimen.ts",
-    "kernel/src/addons/state/index.ts",
-    "tests/kernel/kernel-repair/swarm-cli.ts",
-    "tests/kernel/locks/fixtures.ts"
+    "scripts/test-area.ts"
   ]
 }

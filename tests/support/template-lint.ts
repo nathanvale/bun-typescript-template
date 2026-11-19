@@ -18,8 +18,6 @@ export async function messages(filePath: string, code: string) {
   }));
 }
 
-export const kernelPath = /^(kernel|tests\/kernel)\//;
-
 export async function ruleOn(rule: string, filePath: string): Promise<boolean> {
   const config = (await eslint.calculateConfigForFile(filePath)) as
     | { rules?: Record<string, unknown> }
@@ -40,7 +38,7 @@ export async function ruleHits(ruleId: string, filePath: string, code: string) {
 }
 
 export async function hits(rule: string, filePath: string, code: string) {
-  if (kernelPath.test(filePath) || !existsSync(resolve(root, filePath)))
+  if (!existsSync(resolve(root, filePath)))
     throw new Error(`${filePath} is not a template file.`);
   return ruleHits(`repository/${rule}`, filePath, code);
 }

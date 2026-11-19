@@ -63,6 +63,10 @@ this file.
 - Treat a declaration the installer does not install as absent, not as a
   stale record. Witnessed: [r4623566979] (an optional peer has no `bun.lock`
   package record, and the check would have called the lock stale).
+- Check a name another tool reads by that tool's rules, not only by the
+  characters it allows, so the parser admits no name the tool refuses.
+  Witnessed: [r4625152049] (the kernel pin's branch pattern `/^[\w./-]+$/`
+  admitted `main..next`, which git refuses as a branch name).
 - Check that a declared path is the kind it is declared as, a regular file
   or a folder, not only that it exists. Witnessed: [#114-types] (Bootstrap
   took a folder named `config/template-rules.mjs` as a template file, copied
@@ -84,4 +88,5 @@ this file.
 [r4609890969]: https://github.com/nathanvale/bun-typescript-template/pull/108#discussion_r4609890969
 [r4623512643]: https://github.com/nathanvale/bun-typescript-template/pull/111#discussion_r4623512643
 [r4623566979]: https://github.com/nathanvale/bun-typescript-template/pull/111#discussion_r4623566979
+[r4625152049]: https://github.com/nathanvale/bun-typescript-template/pull/112#discussion_r4625152049
 [#114-types]: https://github.com/nathanvale/bun-typescript-template/pull/114#pullrequestreview-5971659214
