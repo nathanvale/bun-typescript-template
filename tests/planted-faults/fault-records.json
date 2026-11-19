@@ -1384,5 +1384,131 @@
     "testFile": "tests/template/stamp-check/stamp-check.test.ts",
     "title": "returns broken for an empty folder in a stamp root, naming the folder$",
     "source": "126c1a5 fix(stamp-check): report an empty folder in a stamp root"
+  },
+  {
+    "id": "1ae6c19-stamping-addon-unknown",
+    "patch": "tests/planted-faults/patches/1ae6c19-stamping-addon-unknown.patch",
+    "testFile": "tests/template/stamping/stamping-refusals.test.ts",
+    "title": "an unknown add-on is refused with the list of valid names$",
+    "source": "1ae6c19 feat(bootstrap): stamp the kernel through a kernel row"
+  },
+  {
+    "id": "1ae6c19-stamping-addon-requirement",
+    "patch": "tests/planted-faults/patches/1ae6c19-stamping-addon-requirement.patch",
+    "testFile": "tests/template/stamping/stamping-refusals.test.ts",
+    "title": "approval without state is refused, naming state as the add-on to add$",
+    "source": "1ae6c19 feat(bootstrap): stamp the kernel through a kernel row"
+  },
+  {
+    "id": "1ae6c19-stamping-lockfile-missing",
+    "patch": "tests/planted-faults/patches/1ae6c19-stamping-lockfile-missing.patch",
+    "testFile": "tests/template/stamping/stamping-refusals.test.ts",
+    "title": "a committed lockfile the template does not hold is refused$",
+    "source": "1ae6c19 feat(bootstrap): stamp the kernel through a kernel row"
+  },
+  {
+    "id": "1ae6c19-stamping-lockfile-none",
+    "patch": "tests/planted-faults/patches/1ae6c19-stamping-lockfile-none.patch",
+    "testFile": "tests/template/stamping/stamping-lockfile.test.ts",
+    "title": "a run with no lockfile places none$",
+    "source": "1ae6c19 feat(bootstrap): stamp the kernel through a kernel row"
+  },
+  {
+    "id": "1ae6c19-stamping-lockfile-bytes",
+    "patch": "tests/planted-faults/patches/1ae6c19-stamping-lockfile-bytes.patch",
+    "testFile": "tests/template/stamping/stamping-lockfile.test.ts",
+    "title": "a supplied lockfile arrives in the generated repository byte for byte$",
+    "source": "1ae6c19 feat(bootstrap): stamp the kernel through a kernel row"
+  },
+  {
+    "id": "1ae6c19-stamping-lockfile-committed",
+    "patch": "tests/planted-faults/patches/1ae6c19-stamping-lockfile-committed.patch",
+    "testFile": "tests/template/stamping/add-on-selection.test.ts",
+    "title": "is the template's committed lockfile for the selection's package set, byte for byte$",
+    "source": "1ae6c19 feat(bootstrap): stamp the kernel through a kernel row"
+  },
+  {
+    "id": "1ae6c19-stamping-package-set",
+    "patch": "tests/planted-faults/patches/1ae6c19-stamping-package-set.patch",
+    "testFile": "tests/template/stamping/add-on-selection.test.ts",
+    "title": "names its package set after the selected add-ons that declare a package, and base when none does$",
+    "source": "1ae6c19 feat(bootstrap): stamp the kernel through a kernel row"
+  },
+  {
+    "id": "1ae6c19-stamping-stamp-root-conflict",
+    "patch": "tests/planted-faults/patches/1ae6c19-stamping-stamp-root-conflict.patch",
+    "testFile": "tests/template/stamping/stamping-refusals.test.ts",
+    "title": "for a stamp root the generated repository's own files already hold$",
+    "source": "1ae6c19 feat(bootstrap): stamp the kernel through a kernel row"
+  },
+  {
+    "id": "1ae6c19-stamping-stamp-checker-conflict",
+    "patch": "tests/planted-faults/patches/1ae6c19-stamping-stamp-checker-conflict.patch",
+    "testFile": "tests/template/stamping/stamp-kernel.test.ts",
+    "title": "already in the folder as a stamp conflict, and writes nothing$",
+    "source": "1ae6c19 feat(bootstrap): stamp the kernel through a kernel row"
+  },
+  {
+    "id": "1ae6c19-stamping-selection",
+    "patch": "tests/planted-faults/patches/1ae6c19-stamping-selection.patch",
+    "testFile": "tests/template/stamping/stamping.test.ts",
+    "title": "stamps no add-on that is not selected$",
+    "source": "1ae6c19 feat(bootstrap): stamp the kernel through a kernel row"
+  },
+  {
+    "id": "1ae6c19-stamping-bytes",
+    "patch": "tests/planted-faults/patches/1ae6c19-stamping-bytes.patch",
+    "testFile": "tests/template/stamping/stamping-order.test.ts",
+    "title": "a stamped file holding a token and a stamped file that is not valid UTF-8 keep their bytes$",
+    "source": "1ae6c19 feat(bootstrap): stamp the kernel through a kernel row"
+  },
+  {
+    "id": "1ae6c19-stamping-mode",
+    "patch": "tests/planted-faults/patches/1ae6c19-stamping-mode.patch",
+    "testFile": "tests/template/stamping/stamping.test.ts",
+    "title": "stamps the kernel and each selected add-on at the paths the kernel declaration gives$",
+    "source": "1ae6c19 feat(bootstrap): stamp the kernel through a kernel row"
+  },
+  {
+    "id": "1ae6c19-merged-requirements-package",
+    "patch": "tests/planted-faults/patches/1ae6c19-merged-requirements-package.patch",
+    "testFile": "tests/template/stamping/stamping-refusals.test.ts",
+    "title": "for a package the generated repository already declares$",
+    "source": "1ae6c19 feat(bootstrap): stamp the kernel through a kernel row"
+  },
+  {
+    "id": "1ae6c19-merged-requirements-entry",
+    "patch": "tests/planted-faults/patches/1ae6c19-merged-requirements-entry.patch",
+    "testFile": "tests/template/stamping/stamping-refusals.test.ts",
+    "title": "for a dead-code entry the generated repository already holds$",
+    "source": "1ae6c19 feat(bootstrap): stamp the kernel through a kernel row"
+  },
+  {
+    "id": "1ae6c19-merged-requirements-width",
+    "patch": "tests/planted-faults/patches/1ae6c19-merged-requirements-width.patch",
+    "testFile": "tests/template/stamping/merged-requirements.test.ts",
+    "title": "a list goes on one line while that line fits in 80 columns and one item a line past that, as the formatter does$",
+    "source": "1ae6c19 feat(bootstrap): stamp the kernel through a kernel row"
+  },
+  {
+    "id": "1ae6c19-recipe-kernel-row",
+    "patch": "tests/planted-faults/patches/1ae6c19-recipe-kernel-row.patch",
+    "testFile": "tests/template/stamping/stamping-refusals.test.ts",
+    "title": "the recipes the command line selects from do not hold the kernel row$",
+    "source": "1ae6c19 feat(bootstrap): stamp the kernel through a kernel row"
+  },
+  {
+    "id": "58272c9-stamp-check-command",
+    "patch": "tests/planted-faults/patches/58272c9-stamp-check-command.patch",
+    "testFile": "tests/template/stamp-check/stamp-check-command.test.ts",
+    "title": "prints an unstamped verdict and exits 1, so a check command cannot pass without its stamp record$",
+    "source": "58272c9 feat(stamp-check): run the stamp check as a command"
+  },
+  {
+    "id": "1ae6c19-stamping-stamp-record-last",
+    "patch": "tests/planted-faults/patches/1ae6c19-stamping-stamp-record-last.patch",
+    "testFile": "tests/template/stamping/stamping.test.ts",
+    "title": "writes the stamp record after every other file$",
+    "source": "1ae6c19 feat(bootstrap): stamp the kernel through a kernel row"
   }
 ]

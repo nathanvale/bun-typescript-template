@@ -1,0 +1,13 @@
+diff --git a/src/stamping.ts b/src/stamping.ts
+index 000dcd7..80d86b8 100644
+--- a/src/stamping.ts
++++ b/src/stamping.ts
+@@ -95,7 +95,7 @@ export function selectAddons(
+       );
+   }
+   const withPackages = addons
+-    .filter(({ packages }) => Object.keys(packages).length > 0)
++    .filter(({ packages }) => Object.keys(packages).length >= 0)
+     .map(({ name }) => name);
+   return {
+     addons,

@@ -1,0 +1,14 @@
+diff --git a/src/stamping.ts b/src/stamping.ts
+index 000dcd7..708b92f 100644
+--- a/src/stamping.ts
++++ b/src/stamping.ts
+@@ -119,7 +119,8 @@ export function lockfileFor(
+   templateRoot: string,
+ ): Uint8Array | undefined {
+   if (input.source === "none") return undefined;
+-  if (input.source === "supplied") return input.bytes;
++  if (input.source === "supplied")
++    return new TextEncoder().encode(new TextDecoder().decode(input.bytes));
+   const path = `${committedLockfiles}/${selection.packageSet}.lock`;
+   try {
+     return readFileSync(join(templateRoot, path));

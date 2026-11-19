@@ -1,0 +1,13 @@
+diff --git a/src/merged-requirements.ts b/src/merged-requirements.ts
+index 7ca271d..6443d70 100644
+--- a/src/merged-requirements.ts
++++ b/src/merged-requirements.ts
+@@ -35,7 +35,7 @@ function listText(
+     ),
+   );
+   const flat = `[${inner.join(", ")}]`;
+-  if (!flat.includes("\n") && before + flat.length + after <= lineWidth)
++  if (!flat.includes("\n") && before + flat.length + after < lineWidth)
+     return flat;
+   const lines = inner.map((item) => `${indent(depth + 1)}${item}`);
+   return `[\n${lines.join(",\n")}\n${indent(depth)}]`;

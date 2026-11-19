@@ -1,0 +1,13 @@
+diff --git a/src/stamping.ts b/src/stamping.ts
+index 000dcd7..782a5ac 100644
+--- a/src/stamping.ts
++++ b/src/stamping.ts
+@@ -173,7 +173,7 @@ async function conflictIn(
+   required: Requirements,
+ ): Promise<string | undefined> {
+   for (const { root } of roots)
+-    if (await held(folder, root.path))
++    if (root.path === "")
+       return `Stamp root "${root.path}" is already in the generated repository's own files.`;
+   for (const path of [stampCheckerPath, stampRecordPath])
+     if (await held(folder, path))

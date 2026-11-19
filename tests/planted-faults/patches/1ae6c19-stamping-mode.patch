@@ -1,0 +1,13 @@
+diff --git a/src/stamping.ts b/src/stamping.ts
+index 000dcd7..2dd0f41 100644
+--- a/src/stamping.ts
++++ b/src/stamping.ts
+@@ -190,7 +190,7 @@ async function writeNew(
+   const target = join(folder, path);
+   await mkdir(dirname(target), { recursive: true });
+   await writeFile(target, bytes, { flag: "wx" });
+-  if (mode === "100755") await chmod(target, 0o755);
++  if (mode === "") await chmod(target, 0o755);
+ }
+ 
+ export type StampOrigin = {

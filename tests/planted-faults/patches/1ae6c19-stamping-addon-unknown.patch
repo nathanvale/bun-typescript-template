@@ -1,0 +1,13 @@
+diff --git a/src/stamping.ts b/src/stamping.ts
+index 000dcd7..814a30d 100644
+--- a/src/stamping.ts
++++ b/src/stamping.ts
+@@ -76,7 +76,7 @@ export function selectAddons(
+   const unknown = names.find(
+     (name) => !declared.some((addon) => addon.name === name),
+   );
+-  if (unknown !== undefined)
++  if (unknown === "")
+     throw new StampRefusal(
+       "addon_unknown",
+       `"${unknown}" is not an add-on at kernel commit ${kernel.commit}. ${

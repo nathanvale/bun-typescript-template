@@ -55,11 +55,6 @@
       "term": "Claim tag",
       "reason": "A word for the plan. No ticket is known to bring it into a tracked file here; MAG-114 is the kernel split spec, which uses the word.",
       "ticket": "MAG-114"
-    },
-    {
-      "term": "Add-on requirement",
-      "reason": "The kernel declaration names each add-on requirement. MAG-125 makes Bootstrap merge them when it stamps an add-on selection.",
-      "ticket": "MAG-125"
     }
   ]
 }
