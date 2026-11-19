@@ -992,5 +992,12 @@
     "testFile": "tests/template/bootstrap/recipe.test.ts",
     "title": "refuses a missing template source file before any file is copied$",
     "source": "b6e4a60 refactor(starters): make starter code pass the template lint rules"
+  },
+  {
+    "id": "815691a-generated-lint-forms",
+    "patch": "tests/planted-faults/patches/815691a-generated-lint-forms.patch",
+    "testFile": "tests/template/toolchain/generated-lint.test.ts",
+    "title": "^a generated tree that leaves a lint rule off names it for each file and probe path it misses$",
+    "source": "815691a test(toolchain): probe every file form the anti-slop lint rules cover"
   }
 ]
