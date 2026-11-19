@@ -57,6 +57,12 @@ this file.
 - Read staged Git blobs in one batch by object ID. Witnessed:
   [r4609890969] (the file-size gate started a Git process for each staged
   file).
+- Give each dependency group a gate claims to read its own case, so the
+  claim cannot outlive the coverage. Witnessed: [r4623512643] (the generated
+  toolchain check read `peerDependencies`, and no case declared a peer).
+- Treat a declaration the installer does not install as absent, not as a
+  stale record. Witnessed: [r4623566979] (an optional peer has no `bun.lock`
+  package record, and the check would have called the lock stale).
 
 [ac11ed9]: https://github.com/nathanvale/bun-typescript-template/commit/ac11ed98b7d538e8a304cac053aaefcaaf6b2cb3
 [cd2498b]: https://github.com/nathanvale/bun-typescript-template/commit/cd2498b7189a2d45d1906b9c870e8d13da6cd2dd
@@ -72,3 +78,5 @@ this file.
 [r4609956011]: https://github.com/nathanvale/bun-typescript-template/pull/109#discussion_r4609956011
 [r4609956051]: https://github.com/nathanvale/bun-typescript-template/pull/109#discussion_r4609956051
 [r4609890969]: https://github.com/nathanvale/bun-typescript-template/pull/108#discussion_r4609890969
+[r4623512643]: https://github.com/nathanvale/bun-typescript-template/pull/111#discussion_r4623512643
+[r4623566979]: https://github.com/nathanvale/bun-typescript-template/pull/111#discussion_r4623566979
