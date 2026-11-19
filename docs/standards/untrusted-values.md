@@ -22,6 +22,10 @@ boundary trusts the types.
 - Return frozen copies of tables and stations, so a caller keeps the
   validator's reference data intact. Witnessed: [r4580070877],
   [r4580070890].
+- Freeze what a boundary parser returns, so a caller cannot replace a field
+  after the parser checked it. Witnessed: [r4624877543] (`parseKernelPin`
+  returned a mutable pin, so a caller could swap its validated commit for a
+  short one).
 - Compare identifiers and keys by code unit. `localeCompare` treats distinct
   keys as equal and follows the runtime collation. Witnessed: [r4580077765],
   [57c8c8b].
@@ -50,6 +54,7 @@ boundary trusts the types.
 [r4580077771]: https://github.com/nathanvale/bun-typescript-template/pull/6#discussion_r4580077771
 [r4606886521]: https://github.com/nathanvale/bun-typescript-template/pull/80#discussion_r4606886521
 [r4606943307]: https://github.com/nathanvale/bun-typescript-template/pull/80#discussion_r4606943307
+[r4624877543]: https://github.com/nathanvale/bun-typescript-template/pull/112#discussion_r4624877543
 [75b4bc0]: https://github.com/nathanvale/bun-typescript-template/commit/75b4bc045d038970858b95b136f9f176fd3fc4cc
 [57c8c8b]: https://github.com/nathanvale/bun-typescript-template/commit/57c8c8b881c66e967688d05a3a70e1ef487c5553
 [5cbff3a]: https://github.com/nathanvale/bun-typescript-template/commit/5cbff3a87746defffd2672320038c48fbd1ddbc6
