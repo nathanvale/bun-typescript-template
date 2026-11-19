@@ -290,10 +290,7 @@ describe("Bootstrap carrying out a row", () => {
     async ({ path, plant, code, message }) => {
       const template = testFolder("recipe-template-");
       carryOutFolders.push(template);
-      await mkdir(join(template, "src"));
-      for (const file of ["bootstrap.ts", "recipe.ts"]) {
-        await cp(join(ROOT, "src", file), join(template, "src", file));
-      }
+      await cp(join(ROOT, "src"), join(template, "src"), { recursive: true });
       const durable = selectRecipe({ profile: "durable", monorepo: false });
       if (durable.status !== "selected") throw new Error(durable.message);
       for (const copy of durable.recipe.copies) {

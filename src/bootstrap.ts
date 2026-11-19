@@ -5,7 +5,6 @@ import {
   mkdir,
   mkdtemp,
   readdir,
-  readFile,
   rename,
   rm,
   rmdir,
@@ -20,6 +19,7 @@ import {
   resolve,
 } from "node:path";
 import { fileURLToPath } from "node:url";
+import { CliError } from "./cli-error.ts";
 import {
   type Copy,
   type Layout,
@@ -32,11 +32,10 @@ import {
   selectRecipe,
   UNCOPIED_NAMES,
 } from "./recipe.ts";
+import { substituteTokens } from "./token-substitution.ts";
 
 const SCHEMA_VERSION = 1;
 const TEMPLATE_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const NAME_TOKEN = "__REPOSITORY_NAME__";
-const PACKET_TOKEN = "__SOURCE_PACKET__";
 
 interface BootstrapOptions {
   destination: string;
@@ -73,18 +72,6 @@ interface BootstrapResult {
   starter?: Starter;
   status: "created";
   variant: Layout;
-}
-
-class CliError extends Error {
-  constructor(
-    readonly code: string,
-    message: string,
-    readonly repair: string,
-    readonly exitCode: number,
-    readonly retrySafe: boolean,
-  ) {
-    super(message);
-  }
 }
 
 const RUNTIME_FAILURE_REPAIR =
@@ -465,36 +452,6 @@ async function copyDirectoryContents(
   }
 }
 
-async function substituteTokens(
-  root: string,
-  options: BootstrapOptions,
-): Promise<number> {
-  let count = 0;
-  for (const entry of await readdir(root, { withFileTypes: true })) {
-    const path = join(root, entry.name);
-    if (entry.isDirectory()) {
-      count += await substituteTokens(path, options);
-      continue;
-    }
-    if (!entry.isFile()) {
-      throw new CliError(
-        "unsupported_template_entry",
-        `template entry is not a regular file: ${relative(root, path)}`,
-        "replace the entry with a regular file",
-        1,
-        false,
-      );
-    }
-    const current = await readFile(path, "utf8");
-    const rendered = current
-      .replaceAll(NAME_TOKEN, options.name)
-      .replaceAll(PACKET_TOKEN, options.sourcePacket);
-    await writeFile(path, rendered, "utf8");
-    count += 1;
-  }
-  return count;
-}
-
 function sourceRefusal(source: string, code: string, message: string) {
   const path = relative(TEMPLATE_ROOT, source);
   return new CliError(
@@ -652,7 +609,10 @@ async function bootstrap(options: BootstrapOptions): Promise<BootstrapResult> {
   try {
     await copyRecipe(recipe, staging);
     await writeRepositoryContext(staging, options);
-    const generatedFiles = await substituteTokens(staging, options);
+    const { fileCount: generatedFiles } = await substituteTokens(
+      staging,
+      options,
+    );
     await installStaging(staging, options.destination, destinationState);
     return {
       destination: options.destination,
