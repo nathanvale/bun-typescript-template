@@ -1,0 +1,12 @@
+diff --git a/src/bootstrap.ts b/src/bootstrap.ts
+index 1a38a57..411a10c 100644
+--- a/src/bootstrap.ts
++++ b/src/bootstrap.ts
+@@ -551,7 +551,6 @@ function templateIdentity(args: string[]) {
+     env: process.env,
+     stdout: "pipe",
+     stderr: "pipe",
+-    timeout: GIT_MILLISECONDS,
+     killSignal: "SIGKILL",
+   });
+   if (child.exitedDueToTimeout)
