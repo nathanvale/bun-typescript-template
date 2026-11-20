@@ -1594,5 +1594,19 @@
     "testFile": "tests/template/kernel-trial/kernel-sibling.test.ts",
     "title": "refuses, naming git's words, a checkout git cannot read$",
     "source": "47e2ec3 fix(bootstrap): settle Sol's standards review of \"Bootstrap offers the kernel\" (T4)"
+  },
+  {
+    "id": "90ef4a0-pointer-skills-lockfile",
+    "patch": "tests/planted-faults/patches/90ef4a0-pointer-skills-lockfile.patch",
+    "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
+    "title": "fails when bun.lock pins another commit than package.json, as after a pin move with no install$",
+    "source": "90ef4a0 fix(bootstrap): the pointer skill check holds bun.lock and the installed kernel to the Pin"
+  },
+  {
+    "id": "90ef4a0-pointer-skills-installed",
+    "patch": "tests/planted-faults/patches/90ef4a0-pointer-skills-installed.patch",
+    "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
+    "title": "fails when the installed kernel is another commit than package.json and bun.lock pin, as after a pull with no install$",
+    "source": "90ef4a0 fix(bootstrap): the pointer skill check holds bun.lock and the installed kernel to the Pin"
   }
 ]
