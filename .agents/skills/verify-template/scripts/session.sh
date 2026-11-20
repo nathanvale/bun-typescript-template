@@ -51,7 +51,7 @@ record() {
   require_launch_bun "$root"
   [ -d "$folder" ] || fail "session: $folder is not a folder. Repair: launch first, or pass a folder under $root/work."
   case "$name" in
-    */* | .* | "") fail "session: record name \"$name\" must be one plain file name. Repair: pass a name such as bootstrap-durable." 2 ;;
+    */* | .* | "") fail "session: record name \"$name\" must be one plain file name. Repair: pass a name such as bootstrap-green." 2 ;;
   esac
   out="$root/evidence/$name.txt"
   stdout=$(mktemp)

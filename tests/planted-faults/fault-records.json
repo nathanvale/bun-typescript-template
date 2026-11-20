@@ -63,13 +63,6 @@
     "source": "79db613 refactor(scripts): give the template one process runner for its scripts and their tests"
   },
   {
-    "id": "4afda36-project-recipe",
-    "patch": "tests/planted-faults/patches/4afda36-project-recipe.patch",
-    "testFile": "tests/template/bootstrap/recipe.test.ts",
-    "title": "no row and no refusal matches throws",
-    "source": "4afda36 fix(recipe): name the starter-with-monorepo refusal's condition, throw if none matches"
-  },
-  {
     "id": "abebe4e-repository-unknown-key",
     "patch": "tests/planted-faults/patches/abebe4e-repository-unknown-key.patch",
     "testFile": "tests/template/repository/repository.test.ts",
@@ -411,13 +404,6 @@
     "testFile": "tests/template/naming/names-check-paths.test.ts",
     "title": "^in process: --tool-call resolves a relative folder of the call",
     "source": "244b63a fix(check-names): resolve a tool call's relative folder from the injected folder"
-  },
-  {
-    "id": "c77aaa9-static-admission",
-    "patch": "tests/planted-faults/patches/c77aaa9-static-admission.patch",
-    "testFile": "tests/template/static-admission/static-admission-execution-in-process.test.ts",
-    "title": "^execute kills a command that outlives its time limit",
-    "source": "c77aaa9 fix(static-admission): bound every child command with a time limit"
   },
   {
     "id": "837cf32-planted-faults-usage",
@@ -850,14 +836,14 @@
     "id": "19348a4-recipe-rule-file",
     "patch": "tests/planted-faults/patches/19348a4-recipe-rule-file.patch",
     "testFile": "tests/template/toolchain/generated-lint.test.ts",
-    "title": "^a repository generated from the durable single-package recipe holds the template's lint rule files and turns on every lint rule the template turns on$",
+    "title": "^a repository Bootstrap generates holds the template's lint rule files and turns on every lint rule the template turns on$",
     "source": "19348a4 feat(lint): give generated repositories the template lint rules"
   },
   {
     "id": "19348a4-eslint-config-rule-off",
     "patch": "tests/planted-faults/patches/19348a4-eslint-config-rule-off.patch",
     "testFile": "tests/template/toolchain/generated-lint.test.ts",
-    "title": "^a repository generated from the durable single-package recipe holds the template's lint rule files and turns on every lint rule the template turns on$",
+    "title": "^a repository Bootstrap generates holds the template's lint rule files and turns on every lint rule the template turns on$",
     "source": "19348a4 feat(lint): give generated repositories the template lint rules"
   },
   {
@@ -879,13 +865,6 @@
     "patch": "tests/planted-faults/patches/19348a4-generated-lint-missing.patch",
     "testFile": "tests/template/toolchain/generated-lint.test.ts",
     "title": "^a generated tree that lacks a lint rule file names the file and the recipe table$",
-    "source": "19348a4 feat(lint): give generated repositories the template lint rules"
-  },
-  {
-    "id": "19348a4-static-admission-rule-files",
-    "patch": "tests/planted-faults/patches/19348a4-static-admission-rule-files.patch",
-    "testFile": "tests/template/static-admission/static-admission-policy-in-process.test.ts",
-    "title": "^checkPolicy names each lint rule file that differs from the template's$",
     "source": "19348a4 feat(lint): give generated repositories the template lint rules"
   },
   {
@@ -1218,13 +1197,6 @@
     "source": "b3637f2 fix(stamp-check): open each stamped file once"
   },
   {
-    "id": "1ae6c19-recipe-kernel-row",
-    "patch": "tests/planted-faults/patches/1ae6c19-recipe-kernel-row.patch",
-    "testFile": "tests/template/bootstrap/kernel-row-refusals.test.ts",
-    "title": "RECIPES, the rows the toolchain and lint tests make with the template's own packages, does not hold the kernel row$",
-    "source": "1ae6c19 feat(bootstrap): stamp the kernel through a kernel row"
-  },
-  {
     "id": "dd553d6-package-test-ignore",
     "patch": "tests/planted-faults/patches/dd553d6-package-test-ignore.patch",
     "testFile": "tests/template/bootstrap/kernel-row.test.ts",
@@ -1531,27 +1503,6 @@
     "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
     "title": "link each from \\.claude/skills$",
     "source": "50dbf8e feat(bootstrap): give the kernel row a pointer skill for the author skill, checked against the Pin"
-  },
-  {
-    "id": "9e160bd-recipe-kernel-durable",
-    "patch": "tests/planted-faults/patches/9e160bd-recipe-kernel-durable.patch",
-    "testFile": "tests/template/bootstrap/recipe.test.ts",
-    "title": "every flag combination maps to exactly one row or one refusal$",
-    "source": "9e160bd feat(bootstrap): offer the kernel row on the command line with --kernel"
-  },
-  {
-    "id": "9e160bd-recipe-kernel-starter",
-    "patch": "tests/planted-faults/patches/9e160bd-recipe-kernel-starter.patch",
-    "testFile": "tests/template/bootstrap/recipe.test.ts",
-    "title": "every flag combination maps to exactly one row or one refusal$",
-    "source": "9e160bd feat(bootstrap): offer the kernel row on the command line with --kernel"
-  },
-  {
-    "id": "9e160bd-recipe-kernel-monorepo",
-    "patch": "tests/planted-faults/patches/9e160bd-recipe-kernel-monorepo.patch",
-    "testFile": "tests/template/bootstrap/recipe.test.ts",
-    "title": "every flag combination maps to exactly one row or one refusal$",
-    "source": "9e160bd feat(bootstrap): offer the kernel row on the command line with --kernel"
   },
   {
     "id": "9e160bd-bootstrap-kernel-refusal",
@@ -1874,5 +1825,33 @@
     "testFile": "tests/template/naming/shared-tool-words.test.ts",
     "title": "^SW\\.d ",
     "source": "43f02d2 feat(glossary): leave the kernel's words to the kernel"
+  },
+  {
+    "id": "76c8d28-recipe-pin",
+    "patch": "tests/planted-faults/patches/76c8d28-recipe-pin.patch",
+    "testFile": "tests/template/bootstrap/recipe.test.ts",
+    "title": "refuses a row without the Pin$",
+    "source": "76c8d28 feat(bootstrap)!: make one shape, the kernel at the template's Pin"
+  },
+  {
+    "id": "76c8d28-recipe-pin-folder",
+    "patch": "tests/planted-faults/patches/76c8d28-recipe-pin-folder.patch",
+    "testFile": "tests/template/bootstrap/recipe.test.ts",
+    "title": "refuses a row whose Pin copies another folder's settings$",
+    "source": "76c8d28 feat(bootstrap)!: make one shape, the kernel at the template's Pin"
+  },
+  {
+    "id": "39a7c22-generated-script-types",
+    "patch": "tests/planted-faults/patches/39a7c22-generated-script-types.patch",
+    "testFile": "tests/template/toolchain/generated-lint.test.ts",
+    "title": "^a repository Bootstrap generates refuses no-in-operator and no-locale-compare in a script, with the type information they need, and admits their clean forms$",
+    "source": "39a7c22 fix(generated-repository): give scripts/ the type information its lint rules need"
+  },
+  {
+    "id": "39a7c22-generated-script-tsconfig",
+    "patch": "tests/planted-faults/patches/39a7c22-generated-script-tsconfig.patch",
+    "testFile": "tests/template/toolchain/generated-lint.test.ts",
+    "title": "^a repository Bootstrap generates refuses no-in-operator and no-locale-compare in a script, with the type information they need, and admits their clean forms$",
+    "source": "39a7c22 fix(generated-repository): give scripts/ the type information its lint rules need"
   }
 ]

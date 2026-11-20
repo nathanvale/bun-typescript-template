@@ -1,14 +1,15 @@
 import { afterAll, expect, test } from "bun:test";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { RECIPES } from "../../../src/recipe.ts";
-import { installedPackage } from "../../../src/static-admission.ts";
+import { generatedPin, readKernelPin } from "../../../src/kernel-pin.ts";
+import { invoke, requireSuccess } from "../../support/bootstrap-cli-fixture.ts";
 import {
+  installedPackage,
   type LockFile,
   type PackageJson,
-  recipeFolders,
   toolchainProblems,
 } from "../../support/generated-toolchain.ts";
+import { processWatchdog } from "../../support/process.ts";
 import { testFolder } from "../../support/test-folder.ts";
 
 const root = join(import.meta.dir, "../../..");
@@ -83,17 +84,50 @@ async function problemsOf(files: Record<string, unknown>): Promise<string[]> {
   return await toolchainProblems(treeWith(files), ["recipe"]);
 }
 
-test("every recipe folder that ships a package.json installs the template's toolchain, and its bun.lock agrees", async () => {
-  expect(await toolchainProblems(root, recipeFolders(root))).toEqual([]);
-});
+const pin = readKernelPin(root);
+const KERNEL = {
+  name: pin.repository,
+  spec: generatedPin(pin, pin.commit),
+};
 
-test("every recipe copies its package.json from a recipe folder this test compares", () => {
-  const compared = new Set(recipeFolders(root));
-  for (const { request, copies } of RECIPES)
-    expect({
-      request,
-      compared: copies.some(({ from }) => compared.has(from)),
-    }).toEqual({ request, compared: true });
+test(
+  "a repository Bootstrap generates installs the template's toolchain, and its bun.lock agrees",
+  async () => {
+    const tree = testFolder("generated-toolchain-bootstrap-");
+    fixtures.push(tree);
+    copyFileSync(join(root, "package.json"), join(tree, "package.json"));
+    requireSuccess(
+      await invoke(
+        "--destination",
+        join(tree, "generated"),
+        "--source-packet",
+        "https://example.test/spec",
+        "--json",
+      ),
+      "bootstrap",
+    );
+    expect(await toolchainProblems(tree, ["generated"], KERNEL)).toEqual([]);
+  },
+  processWatchdog(1),
+);
+
+test("the kernel at the template's Pin passes, and another git dependency fails as one this test cannot compare", async () => {
+  const packageJson = {
+    ...LATEST,
+    dependencies: { [KERNEL.name]: KERNEL.spec, other: KERNEL.spec },
+  };
+  expect(
+    await toolchainProblems(
+      treeWith({
+        "recipe/package.json": packageJson,
+        "recipe/bun.lock": lockOf(packageJson),
+      }),
+      ["recipe"],
+      KERNEL,
+    ),
+  ).toEqual([
+    `recipe/package.json dependencies.other is ${KERNEL.spec}, ${UNREAD}`,
+  ]);
 });
 
 test("a recipe folder on the template's toolchain, with a package the template lacks, passes", async () => {

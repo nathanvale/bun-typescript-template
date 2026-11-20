@@ -18,9 +18,9 @@ These sources define the command contract the CLI kernel implements.
 
 ## The kernel repository in tests
 
-- The `pin-move` and `kernel-trial` test areas, and `bun run bootstrap
-  --kernel`, read the kernel repository beside the template, where the
-  hosted check places it at the pinned commit.
+- The `pin-move`, `kernel-trial`, `bootstrap` and `toolchain` test areas, and
+  `bun run bootstrap`, read the kernel repository beside the template, where
+  the hosted check places it at the pinned commit.
 - From a worktree of the template, fault replay's included, the tests find
   it beside the main checkout.
 - From anywhere else, clone the kernel repository and name its path in

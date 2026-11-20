@@ -35,7 +35,7 @@ export const fileSizeRecordedHitsPath = "scripts/file-size-recorded-hits.json";
 export const fileSizeHits = {
   standing: "tests/planted-faults/fault-records.json",
   glossary: "tests/template/glossary/glossary.test.ts",
-  integration: "starters/complex/tests/integration/integration.test.ts",
+  integration: "tests/template/integration/integration.test.ts",
 } as const;
 const fileSizeRecordedHits = JSON.stringify({
   [fileSizeHits.standing]: {

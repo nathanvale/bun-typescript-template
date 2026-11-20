@@ -1,23 +1,10 @@
 import { afterEach } from "bun:test";
 import { readdir, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import type { ProjectRecipe } from "../../src/recipe.ts";
-import { gitEnv, inherited } from "./git-fixture.ts";
 import { spawnBounded } from "./process.ts";
 import { testFolder } from "./test-folder.ts";
 
 export const ROOT = resolve(import.meta.dir, "../..");
-
-export function rowKey({ request, cli }: ProjectRecipe): string {
-  return [
-    request.profile,
-    request.layout,
-    request.starter,
-    cli === "kernel" ? cli : undefined,
-  ]
-    .filter((word) => word !== undefined)
-    .join(" ");
-}
 
 export function parsePackage(text: string) {
   const value: unknown = JSON.parse(text);
@@ -69,17 +56,6 @@ export function invoke(...args: string[]): Promise<Invocation> {
   ]);
 }
 
-export function runGit(cwd: string, args: string[]): Promise<Invocation> {
-  return runCommand(cwd, ["git", ...args], {
-    ...inherited(),
-    ...gitEnv,
-    GIT_AUTHOR_NAME: undefined,
-    GIT_AUTHOR_EMAIL: undefined,
-    GIT_COMMITTER_NAME: undefined,
-    GIT_COMMITTER_EMAIL: undefined,
-  });
-}
-
 export async function listFiles(root: string, prefix = ""): Promise<string[]> {
   const files: string[] = [];
   for (const entry of await readdir(join(root, prefix), {
@@ -101,30 +77,6 @@ export function requireSuccess(result: Invocation, operation: string): void {
       `${operation} failed with exit ${result.exitCode}: ${result.stderr}\n${result.stdout}`,
     );
   }
-}
-
-export async function commitGeneratedFiles(
-  destination: string,
-  files: readonly string[],
-): Promise<void> {
-  requireSuccess(await runGit(destination, ["init", "--quiet"]), "git init");
-  requireSuccess(
-    await runGit(destination, ["add", "--", ...files]),
-    "git add generated files",
-  );
-  requireSuccess(
-    await runGit(destination, [
-      "-c",
-      "user.name=CLI template qualification",
-      "-c",
-      "user.email=cli-template@example.test",
-      "commit",
-      "--quiet",
-      "-m",
-      "qualify generated starter",
-    ]),
-    "git commit generated files",
-  );
 }
 
 export function bootstrapCliFixture() {

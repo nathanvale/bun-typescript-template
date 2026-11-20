@@ -1,7 +1,7 @@
 ---
 
 name: verify-template
-description: Prove the template's user journey black-box from a scratch clone. Bootstrap a generated repository, run its check command, commit, and see the doctor, the commit hook and check:commits refuse planted mistakes. Use after changing Bootstrap, a profile, a gate script or a git hook, or before claiming one works.
+description: Prove the template's user journey black-box from a scratch clone. Bootstrap a generated repository, run its check command, commit, and see the doctor, the commit hook and check:commits refuse planted mistakes. Use after changing Bootstrap, the generated repository, a gate script or a git hook, or before claiming one works.
 ---
 
 # Verify template
@@ -60,7 +60,7 @@ the transcript.
 
 - `<folder>` is relative to `$run/work` or absolute: `template` is the clone,
   `generated/<name>` a Bootstrap destination.
-- Give each proof its own name, such as `bootstrap-durable` or
+- Give each proof its own name, such as `bootstrap-green` or
   `hook-red-name`. The feature files use these names.
 - A red proof is one of two kinds. A **hands-on red** plants a mistake in the
   run's own clone or generated repository, runs the gate, then restores the
@@ -119,7 +119,7 @@ tar -C "$out/in" -cf - head.bundle driver.sh inner.sh |
 ```
 
 - The image lacks git and procps, and some template tests fail as root.
-- The image has no Node.js, only Bun's `node` fallback, and a durable check
+- The image has no Node.js, only Bun's `node` fallback, and a generated check
   then fails at Fallow (see [Bootstrap](features/bootstrap.md#gotchas)).
   `nodejs` stands in for the Node a hosted runner or a developer machine has.
 - The container is the stand-in for a Linux host. Its package installs and

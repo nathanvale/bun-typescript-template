@@ -1,24 +1,3 @@
-export type Profile = "scratch" | "durable";
-export type Starter = "simple" | "complex";
-export type Layout = "single-package" | "monorepo";
-
-export type Request =
-  | {
-      readonly profile: "scratch";
-      readonly layout: "single-package";
-      readonly starter?: undefined;
-    }
-  | {
-      readonly profile: "durable";
-      readonly layout: Layout;
-      readonly starter?: undefined;
-    }
-  | {
-      readonly profile: "durable";
-      readonly layout: "single-package";
-      readonly starter: Starter;
-    };
-
 export const SKILL_FOLDER = ".agents/skills";
 
 export interface Copy {
@@ -33,17 +12,16 @@ export interface Copy {
   readonly only?: readonly string[];
 }
 
-export interface ProjectRecipe {
-  readonly request: Request;
-  readonly copies: readonly [Copy, ...Copy[]];
-  readonly cli: Starter | "kernel";
+export const PIN_SETTINGS = {
+  from: "generated-repository/settings",
+  into: ".",
+} as const satisfies Copy;
+
+export interface Recipe {
+  readonly pin: typeof PIN_SETTINGS;
+  readonly copies: readonly Copy[];
   readonly checkCommand: string;
 }
-
-export const UNCOPIED_NAMES: readonly string[] = [
-  "TEMPLATE-SOURCE.md",
-  "composition-tests",
-];
 
 export const LINT_RULE_FILES: readonly string[] = [
   "anti-slop-bindings.mjs",
@@ -54,181 +32,23 @@ export const LINT_RULE_FILES: readonly string[] = [
   "template-rules.mjs",
 ];
 
-const LINT_RULES: Copy = {
-  from: "config",
-  into: "config",
-  only: LINT_RULE_FILES,
-};
-
-const TEST_FOLDER: Copy = {
-  from: "tests/support",
-  into: "tests/support",
-  only: ["test-folder.ts"],
-};
-
-const SIMPLE_CLI: readonly Copy[] = [
-  { from: "starters/shared/src", into: "src" },
-  { from: "starters/simple/src", into: "src" },
-  { from: "starters/simple/tests", into: "tests" },
-  TEST_FOLDER,
-];
-
-function starterRow(starter: Starter): ProjectRecipe {
-  return {
-    request: { profile: "durable", layout: "single-package", starter },
-    copies: [
-      { from: `profiles/static-admission/${starter}`, into: "." },
-      { from: `starters/${starter}`, into: "." },
-      { from: "starters/shared/src", into: "src" },
-      TEST_FOLDER,
-      LINT_RULES,
-    ],
-    cli: starter,
-    checkCommand: "bun run check",
-  };
-}
-
-export const RECIPES: readonly ProjectRecipe[] = [
-  {
-    request: { profile: "scratch", layout: "single-package" },
-    copies: [{ from: "profiles/scratch", into: "." }, ...SIMPLE_CLI],
-    cli: "simple",
-    checkCommand: "bun run typecheck && bun run test",
-  },
-  {
-    request: { profile: "durable", layout: "single-package" },
-    copies: [
-      { from: "profiles/durable", into: "." },
-      ...SIMPLE_CLI,
-      LINT_RULES,
-    ],
-    cli: "simple",
-    checkCommand: "bun run check",
-  },
-  {
-    request: { profile: "durable", layout: "monorepo" },
-    copies: [
-      { from: "examples/monorepo", into: "." },
-      ...SIMPLE_CLI,
-      LINT_RULES,
-    ],
-    cli: "simple",
-    checkCommand: "bun run check",
-  },
-  starterRow("simple"),
-  starterRow("complex"),
-];
-
-export const KERNEL_RECIPE: ProjectRecipe = {
-  request: { profile: "durable", layout: "single-package" },
+export const KERNEL_RECIPE: Recipe = {
+  pin: PIN_SETTINGS,
   copies: [
-    { from: "generated-repository/settings", into: "." },
     { from: "generated-repository/application", into: "." },
     { from: "generated-repository/skills", into: SKILL_FOLDER },
-    TEST_FOLDER,
-    LINT_RULES,
+    {
+      from: "tests/support",
+      into: "tests/support",
+      only: ["test-folder.ts"],
+    },
+    { from: "config", into: "config", only: LINT_RULE_FILES },
   ],
-  cli: "kernel",
   checkCommand: "bun run check",
 };
 
 export const KERNEL_LOCKFILE = "generated-repository/bun.lock";
 
-export function lintsCode(recipe: ProjectRecipe): boolean {
-  return recipe.copies.includes(LINT_RULES);
-}
-
-function distinct<T>(values: readonly (T | undefined)[]): T[] {
-  return [
-    ...new Set(values.filter((value): value is T => value !== undefined)),
-  ];
-}
-
-export const PROFILES: readonly Profile[] = distinct(
-  RECIPES.map((recipe) => recipe.request.profile),
-);
-
-export const STARTERS: readonly Starter[] = distinct(
-  RECIPES.map((recipe) => recipe.request.starter),
-);
-
-export interface Selection {
-  readonly profile: Profile;
-  readonly monorepo: boolean;
-  readonly starter?: Starter | undefined;
-  readonly kernel?: boolean;
-}
-
-export type RecipeChoice =
-  | { readonly status: "selected"; readonly recipe: ProjectRecipe }
-  | {
-      readonly status: "refused";
-      readonly message: string;
-      readonly repair: string;
-    };
-
-function refusal(selection: Selection): RecipeChoice {
-  if (selection.monorepo && selection.profile !== "durable") {
-    return {
-      status: "refused",
-      message: "--monorepo is available only with --profile durable",
-      repair: "remove --monorepo or choose --profile durable",
-    };
-  }
-  if (selection.starter !== undefined && selection.profile !== "durable") {
-    return {
-      status: "refused",
-      message: "--starter is available only with --profile durable",
-      repair: "remove --starter or choose --profile durable",
-    };
-  }
-  if (selection.starter !== undefined && selection.monorepo) {
-    return {
-      status: "refused",
-      message: "--starter and --monorepo cannot be combined",
-      repair: "choose one CLI starter or the explicit monorepo example",
-    };
-  }
-  throw new Error(
-    `No recipe and no refusal matches profile ${selection.profile}, monorepo ${String(selection.monorepo)}, starter ${selection.starter ?? "none"}. Repair: add a recipe to RECIPES or a case to refusal().`,
-  );
-}
-
-function kernelChoice(selection: Selection): RecipeChoice {
-  if (selection.profile !== "durable")
-    return {
-      status: "refused",
-      message: "--kernel is available only with --profile durable",
-      repair: "remove --kernel or choose --profile durable",
-    };
-  if (selection.starter !== undefined)
-    return {
-      status: "refused",
-      message: "--kernel and --starter cannot be combined",
-      repair: "choose --kernel or one CLI starter",
-    };
-  if (selection.monorepo)
-    return {
-      status: "refused",
-      message: "--kernel and --monorepo cannot be combined",
-      repair: "choose --kernel or the explicit monorepo example",
-    };
-  return { status: "selected", recipe: KERNEL_RECIPE };
-}
-
-export function selectRecipe(
-  selection: Selection,
-  recipes: readonly ProjectRecipe[] = RECIPES,
-): RecipeChoice {
-  if (selection.kernel === true) return kernelChoice(selection);
-  const layout: Layout = selection.monorepo ? "monorepo" : "single-package";
-  const recipe = recipes.find(
-    ({ request }) =>
-      request.profile === selection.profile &&
-      request.layout === layout &&
-      request.starter === selection.starter,
-  );
-  return recipe === undefined
-    ? refusal(selection)
-    : { status: "selected", recipe };
+export function copiesOf(recipe: Recipe): readonly Copy[] {
+  return [recipe.pin, ...recipe.copies];
 }

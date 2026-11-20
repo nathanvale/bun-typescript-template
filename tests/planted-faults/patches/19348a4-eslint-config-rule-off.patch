@@ -1,8 +1,8 @@
-diff --git a/profiles/durable/eslint.config.mjs b/profiles/durable/eslint.config.mjs
-index 49a012e..f3cce4e 100644
---- a/profiles/durable/eslint.config.mjs
-+++ b/profiles/durable/eslint.config.mjs
-@@ -57,7 +57,6 @@ export default tseslint.config(
+diff --git a/generated-repository/settings/eslint.config.mjs b/generated-repository/settings/eslint.config.mjs
+index 4f1ec50..ad9a9d4 100644
+--- a/generated-repository/settings/eslint.config.mjs
++++ b/generated-repository/settings/eslint.config.mjs
+@@ -55,7 +55,6 @@ export default tseslint.config(
      files: ["**/*.{ts,mts,cts,mjs}"],
      plugins: { repository },
      rules: {

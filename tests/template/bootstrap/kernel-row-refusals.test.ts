@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { KERNEL_RECIPE, RECIPES } from "../../../src/recipe.ts";
 import {
   type Invocation,
   invoke,
@@ -85,21 +84,20 @@ function refusedWith(
   };
 }
 
-describe("the kernel row on the command line", () => {
-  test("RECIPES, the rows the toolchain and lint tests make with the template's own packages, does not hold the kernel row", () => {
-    expect(RECIPES.includes(KERNEL_RECIPE)).toBe(false);
-    expect(RECIPES.map(({ cli }) => cli).includes("kernel")).toBe(false);
-  });
-
-  test.each(["--addon", "--lockfile"])(
-    "Bootstrap refuses %s as an unknown argument",
-    async (option) => {
+describe("Bootstrap on the command line", () => {
+  test.each([
+    { option: "--addon", value: ["state"] },
+    { option: "--lockfile", value: ["state"] },
+    { option: "--profile", value: ["durable"] },
+    { option: "--starter", value: ["simple"] },
+    { option: "--monorepo", value: [] },
+    { option: "--kernel", value: [] },
+  ])(
+    "Bootstrap refuses $option as an unknown argument",
+    async ({ option, value }) => {
       const refusal = await invoke(
-        "--profile",
-        "durable",
-        "--kernel",
         option,
-        "state",
+        ...value,
         "--destination",
         "/abs/never/made",
         "--source-packet",
@@ -120,60 +118,7 @@ describe("the kernel row on the command line", () => {
   );
 
   test(
-    "--starter kernel is refused as an unsupported starter",
-    async () => {
-      const refusal = await invoke(
-        "--profile",
-        "durable",
-        "--starter",
-        "kernel",
-        "--destination",
-        "/abs/never/made",
-        "--source-packet",
-        "/abs/packets/demo",
-        "--json",
-      );
-      expect({
-        exitCode: refusal.exitCode,
-        code: (JSON.parse(refusal.stderr) as { error: { code: string } }).error
-          .code,
-      }).toEqual({ exitCode: 2, code: "invalid_starter" });
-    },
-    processWatchdog(1),
-  );
-
-  test(
-    "--kernel with a CLI starter is refused as a profile option mismatch, before any folder is made",
-    async () => {
-      const row = run();
-      const refusal = await invoke(
-        "--profile",
-        "durable",
-        "--kernel",
-        "--starter",
-        "simple",
-        "--destination",
-        row.destination,
-        "--source-packet",
-        "/abs/packets/demo",
-        "--json",
-      );
-      expect(envelopeOf(refusal)).toEqual(
-        refusedWith(
-          2,
-          "profile_option_mismatch",
-          "--kernel and --starter cannot be combined",
-          "choose --kernel or one CLI starter",
-          true,
-        ),
-      );
-      expect(leftBehind(row)).toBe("no folder");
-    },
-    processWatchdog(1),
-  );
-
-  test(
-    "--kernel reports a missing kernel repository at KERNEL_REPOSITORY in its envelope, with the kernel reader's code and repair, before any folder is made",
+    "Bootstrap reports a missing kernel repository at KERNEL_REPOSITORY in its envelope, with the kernel reader's code and repair, before any folder is made",
     async () => {
       const row = run();
       const missing = join(row.parent, "no-kernel-here");
@@ -183,9 +128,6 @@ describe("the kernel row on the command line", () => {
           process.execPath,
           "run",
           "src/bootstrap.ts",
-          "--profile",
-          "durable",
-          "--kernel",
           "--destination",
           row.destination,
           "--source-packet",

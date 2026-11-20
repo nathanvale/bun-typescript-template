@@ -1,67 +1,33 @@
 import { basename, isAbsolute, resolve } from "node:path";
 import { CliError } from "./cli-error.ts";
-import {
-  PROFILES,
-  type Profile,
-  type ProjectRecipe,
-  STARTERS,
-  type Starter,
-  selectRecipe,
-} from "./recipe.ts";
 
 export interface BootstrapOptions {
   destination: string;
   json: boolean;
   name: string;
-  recipe: ProjectRecipe;
   sourcePacket: string;
-  kernelPin?: string;
-  kernelCommit?: string;
-  lockfile?: Uint8Array | undefined;
 }
 
 interface ParsedFlags {
   destination?: string;
   json: boolean;
-  kernel: boolean;
-  monorepo: boolean;
   name?: string;
-  profile?: Profile;
   sourcePacket?: string;
-  starter?: Starter;
 }
 
-type ValueFlag =
-  | "destination"
-  | "name"
-  | "profile"
-  | "sourcePacket"
-  | "starter";
+type ValueFlag = "destination" | "name" | "sourcePacket";
 
 export const RUNTIME_FAILURE_REPAIR =
   "correct what the message names, then rerun the same command";
 
-export const HELP = `Create a Bun TypeScript repository from an explicit profile.
+export const HELP = `Create a Bun TypeScript repository with the kernel at the template's Pin.
 
 Usage:
-  bun run bootstrap --profile scratch --destination PATH --source-packet PATH_OR_URL [--name NAME] [--json]
-  bun run bootstrap --profile durable --destination PATH --source-packet PATH_OR_URL [--name NAME] [--monorepo] [--json]
-  bun run bootstrap --profile durable --starter simple --destination PATH --source-packet PATH_OR_URL [--name NAME] [--json]
-  bun run bootstrap --profile durable --starter complex --destination PATH --source-packet PATH_OR_URL [--name NAME] [--json]
-  bun run bootstrap --profile durable --kernel --destination PATH --source-packet PATH_OR_URL [--name NAME] [--json]
+  bun run bootstrap --destination PATH --source-packet PATH_OR_URL [--name NAME] [--json]
 
-Profiles:
-  scratch  Dump-and-run repository with only run, typecheck, and test essentials.
-  durable  Maintained repository with typed ESLint, Biome formatting, native Fallow and one check command.
-
-CLI starters:
-  simple   Read-only CLI with Contract Core 2.0 help and discovery.
-  complex  State-changing CLI with typed contracts and Branch Stations.
-
-Kernel:
-  --kernel  CLI on the installed kernel, named by the template's pin, with the
-            kernel lockfile and a pointer skill for each kernel skill. Reads the
-            kernel repository beside the template, or at KERNEL_REPOSITORY.
+The generated repository names the kernel by the template's Pin, and gets the
+kernel lockfile and a pointer skill for each kernel skill. Bootstrap reads the
+kernel repository beside the template, or at KERNEL_REPOSITORY.
 
 Safety:
   An existing non-empty destination is refused and never overwritten.
@@ -95,30 +61,10 @@ function tokenAt(argv: string[], index: number): string {
   return token;
 }
 
-function parseWord<T extends string>(
-  words: readonly T[],
-  flag: "profile" | "starter",
-  value: string,
-): T {
-  const word = words.find((candidate) => candidate === value);
-  if (word !== undefined) {
-    return word;
-  }
-  throw new CliError(
-    `invalid_${flag}`,
-    `unsupported ${flag}: ${value}`,
-    `choose ${words.map((candidate) => `--${flag} ${candidate}`).join(" or ")}`,
-    2,
-    true,
-  );
-}
-
 const VALUE_FLAGS: Record<string, ValueFlag> = {
   "--destination": "destination",
   "--name": "name",
-  "--profile": "profile",
   "--source-packet": "sourcePacket",
-  "--starter": "starter",
 };
 
 function assignValueFlag(
@@ -126,35 +72,19 @@ function assignValueFlag(
   flag: ValueFlag,
   value: string,
 ): void {
-  if (flag === "profile") {
-    flags.profile = parseWord(PROFILES, "profile", value);
-    return;
-  }
-  if (flag === "starter") {
-    flags.starter = parseWord(STARTERS, "starter", value);
-    return;
-  }
   flags[flag] = value;
 }
 
 function assignBooleanFlag(flags: ParsedFlags, token: string): boolean {
-  if (token === "--monorepo") {
-    flags.monorepo = true;
-    return true;
-  }
   if (token === "--json") {
     flags.json = true;
-    return true;
-  }
-  if (token === "--kernel") {
-    flags.kernel = true;
     return true;
   }
   return false;
 }
 
 function parseFlags(argv: string[]): ParsedFlags {
-  const flags: ParsedFlags = { json: false, kernel: false, monorepo: false };
+  const flags: ParsedFlags = { json: false };
 
   for (let index = 0; index < argv.length; index += 1) {
     const token = tokenAt(argv, index);
@@ -182,35 +112,13 @@ function requireFlag(value: string | undefined): string {
   if (value === undefined) {
     throw new CliError(
       "missing_required_argument",
-      "--profile, --destination, and --source-packet are required",
+      "--destination and --source-packet are required",
       "run bun run bootstrap --help",
       2,
       true,
     );
   }
   return value;
-}
-
-function selectProjectRecipe(
-  profile: Profile,
-  flags: ParsedFlags,
-): ProjectRecipe {
-  const choice = selectRecipe({
-    profile,
-    monorepo: flags.monorepo,
-    starter: flags.starter,
-    kernel: flags.kernel,
-  });
-  if (choice.status === "selected") {
-    return choice.recipe;
-  }
-  throw new CliError(
-    "profile_option_mismatch",
-    choice.message,
-    choice.repair,
-    2,
-    true,
-  );
 }
 
 export function resolveRepositoryName(
@@ -310,17 +218,14 @@ export function parseArgs(argv: string[]): BootstrapOptions | "help" {
   }
 
   const flags = parseFlags(argv);
-  const profile = parseWord(PROFILES, "profile", requireFlag(flags.profile));
   const destination = requireFlag(flags.destination);
   const sourcePacket = requireFlag(flags.sourcePacket);
-  const recipe = selectProjectRecipe(profile, flags);
   validateSourcePacket(sourcePacket);
 
   return {
     destination: resolve(destination),
     json: flags.json,
     name: resolveRepositoryName(destination, flags.name),
-    recipe,
     sourcePacket,
   };
 }

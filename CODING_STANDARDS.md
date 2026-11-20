@@ -172,8 +172,6 @@ row's guide or gate note cites two distinct witnesses.
   with what the override installs; the overridden-package case in
   `tests/template/toolchain/generated-toolchain.test.ts` kills it.
 - Review only: every other gate that reads a lock or a generated file.
-  Static admission's `checkLock` compares an override's declaration and
-  its resolved record already.
 - Witnessed: [r4623512571], [r4623566986].
 
 ### Unread forms

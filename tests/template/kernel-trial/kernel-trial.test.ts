@@ -93,7 +93,7 @@ describe("the kernel trial", () => {
   );
 
   test(
-    "the template's kernel lockfile installs frozen, unchanged, and passes the check command, pointer skill check included, in a repository Bootstrap's command line makes with --kernel at the pinned commit",
+    "the template's kernel lockfile installs frozen, unchanged, and passes the check command, pointer skill check included, in a repository Bootstrap's command line makes at the pinned commit",
     async () => {
       const work = folder("kernel-lockfile-");
       const destination = join(work, "made");
@@ -104,9 +104,6 @@ describe("the kernel trial", () => {
           process.execPath,
           "run",
           "src/bootstrap.ts",
-          "--profile",
-          "durable",
-          "--kernel",
           "--destination",
           destination,
           "--source-packet",

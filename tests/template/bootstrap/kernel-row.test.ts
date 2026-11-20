@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
-import { KERNEL_RECIPE, lintsCode } from "../../../src/recipe.ts";
+import { copiesOf, KERNEL_RECIPE } from "../../../src/recipe.ts";
 import { listFiles, ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import {
   firstLayout,
@@ -62,7 +62,7 @@ function importsOf(source: string): string[] {
 
 describe("the kernel row", () => {
   test("copies folders that exist, and writes its own Template provenance values, which name no kernel commit", async () => {
-    for (const { from, only } of KERNEL_RECIPE.copies) {
+    for (const { from, only } of copiesOf(KERNEL_RECIPE)) {
       expect([from, statSync(join(ROOT, from)).isDirectory()]).toEqual([
         from,
         true,
@@ -73,17 +73,23 @@ describe("the kernel row", () => {
           true,
         ]);
     }
-    expect(lintsCode(KERNEL_RECIPE)).toBe(true);
     const { destination, request } = run();
     await bootstrapRow(request);
     const provenance = generatedJson(destination, ".cli-design-template.json");
     expect(provenance).toMatchObject({
-      profile: "durable",
-      starter: "kernel",
       sourcePacket: "/abs/packets/demo",
       entryPoint: "src/cli.ts",
       commandOwner: "src/commands.ts",
     });
+    expect(Object.keys(provenance as object).toSorted()).toEqual([
+      "commandOwner",
+      "entryPoint",
+      "registrationVersion",
+      "sourcePacket",
+      "specRevision",
+      "templateDirty",
+      "templateRevision",
+    ]);
     expect(JSON.stringify(provenance)).not.toContain(request.kernel.commit);
   });
 
