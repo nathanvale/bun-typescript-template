@@ -1,0 +1,13 @@
+diff --git a/scripts/kernel-trial.ts b/scripts/kernel-trial.ts
+index 0e2729f..acdd133 100644
+--- a/scripts/kernel-trial.ts
++++ b/scripts/kernel-trial.ts
+@@ -68,7 +68,7 @@ export class TrialRefusal extends Error {
+     cause: string,
+     code: "trial_failed" | "trial_stopped" = "trial_failed",
+   ) {
+-    super(`${cause} Repair: ${code === "trial_stopped" ? stopRepair : repair}`);
++    super(`${cause} Repair: ${code === "never" ? stopRepair : repair}`);
+     this.code = code;
+   }
+ }

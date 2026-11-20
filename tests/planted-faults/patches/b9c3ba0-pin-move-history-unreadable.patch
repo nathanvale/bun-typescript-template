@@ -1,0 +1,13 @@
+diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
+index ad9eb56..6d44ca8 100644
+--- a/scripts/pin-move.ts
++++ b/scripts/pin-move.ts
+@@ -129,7 +129,7 @@ function isAncestor(
+   branch: string,
+ ): boolean {
+   const run = git(repository, "merge-base", ["--is-ancestor", older, newer]);
+-  if (run.code === 0 || run.code === 1) return run.code === 0;
++  if (run.code !== 999) return run.code === 0;
+   throw new PinRefusal(
+     "kernel_history_unreadable",
+     `git cannot tell whether ${older} is an ancestor of ${newer} in the git repository at ${repository}: git says "${run.said}".`,

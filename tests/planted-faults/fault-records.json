@@ -1454,5 +1454,54 @@
     "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
     "title": "after a stop, starts no further step$",
     "source": "f815bb0 fix(pin-move): stop the trial's running step on SIGINT, SIGTERM or SIGHUP"
+  },
+  {
+    "id": "b9c3ba0-pin-move-history-unreadable",
+    "patch": "tests/planted-faults/patches/b9c3ba0-pin-move-history-unreadable.patch",
+    "testFile": "tests/template/pin-move/pin-verification.test.ts",
+    "title": "refuses, as unreadable history, a clone too shallow to hold the carry-out commit$",
+    "source": "b9c3ba0 fix(pin-move): verify against the pin's own remote branch, and refuse unreadable history"
+  },
+  {
+    "id": "b9c3ba0-pin-move-remote-failed",
+    "patch": "tests/planted-faults/patches/b9c3ba0-pin-move-remote-failed.patch",
+    "testFile": "tests/template/pin-move/pin-verification.test.ts",
+    "title": "refuses a remote git cannot read, naming git's exit$",
+    "source": "b9c3ba0 fix(pin-move): verify against the pin's own remote branch, and refuse unreadable history"
+  },
+  {
+    "id": "b9c3ba0-pin-move-remote-bound",
+    "patch": "tests/planted-faults/patches/b9c3ba0-pin-move-remote-bound.patch",
+    "testFile": "tests/template/pin-move/pin-verification.test.ts",
+    "title": "refuses a remote that does not answer within its bound$",
+    "source": "b9c3ba0 fix(pin-move): verify against the pin's own remote branch, and refuse unreadable history"
+  },
+  {
+    "id": "60bf97c-kernel-trial-stop-repair",
+    "patch": "tests/planted-faults/patches/60bf97c-kernel-trial-stop-repair.patch",
+    "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
+    "title": "that its caller stops is stopped with its process, and refused as stopped$",
+    "source": "60bf97c fix(kernel-trial): a trial stopped by a signal says so, with its own repair"
+  },
+  {
+    "id": "0352f0d-kernel-sibling-shared",
+    "patch": "tests/planted-faults/patches/0352f0d-kernel-sibling-shared.patch",
+    "testFile": "tests/template/kernel-trial/kernel-sibling.test.ts",
+    "title": "from a worktree elsewhere, beside the checkout git shares its objects with$",
+    "source": "0352f0d test(kernel-trial): find the kernel repository from a worktree, or refuse naming KERNEL_REPOSITORY"
+  },
+  {
+    "id": "0352f0d-kernel-sibling-refusal",
+    "patch": "tests/planted-faults/patches/0352f0d-kernel-sibling-refusal.patch",
+    "testFile": "tests/template/kernel-trial/kernel-sibling.test.ts",
+    "title": "nowhere, and refuses naming KERNEL_REPOSITORY$",
+    "source": "0352f0d test(kernel-trial): find the kernel repository from a worktree, or refuse naming KERNEL_REPOSITORY"
+  },
+  {
+    "id": "16c6e4d-action-checkout",
+    "patch": "tests/planted-faults/patches/16c6e4d-action-checkout.patch",
+    "testFile": "tests/template/kernel-trial/hosted-check.test.ts",
+    "title": "its step clones the remote the kernel pin names, with its history, into the folder beside the template, at the pinned commit$",
+    "source": "16c6e4d test(pin-move): make four tests hold as the kernel and npm move"
   }
 ]

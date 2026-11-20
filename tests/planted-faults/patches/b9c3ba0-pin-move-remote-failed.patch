@@ -1,0 +1,13 @@
+diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
+index ad9eb56..0f39113 100644
+--- a/scripts/pin-move.ts
++++ b/scripts/pin-move.ts
+@@ -109,7 +109,7 @@ export function pinBranchCommit(
+     throw unreadable(
+       `git ls-remote did not finish within ${limitMilliseconds} ms.`,
+     );
+-  if (run.exitCode !== 0)
++  if (run.exitCode === 999)
+     throw unreadable(
+       `git ls-remote exited ${run.exitCode} and says "${run.stderr.toString().trim().split("\n")[0] ?? ""}".`,
+     );
