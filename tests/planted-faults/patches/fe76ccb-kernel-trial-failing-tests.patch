@@ -1,13 +1,13 @@
 diff --git a/scripts/kernel-trial.ts b/scripts/kernel-trial.ts
-index 6213e49..93e9eb5 100644
+index 7dc5db0..544e61c 100644
 --- a/scripts/kernel-trial.ts
 +++ b/scripts/kernel-trial.ts
-@@ -106,7 +106,7 @@ function shownOutput(output: string): string {
-     }
+@@ -135,7 +135,7 @@ function shownOutput(output: string): string {
+     shown.push(...kept);
    }
    const last = `Its last lines:\n${lines.slice(-20).join("\n")}`;
--  return failing.length === 0
-+  return failing.length >= 0
+-  return shown.length === 0
++  return shown.length >= 0
      ? last
-     : `Its failing tests:\n${failing.join("\n")}\n${last}`;
+     : `Its failing tests:\n${shown.join("\n")}\n${last}`;
  }

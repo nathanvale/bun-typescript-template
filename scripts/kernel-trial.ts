@@ -89,26 +89,55 @@ export type KernelTrial = {
   readonly active?: TrialActive;
 };
 
-// Interface: what a failed step's refusal shows of its output. Each failing
-// test's lines, from bun test's "error:" line to its "(fail)" line, come
-// first wherever they are in the output, since the order test files run in
-// can leave them far from the end; then the last 20 lines.
-function shownOutput(output: string): string {
-  const lines = output.trimEnd().split("\n");
-  const failing: string[] = [];
-  let block: string[] | undefined;
+const testLines = 30;
+const failingLines = 120;
+
+function failingTests(lines: readonly string[]): string[][] {
+  const tests: string[][] = [];
+  let test: string[] | undefined;
   for (const line of lines) {
-    if (line.startsWith("error:")) block = [];
-    block?.push(line);
-    if (block !== undefined && line.startsWith("(fail) ")) {
-      failing.push(...block);
-      block = undefined;
+    if (test === undefined && line.startsWith("error:")) test = [];
+    test?.push(line);
+    if (test !== undefined && line.startsWith("(fail) ")) {
+      tests.push(test);
+      test = undefined;
     }
   }
+  return tests;
+}
+
+function shortened(test: readonly string[]): readonly string[] {
+  if (test.length <= testLines) return test;
+  const kept = testLines - 2;
+  return [
+    ...test.slice(0, kept),
+    `(${test.length - kept - 1} more lines of this failing test left out)`,
+    test.at(-1) ?? "",
+  ];
+}
+
+// Interface: what a failed step's refusal shows of its output. Each failing
+// test's lines, from the first bun test "error:" line after the previous
+// "(fail)" line to its own "(fail)" line, come first wherever they are in the
+// output, since the order test files run in can leave them far from the
+// end. Each test shows at most 30 lines and all of them at most 120, with a
+// line saying what was left out. Then the last 20 lines.
+function shownOutput(output: string): string {
+  const lines = output.trimEnd().split("\n");
+  const shown: string[] = [];
+  const tests = failingTests(lines);
+  for (const [index, test] of tests.entries()) {
+    const kept = shortened(test);
+    if (shown.length + kept.length > failingLines) {
+      shown.push(`(${tests.length - index} more failing tests left out)`);
+      break;
+    }
+    shown.push(...kept);
+  }
   const last = `Its last lines:\n${lines.slice(-20).join("\n")}`;
-  return failing.length === 0
+  return shown.length === 0
     ? last
-    : `Its failing tests:\n${failing.join("\n")}\n${last}`;
+    : `Its failing tests:\n${shown.join("\n")}\n${last}`;
 }
 
 function stopOf(active: TrialActive): string | undefined {
