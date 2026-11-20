@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { realpathSync } from "node:fs";
 import { join } from "node:path";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
-import { readKernel } from "../../../src/kernel-reader.ts";
+import { KernelRefusal, readKernel } from "../../../src/kernel-reader.ts";
 import {
   fetchBranchCommit,
   PinRefusal,
@@ -11,7 +11,12 @@ import {
 } from "../../../scripts/pin-move.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
-import { git, gitResult } from "../../support/git-fixture.ts";
+import {
+  commitIn,
+  git,
+  gitResult,
+  initRepository,
+} from "../../support/git-fixture.ts";
 import {
   commitOn,
   kernelClone,
@@ -178,6 +183,34 @@ describe("pin verification", () => {
       holds(repository, moved),
       refusalOf(repository, pin.commit, branchCommit),
     ]).toEqual([true, "no refusal"]);
+  });
+
+  test("refuses, before any fetch, a path inside another repository, and writes nothing into that repository", () => {
+    const remote = kernelClone(folder("pin-verification-remote-"));
+    const moved = commitOn(remote, [pin.commit], "only on the remote");
+    moveBranch(remote, "main", moved);
+    const enclosing = join(folder("pin-verification-"), "template");
+    initRepository(enclosing);
+    commitIn(enclosing, "a template file", { "src/index.ts": "export {};\n" });
+    const inside = join(enclosing, "src");
+    let refusal: unknown = "no refusal";
+    try {
+      fetchBranchCommit(inside, remote, moved);
+    } catch (error) {
+      refusal =
+        error instanceof KernelRefusal
+          ? { code: error.code, message: error.message }
+          : error;
+    }
+    expect(refusal).toMatchObject({ code: "kernel_repository_missing" });
+    const message = String(Reflect.get(Object(refusal), "message"));
+    expect([
+      message.startsWith(`No git repository is at ${inside}: git says "`),
+      message.endsWith(
+        "Repair: Put a clone of the kernel repository at that path, or give the path of one that is there.",
+      ),
+    ]).toEqual([true, true]);
+    expect(holds(enclosing, moved)).toBe(false);
   });
 
   test("leaves a commit the remote cannot give missing, so pin verification refuses it as unreadable history", () => {

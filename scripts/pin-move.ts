@@ -3,7 +3,6 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
-  realpathSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -21,6 +20,7 @@ import {
   KernelRefusal,
   type KernelSeam,
   openCommit,
+  repositoryAt,
 } from "../src/kernel-reader.ts";
 import {
   kernelTrial,
@@ -125,15 +125,16 @@ export function pinBranchCommit(
 // branch moved lacks it. When it is missing, it fetches that one commit from
 // `remote`, within `limitMilliseconds`, and says whether the clone holds it
 // afterwards. A fetch that fails or runs out of time changes nothing, and
-// pin verification then refuses the commit as unreadable history.
+// pin verification then refuses the commit as unreadable history. Before
+// any fetch it refuses, as the kernel reader does, a path that is not the
+// top of a git repository, so it never writes into an enclosing one.
 export function fetchBranchCommit(
   repository: string,
   remote: string,
   commit: string,
   limitMilliseconds = remoteMilliseconds,
 ): boolean {
-  if (!existsSync(repository)) return false;
-  const local = realpathSync(repository);
+  const local = repositoryAt(repository);
   const held = () =>
     git(local, "cat-file", ["-e", `${commit}^{commit}`]).code === 0;
   if (held()) return true;
