@@ -1,0 +1,13 @@
+diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
+index b8a1bfe..fe07672 100644
+--- a/scripts/pin-move.ts
++++ b/scripts/pin-move.ts
+@@ -128,7 +128,7 @@ export function movePin(trial: TrialPassed, template: string): PinMove {
+   const lockfile = join(template, KERNEL_LOCKFILE);
+   if (
+     !existsSync(lockfile) ||
+-    Buffer.compare(readFileSync(lockfile), trial.lockfile) !== 0
++    Buffer.compare(readFileSync(lockfile), trial.lockfile) !== 1
+   ) {
+     mkdirSync(dirname(lockfile), { recursive: true });
+     writeFileSync(lockfile, trial.lockfile);

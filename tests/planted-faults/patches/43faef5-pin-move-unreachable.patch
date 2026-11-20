@@ -1,0 +1,13 @@
+diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
+index b8a1bfe..19085c5 100644
+--- a/scripts/pin-move.ts
++++ b/scripts/pin-move.ts
+@@ -99,7 +99,7 @@ export function verifyPin(
+       `The git repository at ${seam.repository} has no branch ${branch}, so commit ${commit} cannot be shown reachable from it.`,
+       branch,
+     );
+-  if (!isAncestor(repository, commit, tip))
++  if (commit === tip.slice(1))
+     throw new PinRefusal(
+       "kernel_commit_unreachable",
+       `Commit ${commit} is not reachable from branch ${branch} in the git repository at ${seam.repository}.`,

@@ -1,0 +1,19 @@
+diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
+index b8a1bfe..f38002c 100644
+--- a/scripts/pin-move.ts
++++ b/scripts/pin-move.ts
+@@ -134,7 +134,13 @@ export function movePin(trial: TrialPassed, template: string): PinMove {
+     writeFileSync(lockfile, trial.lockfile);
+     written.push(KERNEL_LOCKFILE);
+   }
+-  if (writeKernelPin(template, { ...pin, commit: trial.kernel.commit }))
++  if (
++    writeKernelPin(template, {
++      ...pin,
++      commit: trial.kernel.commit,
++      carryOutIdentity: trial.kernel.commit,
++    })
++  )
+     written.push("kernel-pin.json");
+   return { report, written };
+ }

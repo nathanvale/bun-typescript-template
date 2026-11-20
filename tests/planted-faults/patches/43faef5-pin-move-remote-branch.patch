@@ -1,0 +1,13 @@
+diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
+index b8a1bfe..1299e44 100644
+--- a/scripts/pin-move.ts
++++ b/scripts/pin-move.ts
+@@ -63,7 +63,7 @@ export class PinRefusal extends Error {
+ // can lag behind it or be missing. A repository with no remote holds only
+ // its own branch.
+ function branchTip(repository: string, branch: string): string | undefined {
+-  for (const ref of [`refs/remotes/origin/${branch}`, `refs/heads/${branch}`]) {
++  for (const ref of [`refs/heads/${branch}`, `refs/remotes/origin/${branch}`]) {
+     const found = git(repository, "rev-parse", [
+       "--verify",
+       "--quiet",

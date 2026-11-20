@@ -1300,5 +1300,75 @@
     "testFile": "tests/template/bootstrap/template-revision.test.ts",
     "title": "refuses within its bound when git does not answer, naming the git command and its repair, and publishes nothing$",
     "source": "bd97f06 test(bootstrap): assert the exact refusal when git does not answer"
+  },
+  {
+    "id": "43faef5-pin-move-unreachable",
+    "patch": "tests/planted-faults/patches/43faef5-pin-move-unreachable.patch",
+    "testFile": "tests/template/pin-move/pin-verification.test.ts",
+    "title": "refuses a commit after the carry-out that the pin's branch does not reach$",
+    "source": "43faef5 feat(pin-move): the kernel trial, the pin move and the pin move report"
+  },
+  {
+    "id": "43faef5-pin-move-remote-branch",
+    "patch": "tests/planted-faults/patches/43faef5-pin-move-remote-branch.patch",
+    "testFile": "tests/template/pin-move/pin-verification.test.ts",
+    "title": "reads the remote's copy of the pin's branch",
+    "source": "43faef5 feat(pin-move): the kernel trial, the pin move and the pin move report"
+  },
+  {
+    "id": "43faef5-pin-move-carry-out",
+    "patch": "tests/planted-faults/patches/43faef5-pin-move-carry-out.patch",
+    "testFile": "tests/template/pin-move/pin-verification.test.ts",
+    "title": "refuses the template commit that holds slice S5",
+    "source": "43faef5 feat(pin-move): the kernel trial, the pin move and the pin move report"
+  },
+  {
+    "id": "43faef5-pin-move-order",
+    "patch": "tests/planted-faults/patches/43faef5-pin-move-order.patch",
+    "testFile": "tests/template/pin-move/pin-move.test.ts",
+    "title": "writes the changed kernel lockfile first and the pin last$",
+    "source": "43faef5 feat(pin-move): the kernel trial, the pin move and the pin move report"
+  },
+  {
+    "id": "43faef5-pin-move-unchanged-lockfile",
+    "patch": "tests/planted-faults/patches/43faef5-pin-move-unchanged-lockfile.patch",
+    "testFile": "tests/template/pin-move/pin-move.test.ts",
+    "title": "run twice with the same target, changes nothing the second time$",
+    "source": "43faef5 feat(pin-move): the kernel trial, the pin move and the pin move report"
+  },
+  {
+    "id": "43faef5-pin-move-carry-out-kept",
+    "patch": "tests/planted-faults/patches/43faef5-pin-move-carry-out-kept.patch",
+    "testFile": "tests/template/pin-move/pin-move.test.ts",
+    "title": "never changes the carry-out identity$",
+    "source": "43faef5 feat(pin-move): the kernel trial, the pin move and the pin move report"
+  },
+  {
+    "id": "43faef5-pin-move-trial-passed",
+    "patch": "tests/planted-faults/patches/43faef5-pin-move-trial-passed.patch",
+    "testFile": "tests/template/pin-move/pin-move-compile.test.ts",
+    "title": "does not compile when given a plain object",
+    "source": "43faef5 feat(pin-move): the kernel trial, the pin move and the pin move report"
+  },
+  {
+    "id": "43faef5-kernel-trial-check",
+    "patch": "tests/planted-faults/patches/43faef5-kernel-trial-check.patch",
+    "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
+    "title": "is refused at the check command for a kernel commit that exports nothing",
+    "source": "43faef5 feat(pin-move): the kernel trial, the pin move and the pin move report"
+  },
+  {
+    "id": "43faef5-kernel-trial-lockfile-made",
+    "patch": "tests/planted-faults/patches/43faef5-kernel-trial-lockfile-made.patch",
+    "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
+    "title": "is refused when its install makes no lockfile$",
+    "source": "43faef5 feat(pin-move): the kernel trial, the pin move and the pin move report"
+  },
+  {
+    "id": "a30972e-bootstrap-lockfile-missing",
+    "patch": "tests/planted-faults/patches/a30972e-bootstrap-lockfile-missing.patch",
+    "testFile": "tests/template/bootstrap/kernel-row-lockfile.test.ts",
+    "title": "a kernel lockfile asked of a template that holds none is refused before any staging folder exists$",
+    "source": "a30972e feat(bootstrap): the kernel row takes its lockfile as an input"
   }
 ]
