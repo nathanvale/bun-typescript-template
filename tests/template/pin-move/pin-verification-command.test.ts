@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { realpathSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { delimiter, join } from "node:path";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
 import { KernelRefusal } from "../../../src/kernel-reader.ts";
 import { PinRefusal, pinBranchCommit } from "../../../scripts/pin-move.ts";
@@ -22,13 +22,29 @@ import {
 } from "../../support/kernel-sibling.ts";
 import { withEnvironment } from "../../support/kernel-row-fixture.ts";
 import { pinnedTemplate } from "../../support/kernel-trial-fixture.ts";
-import { processWatchdog, spawnBounded } from "../../support/process.ts";
+import {
+  processAlive,
+  processWatchdog,
+  spawnBounded,
+} from "../../support/process.ts";
 import { streamWrites } from "../../support/stream-writes.ts";
 import { templateCopy } from "../../support/template-copy.ts";
 
 const pin = readKernelPin(ROOT);
 const folder = ownedFolders();
 const written = streamWrites();
+
+function gone(pid: number, boundMilliseconds: number): Promise<boolean> {
+  const started = Date.now();
+  return new Promise((resolve) => {
+    const poll = setInterval(() => {
+      const alive = processAlive(pid);
+      if (alive && Date.now() - started < boundMilliseconds) return;
+      clearInterval(poll);
+      resolve(!alive);
+    }, 10);
+  });
+}
 const usage =
   "Usage: bun run pin-verification [--kernel <path to the kernel repository>]\n";
 
@@ -150,12 +166,62 @@ describe("pin verification of the template's kernel pin", () => {
 });
 
 describe("the pin verification command", () => {
-  function pinVerification(copy: string, args: readonly string[]) {
+  function pinVerification(
+    copy: string,
+    args: readonly string[],
+    { bin, bound }: { bin?: string; bound?: number } = {},
+  ) {
+    const env: Record<string, string | undefined> = {
+      ...inherited(),
+      ...gitEnv,
+    };
     return spawnBounded(
       [process.execPath, join(copy, "scripts/pin-verification.ts"), ...args],
-      { cwd: copy, env: { ...inherited(), ...gitEnv } },
+      {
+        cwd: copy,
+        env:
+          bin === undefined
+            ? env
+            : { ...env, PATH: `${bin}${delimiter}${env.PATH ?? ""}` },
+        processGroup: true,
+        ...(bound === undefined ? {} : { boundMilliseconds: bound }),
+      },
     );
   }
+
+  test(
+    "that outlives its bound is stopped with its whole process group, so the git it started does not run on",
+    async () => {
+      const work = folder("pin-verification-hung-");
+      const bin = join(work, "bin");
+      const pidFile = join(work, "git.pid");
+      mkdirSync(bin);
+      writeFileSync(
+        join(bin, "git"),
+        `#!/bin/sh\necho $$ > ${JSON.stringify(pidFile)}\nexec sleep 30\n`,
+        { mode: 0o755 },
+      );
+      const copy = templateCopy(folder("pin-verification-command-"));
+      let pid: number | undefined;
+      try {
+        const failure = await pinVerification(
+          copy,
+          ["--kernel", siblingKernel()],
+          { bin, bound: 3_000 },
+        ).then(
+          () => "exited within its bound",
+          (error: unknown) => String(error),
+        );
+        expect(failure).toContain("did not exit within 3000 ms");
+        pid = Number(readFileSync(pidFile, "utf8"));
+        expect(await gone(pid, 2_000)).toBe(true);
+      } finally {
+        if (pid !== undefined && processAlive(pid))
+          process.kill(pid, "SIGKILL");
+      }
+    },
+    processWatchdog(1),
+  );
 
   test(
     "fails a template whose pin names a commit before the carry-out commit, and passes the template's own pin",
