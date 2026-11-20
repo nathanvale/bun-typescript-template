@@ -64,12 +64,20 @@ function mapIn(files: Record<string, string>): string {
   return folder;
 }
 
+const own = "| This repository | Words | [GLOSSARY.md](GLOSSARY.md) |";
 const ownedMap = (rows: readonly string[]) =>
   ["| Glossary | Owns | Where |", "| --- | --- | --- |", ...rows].join("\n");
 
 test("GM.h a link to a heading the target does not have fails, and one it has passes", () => {
-  expect(mapProblems("[map](GLOSSARY-MAP.md#glossary-map)", root)).toEqual([]);
-  expect(mapProblems("[map](GLOSSARY-MAP.md#no-such-heading)", root)).toEqual([
+  expect(
+    mapProblems("[own](GLOSSARY.md) [map](GLOSSARY-MAP.md#glossary-map)", root),
+  ).toEqual([]);
+  expect(
+    mapProblems(
+      "[own](GLOSSARY.md) [map](GLOSSARY-MAP.md#no-such-heading)",
+      root,
+    ),
+  ).toEqual([
     "GLOSSARY-MAP.md points to GLOSSARY-MAP.md#no-such-heading, and GLOSSARY-MAP.md has no heading with that anchor. Repair: correct the anchor, or drop it.",
   ]);
 });
@@ -102,7 +110,7 @@ test("GM.j an owner whose glossary file defines no term fails", () => {
 test("GM.k a glossary row whose target is not a GLOSSARY.md file fails, unless it owns no word", () => {
   expect(
     mapProblems(
-      ownedMap(["| Kernel | Kernel words | [here](package.json) |"]),
+      ownedMap([own, "| Kernel | Kernel words | [here](package.json) |"]),
       root,
     ),
   ).toEqual([
@@ -110,10 +118,16 @@ test("GM.k a glossary row whose target is not a GLOSSARY.md file fails, unless i
   ]);
   expect(
     mapProblems(
-      ownedMap(["| Kernel | No word. A copy | [here](package.json) |"]),
+      ownedMap([own, "| Kernel | No word. A copy | [here](package.json) |"]),
       root,
     ),
   ).toEqual([]);
+});
+
+test("GM.l a map that links no GLOSSARY.md of this repository fails, as the audit's package.json proof does", () => {
+  expect(mapProblems("[Glossary](package.json)", root)).toEqual([
+    "GLOSSARY-MAP.md does not link this repository's own GLOSSARY.md, so it names no glossary that this check can read. Repair: link GLOSSARY.md in the row of the glossary that owns this repository's words.",
+  ]);
 });
 
 test("GM.b a map that points to no file fails", () => {

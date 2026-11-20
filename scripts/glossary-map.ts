@@ -144,5 +144,14 @@ export function mapProblems(map: string, root: string): string[] {
     return [
       `${mapFile} points to no glossary file, so this check would check nothing. Repair: link each glossary it names.`,
     ];
-  return [...linkProblems(links, root), ...ownerProblems(map, root)];
+  const ownGlossary = links.some(({ path }) => path === "GLOSSARY.md");
+  return [
+    ...(ownGlossary
+      ? []
+      : [
+          `${mapFile} does not link this repository's own GLOSSARY.md, so it names no glossary that this check can read. Repair: link GLOSSARY.md in the row of the glossary that owns this repository's words.`,
+        ]),
+    ...linkProblems(links, root),
+    ...ownerProblems(map, root),
+  ];
 }
