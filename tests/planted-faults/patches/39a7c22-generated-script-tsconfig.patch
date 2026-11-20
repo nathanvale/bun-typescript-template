@@ -1,0 +1,11 @@
+diff --git a/generated-repository/settings/tsconfig.json b/generated-repository/settings/tsconfig.json
+index 15ce83d..a4c5e4f 100644
+--- a/generated-repository/settings/tsconfig.json
++++ b/generated-repository/settings/tsconfig.json
+@@ -1,5 +1,5 @@
+ {
+   "extends": "./tsconfig.base.json",
+-  "include": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"],
++  "include": ["src/**/*.ts", "tests/**/*.ts"],
+   "exclude": ["node_modules"]
+ }
