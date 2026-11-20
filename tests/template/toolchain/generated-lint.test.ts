@@ -294,6 +294,63 @@ test(
   generationTimeout,
 );
 
+const SCRIPT_CASES = [
+  ...repositoryGate
+    .filter(({ ruleId }) =>
+      ["repository/no-in-operator", "repository/no-locale-compare"].includes(
+        ruleId,
+      ),
+    )
+    .map((item) => ({ ...item, form: "typed" })),
+  {
+    ruleId: "repository/no-in-operator",
+    form: "untyped",
+    refused: 'export const inherited = "toString" in {};\n',
+    admitted: 'export const inherited = Object.hasOwn({}, "toString");\n',
+  },
+  {
+    ruleId: "repository/no-locale-compare",
+    form: "untyped",
+    refused:
+      'export const order = ["b", "a"].sort((a, b) => a.localeCompare(b));\n',
+    admitted:
+      'export const order = ["b", "a"].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));\n',
+  },
+];
+
+test(
+  "a repository Bootstrap generates refuses no-in-operator and no-locale-compare in a script, with the type information they need, and admits their clean forms",
+  async () => {
+    const root = await generatedRepository();
+    const lint = generatedLint(root);
+    const script = "scripts/probe.ts";
+    mkdirSync(join(root, "scripts"), { recursive: true });
+    const verdicts: Record<string, unknown> = {};
+    for (const { ruleId, form, refused, admitted } of SCRIPT_CASES) {
+      const rules = new Set([ruleId]);
+      const found = async (code: string) => {
+        writeFileSync(join(root, script), code);
+        return (await lint(script, code, rules)).map((hit) => hit.ruleId);
+      };
+      verdicts[`${ruleId} ${form}`] = {
+        refused: await found(refused),
+        admitted: await found(admitted),
+      };
+    }
+    rmSync(join(root, "scripts"), { recursive: true });
+    expect(verdicts).toEqual(
+      Object.fromEntries(
+        SCRIPT_CASES.map(({ ruleId, form }) => [
+          `${ruleId} ${form}`,
+          { refused: [ruleId], admitted: [] },
+        ]),
+      ),
+    );
+    expect(Object.keys(verdicts).length).toBe(4);
+  },
+  generationTimeout,
+);
+
 test(
   "a generated AGENTS.md ends with the comment guidance its lint backs",
   async () => {

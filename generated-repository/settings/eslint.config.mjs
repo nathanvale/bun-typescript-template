@@ -61,6 +61,13 @@ export default tseslint.config(
   },
   {
     files: ["scripts/**/*.ts"],
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
     plugins: { repository },
     rules: {
       "repository/no-locale-compare": "error",

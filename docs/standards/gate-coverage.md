@@ -109,6 +109,11 @@ gates and their witnesses.
   and fault `19348a4-eslint-config-rule-off` drops `no-comments` from the
   generated repository's lint settings; the case that compares a generated
   repository's lint rules kills both.
+- `no-in-operator` reads types, so a generated `scripts/` file needs the
+  project service and a `tsconfig.json` that includes it. Faults
+  `39a7c22-generated-script-types` and `39a7c22-generated-script-tsconfig`
+  take each away; the script case kills both through the rule's plain
+  JavaScript form.
 - The comment and planted-violation cases count each refusal of the lint
   rules they name and every fatal parse error. They leave out the kernel's
   own notices, such as an inline directive that its `src/` settings refuse.
