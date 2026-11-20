@@ -1,8 +1,5 @@
 import { git } from "../src/kernel-reader.ts";
 
-// Interface: what a reviewer of a pin move reads: every file of the kernel
-// repository added, changed or removed between the old and new pinned
-// commits, and the kernel's log lines between them, newest first.
 export type PinMoveReport = {
   readonly from: string;
   readonly to: string;
@@ -53,8 +50,6 @@ function shown(path: string): string {
   return Buffer.from(path, "latin1").toString("utf8");
 }
 
-// Interface: reads both commits from the git objects of the kernel
-// repository at `repository`, a real path the kernel reader has opened.
 export function pinMoveReport(
   repository: string,
   from: string,

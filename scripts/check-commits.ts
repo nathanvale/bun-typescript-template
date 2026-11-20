@@ -81,8 +81,6 @@ function pointsBackTo(admin: string, dir: string): boolean {
   );
 }
 
-// Platform: Deleting this one worktree's admin folder is what `git worktree prune`
-// does for it, without pruning anyone else's worktree.
 export function release(
   run: Run,
   dir: string,

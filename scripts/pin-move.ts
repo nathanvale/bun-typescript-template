@@ -75,11 +75,6 @@ export class PinRefusal extends Error {
 
 const remoteMilliseconds = 20_000;
 
-// Interface: the commit that the pin's named branch points at on the pin's
-// own remote, read with git ls-remote, never from a local clone, whose
-// branches can hold unpushed commits or name another repository. It
-// refuses when the remote does not answer within `limitMilliseconds`, when
-// git fails, and when the remote has no such branch.
 export function pinBranchCommit(
   { remote, branch }: Pick<KernelPin, "remote" | "branch">,
   limitMilliseconds = remoteMilliseconds,
@@ -120,16 +115,8 @@ export function pinBranchCommit(
   return commit;
 }
 
-// Interface: makes sure the clone at `repository` holds `commit`, the
-// commit the pin's branch points at on `remote`: a clone made before the
-// branch moved lacks it. When it is missing, it fetches that one commit from
-// `remote`, within `limitMilliseconds`, and says whether the clone holds it
-// afterwards. It runs no automatic maintenance, which git starts in the
-// background after a fetch and which then writes into the clone after this
-// returns. A fetch that fails or runs out of time changes nothing, and
-// pin verification then refuses the commit as unreadable history. Before
-// any fetch it refuses, as the kernel reader does, a path that is not the
-// top of a git repository, so it never writes into an enclosing one.
+// Platform: git starts automatic maintenance in the background after a fetch,
+// and it writes into the clone after the fetch returns.
 export function fetchBranchCommit(
   repository: string,
   remote: string,
@@ -174,11 +161,6 @@ export function fetchBranchCommit(
   return held();
 }
 
-// Interface: the commit that the pin's branch points at on the pin's remote
-// (see pinBranchCommit), with the clone at `repository` holding it (see
-// fetchBranchCommit), so a clone made before the branch moved can be judged
-// against it. Every command that verifies against a kernel clone reads the
-// branch commit through it. It refuses as pinBranchCommit does.
 export function branchCommitHeldBy(
   pin: Pick<KernelPin, "remote" | "branch">,
   repository: string,
@@ -206,15 +188,6 @@ function isAncestor(
   );
 }
 
-// Interface: pin verification. The commit must be reachable from
-// `branchCommit`, the commit the pin's named branch points at on the pin's
-// remote (see pinBranchCommit), and the carry-out commit must be that commit
-// or an ancestor of it: the kernel repository carries the template's
-// history, so commits from before the carry-out are reachable too. It reads
-// git history only, never a kernel declaration, so it judges any commit on
-// the branch. It refuses by throwing a KernelRefusal for a repository or
-// commit the kernel reader cannot open, and a PinRefusal otherwise. Returns
-// the repository's real path.
 export function verifyPin(
   seam: KernelSeam,
   { branch, carryOutIdentity }: Pick<KernelPin, "branch" | "carryOutIdentity">,
@@ -236,13 +209,6 @@ export function verifyPin(
   return repository;
 }
 
-// Interface: the pin move. It takes a passed kernel trial, so a pin move
-// without one does not compile. It verifies the trial's commit against the
-// pin at `template` and `branchCommit`, the commit the pin's branch points
-// at on the pin's remote, builds the pin move report, then writes the lockfile the
-// trial qualified, if its bytes changed, and the pin last, if it changed. The
-// carry-out identity is copied from the pin as it was. It commits nothing,
-// and run twice with the same trial it writes nothing the second time.
 export function movePin(
   trial: TrialPassed,
   template: string,
@@ -271,8 +237,6 @@ export function movePin(
 const usage =
   "Usage: bun run pin-move <full kernel commit> [--kernel <path to the kernel repository>]\n";
 
-// Interface: the pin move command's arguments: one commit, and the kernel
-// repository's path after --kernel. Anything else is no arguments at all.
 export function argumentsOf(
   argv: readonly string[],
 ): { readonly commit: string; readonly path?: string } | undefined {
@@ -297,10 +261,6 @@ function refusalExit(error: unknown): number {
 
 const stopSignals = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
 
-// Interface: runs `work` with SIGINT, SIGTERM and SIGHUP stopping the step
-// `active` holds, instead of ending the process, and removes those handlers
-// when `work` settles. The pin move command runs its whole trial and pin
-// move inside it.
 export async function withStopSignals<Result>(
   active: TrialActive,
   work: () => Promise<Result>,
@@ -317,14 +277,6 @@ export async function withStopSignals<Result>(
   }
 }
 
-// Interface: the pin move command. The kernel repository defaults to the
-// sibling beside the template. It reads the pin's branch from the pin's
-// remote, fetches that commit into the clone if the clone lacks it, and
-// verifies the commit before the trial, so a refused commit costs
-// no install, and keeps the trial's folder only for the
-// run. SIGINT, SIGTERM or SIGHUP stops the trial's running step with its
-// process group; the command then writes nothing, removes the trial's
-// folder and exits 1.
 export async function main(argv: readonly string[]): Promise<number> {
   const given = argumentsOf(argv);
   if (given === undefined) {
