@@ -1,12 +1,14 @@
-diff --git a/tests/support/kernel-sibling.ts b/tests/support/kernel-sibling.ts
-index 82b0ef2..1c1f5ba 100644
---- a/tests/support/kernel-sibling.ts
-+++ b/tests/support/kernel-sibling.ts
-@@ -32,7 +32,6 @@ export function findSiblingKernel(
-   );
+diff --git a/src/kernel-pin.ts b/src/kernel-pin.ts
+index 4ec72f3..a195ec5 100644
+--- a/src/kernel-pin.ts
++++ b/src/kernel-pin.ts
+@@ -121,9 +121,6 @@ export function findSiblingKernel(
+   ]);
    const places = [
      siblingKernelPath(root, pin),
--    siblingKernelPath(dirname(shared), pin),
+-    ...(shared.ok
+-      ? [siblingKernelPath(dirname(shared.stdout.toString().trim()), pin)]
+-      : []),
    ];
    const found = places.find((place) => existsSync(place));
    if (found !== undefined) return found;
