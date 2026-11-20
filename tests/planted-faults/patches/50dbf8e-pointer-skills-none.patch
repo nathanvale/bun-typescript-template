@@ -1,0 +1,13 @@
+diff --git a/generated-repository/application/tests/pointer-skills.test.ts b/generated-repository/application/tests/pointer-skills.test.ts
+index e9db2a6..8cadcf1 100644
+--- a/generated-repository/application/tests/pointer-skills.test.ts
++++ b/generated-repository/application/tests/pointer-skills.test.ts
+@@ -51,7 +51,7 @@ function pointerSkills(): PointerSkill[] {
+ 
+ test("the repository has a pointer skill", () => {
+   expect(
+-    pointerSkills().length === 0
++    pointerSkills().length < 0
+       ? [
+           `No skill in .agents/skills names a Full skill. Repair: restore the pointer skills Bootstrap wrote, each with its Full skill and Pinned commit lines.`,
+         ]

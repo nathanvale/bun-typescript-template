@@ -1503,5 +1503,61 @@
     "testFile": "tests/template/kernel-trial/hosted-check.test.ts",
     "title": "its step clones the remote the kernel pin names, with its history, into the folder beside the template, at the pinned commit$",
     "source": "16c6e4d test(pin-move): make four tests hold as the kernel and npm move"
+  },
+  {
+    "id": "50dbf8e-pointer-skills-none",
+    "patch": "tests/planted-faults/patches/50dbf8e-pointer-skills-none.patch",
+    "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
+    "title": "fails when no skill names a full skill, so it never checks nothing$",
+    "source": "50dbf8e feat(bootstrap): give the kernel row a pointer skill for the author skill, checked against the Pin"
+  },
+  {
+    "id": "50dbf8e-pointer-skills-commit",
+    "patch": "tests/planted-faults/patches/50dbf8e-pointer-skills-commit.patch",
+    "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
+    "title": "fails when the pointer names a commit package.json does not pin$",
+    "source": "50dbf8e feat(bootstrap): give the kernel row a pointer skill for the author skill, checked against the Pin"
+  },
+  {
+    "id": "50dbf8e-pointer-skills-full-skill",
+    "patch": "tests/planted-faults/patches/50dbf8e-pointer-skills-full-skill.patch",
+    "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
+    "title": "fails when the installed kernel does not hold the full skill the pointer names$",
+    "source": "50dbf8e feat(bootstrap): give the kernel row a pointer skill for the author skill, checked against the Pin"
+  },
+  {
+    "id": "50dbf8e-bootstrap-skill-links",
+    "patch": "tests/planted-faults/patches/50dbf8e-bootstrap-skill-links.patch",
+    "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
+    "title": "link each from \\.claude/skills$",
+    "source": "50dbf8e feat(bootstrap): give the kernel row a pointer skill for the author skill, checked against the Pin"
+  },
+  {
+    "id": "9e160bd-recipe-kernel-durable",
+    "patch": "tests/planted-faults/patches/9e160bd-recipe-kernel-durable.patch",
+    "testFile": "tests/template/bootstrap/recipe.test.ts",
+    "title": "every flag combination maps to exactly one row or one refusal$",
+    "source": "9e160bd feat(bootstrap): offer the kernel row on the command line with --kernel"
+  },
+  {
+    "id": "9e160bd-recipe-kernel-starter",
+    "patch": "tests/planted-faults/patches/9e160bd-recipe-kernel-starter.patch",
+    "testFile": "tests/template/bootstrap/recipe.test.ts",
+    "title": "every flag combination maps to exactly one row or one refusal$",
+    "source": "9e160bd feat(bootstrap): offer the kernel row on the command line with --kernel"
+  },
+  {
+    "id": "9e160bd-recipe-kernel-monorepo",
+    "patch": "tests/planted-faults/patches/9e160bd-recipe-kernel-monorepo.patch",
+    "testFile": "tests/template/bootstrap/recipe.test.ts",
+    "title": "every flag combination maps to exactly one row or one refusal$",
+    "source": "9e160bd feat(bootstrap): offer the kernel row on the command line with --kernel"
+  },
+  {
+    "id": "9e160bd-bootstrap-kernel-refusal",
+    "patch": "tests/planted-faults/patches/9e160bd-bootstrap-kernel-refusal.patch",
+    "testFile": "tests/template/bootstrap/kernel-row-refusals.test.ts",
+    "title": "reports a missing kernel repository at KERNEL_REPOSITORY in its envelope, with the kernel reader's code and repair, before any folder is made$",
+    "source": "9e160bd feat(bootstrap): offer the kernel row on the command line with --kernel"
   }
 ]

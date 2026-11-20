@@ -1,0 +1,13 @@
+diff --git a/generated-repository/application/tests/pointer-skills.test.ts b/generated-repository/application/tests/pointer-skills.test.ts
+index e9db2a6..4b62fc0 100644
+--- a/generated-repository/application/tests/pointer-skills.test.ts
++++ b/generated-repository/application/tests/pointer-skills.test.ts
+@@ -63,7 +63,7 @@ test("each pointer skill names the commit package.json pins", () => {
+   const commit = pinnedCommit();
+   expect(
+     pointerSkills()
+-      .filter((skill) => skill.pinnedCommit !== commit)
++      .filter((skill) => skill.pinnedCommit === "")
+       .map(
+         ({ name, pinnedCommit }) =>
+           `.agents/skills/${name}/SKILL.md names ${pinnedCommit}, and package.json pins ${commit}. Repair: write ${commit} on its Pinned commit line, then read the full skill at that commit for any change.`,

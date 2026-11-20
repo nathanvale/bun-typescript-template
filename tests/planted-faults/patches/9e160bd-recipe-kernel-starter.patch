@@ -1,0 +1,13 @@
+diff --git a/src/recipe.ts b/src/recipe.ts
+index 7dac243..4fd8abf 100644
+--- a/src/recipe.ts
++++ b/src/recipe.ts
+@@ -211,7 +211,7 @@ function kernelChoice(selection: Selection): RecipeChoice {
+       message: "--kernel is available only with --profile durable",
+       repair: "remove --kernel or choose --profile durable",
+     };
+-  if (selection.starter !== undefined)
++  if (selection.starter === "complex")
+     return {
+       status: "refused",
+       message: "--kernel and --starter cannot be combined",
