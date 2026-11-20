@@ -1279,5 +1279,19 @@
     "testFile": "tests/template/bootstrap/kernel-row.test.ts",
     "title": "with every token substituted$",
     "source": "f49d1f4 feat(bootstrap): the kernel row names the kernel by its Pin, and stamping is removed"
+  },
+  {
+    "id": "5e9351a-bootstrap-git-bound",
+    "patch": "tests/planted-faults/patches/5e9351a-bootstrap-git-bound.patch",
+    "testFile": "tests/template/bootstrap/template-revision.test.ts",
+    "title": "refuses within its bound when git does not answer, and publishes nothing$",
+    "source": "5e9351a fix(bootstrap): bound the git reads for Template provenance"
+  },
+  {
+    "id": "b41475d-generated-lint-addons",
+    "patch": "tests/planted-faults/patches/b41475d-generated-lint-addons.patch",
+    "testFile": "tests/template/bootstrap/kernel-row.test.ts",
+    "title": "turns on no add-on's lint allowances, so a folder under src/addons/ gets the same lint rules as the rest of the application$",
+    "source": "b41475d fix(generated-repository): turn on no add-on's lint allowances"
   }
 ]

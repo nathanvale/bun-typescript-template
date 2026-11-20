@@ -135,6 +135,16 @@ describe("the kernel row", () => {
     });
   });
 
+  test("turns on no add-on's lint allowances, so a folder under src/addons/ gets the same lint rules as the rest of the application", async () => {
+    const { destination, request } = run();
+    await bootstrapRow(request);
+    const settings = readFileSync(
+      join(destination, "eslint.config.mjs"),
+      "utf8",
+    );
+    expect(settings.match(/addons: [^,\n]*,/g)).toEqual(["addons: [],"]);
+  });
+
   test("gives a check command with no stamp check step", async () => {
     const { destination, request } = run();
     await bootstrapRow(request);
