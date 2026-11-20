@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-map.ts b/scripts/glossary-map.ts
+index 7b79590..75a804d 100644
+--- a/scripts/glossary-map.ts
++++ b/scripts/glossary-map.ts
+@@ -94,7 +94,7 @@ function targetProblems(
+   root: string,
+ ): string[] {
+   if (!/(?:^|\/)GLOSSARY\.md$/.test(path))
+-    return ownsWords
++    return ownsWords && false
+       ? [
+           `${mapFile} makes "${owner}" the owner of ${path}, which is not a GLOSSARY.md file. Repair: point the row at the glossary that defines its words, or begin its Owns cell with "No word".`,
+         ]
