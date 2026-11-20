@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { appendFileSync, existsSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
 import {
@@ -11,7 +11,10 @@ import { KERNEL_LOCKFILE } from "../../../src/recipe.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import { git, gitEnv, inherited } from "../../support/git-fixture.ts";
-import { bootstrapRow } from "../../support/kernel-row-fixture.ts";
+import {
+  bootstrapRow,
+  withEnvironment,
+} from "../../support/kernel-row-fixture.ts";
 import {
   kernelClone,
   siblingKernel,
@@ -19,7 +22,7 @@ import {
 } from "../../support/kernel-sibling.ts";
 import {
   oneDependencyChanged,
-  trialOf,
+  kernelTrials,
   trialTimeout,
 } from "../../support/kernel-trial-fixture.ts";
 import {
@@ -30,6 +33,7 @@ import {
 import { callInCopy, templateCopy } from "../../support/template-copy.ts";
 
 const folder = ownedFolders();
+const { trialOf, trialEnv } = kernelTrials();
 const repair =
   "Correct the kernel commit, or the template files the trial copies, until that step passes, then run the kernel trial again. The pin does not move until it passes.";
 const text = (bytes: Uint8Array) => Buffer.from(bytes).toString("utf8");
@@ -72,6 +76,7 @@ describe("the kernel trial", () => {
             kernelFrom: "clone",
           },
           trialTimeout(1) - 10_000,
+          trialEnv(),
         ),
       ).toMatchObject({
         returned: { kernel: { repository, commit: trialBase } },
@@ -205,6 +210,7 @@ describe("the kernel trial", () => {
             kernelFrom: "clone",
           },
           trialTimeout(1) - 10_000,
+          trialEnv(),
         ),
       ).toEqual({
         refused: {
@@ -212,6 +218,24 @@ describe("the kernel trial", () => {
           message: `The kernel trial's install in ${join(trial, "first")} made no lockfile. Repair: Correct the kernel commit, or the template files the trial copies, until that step passes, then run the kernel trial again. The pin does not move until it passes.`,
         },
       });
+    },
+    trialTimeout(1),
+  );
+});
+
+describe("kernel trials of test kernel repositories", () => {
+  test(
+    "leave the developer's own Bun cache as it was",
+    async () => {
+      const work = folder("kernel-trial-");
+      const own = folder("bun-cache-own-");
+      await withEnvironment({ BUN_INSTALL_CACHE_DIR: own }, () =>
+        trialOf(join(work, "trial"), {
+          repository: kernelClone(work, trialBase),
+          commit: trialBase,
+        }),
+      );
+      expect(readdirSync(own)).toEqual([]);
     },
     trialTimeout(1),
   );
@@ -333,7 +357,7 @@ describe("a generated repository whose Pin and kernel lockfile name different co
         [process.execPath, "install", "--frozen-lockfile"],
         {
           cwd: destination,
-          env: { ...inherited(), ...gitEnv },
+          env: { ...inherited(), ...gitEnv, ...trialEnv() },
           boundMilliseconds: 60_000,
           processGroup: true,
         },

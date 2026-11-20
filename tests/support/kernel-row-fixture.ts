@@ -50,13 +50,20 @@ export function kernelRowFixture() {
 // Interface: runs `work` in this process with git isolated from the
 // caller's configuration, because Bootstrap reads the template's commit with
 // git for Template provenance.
-export async function withIsolatedGit<Result>(
+function withIsolatedGit<Result>(work: () => Promise<Result>): Promise<Result> {
+  return withEnvironment(gitEnv, work);
+}
+
+// Interface: runs `work` in this process with `variables` set on
+// process.env, and restores each one afterwards.
+export async function withEnvironment<Result>(
+  variables: Readonly<Record<string, string>>,
   work: () => Promise<Result>,
 ): Promise<Result> {
   const before = new Map(
-    Object.keys(gitEnv).map((name) => [name, process.env[name]]),
+    Object.keys(variables).map((name) => [name, process.env[name]]),
   );
-  Object.assign(process.env, gitEnv);
+  Object.assign(process.env, variables);
   try {
     return await work();
   } finally {

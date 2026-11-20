@@ -30,7 +30,7 @@ import {
   foldersRenamed,
   oneDependencyChanged,
   pinnedTemplate,
-  trialOf,
+  kernelTrials,
   trialTimeout,
 } from "../../support/kernel-trial-fixture.ts";
 import { spawnBounded } from "../../support/process.ts";
@@ -39,6 +39,7 @@ import { testFolder } from "../../support/test-folder.ts";
 
 const { carryOutIdentity } = readKernelPin(ROOT);
 const folder = ownedFolders();
+const { trialOf, trialEnv } = kernelTrials();
 const pinFile = kernelPinFile;
 let work = "";
 let changed = "";
@@ -291,7 +292,7 @@ const trial = await kernelTrial({ kernel: { repository: ${JSON.stringify(renamin
 process.stdout.write(JSON.stringify(movePin(trial, ${JSON.stringify(copy)}).written));`;
       const moved = await spawnBounded([process.execPath, "--eval", script], {
         cwd: copy,
-        env: { ...inherited(), ...gitEnv },
+        env: { ...inherited(), ...gitEnv, ...trialEnv() },
         boundMilliseconds: trialTimeout(1) - 20_000,
         processGroup: true,
       });

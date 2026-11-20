@@ -46,6 +46,7 @@ export async function callInCopy(
   exported: string,
   argument: unknown,
   boundMilliseconds?: number,
+  env: Readonly<Record<string, string>> = {},
 ) {
   const script = `const called = (await import(${JSON.stringify(join(copy, module))}))[${JSON.stringify(exported)}];
 try {
@@ -55,7 +56,12 @@ try {
 }`;
   const run = await spawnBounded([process.execPath, "--eval", script], {
     cwd: copy,
-    env: { ...inherited(), ...gitEnv, CALL_ARGUMENT: JSON.stringify(argument) },
+    env: {
+      ...inherited(),
+      ...gitEnv,
+      ...env,
+      CALL_ARGUMENT: JSON.stringify(argument),
+    },
     ...(boundMilliseconds === undefined ? {} : { boundMilliseconds }),
   });
   if (run.exit !== 0)
