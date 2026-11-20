@@ -88,12 +88,14 @@ gates and their witnesses.
 
 ## Generated repositories
 
-- Bootstrap copies the six lint rule files in `config/` into a repository
-  generated from a durable recipe. That recipe's `eslint.config.mjs` turns
-  on every lint rule this repository's `eslint.config.mjs` turns on for a
-  file at the same path.
-- `tests/template/toolchain/generated-lint.test.ts` generates each recipe.
-  It fails when a generated repository lacks a lint rule file, holds
+- Bootstrap copies the six lint rule files in `config/` into every
+  generated repository. Its `eslint.config.mjs` turns on every lint rule
+  this repository's `eslint.config.mjs` turns on for a file at the same
+  path.
+- `tests/template/toolchain/generated-lint.test.ts` generates a repository
+  with Bootstrap, and installs the template's packages and the kernel at the
+  template's Pin beside it. It fails when the repository lacks a lint rule
+  file, holds
   another text of one, or sets a lint rule another way for a file. It
   judges each generated file and twelve probe paths, `scripts/probe.ts`
   among them, so a lint rule narrowed to today's files fails too. It also
@@ -103,14 +105,14 @@ gates and their witnesses.
   `815691a-generated-lint-forms` drops the `.js`, `.cjs`, `.jsx` and `.tsx`
   probes; the case that names each file and probe path a lint rule misses
   kills it. Witnessed: [r4625491126].
-- Fault `19348a4-recipe-rule-file` drops a lint rule file from the recipe
-  table, and fault `19348a4-eslint-config-rule-off` drops `no-comments`
-  from the durable recipe's lint config; the durable recipe's case kills
-  both.
-- Static admission compares the lint rule files of a repository generated
-  with a CLI starter with this repository's. Fault
-  `19348a4-static-admission-rule-files` drops that comparison.
-- A kernel row repository's `tests/pointer-skills.test.ts` holds its pin
+- Fault `19348a4-recipe-rule-file` drops a lint rule file from the recipe,
+  and fault `19348a4-eslint-config-rule-off` drops `no-comments` from the
+  generated repository's lint settings; the case that compares a generated
+  repository's lint rules kills both.
+- The comment and planted-violation cases count each refusal of the lint
+  rules they name and every fatal parse error. They leave out the kernel's
+  own notices, such as an inline directive that its `src/` settings refuse.
+- A generated repository's `tests/pointer-skills.test.ts` holds its pin
   to what an install resolved: `bun.lock`'s kernel line and resolved
   record, and the installed kernel's `.bun-tag`, not only `package.json`.
   Faults `90ef4a0-pointer-skills-lockfile`,
@@ -119,13 +121,11 @@ gates and their witnesses.
   no install passed the check), [44762a3] (a resolved record at another
   commit passed, and a frozen install then installed it). A new refusal in it with no fault record
   stays review. Witnessed: [47e2ec3] (one landed with none).
-- A scratch repository has no lint. Its `AGENTS.md` states the comment
-  lint rule as an instruction.
 - Review only: the truth of a `Platform:` or `Interface:` claim in a
-  generated repository; a lint rule file edited in a repository generated
-  with no CLI starter; a folder the template has no file under, such as a
-  package's own `scripts/`; and each gate script of this repository, which
-  no generated repository gets.
+  generated repository; a lint rule file edited in a generated repository;
+  a folder the template has no file under, such as a package's own
+  `scripts/`; and each gate script of this repository, which no generated
+  repository gets.
 
 ## Untrusted-value lints
 
@@ -181,8 +181,8 @@ file extensions in those directories.
   Consult the [CLI kernel authority](../agents/cli-kernel.md).
 - A generated repository gets these lint rules too: see
   [Generated repositories](#generated-repositories).
-- Not covered: `starters/simple/`, `starters/complex/`, the bootstrap
-  profiles, the `.ts.txt` fixtures, YAML and Markdown.
+- Not covered: `generated-repository/`, which ESLint skips here and a
+  generated repository lints, the `.ts.txt` fixtures, YAML and Markdown.
 
 ## Host path lint
 
@@ -193,7 +193,8 @@ file extensions in those directories.
   hosts have them.
 - Review only: a path built at run time, such as `"/" + "tmp"` or
   `join("/", "usr")`; a host path after a template expression; other roots,
-  such as `/proc` or `/run`; and `starters/`, which ESLint skips.
+  such as `/proc` or `/run`; and `generated-repository/`, which ESLint
+  skips here.
 
 ## Fault replay
 

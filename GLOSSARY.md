@@ -19,27 +19,25 @@ after it in every file and folder name. It refuses a word noted
 ### Creating a repository
 
 **Template**:
-The canonical owner of portable template source and of its own pin. Bootstrap's
-kernel row (`--kernel`) gives its generated repository a pin of its own; the
-other recipes have no kernel dependency. The template does not own
-the kernel or add-on source.
+The canonical owner of portable template source and of its own pin. Bootstrap
+gives each generated repository a pin of its own, at the template's Pin. The
+template does not own the kernel or add-on source.
 
 **Foundation**:
 The template, kernel repository, composer, checker, exemplar and
 agent-cli-design skill together. It is broader than the kernel.
 
 **Bootstrap**:
-The command, `bun run bootstrap`, that creates a generated repository from the
-recipe that matches what was asked for.
+The command, `bun run bootstrap`, that creates a generated repository with the
+kernel at the template's Pin and the add-ons asked for.
 
 **Recipe**:
-One row of the recipe table. For a repository shape, it says which folders
-Bootstrap copies, which CLI starter the generated repository
-gets, and which check command it runs.
+One row of the recipe table. It says which folders Bootstrap copies into a
+generated repository, which of them carries the Pin, and which check command
+the repository runs. The type check refuses a row without the Pin.
 
 **Recipe table**:
-The module that holds every recipe and picks the one that matches what was
-asked for.
+The module that holds the recipe Bootstrap follows. It holds one row.
 
 **Generated repository**:
 A repository created by Bootstrap.
@@ -55,16 +53,6 @@ when that commit is not the one its pin names, or when the installed kernel
 does not hold the full skill.
 _Avoid_: stub, copy (for a pointer skill)
 
-**Repository shape**:
-One kind of repository that Bootstrap can make, set by its Repository profile
-and its package layout.
-_Avoid_: kind, variant, the full one (for a shape)
-
-**CLI starter**:
-One of the simple or complex Contract 2.0 command-line starters that Bootstrap
-can emit today.
-_Avoid_: CLI profile, policy packet, starter (unqualified)
-
 **Template version**:
 One released state of the template, named by a git tag.
 _Avoid_: version (unqualified); release, pin (for a template version)
@@ -75,7 +63,7 @@ _Avoid_: version (unqualified); release, pin (for a template version)
 The whole change that moves the kernel and add-on source and their tests out
 of the template into the kernel repository, while each generated repository
 gets the kernel through its pin. It covers every step, from preparation to
-removing the old CLI starters.
+removing every recipe row without the Pin.
 For the single step that moves the files, say carry-out.
 _Avoid_: extraction, migration (when the kernel split is meant)
 
@@ -85,8 +73,8 @@ local path.
 _Avoid_: submodule, dependency (unless one is meant)
 
 **Kernel migration**:
-Moving a repository made with an old CLI starter onto an installed kernel at a
-pin. It is not a Template upgrade.
+Moving a repository that Bootstrap made before the kernel split onto an
+installed kernel at a pin. It is not a Template upgrade.
 _Avoid_: upgrade, migration (unqualified)
 
 ### Pins

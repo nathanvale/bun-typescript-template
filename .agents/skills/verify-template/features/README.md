@@ -52,8 +52,8 @@ user relies on. It then uses exactly four H2 sections in this order.
 
 ## Features
 
-- [Bootstrap](bootstrap.md) creates a generated repository from a profile and
-  refuses unsafe or contradictory requests.
+- [Bootstrap](bootstrap.md) creates a generated repository with the kernel at
+  the template's Pin and refuses unsafe requests.
 - [Check command](check-command.md) is the generated repository's
   `bun run check`, which refuses a lint, format, type, test or Fallow mistake.
 - [Doctor](doctor.md) says whether a template checkout can run its gates, and
@@ -73,14 +73,9 @@ before claiming them verified.
 - `bun run check:names` given paths or `--tool-call`, and the Claude Code and
   Codex names check hooks that call it.
 - The pre-push hook.
-- `bun run admit:cli` and `bun run admit:static`.
+- `bun run admit:cli`.
 - `bun run test:area` and the template's own `bun run check`, `lint`,
   `format`, `format:check`, `typecheck` and `quality:fallow`.
 - The generated repository's own CLI beyond `bun run start --help`.
-- `bootstrap --starter simple` and `--starter complex`, left out while
-  `starters/` is set to be removed ([MAG-129]).
-- `bootstrap --kernel`, the kernel row: it needs the kernel repository beside
-  the template or named in `KERNEL_REPOSITORY`, and no recipe drives it yet. The
-  kernel repository's own map owns the kernel's behaviour.
-
-[MAG-129]: https://linear.app/myagentdojo/issue/MAG-129
+- The kernel's own behaviour in a generated repository: the kernel
+  repository's own map owns it.
