@@ -20,6 +20,7 @@ import {
 } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CliError } from "./cli-error.ts";
+import { generatedPin, readKernelPin } from "./kernel-pin.ts";
 import { type KernelSeam, readKernel } from "./kernel-reader.ts";
 import {
   type Copy,
@@ -34,17 +35,7 @@ import {
   selectRecipe,
   UNCOPIED_NAMES,
 } from "./recipe.ts";
-import {
-  type LockfileInput,
-  lockfileFor,
-  placeLockfile,
-  selectAddons,
-  stampKernel,
-} from "./stamping.ts";
-import {
-  type RenderedStaging,
-  substituteTokens,
-} from "./token-substitution.ts";
+import { substituteTokens } from "./token-substitution.ts";
 
 const SCHEMA_VERSION = 1;
 const TEMPLATE_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -55,6 +46,7 @@ interface BootstrapOptions {
   name: string;
   recipe: ProjectRecipe;
   sourcePacket: string;
+  kernelPin?: string;
 }
 
 interface ParsedFlags {
@@ -609,10 +601,7 @@ async function writeRepositoryContext(
   );
 }
 
-async function bootstrap(
-  options: BootstrapOptions,
-  afterTokens?: (staging: RenderedStaging) => Promise<number>,
-): Promise<BootstrapResult> {
+async function bootstrap(options: BootstrapOptions): Promise<BootstrapResult> {
   const destinationState = await validateDestination(options.destination);
   const { recipe } = options;
   await requireProfileSources(recipe);
@@ -624,9 +613,7 @@ async function bootstrap(
   try {
     await copyRecipe(recipe, staging);
     await writeRepositoryContext(staging, options);
-    const rendered = await substituteTokens(staging, options);
-    const generatedFiles =
-      rendered.fileCount + ((await afterTokens?.(rendered.staging)) ?? 0);
+    const generatedFiles = await substituteTokens(staging, options);
     await installStaging(staging, options.destination, destinationState);
     return {
       destination: options.destination,
@@ -649,39 +636,28 @@ export type KernelBootstrap = {
   readonly name?: string;
   readonly sourcePacket: string;
   readonly kernel: KernelSeam;
-  readonly kernelRepository: string;
   readonly declarationPath?: string;
-  readonly addons: readonly string[];
-  readonly lockfile: LockfileInput;
 };
 
 // Interface: Bootstrap through the kernel row, which the command line does
-// not offer yet. It reads the whole kernel commit, checks the add-on
-// selection and finds the lockfile before any staging folder exists, so each
-// of those refusals leaves nothing behind. The lockfile and the stamp follow
-// token substitution, and the stamp record is the last file written.
+// not offer yet. It reads the kernel commit from the kernel repository at the
+// given path before any staging folder exists, so a missing repository or
+// commit leaves nothing behind. It copies no kernel source: the generated
+// repository's package.json names the kernel by one dependency line, its
+// Pin, at that commit in full.
 export async function bootstrapWithKernel(
   request: KernelBootstrap,
 ): Promise<BootstrapResult> {
   validateSourcePacket(request.sourcePacket);
   const name = resolveRepositoryName(request.destination, request.name);
-  const kernel = readKernel(request.kernel, request.declarationPath);
-  const selection = selectAddons(kernel, request.addons);
-  const lockfile = lockfileFor(request.lockfile, selection, TEMPLATE_ROOT);
-  const options = {
+  const { commit } = readKernel(request.kernel, request.declarationPath);
+  return bootstrap({
     destination: resolve(request.destination),
     json: false,
     name,
     recipe: KERNEL_RECIPE,
     sourcePacket: request.sourcePacket,
-  };
-  return bootstrap(options, async (staging) => {
-    if (lockfile !== undefined) await placeLockfile(staging, lockfile);
-    const stamped = await stampKernel(staging, kernel, selection, {
-      kernelRepository: request.kernelRepository,
-      stampCheckSource: join(TEMPLATE_ROOT, "src/stamp-check.ts"),
-    });
-    return stamped + (lockfile === undefined ? 0 : 1);
+    kernelPin: generatedPin(readKernelPin(TEMPLATE_ROOT), commit),
   });
 }
 

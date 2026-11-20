@@ -1,20 +1,12 @@
-import { readFileSync } from "node:fs";
 import js from "@eslint/js";
+import { kernelLint } from "agent-cli-kernel/lint";
+import kernelRules from "agent-cli-kernel/lint-rules";
 import tseslint from "typescript-eslint";
 import antiSlop, { chainedTypeAssertions } from "./config/anti-slop-rules.mjs";
-import { kernelLint } from "./config/kernel/eslint.mjs";
-import kernelRules from "./config/kernel/eslint-rules.mjs";
 import payloadRules from "./config/payload-rules.mjs";
 import platformRules from "./config/platform-rules.mjs";
 import templateRules from "./config/template-rules.mjs";
 
-const stampRecord = JSON.parse(
-  readFileSync(new URL(".kernel-stamp.json", import.meta.url), "utf8"),
-);
-const stamped = [
-  ...stampRecord.roots.map(({ path }) => `${path}/**`),
-  stampRecord.stampChecker.path,
-];
 const repository = {
   rules: {
     ...templateRules.rules,
@@ -32,14 +24,13 @@ export default tseslint.config(
       "coverage/**",
       ".fallow/**",
       ".worktrees/**",
-      stampRecord.stampChecker.path,
     ],
   },
   ...kernelLint({
     rootDir: import.meta.dirname,
     srcDir: "src",
     testDirs: [],
-    addons: stampRecord.addons,
+    addons: "all",
     plugin: repository,
   }),
   {
@@ -62,7 +53,6 @@ export default tseslint.config(
   },
   {
     files: ["**/*.{ts,mts,cts,mjs}"],
-    ignores: stamped,
     plugins: { repository },
     rules: {
       "repository/no-comments": "error",
@@ -86,7 +76,6 @@ export default tseslint.config(
   },
   {
     files: ["**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"],
-    ignores: stamped,
     plugins: { "anti-slop": antiSlop },
     rules: {
       "no-restricted-syntax": ["error", ...chainedTypeAssertions],

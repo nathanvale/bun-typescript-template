@@ -1,7 +1,11 @@
 import { expect, test } from "bun:test";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
-import { parseKernelPin, readKernelPin } from "../../../src/kernel-pin.ts";
+import {
+  generatedPin,
+  parseKernelPin,
+  readKernelPin,
+} from "../../../src/kernel-pin.ts";
 import { testFolder } from "../../support/test-folder.ts";
 
 const root = join(import.meta.dir, "../../..");
@@ -153,4 +157,20 @@ test("a missing kernel pin is refused with its exact message", () => {
   } finally {
     rmSync(empty, { recursive: true, force: true });
   }
+});
+
+test("the Pin a generated repository holds names the kernel pin's GitHub repository at the commit given, in full, whatever commit the kernel pin names", () => {
+  const candidate = "f".repeat(40);
+  const pin = parseKernelPin(
+    JSON.stringify({
+      ...valid,
+      remote: "https://github.com/some.owner/fixture-kernel.v2.git",
+    }),
+  );
+  expect([generatedPin(pin, pin.commit), generatedPin(pin, candidate)]).toEqual(
+    [
+      `github:some.owner/fixture-kernel.v2#${full}`,
+      `github:some.owner/fixture-kernel.v2#${candidate}`,
+    ],
+  );
 });

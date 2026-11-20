@@ -8,12 +8,7 @@
       "!**/dist",
       "!**/coverage",
       "!**/.fallow",
-      "!**/bun.lock",
-      "!.kernel-stamp.json",
-      "!stamp-checker.ts",
-      "!config/kernel",
-      "!src/kernel",
-      "!src/addons"
+      "!**/bun.lock"
     ]
   },
   "formatter": {

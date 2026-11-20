@@ -112,8 +112,9 @@ export const RECIPES: readonly ProjectRecipe[] = [
 ];
 
 // Interface: the kernel row. It copies the template's own files for a
-// generated repository; the stamp adds the kernel and the add-on selection.
-// It is not in RECIPES, so no command-line selection reaches it.
+// generated repository, which names the kernel by its Pin, one dependency
+// line in package.json. It is not in RECIPES, so no command-line selection
+// reaches it.
 export const KERNEL_RECIPE: ProjectRecipe = {
   request: { profile: "durable", layout: "single-package" },
   copies: [

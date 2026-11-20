@@ -32,11 +32,6 @@
       "ticket": "MAG-126"
     },
     {
-      "term": "Kernel trial",
-      "reason": "MAG-126 builds the kernel trial.",
-      "ticket": "MAG-126"
-    },
-    {
       "term": "Restamp",
       "reason": "MAG-128 builds Restamp.",
       "ticket": "MAG-128"
@@ -54,6 +49,16 @@
     {
       "term": "Claim tag",
       "reason": "A word for the plan. No ticket is known to bring it into a tracked file here; MAG-114 is the kernel split spec, which uses the word.",
+      "ticket": "MAG-114"
+    },
+    {
+      "term": "Stamped source",
+      "reason": "Nathan's decision of 20 November 2026 on MAG-114 replaced stamping with a Pin, so no tracked file copies kernel source any more. The words pull request of the Pin switch removes the word.",
+      "ticket": "MAG-114"
+    },
+    {
+      "term": "Add-on requirement",
+      "reason": "With stamping gone, the template merges nothing into a generated repository, so no tracked file names a requirement. The words pull request of the Pin switch settles the word.",
       "ticket": "MAG-114"
     }
   ]
