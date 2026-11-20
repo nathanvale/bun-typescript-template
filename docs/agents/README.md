@@ -19,3 +19,12 @@ For a new or changed refusal or bound, use the
 For a red `commits` job, run `bun run check:commits <base>`. It checks each
 commit at its own head. For a red `fault-replay` job, run
 `bun run fault-replay <id>`.
+
+`bun run doctor` verifies the pinned Bun, the installed toolchain, fallow's
+readiness and the machine's load, and names a repair for each failure.
+
+A fault replay gives each planted fault one verdict: KILLED, SURVIVED, STALE,
+BROKEN or TIMEOUT. The per-commit check gives each commit GREEN or RED.
+
+The names check runs as a test, as a hook when a file is created, and at
+commit.
