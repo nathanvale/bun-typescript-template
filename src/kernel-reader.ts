@@ -157,7 +157,7 @@ export function git(
   };
 }
 
-function repositoryAt(path: string): string {
+export function repositoryAt(path: string): string {
   const missing = (why: string) =>
     new KernelRefusal(
       "kernel_repository_missing",

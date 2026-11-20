@@ -1,0 +1,13 @@
+diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
+index e6cd9e6..89ed24e 100644
+--- a/scripts/pin-move.ts
++++ b/scripts/pin-move.ts
+@@ -134,7 +134,7 @@ export function fetchBranchCommit(
+   commit: string,
+   limitMilliseconds = remoteMilliseconds,
+ ): boolean {
+-  const local = repositoryAt(repository);
++  const local = resolve(repository);
+   const held = () =>
+     git(local, "cat-file", ["-e", `${commit}^{commit}`]).code === 0;
+   if (held()) return true;
