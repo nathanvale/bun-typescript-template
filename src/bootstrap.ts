@@ -236,7 +236,7 @@ async function copyRecipe(
 
 // Platform: a relative symbolic link, so it resolves wherever the generated
 // repository is cloned. It is made after token substitution, which refuses
-// any entry that is not a regular file.
+// any entry that is neither a folder nor a regular file.
 async function linkSkills(staging: string): Promise<void> {
   const skills = join(staging, SKILL_FOLDER);
   if ((await lstatIfPresent(skills)) === undefined) return;

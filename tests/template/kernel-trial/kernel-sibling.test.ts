@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { CliError } from "../../../src/cli-error.ts";
 import {
@@ -56,6 +56,24 @@ describe("Bootstrap and the tests find the kernel repository", () => {
     const worktree = join(folder("kernel-sibling-worktree-"), "replay");
     git(root, "worktree", "add", "--quiet", "--detach", worktree);
     expect(findSiblingKernel(worktree, {})).toBe(join(parent, repository));
+  });
+
+  test("refuses, naming git's words, a checkout git cannot read", () => {
+    const root = join(folder("kernel-sibling-"), "template");
+    mkdirSync(root);
+    writeFileSync(
+      join(root, kernelPinFile),
+      readFileSync(join(ROOT, kernelPinFile), "utf8"),
+    );
+    const refusal = refusalOf(() => findSiblingKernel(root, {}));
+    expect(refusal).toMatchObject({
+      code: "template_git_unreadable",
+      repair:
+        "run this from a git clone of the template, or name the kernel repository's path in KERNEL_REPOSITORY",
+    });
+    expect(String(Reflect.get(Object(refusal), "message"))).toStartWith(
+      `git cannot say where the checkout at ${root} keeps its objects: git says "fatal: not a git repository`,
+    );
   });
 
   test("nowhere, and refuses naming KERNEL_REPOSITORY", () => {

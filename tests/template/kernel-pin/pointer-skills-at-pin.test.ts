@@ -5,6 +5,7 @@ import { readKernelPin } from "../../../src/kernel-pin.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { gitResult } from "../../support/git-fixture.ts";
 import { siblingKernel } from "../../support/kernel-sibling.ts";
+import { processWatchdog } from "../../support/process.ts";
 
 const pin = readKernelPin(ROOT);
 const skills = join(ROOT, "generated-repository/skills");
@@ -28,33 +29,41 @@ function fullSkillAtPin(name: string) {
   };
 }
 
-test("each pointer skill names a full skill in the installed kernel that the kernel holds at the template's Pin", () => {
-  const names = readdirSync(skills).sort();
-  expect(names).not.toEqual([]);
-  expect(
-    names.map((name) => {
-      const { named, path, held } = fullSkillAtPin(name);
-      return { name, named, inInstalledKernel: path !== "", held };
-    }),
-  ).toEqual(
-    names.map((name) => ({
-      name,
-      named: `${installed}skills/${name}/SKILL.md`,
-      inInstalledKernel: true,
-      held: true,
-    })),
-  );
-});
+test(
+  "each pointer skill names a full skill in the installed kernel that the kernel holds at the template's Pin",
+  () => {
+    const names = readdirSync(skills).sort();
+    expect(names).not.toEqual([]);
+    expect(
+      names.map((name) => {
+        const { named, path, held } = fullSkillAtPin(name);
+        return { name, named, inInstalledKernel: path !== "", held };
+      }),
+    ).toEqual(
+      names.map((name) => ({
+        name,
+        named: `${installed}skills/${name}/SKILL.md`,
+        inInstalledKernel: true,
+        held: true,
+      })),
+    );
+  },
+  processWatchdog(1),
+);
 
-test("each pointer skill carries the name and description of the full skill at the template's Pin, so it triggers as the full skill does", () => {
-  for (const name of readdirSync(skills).sort()) {
-    const { pointer, full } = fullSkillAtPin(name);
-    expect({
-      name: line(pointer, "name"),
-      description: line(pointer, "description"),
-    }).toEqual({
-      name: line(full, "name"),
-      description: line(full, "description"),
-    });
-  }
-});
+test(
+  "each pointer skill carries the name and description of the full skill at the template's Pin, so it triggers as the full skill does",
+  () => {
+    for (const name of readdirSync(skills).sort()) {
+      const { pointer, full } = fullSkillAtPin(name);
+      expect({
+        name: line(pointer, "name"),
+        description: line(pointer, "description"),
+      }).toEqual({
+        name: line(full, "name"),
+        description: line(full, "description"),
+      });
+    }
+  },
+  processWatchdog(1),
+);

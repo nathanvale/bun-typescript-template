@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const root = join(import.meta.dir, "..");
@@ -91,7 +91,11 @@ test("the installed kernel holds the full skill each pointer skill names", () =>
   const commit = pinnedCommit();
   expect(
     pointerSkills()
-      .filter(({ fullSkill }) => !existsSync(join(root, fullSkill)))
+      .filter(
+        ({ fullSkill }) =>
+          !existsSync(join(root, fullSkill)) ||
+          !lstatSync(join(root, fullSkill)).isFile(),
+      )
       .map(
         ({ name, fullSkill }) =>
           `.agents/skills/${name}/SKILL.md names ${fullSkill}, which the installed kernel at ${commit} does not hold. Repair: run bun install --frozen-lockfile; if it is still missing, find where the kernel at ${commit} keeps the skill and write that path on its Full skill line.`,

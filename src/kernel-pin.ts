@@ -119,11 +119,17 @@ export function findSiblingKernel(
     "--path-format=absolute",
     "--git-common-dir",
   ]);
+  if (!shared.ok)
+    throw new CliError(
+      "template_git_unreadable",
+      `git cannot say where the checkout at ${root} keeps its objects: git says "${shared.said}".`,
+      "run this from a git clone of the template, or name the kernel repository's path in KERNEL_REPOSITORY",
+      1,
+      false,
+    );
   const places = [
     siblingKernelPath(root, pin),
-    ...(shared.ok
-      ? [siblingKernelPath(dirname(shared.stdout.toString().trim()), pin)]
-      : []),
+    siblingKernelPath(dirname(shared.stdout.toString().trim()), pin),
   ];
   const found = places.find((place) => existsSync(place));
   if (found !== undefined) return found;

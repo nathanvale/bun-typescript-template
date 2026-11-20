@@ -143,6 +143,46 @@ describe("the generated repository's pointer skill check", () => {
   );
 
   test(
+    "fails when the full skill the pointer names is a folder in the installed kernel, not a file",
+    async () => {
+      const { destination, commit } = await generated();
+      installFullSkill(destination);
+      const folderPath =
+        "node_modules/agent-cli-kernel/skills/agent-cli-kernel";
+      editPointer(destination, (text) =>
+        text.replace(/^Full skill: .*$/m, `Full skill: \`${folderPath}\``),
+      );
+      const { exit, stderr } = await pointerCheck(destination);
+      expect({ exit, stderr }).toMatchObject({ exit: 1 });
+      expect(stderr).toContain(
+        `${pointer} names ${folderPath}, which the installed kernel at ${commit} does not hold.`,
+      );
+      expect(stderr).toContain(onlyOneFailed);
+    },
+    processWatchdog(1),
+  );
+
+  test(
+    "fails naming package.json when its kernel dependency pins no full commit",
+    async () => {
+      const { destination, commit } = await generated();
+      installFullSkill(destination);
+      const manifest = join(destination, "package.json");
+      writeFileSync(
+        manifest,
+        readFileSync(manifest, "utf8").replace(`#${commit}`, "#main"),
+      );
+      const { exit, stderr } = await pointerCheck(destination);
+      expect({ exit, stderr }).toMatchObject({ exit: 1 });
+      expect(stderr).toContain(
+        'package.json pins no full kernel commit: its agent-cli-kernel dependency is "github:nathanvale/agent-cli-kernel#main". Repair: write the dependency as github:nathanvale/agent-cli-kernel#<full 40-character commit>.',
+      );
+      expect(stderr).toContain("\n 2 pass\n 2 fail\n");
+    },
+    processWatchdog(1),
+  );
+
+  test(
     "fails when no skill names a full skill, so it never checks nothing",
     async () => {
       const { destination } = await generated();
