@@ -16,6 +16,8 @@
     "Fault timing",
     "Recorded origin"
   ],
-  "ownerBeforeAcceptance": "template",
-  "ownerAfterAcceptance": "kernel"
+  "acceptedBy": {
+    "repository": "nathanvale/agent-cli-kernel",
+    "commit": "070a90e1afe10641f6bfe347b07dfcea18b31a87"
+  }
 }

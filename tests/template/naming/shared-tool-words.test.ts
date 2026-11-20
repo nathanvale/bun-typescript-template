@@ -2,7 +2,6 @@ import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  awaitingEntries,
   ownershipFile,
   ownershipProblems,
   sharedEntries,
@@ -24,8 +23,8 @@ function read(path: string): string {
 }
 
 const entry = (name: string) => `**${name}**:\nA definition.\n\n`;
-const glossaryOf = (awaiting: readonly string[], shared: readonly string[]) =>
-  `# G\n\n### Entries awaiting kernel acceptance\n\n${awaiting.map(entry).join("")}### Shared tool words\n\n${shared.map(entry).join("")}## Words that need a qualifier\n\n_Qualify_: host\n`;
+const glossaryOf = (own: readonly string[], shared: readonly string[]) =>
+  `# G\n\n### Own\n\n${own.map(entry).join("")}### Shared tool words\n\n${shared.map(entry).join("")}## Words that need a qualifier\n\n_Qualify_: host\n`;
 const owned = (names: readonly string[]) =>
   JSON.stringify({ kernelEntries: names });
 
@@ -37,7 +36,7 @@ test("the shared tool words are 29 entries that stay template-owned", () => {
   expect(sharedEntries(read("GLOSSARY.md"))).toHaveLength(29);
 });
 
-test("the entries awaiting kernel acceptance are the ones glossary-ownership.json lists", () => {
+test("GLOSSARY.md defines no entry that glossary-ownership.json lists as the kernel's", () => {
   expect(ownershipProblems(read("GLOSSARY.md"), read(ownershipFile))).toEqual(
     [],
   );
@@ -49,7 +48,7 @@ test("the export and glossary-ownership.json are not read as uses of a term", ()
   expect(texts).not.toContain(read(ownershipFile));
 });
 
-test("every term, including the awaiting entries, is used in a tracked file or recorded unused", () => {
+test("every term is used in a tracked file or recorded unused", () => {
   expect(
     termUseProblems(
       readGlossary(read("GLOSSARY.md")),
@@ -74,40 +73,23 @@ test("SW.b a glossary with two shared sections is refused", () => {
   );
 });
 
-test("SW.c a shared section placed before the awaiting entries is refused", () => {
-  const swapped = `### Shared tool words\n\n${entry("Gate")}### Entries awaiting kernel acceptance\n\n${entry("Pin")}`;
-  expect(() => awaitingEntries(swapped)).toThrow(
-    'GLOSSARY.md puts "### Shared tool words" before "### Entries awaiting kernel acceptance". Repair: move the shared section after the awaiting entries.',
-  );
-});
-
-test("SW.d an awaiting entry that glossary-ownership.json does not list is refused", () => {
+test("SW.c an entry that the kernel owns and GLOSSARY.md still defines is refused", () => {
   expect(
-    ownershipProblems(glossaryOf(["Pin", "Add-on"], ["Gate"]), owned(["Pin"])),
+    ownershipProblems(glossaryOf(["Pin", "Recipe"], ["Gate"]), owned(["Pin"])),
   ).toEqual([
-    'GLOSSARY.md holds "Add-on" among the entries awaiting kernel acceptance, and glossary-ownership.json does not list it. Repair: list it in kernelEntries, or move its entry out of that section.',
+    'GLOSSARY.md defines "Pin", which the kernel owns and glossary-ownership.json lists. Repair: remove the entry and link the kernel\'s glossary instead.',
   ]);
 });
 
-test("SW.e a listed entry that is not awaiting kernel acceptance is refused", () => {
-  expect(
-    ownershipProblems(glossaryOf(["Pin"], ["Gate"]), owned(["Pin", "Recipe"])),
-  ).toEqual([
-    'glossary-ownership.json lists "Recipe", and GLOSSARY.md does not hold it among the entries awaiting kernel acceptance. Repair: move its entry there, or remove it from kernelEntries.',
-  ]);
-});
-
-test("SW.f a shared tool word that glossary-ownership.json lists is refused", () => {
-  expect(
-    ownershipProblems(glossaryOf(["Gate"], ["Gate"]), owned(["Gate"])),
-  ).toEqual([
-    'glossary-ownership.json lists "Gate", a shared tool word, so it would have two owners. Repair: remove it from kernelEntries; shared tool words stay template-owned.',
+test("SW.d a shared tool word that glossary-ownership.json lists is refused", () => {
+  expect(ownershipProblems(glossaryOf([], ["Gate"]), owned(["Gate"]))).toEqual([
+    'GLOSSARY.md defines "Gate", which the kernel owns and glossary-ownership.json lists. Repair: remove the entry and link the kernel\'s glossary instead.',
   ]);
 });
 
 test("SW.g a glossary-ownership.json whose kernelEntries is not an array of strings is refused", () => {
   const refusal =
-    'glossary-ownership.json needs a "kernelEntries" array of strings. Repair: list each entry the kernel is to own.';
+    'glossary-ownership.json needs a "kernelEntries" array of strings. Repair: list each entry the kernel owns.';
   expect(() => ownershipProblems(glossaryOf([], []), "{}")).toThrow(refusal);
   expect(() =>
     ownershipProblems(glossaryOf([], []), '{"kernelEntries":[1]}'),
