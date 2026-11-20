@@ -89,8 +89,26 @@ export type KernelTrial = {
   readonly active?: TrialActive;
 };
 
-function lastLines(output: string): string {
-  return output.trimEnd().split("\n").slice(-20).join("\n");
+// Interface: what a failed step's refusal shows of its output. Each failing
+// test's lines, from bun test's "error:" line to its "(fail)" line, come
+// first wherever they are in the output, since the order test files run in
+// can leave them far from the end; then the last 20 lines.
+function shownOutput(output: string): string {
+  const lines = output.trimEnd().split("\n");
+  const failing: string[] = [];
+  let block: string[] | undefined;
+  for (const line of lines) {
+    if (line.startsWith("error:")) block = [];
+    block?.push(line);
+    if (block !== undefined && line.startsWith("(fail) ")) {
+      failing.push(...block);
+      block = undefined;
+    }
+  }
+  const last = `Its last lines:\n${lines.slice(-20).join("\n")}`;
+  return failing.length === 0
+    ? last
+    : `Its failing tests:\n${failing.join("\n")}\n${last}`;
 }
 
 function stopOf(active: TrialActive): string | undefined {
@@ -129,7 +147,7 @@ export async function trialStep(
     );
   if (run.timedOut || run.exitCode !== 0)
     throw new TrialRefusal(
-      `The kernel trial's ${name} in ${folder} ${run.timedOut ? `did not finish within ${limitMilliseconds} ms` : `exited ${run.exitCode}`}. Its last lines:\n${lastLines(run.stdout + run.stderr)}\n`,
+      `The kernel trial's ${name} in ${folder} ${run.timedOut ? `did not finish within ${limitMilliseconds} ms` : `exited ${run.exitCode}`}. ${shownOutput(run.stdout + run.stderr)}\n`,
     );
 }
 

@@ -173,7 +173,7 @@ describe("the kernel trial", () => {
       expect(refusal).toMatchObject({ code: "trial_failed" });
       const { message } = refusal as { message: string };
       expect(message).toStartWith(
-        `The kernel trial's check command in ${join(work, "trial/second")} exited 1. Its last lines:\n`,
+        `The kernel trial's check command in ${join(work, "trial/second")} exited 1. Its `,
       );
       expect(message).toContain(
         `.agents/skills/agent-cli-kernel/SKILL.md names node_modules/agent-cli-kernel/skills/agent-cli-kernel/SKILL.md, which the installed kernel at ${commit} does not hold.`,
@@ -335,6 +335,26 @@ await Bun.sleep(20_000);`;
     },
     processWatchdog(2),
   );
+
+  test("that fails keeps each failing test's own lines in its refusal, wherever they come in the output, and its last lines", async () => {
+    const work = folder("kernel-trial-step-");
+    const failing = [
+      "error: expect(received).toEqual(expected)",
+      '+   "the diagnostic a person needs",',
+      "(fail) the test that failed first",
+    ];
+    const later = Array.from({ length: 30 }, (_, line) => `later line ${line}`);
+    const script = `process.stderr.write(${JSON.stringify(
+      [...failing, ...later].join("\n"),
+    )}); process.exit(1);`;
+    const refusal = await refusalOf(
+      trialStep(work, "check command", ["-e", script], 10_000),
+    );
+    expect(refusal).toEqual({
+      code: "trial_failed",
+      message: `The kernel trial's check command in ${work} exited 1. Its failing tests:\n${failing.join("\n")}\nIts last lines:\n${later.slice(-20).join("\n")}\n Repair: Correct the kernel commit, or the template files the trial copies, until that step passes, then run the kernel trial again. The pin does not move until it passes.`,
+    });
+  });
 
   test("after a stop, starts no further step", async () => {
     const work = folder("kernel-trial-step-");
