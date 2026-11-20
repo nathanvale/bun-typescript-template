@@ -1696,9 +1696,9 @@
   {
     "id": "e6e0ddd-pin-move-held",
     "patch": "tests/planted-faults/patches/e6e0ddd-pin-move-held.patch",
-    "source": "e6e0ddd refactor(pin-move): one function reads the pin's branch commit and holds it in the clone",
     "testFile": "tests/template/pin-move/pin-verification-command.test.ts",
-    "title": "fetches the commit the pin's branch points at into a kernel clone made before the branch moved, so the pin is verified$"
+    "title": "fetches the commit the pin's branch points at into a kernel clone made before the branch moved, so the pin is verified$",
+    "source": "e6e0ddd refactor(pin-move): one function reads the pin's branch commit and holds it in the clone"
   },
   {
     "id": "fe86efe-pin-move",
@@ -1853,5 +1853,12 @@
     "testFile": "tests/template/toolchain/generated-lint.test.ts",
     "title": "^a repository Bootstrap generates refuses no-in-operator and no-locale-compare in a script, with the type information they need, and admits their clean forms$",
     "source": "39a7c22 fix(generated-repository): give scripts/ the type information its lint rules need"
+  },
+  {
+    "id": "a7f7872-verify-cli-pointer",
+    "patch": "tests/planted-faults/patches/a7f7872-verify-cli-pointer.patch",
+    "testFile": "tests/template/kernel-pin/pointer-skills-at-pin.test.ts",
+    "title": "^the template holds one pointer skill for each skill the kernel holds at the template's Pin$",
+    "source": "a7f7872 feat(bootstrap): give every generated repository a verify-cli pointer skill"
   }
 ]
