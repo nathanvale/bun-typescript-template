@@ -1,7 +1,7 @@
 ---
 
 name: kernel-work
-description: Build, repair, or review kernel code in `kernel/` or `tests/kernel/`. Use when changing either folder or reviewing a diff that touches it.
+description: Build, repair, or review kernel work in this template: the installed kernel, the Pin, `pin-move` and their tests. Kernel source lives in the `agent-cli-kernel` repository.
 ---
 
 # Kernel work

@@ -79,6 +79,8 @@ before claiming them verified.
 - The generated repository's own CLI beyond `bun run start --help`.
 - `bootstrap --starter simple` and `--starter complex`, left out while
   `starters/` is set to be removed ([MAG-129]).
-- `kernel/` and its CLI, which the kernel's own map owns.
+- `bootstrap --kernel`, the kernel row: it needs the kernel repository beside
+  the template or named in `KERNEL_REPOSITORY`, and no recipe drives it yet. The
+  kernel repository's own map owns the kernel's behaviour.
 
 [MAG-129]: https://linear.app/myagentdojo/issue/MAG-129
