@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { bootstrapWithKernel } from "../../../src/bootstrap.ts";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
 import { KERNEL_RECIPE, lintsCode } from "../../../src/recipe.ts";
 import { listFiles, ROOT } from "../../support/bootstrap-cli-fixture.ts";
@@ -10,10 +9,11 @@ import {
   renamedLayout,
 } from "../../support/kernel-repository-fixture.ts";
 import {
+  bootstrapRow,
   generatedJson,
   kernelRowFixture,
 } from "../../support/kernel-row-fixture.ts";
-import { spawnBounded } from "../../support/process.ts";
+import { processWatchdog, spawnBounded } from "../../support/process.ts";
 
 const run = kernelRowFixture();
 const bootstrapModules = [
@@ -70,7 +70,7 @@ describe("the kernel row", () => {
     }
     expect(lintsCode(KERNEL_RECIPE)).toBe(true);
     const { destination, request } = run();
-    await bootstrapWithKernel(request);
+    await bootstrapRow(request);
     const provenance = generatedJson(destination, ".cli-design-template.json");
     expect(provenance).toMatchObject({
       profile: "durable",
@@ -89,7 +89,7 @@ describe("the kernel row", () => {
     "gives a generated repository its settings and application files and no kernel source, from a kernel in $name, with every token substituted",
     async ({ layout }) => {
       const { destination, request } = run(layout);
-      await bootstrapWithKernel(request);
+      await bootstrapRow(request);
       expect(await listFiles(destination)).toEqual(ownFiles);
       const withToken = ownFiles.filter((file) =>
         /__REPOSITORY_NAME__|__SOURCE_PACKET__|__KERNEL_PIN__/.test(
@@ -105,7 +105,7 @@ describe("the kernel row", () => {
 
   test("names the kernel by its Pin: one dependency line, at the commit asked for in full", async () => {
     const { destination, request } = run();
-    await bootstrapWithKernel(request);
+    await bootstrapRow(request);
     const { dependencies } = generatedJson(destination, "package.json") as {
       dependencies: Record<string, string>;
     };
@@ -116,7 +116,7 @@ describe("the kernel row", () => {
 
   test("imports the kernel by its package name in the application files and the lint settings", async () => {
     const { destination, request } = run();
-    await bootstrapWithKernel(request);
+    await bootstrapRow(request);
     const imports = Object.fromEntries(
       ["src/cli.ts", "src/commands.ts", "eslint.config.mjs"].map((file) => [
         file,
@@ -137,7 +137,7 @@ describe("the kernel row", () => {
 
   test("gives a check command with no stamp check step", async () => {
     const { destination, request } = run();
-    await bootstrapWithKernel(request);
+    await bootstrapRow(request);
     const { scripts } = generatedJson(destination, "package.json") as {
       scripts: Record<string, string>;
     };
@@ -154,27 +154,32 @@ describe("the kernel row", () => {
   });
 });
 
+function kernelFoldersNamedIn(paths: readonly string[]): string[] {
+  const kernelFolders = [
+    "src/kernel",
+    "config/kernel",
+    "src/addons",
+    "kernel/",
+    "addons/",
+    readKernelPin(ROOT).repository,
+  ];
+  return paths.flatMap((path) =>
+    kernelFolders
+      .filter((folder) => sourceOf(path).includes(folder))
+      .map((folder) => `${path} names ${folder}`),
+  );
+}
+
 describe("Bootstrap holds no kernel path", () => {
   test("no module of Bootstrap names a folder the kernel repository uses today, from a list kept here by hand", () => {
-    const pin = readKernelPin(ROOT);
-    const kernelFolders = [
-      "src/kernel",
-      "config/kernel",
-      "src/addons",
-      "kernel/",
-      "addons/",
-      pin.repository,
-    ];
-    const named = bootstrapModules.flatMap((path) =>
-      kernelFolders
-        .filter((folder) => sourceOf(path).includes(folder))
-        .map((folder) => `${path} names ${folder}`),
-    );
-    expect(named).toEqual([]);
+    expect(kernelFoldersNamedIn(bootstrapModules)).toEqual([]);
   });
 
-  test("the control: the same scan finds the one kernel path the kernel reader holds", () => {
-    expect(sourceOf("src/kernel-reader.ts")).toContain("config/kernel");
+  test("the control: the same scan finds the kernel paths the kernel reader holds", () => {
+    expect(kernelFoldersNamedIn(["src/kernel-reader.ts"])).toEqual([
+      "src/kernel-reader.ts names config/kernel",
+      "src/kernel-reader.ts names kernel/",
+    ]);
   });
 });
 
@@ -199,20 +204,24 @@ describe("the kernel row starts no program of its own", () => {
 });
 
 describe("the template's own test command", () => {
-  test("runs no test file from the files a generated repository gets, which cannot run before Bootstrap places them", async () => {
-    const { scripts } = JSON.parse(sourceOf("package.json")) as {
-      scripts: { test: string };
-    };
-    const ignored = [
-      ...scripts.test.matchAll(/--path-ignore-patterns '([^']+)'/g),
-    ].flatMap(([, pattern = ""]) => ["--path-ignore-patterns", pattern]);
-    const run = await spawnBounded(
-      [process.execPath, "test", ...ignored, "./generated-repository"],
-      { cwd: ROOT, processGroup: true },
-    );
-    expect({
-      exit: run.exit,
-      noFile: run.stderr.includes("did not match any test files"),
-    }).toEqual({ exit: 1, noFile: true });
-  });
+  test(
+    "runs no test file from the files a generated repository gets, which cannot run before Bootstrap places them",
+    async () => {
+      const { scripts } = JSON.parse(sourceOf("package.json")) as {
+        scripts: { test: string };
+      };
+      const ignored = [
+        ...scripts.test.matchAll(/--path-ignore-patterns '([^']+)'/g),
+      ].flatMap(([, pattern = ""]) => ["--path-ignore-patterns", pattern]);
+      const run = await spawnBounded(
+        [process.execPath, "test", ...ignored, "./generated-repository"],
+        { cwd: ROOT, processGroup: true },
+      );
+      expect({
+        exit: run.exit,
+        noFile: run.stderr.includes("did not match any test files"),
+      }).toEqual({ exit: 1, noFile: true });
+    },
+    processWatchdog(1),
+  );
 });

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { KERNEL_RECIPE, RECIPES } from "../../../src/recipe.ts";
 import { invoke } from "../../support/bootstrap-cli-fixture.ts";
+import { processWatchdog } from "../../support/process.ts";
 import { refused, repairs } from "../../support/kernel-refusal.ts";
 import {
   bootstrapRefusal,
@@ -87,24 +88,29 @@ describe("the kernel row stays off the command line", () => {
         },
       });
     },
+    processWatchdog(1),
   );
 
-  test("--starter kernel is refused as an unsupported starter", async () => {
-    const refusal = await invoke(
-      "--profile",
-      "durable",
-      "--starter",
-      "kernel",
-      "--destination",
-      "/abs/never/made",
-      "--source-packet",
-      "/abs/packets/demo",
-      "--json",
-    );
-    expect({
-      exitCode: refusal.exitCode,
-      code: (JSON.parse(refusal.stderr) as { error: { code: string } }).error
-        .code,
-    }).toEqual({ exitCode: 2, code: "invalid_starter" });
-  });
+  test(
+    "--starter kernel is refused as an unsupported starter",
+    async () => {
+      const refusal = await invoke(
+        "--profile",
+        "durable",
+        "--starter",
+        "kernel",
+        "--destination",
+        "/abs/never/made",
+        "--source-packet",
+        "/abs/packets/demo",
+        "--json",
+      );
+      expect({
+        exitCode: refusal.exitCode,
+        code: (JSON.parse(refusal.stderr) as { error: { code: string } }).error
+          .code,
+      }).toEqual({ exitCode: 2, code: "invalid_starter" });
+    },
+    processWatchdog(1),
+  );
 });

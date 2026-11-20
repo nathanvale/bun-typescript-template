@@ -1,11 +1,13 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  type BootstrapResult,
   bootstrapWithKernel,
   type KernelBootstrap,
 } from "../../src/bootstrap.ts";
 import { KernelRefusal } from "../../src/kernel-reader.ts";
 import { ownedFolders } from "./fixture-files.ts";
+import { gitEnv } from "./git-fixture.ts";
 import {
   declarationPathIn,
   firstLayout,
@@ -44,9 +46,28 @@ export function kernelRowFixture() {
   };
 }
 
+// Interface: Bootstrap through the kernel row in this process, with git
+// isolated from the caller's configuration for the run, because Bootstrap
+// reads the template's commit with git for Template provenance.
+export async function bootstrapRow(
+  request: KernelBootstrap,
+): Promise<BootstrapResult> {
+  const before = new Map(
+    Object.keys(gitEnv).map((name) => [name, process.env[name]]),
+  );
+  Object.assign(process.env, gitEnv);
+  try {
+    return await bootstrapWithKernel(request);
+  } finally {
+    for (const [name, value] of before)
+      if (value === undefined) Reflect.deleteProperty(process.env, name);
+      else process.env[name] = value;
+  }
+}
+
 export async function bootstrapRefusal(request: KernelBootstrap) {
   try {
-    await bootstrapWithKernel(request);
+    await bootstrapRow(request);
   } catch (error) {
     if (error instanceof KernelRefusal)
       return { code: error.code, message: error.message, repair: error.repair };
