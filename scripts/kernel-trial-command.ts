@@ -11,6 +11,15 @@ const templateRoot = resolve(import.meta.dir, "..");
 const usage =
   "Usage: bun run kernel-trial <full kernel commit> [--kernel <path to the kernel repository>]\n";
 
+// Interface: the kernel trial command, for any kernel commit, whether or not
+// a pin could name it: the kernel repository's hosted check runs it on the
+// commit a kernel pull request tests, as advice only. The kernel repository
+// defaults to the sibling beside the template, and the generated repository
+// installs the commit from the kernel pin's remote. It runs no pin
+// verification and writes nothing in the template. It exits 0 when the
+// trial passes, 1 on a refusal, printing its code and message, and 2 on
+// arguments it cannot read. SIGINT, SIGTERM or SIGHUP stops the trial's
+// running step with its process group, and the trial refuses as stopped.
 export async function main(
   argv: readonly string[],
   root = templateRoot,

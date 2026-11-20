@@ -277,6 +277,14 @@ export async function withStopSignals<Result>(
   }
 }
 
+// Interface: the pin move command. The kernel repository defaults to the
+// sibling beside the template. It reads the pin's branch from the pin's
+// remote, fetches that commit into the clone if the clone lacks it, and
+// verifies the commit before the trial, so a refused commit costs
+// no install, and keeps the trial's folder only for the
+// run. SIGINT, SIGTERM or SIGHUP stops the trial's running step with its
+// process group; the command then writes nothing, removes the trial's
+// folder and exits 1.
 export async function main(argv: readonly string[]): Promise<number> {
   const given = argumentsOf(argv);
   if (given === undefined) {
