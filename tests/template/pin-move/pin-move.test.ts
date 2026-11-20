@@ -197,7 +197,15 @@ describe("the pin move", () => {
   test("to a kernel commit whose folders were renamed passes, and the template changes only the pin and the lockfile", () => {
     const copy = templateCopy(folder("pin-move-"));
     pinnedTemplate(copy, trialBase, carryOutIdentity);
-    git(copy, "commit", "--quiet", "--all", "-m", "pin the trial base");
+    git(
+      copy,
+      "commit",
+      "--quiet",
+      "--all",
+      "--allow-empty",
+      "-m",
+      "pin the trial base",
+    );
     const { written, report } = movePin(trialAt(renamed.commit), copy);
     expect(written).toEqual([KERNEL_LOCKFILE, pinFile]);
     expect(

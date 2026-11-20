@@ -2,13 +2,20 @@ import { describe, expect, test } from "bun:test";
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
-import { TrialRefusal } from "../../../scripts/kernel-trial.ts";
+import { kernelTrial, TrialRefusal } from "../../../scripts/kernel-trial.ts";
 import { KERNEL_LOCKFILE } from "../../../src/recipe.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
-import { git } from "../../support/git-fixture.ts";
-import { bootstrapRow } from "../../support/kernel-row-fixture.ts";
-import { kernelClone, trialBase } from "../../support/kernel-sibling.ts";
+import { git, gitOutput } from "../../support/git-fixture.ts";
+import {
+  bootstrapRow,
+  withIsolatedGit,
+} from "../../support/kernel-row-fixture.ts";
+import {
+  kernelClone,
+  siblingKernel,
+  trialBase,
+} from "../../support/kernel-sibling.ts";
 import {
   oneDependencyChanged,
   trialOf,
@@ -19,6 +26,13 @@ import { callInCopy, templateCopy } from "../../support/template-copy.ts";
 
 const folder = ownedFolders();
 const text = (bytes: Uint8Array) => Buffer.from(bytes).toString("utf8");
+
+function templateState() {
+  return {
+    status: gitOutput(ROOT, "status", "--porcelain", "--untracked-files=all"),
+    diff: gitOutput(ROOT, "diff", "HEAD"),
+  };
+}
 
 function changedFiles(copy: string): string {
   return git(copy, "status", "--porcelain", "--untracked-files=all");
@@ -72,6 +86,25 @@ describe("the kernel trial", () => {
         existsSync(join(copy, KERNEL_LOCKFILE)),
         changedFiles(copy),
       ]).toEqual([false, ""]);
+    },
+    trialTimeout(1),
+  );
+
+  test(
+    "of the pinned commit, installed from GitHub, qualifies the template's kernel lockfile and leaves the template as it was",
+    async () => {
+      const pin = readKernelPin(ROOT);
+      const before = templateState();
+      const passed = await withIsolatedGit(() =>
+        kernelTrial({
+          kernel: { repository: siblingKernel(), commit: pin.commit },
+          folder: join(folder("kernel-trial-"), "trial"),
+        }),
+      );
+      expect(text(passed.lockfile)).toBe(
+        readFileSync(join(ROOT, KERNEL_LOCKFILE), "utf8"),
+      );
+      expect(templateState()).toEqual(before);
     },
     trialTimeout(1),
   );

@@ -3,6 +3,7 @@ import { readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { KERNEL_LOCKFILE } from "../../../src/recipe.ts";
+import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import {
   bootstrapRow,
@@ -39,6 +40,14 @@ describe("the kernel row's lockfile", () => {
     },
     processWatchdog(1),
   );
+
+  test("the template's kernel lockfile reaches the generated repository byte for byte", async () => {
+    const { destination, request } = run();
+    await bootstrapRow({ ...request, lockfile: "committed" });
+    expect(readFileSync(join(destination, "bun.lock"), "utf8")).toBe(
+      readFileSync(join(ROOT, KERNEL_LOCKFILE), "utf8"),
+    );
+  });
 
   test("supplied bytes reach the generated repository unchanged, after token substitution, even where they hold a token or are not UTF-8 text", async () => {
     const { destination, request } = run();
