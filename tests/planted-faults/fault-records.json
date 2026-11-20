@@ -1503,5 +1503,19 @@
     "testFile": "tests/template/kernel-trial/hosted-check.test.ts",
     "title": "its step clones the remote the kernel pin names, with its history, into the folder beside the template, at the pinned commit$",
     "source": "16c6e4d test(pin-move): make four tests hold as the kernel and npm move"
+  },
+  {
+    "id": "a73e057-pin-move-fetch",
+    "patch": "tests/planted-faults/patches/a73e057-pin-move-fetch.patch",
+    "testFile": "tests/template/pin-move/pin-verification.test.ts",
+    "title": "fetches the commit the pin's branch points at into a clone made before the branch moved",
+    "source": "a73e057 fix(pin-move): fetch the remote branch's commit into a clone that lacks it"
+  },
+  {
+    "id": "a73e057-pin-move-fetch-bound",
+    "patch": "tests/planted-faults/patches/a73e057-pin-move-fetch-bound.patch",
+    "testFile": "tests/template/pin-move/pin-verification.test.ts",
+    "title": "gives up a fetch that does not finish within its bound$",
+    "source": "a73e057 fix(pin-move): fetch the remote branch's commit into a clone that lacks it"
   }
 ]
