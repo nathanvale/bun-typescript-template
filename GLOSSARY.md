@@ -146,8 +146,8 @@ package name and owns none of its source.
 _Avoid_: vendored kernel, kernel copy (for the installed kernel)
 
 **Kernel lockfile**:
-The template's one lockfile for generated repositories. It serves every add-on
-selection, and a pin move writes it.
+The one lockfile the template keeps for generated repositories, once a pin
+move has written it. Every add-on selection shares it.
 _Avoid_: lockfile (unqualified); package set lockfile (for the kernel lockfile)
 
 **Add-on**:
