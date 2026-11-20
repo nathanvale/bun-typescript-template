@@ -39,6 +39,7 @@ const ownFiles = [
   "package.json",
   "src/cli.ts",
   "src/commands.ts",
+  "tests/add-on-start-up.test.ts",
   "tests/cli.test.ts",
   "tests/support/test-folder.ts",
   "tsconfig.base.json",
