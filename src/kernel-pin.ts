@@ -97,17 +97,10 @@ export function readKernelPin(root: string): KernelPin {
   return parseKernelPin(readFileSync(path, "utf8"));
 }
 
-// Interface: the sibling repository beside the template at `root` that the
-// kernel pin names, where the hosted check places it.
 export function siblingKernelPath(root: string, { repository }: KernelPin) {
   return join(dirname(root), repository);
 }
 
-// Interface: the kernel repository that Bootstrap and the tests read, for a
-// template checkout at `root`: KERNEL_REPOSITORY when set, else the kernel
-// repository beside the checkout, else the one beside the checkout that git
-// shares its objects with, which a worktree, fault replay's among them, has.
-// It refuses naming KERNEL_REPOSITORY when it finds none.
 export function findSiblingKernel(
   root: string,
   environment: Readonly<Record<string, string | undefined>>,
@@ -142,8 +135,6 @@ export function findSiblingKernel(
   );
 }
 
-// Interface: writes the kernel pin at `root` as the pin move does, and says
-// whether its bytes changed. Equal bytes are not written again.
 export function writeKernelPin(root: string, pin: KernelPin): boolean {
   const path = join(root, file);
   const text = `${JSON.stringify(pin, null, 2)}\n`;
@@ -152,17 +143,11 @@ export function writeKernelPin(root: string, pin: KernelPin): boolean {
   return true;
 }
 
-// Interface: the Pin a generated repository holds, as the value of its one
-// kernel dependency line: the kernel pin's GitHub repository at one full
-// commit. The commit is the caller's, because a kernel trial tries a commit
-// the kernel pin does not name yet.
 export function generatedPin({ remote }: KernelPin, commit: string): string {
   const repository = new URL(remote).pathname.replace(/^\/|\.git$/g, "");
   return `github:${repository}#${commit}`;
 }
 
-// Interface: the Pin when the kernel comes from a local clone, as only tests
-// ask: a git address of the clone at the seam's commit.
 export function clonePin({ repository, commit }: KernelSeam): string {
   return `git+${pathToFileURL(realpathSync(repository)).href}#${commit}`;
 }

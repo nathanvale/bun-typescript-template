@@ -8,8 +8,6 @@ export type StampedFile = {
   readonly blob: string;
 };
 
-// Interface: these readers return a parsed JSON value's own data, or throw an
-// Error starting with `where`, the field's name.
 export function fieldsOf(value: unknown, where: string): Map<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value))
     throw new Error(`${where} must be an object.`);
@@ -41,10 +39,8 @@ export function jsonOf(text: string): unknown {
   }
 }
 
-// Interface: a git identity in full: 40 lowercase hexadecimal characters.
 export const fullIdentity = /^[0-9a-f]{40}$/;
 
-// Interface: the git mode of a plain file, or undefined for any other entry.
 export function fileModeOf(mode: unknown): FileMode | undefined {
   return mode === "100644" || mode === "100755" ? mode : undefined;
 }
@@ -53,7 +49,6 @@ export function fileModeOf(mode: unknown): FileMode | undefined {
 // and in a name it is a character.
 const strictName = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
-// Interface: a name's text from its stored bytes, or undefined if not UTF-8.
 export function nameText(bytes: Uint8Array): string | undefined {
   try {
     return strictName.decode(bytes);
@@ -62,8 +57,6 @@ export function nameText(bytes: Uint8Array): string | undefined {
   }
 }
 
-// Interface: why a "/" path cannot stay inside its folder on every host, or
-// undefined. Windows reads a backslash as a separator.
 export function plainPathFault(path: string): string | undefined {
   if (path.split("/").some((part) => ["", ".", ".."].includes(part)))
     return 'it has an empty, "." or ".." part.';
@@ -93,8 +86,6 @@ function identity(kind: "blob" | "tree", body: Uint8Array): string {
     .digest("hex");
 }
 
-// Interface: git's SHA-1 identity of a file's bytes as they are, with no
-// line-end or filter conversion, computed without git.
 export function blobIdentity(bytes: Uint8Array): string {
   return identity("blob", bytes);
 }
@@ -141,9 +132,6 @@ function place(top: Tree, names: readonly string[], file: StampedFile): void {
   tree.set(leaf, file);
 }
 
-// Interface: git's SHA-1 identity of the tree of the listed files under
-// `root` (a folder path, or "" for all), computed without git. It does not
-// depend on where the tree sits.
 export function treeIdentity(
   files: readonly StampedFile[],
   root: string,

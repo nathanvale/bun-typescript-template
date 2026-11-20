@@ -234,9 +234,6 @@ async function copyRecipe(
   }
 }
 
-// Platform: a relative symbolic link, so it resolves wherever the generated
-// repository is cloned. It is made after token substitution, which refuses
-// any entry that is neither a folder nor a regular file.
 async function linkSkills(staging: string): Promise<void> {
   const skills = join(staging, SKILL_FOLDER);
   if ((await lstatIfPresent(skills)) === undefined) return;
@@ -392,13 +389,6 @@ async function lockfileFor(lockfile: KernelBootstrap["lockfile"]) {
   return new Uint8Array(await readFile(path));
 }
 
-// Interface: Bootstrap through the kernel row, which reads the kernel commit
-// and the lockfile before any staging folder exists, so a refusal leaves
-// nothing behind. package.json names the kernel
-// by its Pin, one dependency line at that full commit. The lockfile is the
-// kernel lockfile, the bytes supplied, or none; only the trial and tests use
-// the last two. Only tests ask for `kernelFrom: "clone"`. It reads each
-// request field once, before its first wait.
 export async function bootstrapWithKernel(
   request: KernelBootstrap,
 ): Promise<BootstrapResult> {
@@ -424,9 +414,6 @@ export async function bootstrapWithKernel(
   });
 }
 
-// Interface: Bootstrap through the kernel row from the command line: the
-// template's pinned commit, read from the kernel repository findSiblingKernel
-// finds, with the kernel lockfile.
 function bootstrapOnKernel(
   options: BootstrapOptions,
 ): Promise<BootstrapResult> {

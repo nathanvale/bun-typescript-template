@@ -19,8 +19,6 @@ export type Request =
       readonly starter: Starter;
     };
 
-// Interface: where a generated repository keeps its skills. Bootstrap links
-// each one from .claude/skills as well.
 export const SKILL_FOLDER = ".agents/skills";
 
 export interface Copy {
@@ -121,12 +119,6 @@ export const RECIPES: readonly ProjectRecipe[] = [
   starterRow("complex"),
 ];
 
-// Interface: the kernel row. It copies the template's own files for a
-// generated repository, which names the kernel by its Pin, one dependency
-// line in package.json, and a pointer skill for each skill the installed
-// kernel ships. The command line reaches it with --kernel only. It is not in
-// RECIPES, the rows the toolchain and lint tests make and lint with the
-// template's own packages, which hold no installed kernel.
 export const KERNEL_RECIPE: ProjectRecipe = {
   request: { profile: "durable", layout: "single-package" },
   copies: [
@@ -140,8 +132,6 @@ export const KERNEL_RECIPE: ProjectRecipe = {
   checkCommand: "bun run check",
 };
 
-// Interface: the kernel lockfile, which Bootstrap gives a repository the
-// kernel row makes when asked for it. Only the pin move writes it.
 export const KERNEL_LOCKFILE = "generated-repository/bun.lock";
 
 export function lintsCode(recipe: ProjectRecipe): boolean {

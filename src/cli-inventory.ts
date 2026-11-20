@@ -187,8 +187,7 @@ function emittedSourceCandidates(path: string): string[] {
 }
 
 function sourceTranspiler(options: Bun.TranspilerOptions): Bun.Transpiler {
-  // Platform: Bun 1.4.4 supports macro:false; bun-types 1.4.0 omits the boolean overload.
-  // src/runtime/api/JSTranspiler.rs sets no_macros from this runtime option.
+  // Platform: Bun 1.4.4 supports macro:false; bun-types 1.4.4 omits the boolean overload.
   const macroControl: Record<string, boolean> = { macro: false };
   return new Bun.Transpiler({ ...options, ...macroControl });
 }
@@ -277,7 +276,6 @@ function processBindingReferences(
       return bound.length === 0 ? "" : `let ${bound.join(", ")};`;
     },
   );
-  // Platform: Object.fromEntries and spread both create own data properties.
   return { source, define: Object.fromEntries(define) };
 }
 
