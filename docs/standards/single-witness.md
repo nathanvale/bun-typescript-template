@@ -120,6 +120,10 @@ this file.
 - Check that a path a check needs as a file is a file: `existsSync` answers
   yes for a folder too. Witnessed: [47e2ec3] (the pointer skill check passed
   a Full skill line naming a folder in the installed kernel).
+- Show a failed step's failing test lines in its refusal, not only the tail
+  of its output: the order test files run in decides what the tail holds.
+  Witnessed: [fe76ccb] (the hosted kernel trial's tail held only later
+  add-on tests, and lost the missing-skill diagnostic).
 - Bound a test above the sum of the child bounds it runs one after another,
   not only above each. Witnessed: [47e2ec3] (two 4 s git calls ran under a
   5 s test timeout).
@@ -165,3 +169,4 @@ this file.
 [a73e057]: https://github.com/nathanvale/bun-typescript-template/commit/a73e0573e663dc3c00ebe731b217c34b67a8187c
 [73cfcf4]: https://github.com/nathanvale/bun-typescript-template/commit/73cfcf430e43456684ad90d6057eff2473f99bc3
 [c08e107]: https://github.com/nathanvale/bun-typescript-template/commit/c08e107766fe533f3ed2756158797df15fa64f12
+[fe76ccb]: https://github.com/nathanvale/bun-typescript-template/commit/fe76ccb74790ed9221ef35d073d1319152a7a93c
