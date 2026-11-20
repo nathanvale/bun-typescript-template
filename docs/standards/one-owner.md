@@ -9,7 +9,7 @@ here.
 - Run a format or shape rule through its one helper. A second copy of a
   constructor's shape rule gave admission a different refusal text.
   Witnessed: [892a700], [f2270b3], [#113-path] (the kernel reader returned a
-  file name with a backslash, which the stamp record's path rule refuses,
+  file name with a backslash, which the shared plain-path rule refuses,
   until the reader ran that rule's helper too).
 - Import shared test fakes and fixtures from
   `tests/kernel/kernel-repair/handlers.ts` and `shapes.ts`. Witnessed:

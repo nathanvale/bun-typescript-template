@@ -44,9 +44,9 @@ A lint rule's owner determines where to define, enable, and test it.
 | Template           | `config/template-rules.mjs`, `config/platform-rules.mjs`, `config/payload-rules.mjs` | `eslint.config.mjs` | `tests/template/lint/lint-rules.test.ts`      |
 | Template anti-slop | `config/anti-slop-rules.mjs`, `config/anti-slop-type-rules.mjs`                      | `eslint.config.mjs` | `tests/template/lint/anti-slop-rules.test.ts` |
 
-- The kernel's lint rules, and the rules stamped into generated
-  repositories, live in the kernel repository, outside the write scope.
-  Report a change there for its owner.
+- The kernel's lint rules, and the rules generated repositories run from
+  the installed kernel, live in the kernel repository, outside the write
+  scope. Report a change there for its owner.
 
 ## Write scope
 
