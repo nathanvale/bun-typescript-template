@@ -544,11 +544,24 @@ async function installStaging(
   }
 }
 
+const GIT_MILLISECONDS = 4_000;
+
 function templateIdentity(args: string[]) {
   const child = Bun.spawnSync(["git", "-C", TEMPLATE_ROOT, ...args], {
+    env: process.env,
     stdout: "pipe",
     stderr: "pipe",
+    timeout: GIT_MILLISECONDS,
+    killSignal: "SIGKILL",
   });
+  if (child.exitedDueToTimeout)
+    throw new CliError(
+      "template_revision_unavailable",
+      `git ${args.join(" ")} did not finish within ${GIT_MILLISECONDS} ms while reading the template's commit`,
+      "run that git command by hand in the template to see where it waits, then rerun the same command",
+      1,
+      false,
+    );
   if (child.exitCode !== 0)
     throw new CliError(
       "template_revision_unavailable",
