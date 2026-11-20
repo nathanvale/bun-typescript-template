@@ -56,10 +56,20 @@ export const trialMilliseconds = 2 * installMilliseconds + checkMilliseconds;
 const repair =
   "Correct the kernel commit, or the template files the trial copies, until that step passes, then run the kernel trial again. The pin does not move until it passes.";
 
+const stopRepair =
+  "Nothing was written, and nothing is wrong with the kernel commit. Run the kernel trial, or the pin move, again when it can run to its end.";
+
+// Interface: a kernel trial that did not pass. `trial_stopped` is a trial a
+// signal stopped, which says nothing about the commit, so its repair is to
+// run again; `trial_failed` is every other.
 export class TrialRefusal extends Error {
-  readonly code = "trial_failed";
-  constructor(cause: string) {
-    super(`${cause} Repair: ${repair}`);
+  readonly code: "trial_failed" | "trial_stopped";
+  constructor(
+    cause: string,
+    code: "trial_failed" | "trial_stopped" = "trial_failed",
+  ) {
+    super(`${cause} Repair: ${code === "trial_stopped" ? stopRepair : repair}`);
+    this.code = code;
   }
 }
 
@@ -101,6 +111,7 @@ export async function trialStep(
   if (active.stoppedBy !== undefined)
     throw new TrialRefusal(
       `The kernel trial was stopped by ${active.stoppedBy} before its ${name} in ${folder}.`,
+      "trial_stopped",
     );
   const child = startChild([process.execPath, ...args], {
     cwd: folder,
@@ -114,6 +125,7 @@ export async function trialStep(
   if (stoppedBy !== undefined)
     throw new TrialRefusal(
       `The kernel trial's ${name} in ${folder} was stopped by ${stoppedBy}.`,
+      "trial_stopped",
     );
   if (run.timedOut || run.exitCode !== 0)
     throw new TrialRefusal(

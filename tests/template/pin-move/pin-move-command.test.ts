@@ -197,9 +197,10 @@ describe("the pin move command", () => {
         expect({
           exit: run.exitCode,
           timedOut: run.timedOut,
-          stopped: /^trial_failed: The kernel trial.* stopped by SIGTERM/.test(
-            run.stderr,
-          ),
+          stopped:
+            /^trial_stopped: The kernel trial.* stopped by SIGTERM.* Repair: Nothing was written, and nothing is wrong with the kernel commit\./.test(
+              run.stderr,
+            ),
         }).toEqual({ exit: 1, timedOut: false, stopped: true });
         expect(readdirSync(temporary)).toEqual([]);
         expect(

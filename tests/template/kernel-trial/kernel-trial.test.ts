@@ -34,8 +34,8 @@ import { callInCopy, templateCopy } from "../../support/template-copy.ts";
 
 const folder = ownedFolders();
 const { trialOf, trialEnv } = kernelTrials();
-const repair =
-  "Correct the kernel commit, or the template files the trial copies, until that step passes, then run the kernel trial again. The pin does not move until it passes.";
+const stopRepair =
+  "Nothing was written, and nothing is wrong with the kernel commit. Run the kernel trial, or the pin move, again when it can run to its end.";
 const text = (bytes: Uint8Array) => Buffer.from(bytes).toString("utf8");
 
 function changedFiles(copy: string): string {
@@ -291,8 +291,8 @@ await Bun.sleep(20_000);`;
       active.stoppedBy = "SIGTERM";
       active.stop?.();
       expect(await refused).toEqual({
-        code: "trial_failed",
-        message: `The kernel trial's held step in ${work} was stopped by SIGTERM. Repair: ${repair}`,
+        code: "trial_stopped",
+        message: `The kernel trial's held step in ${work} was stopped by SIGTERM. Repair: ${stopRepair}`,
       });
       expect(alive(pid)).toBe(false);
     },
@@ -308,8 +308,8 @@ await Bun.sleep(20_000);`;
         }),
       ),
     ).toEqual({
-      code: "trial_failed",
-      message: `The kernel trial was stopped by SIGINT before its next step in ${work}. Repair: ${repair}`,
+      code: "trial_stopped",
+      message: `The kernel trial was stopped by SIGINT before its next step in ${work}. Repair: ${stopRepair}`,
     });
   });
 
