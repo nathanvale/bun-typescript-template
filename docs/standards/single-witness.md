@@ -16,6 +16,11 @@ this file.
   references, which can hold unpushed commits or name another repository.
   Witnessed: [b9c3ba0] (pin verification accepted an unpushed commit, and
   another repository's main, as reachable from the pin's branch).
+- Fetch the exact commit a remote reports into the local clone before
+  judging it there; the branch can move after the clone was made.
+  Witnessed: [a73e057] (kernel main moved between the hosted job's clone and
+  the pin move's ls-remote, so a good commit was refused as unreadable
+  history).
 - Build an expected abbreviated commit with git in the same repository, as
   the code under test does; git lengthens it as the repository grows.
   Witnessed: [16c6e4d] (a pin move report test fixed it at 7 characters).
@@ -140,3 +145,4 @@ this file.
 [b9c3ba0]: https://github.com/nathanvale/bun-typescript-template/commit/b9c3ba00521b068d6ab1aca20453e8e8012d3f52
 [16c6e4d]: https://github.com/nathanvale/bun-typescript-template/commit/16c6e4d565cd37f750ccc56b48438ae2818a2f24
 [0352f0d]: https://github.com/nathanvale/bun-typescript-template/commit/0352f0d113e82a3aa9559b5a811d353f16458be4
+[a73e057]: https://github.com/nathanvale/bun-typescript-template/commit/a73e0573e663dc3c00ebe731b217c34b67a8187c
