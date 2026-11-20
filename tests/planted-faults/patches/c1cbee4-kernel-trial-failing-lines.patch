@@ -1,0 +1,13 @@
+diff --git a/scripts/kernel-trial.ts b/scripts/kernel-trial.ts
+index 7dc5db0..056efe7 100644
+--- a/scripts/kernel-trial.ts
++++ b/scripts/kernel-trial.ts
+@@ -128,7 +128,7 @@ function shownOutput(output: string): string {
+   const tests = failingTests(lines);
+   for (const [index, test] of tests.entries()) {
+     const kept = shortened(test);
+-    if (shown.length + kept.length > failingLines) {
++    if (shown.length < 0) {
+       shown.push(`(${tests.length - index} more failing tests left out)`);
+       break;
+     }

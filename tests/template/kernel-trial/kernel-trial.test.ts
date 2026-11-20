@@ -15,11 +15,7 @@ import {
   bootstrapRow,
   withEnvironment,
 } from "../../support/kernel-row-fixture.ts";
-import {
-  kernelClone,
-  siblingKernel,
-  trialBase,
-} from "../../support/kernel-sibling.ts";
+import { kernelClone, trialBase } from "../../support/kernel-sibling.ts";
 import {
   oneDependencyChanged,
   kernelTrials,
@@ -97,21 +93,39 @@ describe("the kernel trial", () => {
   );
 
   test(
-    "the template's kernel lockfile installs frozen, unchanged, and passes the check command in a repository the kernel row makes at the pinned commit",
+    "the template's kernel lockfile installs frozen, unchanged, and passes the check command, pointer skill check included, in a repository Bootstrap's command line makes with --kernel at the pinned commit",
     async () => {
       const work = folder("kernel-lockfile-");
       const destination = join(work, "made");
-      await bootstrapRow({
-        destination,
-        sourcePacket: "/abs/packets/demo",
-        kernel: {
-          repository: siblingKernel(),
-          commit: readKernelPin(ROOT).commit,
-        },
-        lockfile: "committed",
-      });
-      const committed = readFileSync(join(ROOT, KERNEL_LOCKFILE), "utf8");
+      const { commit } = readKernelPin(ROOT);
       const env = { ...inherited(), ...gitEnv };
+      const made = await spawnBounded(
+        [
+          process.execPath,
+          "run",
+          "src/bootstrap.ts",
+          "--profile",
+          "durable",
+          "--kernel",
+          "--destination",
+          destination,
+          "--source-packet",
+          "/abs/packets/demo",
+          "--json",
+        ],
+        { cwd: ROOT, env, processGroup: true },
+      );
+      expect({ exit: made.exit, stderr: made.stderr }).toEqual({
+        exit: 0,
+        stderr: "",
+      });
+      expect(
+        readFileSync(
+          join(destination, ".claude/skills/agent-cli-kernel/SKILL.md"),
+          "utf8",
+        ),
+      ).toContain(`\nPinned commit: \`${commit}\`\n`);
+      const committed = readFileSync(join(ROOT, KERNEL_LOCKFILE), "utf8");
       const install = await spawnBounded(
         [process.execPath, "install", "--frozen-lockfile"],
         {
@@ -133,6 +147,37 @@ describe("the kernel trial", () => {
           readFileSync(join(destination, "bun.lock"), "utf8") === committed,
         check: check.exit,
       }).toEqual({ install: 0, lockfile: true, check: 0 });
+      const pointer = await spawnBounded(
+        [process.execPath, "test", "tests/pointer-skills.test.ts"],
+        { cwd: destination, env, processGroup: true },
+      );
+      expect({
+        exit: pointer.exit,
+        ran: /\n [1-9]\d* pass\n 0 fail\n/.test(pointer.stderr),
+      }).toEqual({ exit: 0, ran: true });
+    },
+    trialTimeout(1),
+  );
+
+  test(
+    "is refused at the check command for a kernel commit without the full skill the pointer skill names, the commit before the author skill landed",
+    async () => {
+      const work = folder("kernel-trial-");
+      const commit = "0b64b0e480a77ae6abbd3e671497354309182b42";
+      const refusal = await refusalOf(
+        trialOf(join(work, "trial"), {
+          repository: kernelClone(work, trialBase),
+          commit,
+        }),
+      );
+      expect(refusal).toMatchObject({ code: "trial_failed" });
+      const { message } = refusal as { message: string };
+      expect(message).toStartWith(
+        `The kernel trial's check command in ${join(work, "trial/second")} exited 1. Its `,
+      );
+      expect(message).toContain(
+        `.agents/skills/agent-cli-kernel/SKILL.md names node_modules/agent-cli-kernel/skills/agent-cli-kernel/SKILL.md, which the installed kernel at ${commit} does not hold.`,
+      );
     },
     trialTimeout(1),
   );
@@ -263,6 +308,20 @@ describe("a kernel trial whose caller changes the seam while it runs", () => {
   );
 });
 
+const stepRepair =
+  "Repair: Correct the kernel commit, or the template files the trial copies, until that step passes, then run the kernel trial again. The pin does not move until it passes.";
+
+function failedStep(work: string, shown: string): string {
+  return `The kernel trial's check command in ${work} exited 1. ${shown}\n ${stepRepair}`;
+}
+
+// Interface: the refusal of a check command step whose child writes `lines`
+// to stderr and exits 1.
+function stepRefusal(work: string, lines: readonly string[]) {
+  const script = `process.stderr.write(${JSON.stringify(lines.join("\n"))}); process.exit(1);`;
+  return refusalOf(trialStep(work, "check command", ["-e", script], 10_000));
+}
+
 describe("a kernel trial step", () => {
   test(
     "that its caller stops is stopped with its process, and refused as stopped",
@@ -289,6 +348,103 @@ await Bun.sleep(20_000);`;
       expect(processAlive(pid)).toBe(false);
     },
     processWatchdog(2),
+  );
+
+  test(
+    "that fails keeps each failing test's own lines in its refusal, wherever they come in the output, and its last lines",
+    async () => {
+      const work = folder("kernel-trial-step-");
+      const first = [
+        "error: expect(received).toEqual(expected)",
+        '+   "the diagnostic a person needs",',
+        "(fail) the test that failed first",
+      ];
+      const second = [
+        "error: expect(received).toBe(expected)",
+        '+   "the second diagnostic",',
+        "(fail) the test that failed second",
+      ];
+      const later = Array.from(
+        { length: 30 },
+        (_, line) => `later line ${line}`,
+      );
+      expect(
+        await stepRefusal(work, [
+          ...first,
+          "(pass) a test between them",
+          ...second,
+          ...later,
+        ]),
+      ).toEqual({
+        code: "trial_failed",
+        message: failedStep(
+          work,
+          `Its failing tests:\n${[...first, ...second].join("\n")}\nIts last lines:\n${later.slice(-20).join("\n")}`,
+        ),
+      });
+    },
+    processWatchdog(1),
+  );
+
+  test(
+    "that fails keeps a failing test's body diagnostic when its teardown fails too",
+    async () => {
+      const work = folder("kernel-trial-step-");
+      const failing = [
+        "error: the body's own diagnostic",
+        "      at <anonymous> (tests/a.test.ts:3:5)",
+        "error: the afterEach hook's diagnostic",
+        "(fail) a test whose body and teardown failed",
+      ];
+      const refusal = await stepRefusal(work, failing);
+      expect(String(Reflect.get(Object(refusal), "message"))).toContain(
+        `Its failing tests:\n${failing.join("\n")}\nIts last lines:`,
+      );
+    },
+    processWatchdog(1),
+  );
+
+  test(
+    "that fails shows at most 30 lines of one failing test, and says how many it left out",
+    async () => {
+      const work = folder("kernel-trial-step-");
+      const diagnostic = Array.from(
+        { length: 1_000 },
+        (_, line) => `diagnostic line ${line}`,
+      );
+      const failing = [
+        "error: a long one",
+        ...diagnostic,
+        "(fail) a long test",
+      ];
+      const refusal = await stepRefusal(work, failing);
+      const shown = [
+        ...failing.slice(0, 28),
+        "(973 more lines of this failing test left out)",
+        "(fail) a long test",
+      ];
+      expect(String(Reflect.get(Object(refusal), "message"))).toContain(
+        `Its failing tests:\n${shown.join("\n")}\nIts last lines:`,
+      );
+    },
+    processWatchdog(1),
+  );
+
+  test(
+    "that fails shows at most 120 lines of failing tests, and says how many tests it left out",
+    async () => {
+      const work = folder("kernel-trial-step-");
+      const blocks = Array.from({ length: 6 }, (_, test) => [
+        `error: test ${test}`,
+        ...Array.from({ length: 28 }, (_, line) => `test ${test} line ${line}`),
+        `(fail) test ${test}`,
+      ]);
+      const refusal = await stepRefusal(work, blocks.flat());
+      expect(String(Reflect.get(Object(refusal), "message"))).toContain(
+        `Its failing tests:\n${blocks.slice(0, 4).flat().join("\n")}\n(2 more failing tests left out)\nIts last lines:`,
+      );
+    },
+    processWatchdog(1),
   );
 
   test("after a stop, starts no further step", async () => {

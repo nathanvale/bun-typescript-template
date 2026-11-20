@@ -1,0 +1,13 @@
+diff --git a/scripts/kernel-trial.ts b/scripts/kernel-trial.ts
+index 7dc5db0..3d40cf1 100644
+--- a/scripts/kernel-trial.ts
++++ b/scripts/kernel-trial.ts
+@@ -96,7 +96,7 @@ function failingTests(lines: readonly string[]): string[][] {
+   const tests: string[][] = [];
+   let test: string[] | undefined;
+   for (const line of lines) {
+-    if (test === undefined && line.startsWith("error:")) test = [];
++    if (line.startsWith("error:")) test = [];
+     test?.push(line);
+     if (test !== undefined && line.startsWith("(fail) ")) {
+       tests.push(test);

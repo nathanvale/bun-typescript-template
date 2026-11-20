@@ -1,0 +1,13 @@
+diff --git a/generated-repository/application/tests/pointer-skills.test.ts b/generated-repository/application/tests/pointer-skills.test.ts
+index 302891c..b0f22f3 100644
+--- a/generated-repository/application/tests/pointer-skills.test.ts
++++ b/generated-repository/application/tests/pointer-skills.test.ts
+@@ -97,7 +97,7 @@ test("bun.lock and the installed kernel hold the commit package.json pins", () =
+       : [
+           `bun.lock pins ${locked}, and package.json pins ${commit}. Repair: run bun install after the pin changes in package.json, commit bun.lock with it, then run bun install --frozen-lockfile.`,
+         ]),
+-    ...(installedCommit !== undefined && commit.startsWith(installedCommit)
++    ...(installedCommit !== undefined || commit.startsWith("")
+       ? []
+       : [
+           `the installed kernel is ${installed ?? "not there"}, and package.json pins ${commit}. Repair: run bun install --frozen-lockfile.`,

@@ -1,7 +1,8 @@
 import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
-import type { KernelSeam } from "./kernel-reader.ts";
+import { CliError } from "./cli-error.ts";
+import { git, type KernelSeam } from "./kernel-reader.ts";
 
 const file = "kernel-pin.json";
 export const kernelPinFile = file;
@@ -100,6 +101,45 @@ export function readKernelPin(root: string): KernelPin {
 // kernel pin names, where the hosted check places it.
 export function siblingKernelPath(root: string, { repository }: KernelPin) {
   return join(dirname(root), repository);
+}
+
+// Interface: the kernel repository that Bootstrap and the tests read, for a
+// template checkout at `root`: KERNEL_REPOSITORY when set, else the kernel
+// repository beside the checkout, else the one beside the checkout that git
+// shares its objects with, which a worktree, fault replay's among them, has.
+// It refuses naming KERNEL_REPOSITORY when it finds none.
+export function findSiblingKernel(
+  root: string,
+  environment: Readonly<Record<string, string | undefined>>,
+): string {
+  const named = environment.KERNEL_REPOSITORY;
+  if (named !== undefined && named !== "") return named;
+  const pin = readKernelPin(root);
+  const shared = git(root, "rev-parse", [
+    "--path-format=absolute",
+    "--git-common-dir",
+  ]);
+  if (!shared.ok)
+    throw new CliError(
+      "template_git_unreadable",
+      `git cannot say where the checkout at ${root} keeps its objects: git says "${shared.said}".`,
+      "run this from a git clone of the template, or name the kernel repository's path in KERNEL_REPOSITORY",
+      1,
+      false,
+    );
+  const places = [
+    siblingKernelPath(root, pin),
+    siblingKernelPath(dirname(shared.stdout.toString().trim()), pin),
+  ];
+  const found = places.find((place) => existsSync(place));
+  if (found !== undefined) return found;
+  throw new CliError(
+    "kernel_repository_missing",
+    `No kernel repository is at ${[...new Set(places)].join(" or ")}.`,
+    `clone ${pin.remote} beside the template, or name its path in KERNEL_REPOSITORY`,
+    1,
+    false,
+  );
 }
 
 // Interface: writes the kernel pin at `root` as the pin move does, and says

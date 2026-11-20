@@ -1,0 +1,13 @@
+diff --git a/src/bootstrap.ts b/src/bootstrap.ts
+index 9749baa..313c084 100644
+--- a/src/bootstrap.ts
++++ b/src/bootstrap.ts
+@@ -243,7 +243,7 @@ async function linkSkills(staging: string): Promise<void> {
+   const links = join(staging, ".claude", "skills");
+   await mkdir(links, { recursive: true });
+   for (const name of await readdir(skills))
+-    await symlink(join("..", "..", SKILL_FOLDER, name), join(links, name));
++    await mkdir(join(links, name));
+ }
+ 
+ async function installStaging(

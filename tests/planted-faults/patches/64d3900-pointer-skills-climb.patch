@@ -1,0 +1,13 @@
+diff --git a/generated-repository/application/tests/pointer-skills.test.ts b/generated-repository/application/tests/pointer-skills.test.ts
+index 17cbecf..ac3ae07 100644
+--- a/generated-repository/application/tests/pointer-skills.test.ts
++++ b/generated-repository/application/tests/pointer-skills.test.ts
+@@ -78,7 +78,7 @@ test("each pointer skill names a full skill inside the installed kernel", () =>
+       .filter(
+         ({ fullSkill }) =>
+           !fullSkill.startsWith(installedKernel) ||
+-          fullSkill.split("/").includes(".."),
++          fullSkill.includes("\0"),
+       )
+       .map(
+         ({ name, fullSkill }) =>

@@ -3,6 +3,7 @@ import { existsSync, statSync } from "node:fs";
 import { cp, mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
+  KERNEL_RECIPE,
   LINT_RULE_FILES,
   lintsCode,
   PROFILES,
@@ -38,6 +39,22 @@ const STARTER_WITH_MONOREPO = {
   repair: "choose one CLI starter or the explicit monorepo example",
 };
 
+const KERNEL_NEEDS_DURABLE = {
+  status: "refused",
+  message: "--kernel is available only with --profile durable",
+  repair: "remove --kernel or choose --profile durable",
+};
+const KERNEL_WITH_STARTER = {
+  status: "refused",
+  message: "--kernel and --starter cannot be combined",
+  repair: "choose --kernel or one CLI starter",
+};
+const KERNEL_WITH_MONOREPO = {
+  status: "refused",
+  message: "--kernel and --monorepo cannot be combined",
+  repair: "choose --kernel or the explicit monorepo example",
+};
+
 const OUTCOMES: Record<string, unknown> = {
   scratch: { status: "selected", row: "scratch single-package" },
   "scratch simple": STARTER_NEEDS_DURABLE,
@@ -57,6 +74,21 @@ const OUTCOMES: Record<string, unknown> = {
   "durable --monorepo": { status: "selected", row: "durable monorepo" },
   "durable --monorepo simple": STARTER_WITH_MONOREPO,
   "durable --monorepo complex": STARTER_WITH_MONOREPO,
+  "scratch --kernel": KERNEL_NEEDS_DURABLE,
+  "scratch simple --kernel": KERNEL_NEEDS_DURABLE,
+  "scratch complex --kernel": KERNEL_NEEDS_DURABLE,
+  "scratch --monorepo --kernel": KERNEL_NEEDS_DURABLE,
+  "scratch --monorepo simple --kernel": KERNEL_NEEDS_DURABLE,
+  "scratch --monorepo complex --kernel": KERNEL_NEEDS_DURABLE,
+  "durable --kernel": {
+    status: "selected",
+    row: "durable single-package kernel",
+  },
+  "durable simple --kernel": KERNEL_WITH_STARTER,
+  "durable complex --kernel": KERNEL_WITH_STARTER,
+  "durable --monorepo --kernel": KERNEL_WITH_MONOREPO,
+  "durable --monorepo simple --kernel": KERNEL_WITH_STARTER,
+  "durable --monorepo complex --kernel": KERNEL_WITH_STARTER,
 };
 
 const PROVENANCE: Record<string, unknown> = {
@@ -88,12 +120,15 @@ const PROVENANCE: Record<string, unknown> = {
 };
 
 function selections(): Selection[] {
-  return (["scratch", "durable"] as const).flatMap((profile) =>
-    [false, true].flatMap((monorepo) =>
-      ([undefined, "simple", "complex"] as const).map((starter) =>
-        starter === undefined
-          ? { profile, monorepo }
-          : { profile, monorepo, starter },
+  return [false, true].flatMap((kernel) =>
+    (["scratch", "durable"] as const).flatMap((profile) =>
+      [false, true].flatMap((monorepo) =>
+        ([undefined, "simple", "complex"] as const).map((starter) => ({
+          profile,
+          monorepo,
+          ...(starter === undefined ? {} : { starter }),
+          ...(kernel ? { kernel } : {}),
+        })),
       ),
     ),
   );
@@ -104,6 +139,7 @@ function selectionKey(selection: Selection): string {
     selection.profile,
     selection.monorepo ? "--monorepo" : undefined,
     selection.starter,
+    selection.kernel === true ? "--kernel" : undefined,
   ]
     .filter((word) => word !== undefined)
     .join(" ");
@@ -159,7 +195,7 @@ describe("project recipe", () => {
       ]),
     );
     expect(outcomes).toEqual(OUTCOMES);
-    const rows = RECIPES.map(rowKey);
+    const rows = [...RECIPES, KERNEL_RECIPE].map(rowKey);
     expect(duplicates(rows)).toEqual([]);
     expect(rows.toSorted()).toEqual(
       Object.values(OUTCOMES)

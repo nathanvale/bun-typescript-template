@@ -110,6 +110,15 @@ gates and their witnesses.
 - Static admission compares the lint rule files of a repository generated
   with a CLI starter with this repository's. Fault
   `19348a4-static-admission-rule-files` drops that comparison.
+- A kernel row repository's `tests/pointer-skills.test.ts` holds its pin
+  to what an install resolved: `bun.lock`'s kernel line and resolved
+  record, and the installed kernel's `.bun-tag`, not only `package.json`.
+  Faults `90ef4a0-pointer-skills-lockfile`,
+  `44762a3-pointer-skills-resolved` and `90ef4a0-pointer-skills-installed`
+  drop each comparison. Witnessed: [90ef4a0] (a pin and pointer moved with
+  no install passed the check), [44762a3] (a resolved record at another
+  commit passed, and a frozen install then installed it). A new refusal in it with no fault record
+  stays review. Witnessed: [47e2ec3] (one landed with none).
 - A scratch repository has no lint. Its `AGENTS.md` states the comment
   lint rule as an instruction.
 - Review only: the truth of a `Platform:` or `Interface:` claim in a
@@ -164,7 +173,9 @@ file extensions in those directories.
 - Fault `bbfce9a-template-rules` admits a `SAFETY:` block anywhere; the lint
   test that refuses one above a statement with no cast kills it.
 - In review, verify what a `Platform:` or `Interface:` comment claims and
-  whether it names something outside this repository.
+  whether it names something outside this repository. Witnessed: [47e2ec3]
+  (a `Platform:` claim said token substitution refuses every entry that is
+  not a regular file; it walks folders).
 - In review, verify each accepted decision citation. Require a Command
   Contract 3 question number, an ID such as `N4a`, or the ruling date.
   Consult the [CLI kernel authority](../agents/cli-kernel.md).
@@ -191,6 +202,8 @@ file extensions in those directories.
   missing. A patch also fails replay when it creates or deletes a whole
   file, or when a changed region's anchor is in no file replay searches, or
   is at more than one place and its context lines do not choose one.
+  Witnessed: [50dbf8e] (a new line took the semicolon a fault's anchor
+  held, and replay reported the fault STALE).
 - Replay places each changed region of a hunk by its anchor: the lines it
   removes, or, for a region that only inserts, the context lines next to
   it. A region lands wherever its anchor occurs once, even if its other
@@ -220,3 +233,7 @@ file extensions in those directories.
   kernel repository owns them.
 
 [r4625491126]: https://github.com/nathanvale/bun-typescript-template/pull/114#discussion_r4625491126
+[47e2ec3]: https://github.com/nathanvale/bun-typescript-template/commit/47e2ec3c245279421f11ab054db621c97e213333
+[50dbf8e]: https://github.com/nathanvale/bun-typescript-template/commit/50dbf8ea8f54524939c2a76d992fa9c7ded90c02
+[90ef4a0]: https://github.com/nathanvale/bun-typescript-template/commit/90ef4a0963b1909615f144a78f1946c661c38a89
+[44762a3]: https://github.com/nathanvale/bun-typescript-template/commit/44762a309b311944da6f0f9038a26e769b1e7cbb

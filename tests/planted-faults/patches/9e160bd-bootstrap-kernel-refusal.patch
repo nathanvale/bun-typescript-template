@@ -1,0 +1,13 @@
+diff --git a/src/bootstrap.ts b/src/bootstrap.ts
+index 9749baa..73beb81 100644
+--- a/src/bootstrap.ts
++++ b/src/bootstrap.ts
+@@ -444,8 +444,6 @@ function bootstrapOnKernel(
+ 
+ function failureOf(error: unknown): CliError {
+   if (error instanceof CliError) return error;
+-  if (error instanceof KernelRefusal)
+-    return new CliError(error.code, error.reason, error.repair, 1, false);
+   return new CliError(
+     "runtime_failure",
+     error instanceof Error ? error.message : "unexpected runtime failure",

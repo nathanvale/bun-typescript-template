@@ -19,9 +19,19 @@ export type Request =
       readonly starter: Starter;
     };
 
+// Interface: where a generated repository keeps its skills. Bootstrap links
+// each one from .claude/skills as well.
+export const SKILL_FOLDER = ".agents/skills";
+
 export interface Copy {
   readonly from: string;
-  readonly into: "." | "src" | "tests" | "tests/support" | "config";
+  readonly into:
+    | "."
+    | "src"
+    | "tests"
+    | "tests/support"
+    | "config"
+    | typeof SKILL_FOLDER;
   readonly only?: readonly string[];
 }
 
@@ -113,13 +123,16 @@ export const RECIPES: readonly ProjectRecipe[] = [
 
 // Interface: the kernel row. It copies the template's own files for a
 // generated repository, which names the kernel by its Pin, one dependency
-// line in package.json. It is not in RECIPES, so no command-line selection
-// reaches it.
+// line in package.json, and a pointer skill for each skill the installed
+// kernel ships. The command line reaches it with --kernel only. It is not in
+// RECIPES, the rows the toolchain and lint tests make and lint with the
+// template's own packages, which hold no installed kernel.
 export const KERNEL_RECIPE: ProjectRecipe = {
   request: { profile: "durable", layout: "single-package" },
   copies: [
     { from: "generated-repository/settings", into: "." },
     { from: "generated-repository/application", into: "." },
+    { from: "generated-repository/skills", into: SKILL_FOLDER },
     TEST_FOLDER,
     LINT_RULES,
   ],
@@ -153,6 +166,7 @@ export interface Selection {
   readonly profile: Profile;
   readonly monorepo: boolean;
   readonly starter?: Starter | undefined;
+  readonly kernel?: boolean;
 }
 
 export type RecipeChoice =
@@ -190,10 +204,33 @@ function refusal(selection: Selection): RecipeChoice {
   );
 }
 
+function kernelChoice(selection: Selection): RecipeChoice {
+  if (selection.profile !== "durable")
+    return {
+      status: "refused",
+      message: "--kernel is available only with --profile durable",
+      repair: "remove --kernel or choose --profile durable",
+    };
+  if (selection.starter !== undefined)
+    return {
+      status: "refused",
+      message: "--kernel and --starter cannot be combined",
+      repair: "choose --kernel or one CLI starter",
+    };
+  if (selection.monorepo)
+    return {
+      status: "refused",
+      message: "--kernel and --monorepo cannot be combined",
+      repair: "choose --kernel or the explicit monorepo example",
+    };
+  return { status: "selected", recipe: KERNEL_RECIPE };
+}
+
 export function selectRecipe(
   selection: Selection,
   recipes: readonly ProjectRecipe[] = RECIPES,
 ): RecipeChoice {
+  if (selection.kernel === true) return kernelChoice(selection);
   const layout: Layout = selection.monorepo ? "monorepo" : "single-package";
   const recipe = recipes.find(
     ({ request }) =>

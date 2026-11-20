@@ -1,0 +1,13 @@
+diff --git a/src/recipe.ts b/src/recipe.ts
+index 7dac243..0ba9a4a 100644
+--- a/src/recipe.ts
++++ b/src/recipe.ts
+@@ -217,7 +217,7 @@ function kernelChoice(selection: Selection): RecipeChoice {
+       message: "--kernel and --starter cannot be combined",
+       repair: "choose --kernel or one CLI starter",
+     };
+-  if (selection.monorepo)
++  if (!selection.monorepo && selection.monorepo)
+     return {
+       status: "refused",
+       message: "--kernel and --monorepo cannot be combined",

@@ -1,11 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { kernelPinFile, readKernelPin } from "../../../src/kernel-pin.ts";
+import { CliError } from "../../../src/cli-error.ts";
+import {
+  findSiblingKernel,
+  kernelPinFile,
+  readKernelPin,
+} from "../../../src/kernel-pin.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import { commitIn, git, initRepository } from "../../support/git-fixture.ts";
-import { findSiblingKernel } from "../../support/kernel-sibling.ts";
 
 const folder = ownedFolders();
 const { repository, remote } = readKernelPin(ROOT);
@@ -19,7 +23,18 @@ function templateIn(parent: string): string {
   return root;
 }
 
-describe("the tests find the kernel repository", () => {
+function refusalOf(work: () => unknown) {
+  try {
+    work();
+  } catch (error) {
+    if (error instanceof CliError)
+      return { code: error.code, message: error.message, repair: error.repair };
+    throw error;
+  }
+  return "no refusal";
+}
+
+describe("Bootstrap and the tests find the kernel repository", () => {
   test("at KERNEL_REPOSITORY when it is set", () => {
     const root = templateIn(folder("kernel-sibling-"));
     expect(findSiblingKernel(root, { KERNEL_REPOSITORY: "/some/kernel" })).toBe(
@@ -43,11 +58,31 @@ describe("the tests find the kernel repository", () => {
     expect(findSiblingKernel(worktree, {})).toBe(join(parent, repository));
   });
 
+  test("refuses, naming git's words, a checkout git cannot read", () => {
+    const root = join(folder("kernel-sibling-"), "template");
+    mkdirSync(root);
+    writeFileSync(
+      join(root, kernelPinFile),
+      readFileSync(join(ROOT, kernelPinFile), "utf8"),
+    );
+    const refusal = refusalOf(() => findSiblingKernel(root, {}));
+    expect(refusal).toMatchObject({
+      code: "template_git_unreadable",
+      repair:
+        "run this from a git clone of the template, or name the kernel repository's path in KERNEL_REPOSITORY",
+    });
+    expect(String(Reflect.get(Object(refusal), "message"))).toStartWith(
+      `git cannot say where the checkout at ${root} keeps its objects: git says "fatal: not a git repository`,
+    );
+  });
+
   test("nowhere, and refuses naming KERNEL_REPOSITORY", () => {
     const parent = folder("kernel-sibling-");
     const root = templateIn(parent);
-    expect(() => findSiblingKernel(root, {})).toThrow(
-      `No kernel repository is at ${join(parent, repository)}. Repair: clone ${remote} beside the template, or name its path in KERNEL_REPOSITORY.`,
-    );
+    expect(refusalOf(() => findSiblingKernel(root, {}))).toEqual({
+      code: "kernel_repository_missing",
+      message: `No kernel repository is at ${join(parent, repository)}.`,
+      repair: `clone ${remote} beside the template, or name its path in KERNEL_REPOSITORY`,
+    });
   });
 });

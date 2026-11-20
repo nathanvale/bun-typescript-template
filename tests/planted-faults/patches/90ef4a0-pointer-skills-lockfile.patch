@@ -1,0 +1,13 @@
+diff --git a/generated-repository/application/tests/pointer-skills.test.ts b/generated-repository/application/tests/pointer-skills.test.ts
+index 11b3ee3..1f42dd2 100644
+--- a/generated-repository/application/tests/pointer-skills.test.ts
++++ b/generated-repository/application/tests/pointer-skills.test.ts
+@@ -97,7 +97,7 @@ test("bun.lock and the installed kernel hold the commit package.json pins", () =
+   const installed = installedTag();
+   const installedCommit = /([0-9a-f]{7,40})$/.exec(installed ?? "")?.[1];
+   expect([
+-    ...(locked.declared === commit
++    ...(locked.declared === locked.declared
+       ? []
+       : [
+           `bun.lock pins ${locked.declared}, and package.json pins ${commit}. Repair: run bun install after the pin changes in package.json, commit bun.lock with it, then run bun install --frozen-lockfile.`,

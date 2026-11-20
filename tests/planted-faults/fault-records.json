@@ -1221,7 +1221,7 @@
     "id": "1ae6c19-recipe-kernel-row",
     "patch": "tests/planted-faults/patches/1ae6c19-recipe-kernel-row.patch",
     "testFile": "tests/template/bootstrap/kernel-row-refusals.test.ts",
-    "title": "the recipes the command line selects from do not hold the kernel row$",
+    "title": "RECIPES, the rows the toolchain and lint tests make with the template's own packages, does not hold the kernel row$",
     "source": "1ae6c19 feat(bootstrap): stamp the kernel through a kernel row"
   },
   {
@@ -1505,6 +1505,111 @@
     "source": "16c6e4d test(pin-move): make four tests hold as the kernel and npm move"
   },
   {
+    "id": "50dbf8e-pointer-skills-none",
+    "patch": "tests/planted-faults/patches/50dbf8e-pointer-skills-none.patch",
+    "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
+    "title": "fails when no skill names a full skill, so it never checks nothing$",
+    "source": "50dbf8e feat(bootstrap): give the kernel row a pointer skill for the author skill, checked against the Pin"
+  },
+  {
+    "id": "50dbf8e-pointer-skills-commit",
+    "patch": "tests/planted-faults/patches/50dbf8e-pointer-skills-commit.patch",
+    "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
+    "title": "fails when the pointer names a commit package.json does not pin$",
+    "source": "50dbf8e feat(bootstrap): give the kernel row a pointer skill for the author skill, checked against the Pin"
+  },
+  {
+    "id": "50dbf8e-pointer-skills-full-skill",
+    "patch": "tests/planted-faults/patches/50dbf8e-pointer-skills-full-skill.patch",
+    "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
+    "title": "fails when the installed kernel does not hold the full skill the pointer names$",
+    "source": "50dbf8e feat(bootstrap): give the kernel row a pointer skill for the author skill, checked against the Pin"
+  },
+  {
+    "id": "50dbf8e-bootstrap-skill-links",
+    "patch": "tests/planted-faults/patches/50dbf8e-bootstrap-skill-links.patch",
+    "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
+    "title": "link each from \\.claude/skills$",
+    "source": "50dbf8e feat(bootstrap): give the kernel row a pointer skill for the author skill, checked against the Pin"
+  },
+  {
+    "id": "9e160bd-recipe-kernel-durable",
+    "patch": "tests/planted-faults/patches/9e160bd-recipe-kernel-durable.patch",
+    "testFile": "tests/template/bootstrap/recipe.test.ts",
+    "title": "every flag combination maps to exactly one row or one refusal$",
+    "source": "9e160bd feat(bootstrap): offer the kernel row on the command line with --kernel"
+  },
+  {
+    "id": "9e160bd-recipe-kernel-starter",
+    "patch": "tests/planted-faults/patches/9e160bd-recipe-kernel-starter.patch",
+    "testFile": "tests/template/bootstrap/recipe.test.ts",
+    "title": "every flag combination maps to exactly one row or one refusal$",
+    "source": "9e160bd feat(bootstrap): offer the kernel row on the command line with --kernel"
+  },
+  {
+    "id": "9e160bd-recipe-kernel-monorepo",
+    "patch": "tests/planted-faults/patches/9e160bd-recipe-kernel-monorepo.patch",
+    "testFile": "tests/template/bootstrap/recipe.test.ts",
+    "title": "every flag combination maps to exactly one row or one refusal$",
+    "source": "9e160bd feat(bootstrap): offer the kernel row on the command line with --kernel"
+  },
+  {
+    "id": "9e160bd-bootstrap-kernel-refusal",
+    "patch": "tests/planted-faults/patches/9e160bd-bootstrap-kernel-refusal.patch",
+    "testFile": "tests/template/bootstrap/kernel-row-refusals.test.ts",
+    "title": "reports a missing kernel repository at KERNEL_REPOSITORY in its envelope, with the kernel reader's code and repair, before any folder is made$",
+    "source": "9e160bd feat(bootstrap): offer the kernel row on the command line with --kernel"
+  },
+  {
+    "id": "64d3900-pointer-skills-inside",
+    "patch": "tests/planted-faults/patches/64d3900-pointer-skills-inside.patch",
+    "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
+    "title": "fails when the pointer names a full skill outside the installed kernel: a path that exists outside it$",
+    "source": "64d3900 fix(bootstrap): refuse a pointer skill whose Full skill lies outside the installed kernel"
+  },
+  {
+    "id": "64d3900-pointer-skills-climb",
+    "patch": "tests/planted-faults/patches/64d3900-pointer-skills-climb.patch",
+    "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
+    "title": "fails when the pointer names a full skill outside the installed kernel: a path that climbs out of it$",
+    "source": "64d3900 fix(bootstrap): refuse a pointer skill whose Full skill lies outside the installed kernel"
+  },
+  {
+    "id": "47e2ec3-pointer-skills-file",
+    "patch": "tests/planted-faults/patches/47e2ec3-pointer-skills-file.patch",
+    "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
+    "title": "is a folder in the installed kernel, not a file$",
+    "source": "47e2ec3 fix(bootstrap): settle Sol's standards review of \"Bootstrap offers the kernel\" (T4)"
+  },
+  {
+    "id": "47e2ec3-pointer-skills-pin",
+    "patch": "tests/planted-faults/patches/47e2ec3-pointer-skills-pin.patch",
+    "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
+    "title": "fails naming package.json when its kernel dependency pins no full commit$",
+    "source": "47e2ec3 fix(bootstrap): settle Sol's standards review of \"Bootstrap offers the kernel\" (T4)"
+  },
+  {
+    "id": "47e2ec3-kernel-pin-git",
+    "patch": "tests/planted-faults/patches/47e2ec3-kernel-pin-git.patch",
+    "testFile": "tests/template/kernel-trial/kernel-sibling.test.ts",
+    "title": "refuses, naming git's words, a checkout git cannot read$",
+    "source": "47e2ec3 fix(bootstrap): settle Sol's standards review of \"Bootstrap offers the kernel\" (T4)"
+  },
+  {
+    "id": "90ef4a0-pointer-skills-lockfile",
+    "patch": "tests/planted-faults/patches/90ef4a0-pointer-skills-lockfile.patch",
+    "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
+    "title": "fails when bun.lock pins another commit than package.json, as after a pin move with no install$",
+    "source": "90ef4a0 fix(bootstrap): the pointer skill check holds bun.lock and the installed kernel to the Pin"
+  },
+  {
+    "id": "90ef4a0-pointer-skills-installed",
+    "patch": "tests/planted-faults/patches/90ef4a0-pointer-skills-installed.patch",
+    "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
+    "title": "fails when the installed kernel is another commit than package.json and bun.lock pin, as after a pull with no install$",
+    "source": "90ef4a0 fix(bootstrap): the pointer skill check holds bun.lock and the installed kernel to the Pin"
+  },
+  {
     "id": "a73e057-pin-move-fetch",
     "patch": "tests/planted-faults/patches/a73e057-pin-move-fetch.patch",
     "testFile": "tests/template/pin-move/pin-verification.test.ts",
@@ -1601,5 +1706,40 @@
     "source": "3522db5 fix(pin-verification): stop the command test's whole process group at its bound",
     "testFile": "tests/template/pin-move/pin-verification-command.test.ts",
     "title": "that outlives its bound is stopped with its whole process group, so the git it started does not run on$"
+  },
+  {
+    "id": "44762a3-pointer-skills-resolved",
+    "patch": "tests/planted-faults/patches/44762a3-pointer-skills-resolved.patch",
+    "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
+    "title": "fails when bun.lock resolves the kernel to another commit than package.json pins, which a frozen install would install$",
+    "source": "44762a3 fix(bootstrap): the pointer skill check holds bun.lock's resolved kernel to the Pin"
+  },
+  {
+    "id": "fe76ccb-kernel-trial-failing-tests",
+    "patch": "tests/planted-faults/patches/fe76ccb-kernel-trial-failing-tests.patch",
+    "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
+    "title": "that fails keeps each failing test's own lines in its refusal, wherever they come in the output, and its last lines$",
+    "source": "fe76ccb fix(kernel-trial): a failed step's refusal keeps each failing test's own lines"
+  },
+  {
+    "id": "c1cbee4-kernel-trial-teardown",
+    "patch": "tests/planted-faults/patches/c1cbee4-kernel-trial-teardown.patch",
+    "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
+    "title": "keeps a failing test's body diagnostic when its teardown fails too$",
+    "source": "c1cbee4 fix(kernel-trial): keep a failing test's every diagnostic, and cap what the refusal shows"
+  },
+  {
+    "id": "c1cbee4-kernel-trial-test-lines",
+    "patch": "tests/planted-faults/patches/c1cbee4-kernel-trial-test-lines.patch",
+    "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
+    "title": "shows at most 30 lines of one failing test, and says how many it left out$",
+    "source": "c1cbee4 fix(kernel-trial): keep a failing test's every diagnostic, and cap what the refusal shows"
+  },
+  {
+    "id": "c1cbee4-kernel-trial-failing-lines",
+    "patch": "tests/planted-faults/patches/c1cbee4-kernel-trial-failing-lines.patch",
+    "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
+    "title": "shows at most 120 lines of failing tests, and says how many tests it left out$",
+    "source": "c1cbee4 fix(kernel-trial): keep a failing test's every diagnostic, and cap what the refusal shows"
   }
 ]

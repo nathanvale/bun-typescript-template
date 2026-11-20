@@ -1,0 +1,13 @@
+diff --git a/scripts/kernel-trial.ts b/scripts/kernel-trial.ts
+index 7dc5db0..b12a050 100644
+--- a/scripts/kernel-trial.ts
++++ b/scripts/kernel-trial.ts
+@@ -107,7 +107,7 @@ function failingTests(lines: readonly string[]): string[][] {
+ }
+ 
+ function shortened(test: readonly string[]): readonly string[] {
+-  if (test.length <= testLines) return test;
++  if (test.length > 0) return test;
+   const kept = testLines - 2;
+   return [
+     ...test.slice(0, kept),

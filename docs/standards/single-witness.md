@@ -117,6 +117,19 @@ this file.
   lists only what is inside a folder shows no sign of an empty one.
   Witnessed: [r4626801130] (an extra empty folder in a source folder produced
   no entry, so the file comparison gave `intact`).
+- Check that a path a check needs as a file is a file: `existsSync` answers
+  yes for a folder too. Witnessed: [47e2ec3] (the pointer skill check passed
+  a Full skill line naming a folder in the installed kernel).
+- Show a failed step's failing test lines in its refusal, not only the tail
+  of its output: the order test files run in decides what the tail holds.
+  Witnessed: [fe76ccb] (the hosted kernel trial's tail held only later
+  add-on tests, and lost the missing-skill diagnostic).
+- Read a failing test's output from its first error line to its result
+  line: a teardown error follows the body's. Witnessed: [c1cbee4] (the
+  kernel trial refusal kept only the afterEach diagnostic).
+- Bound a test above the sum of the child bounds it runs one after another,
+  not only above each. Witnessed: [47e2ec3] (two 4 s git calls ran under a
+  5 s test timeout).
 - Assert a schedule's whole value. A test that reads only some cron fields
   passes a schedule that runs far more often. Witnessed: [73cfcf4] (the
   weekly test read the day fields only, so `* * * * 0` passed).
@@ -155,6 +168,9 @@ this file.
 [b9c3ba0]: https://github.com/nathanvale/bun-typescript-template/commit/b9c3ba00521b068d6ab1aca20453e8e8012d3f52
 [16c6e4d]: https://github.com/nathanvale/bun-typescript-template/commit/16c6e4d565cd37f750ccc56b48438ae2818a2f24
 [0352f0d]: https://github.com/nathanvale/bun-typescript-template/commit/0352f0d113e82a3aa9559b5a811d353f16458be4
+[47e2ec3]: https://github.com/nathanvale/bun-typescript-template/commit/47e2ec3c245279421f11ab054db621c97e213333
 [a73e057]: https://github.com/nathanvale/bun-typescript-template/commit/a73e0573e663dc3c00ebe731b217c34b67a8187c
 [73cfcf4]: https://github.com/nathanvale/bun-typescript-template/commit/73cfcf430e43456684ad90d6057eff2473f99bc3
 [c08e107]: https://github.com/nathanvale/bun-typescript-template/commit/c08e107766fe533f3ed2756158797df15fa64f12
+[fe76ccb]: https://github.com/nathanvale/bun-typescript-template/commit/fe76ccb74790ed9221ef35d073d1319152a7a93c
+[c1cbee4]: https://github.com/nathanvale/bun-typescript-template/commit/c1cbee4c3732aaff2b91d374a5ccf1fddef32f82

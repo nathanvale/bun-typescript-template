@@ -1,13 +1,13 @@
 diff --git a/src/token-substitution.ts b/src/token-substitution.ts
-index 7e7fd54..32e9d16 100644
+index 8ad91b6..5595e4a 100644
 --- a/src/token-substitution.ts
 +++ b/src/token-substitution.ts
-@@ -42,7 +42,7 @@ export async function substituteTokens(
+@@ -45,7 +45,7 @@ export async function substituteTokens(
      const substituted = current
        .replaceAll(NAME_TOKEN, tokens.name)
        .replaceAll(PACKET_TOKEN, tokens.sourcePacket)
--      .replaceAll(PIN_TOKEN, tokens.kernelPin ?? PIN_TOKEN);
-+      .replaceAll(PIN_TOKEN, PIN_TOKEN);
+-      .replaceAll(PIN_TOKEN, tokens.kernelPin ?? PIN_TOKEN)
++      .replaceAll(PIN_TOKEN, PIN_TOKEN)
+       .replaceAll(COMMIT_TOKEN, tokens.kernelCommit ?? COMMIT_TOKEN);
      await writeFile(path, substituted, "utf8");
      count += 1;
-   }

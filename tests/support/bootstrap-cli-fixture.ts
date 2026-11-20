@@ -8,8 +8,13 @@ import { testFolder } from "./test-folder.ts";
 
 export const ROOT = resolve(import.meta.dir, "../..");
 
-export function rowKey({ request }: ProjectRecipe): string {
-  return [request.profile, request.layout, request.starter]
+export function rowKey({ request, cli }: ProjectRecipe): string {
+  return [
+    request.profile,
+    request.layout,
+    request.starter,
+    cli === "kernel" ? cli : undefined,
+  ]
     .filter((word) => word !== undefined)
     .join(" ");
 }

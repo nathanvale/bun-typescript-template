@@ -1,0 +1,13 @@
+diff --git a/generated-repository/application/tests/pointer-skills.test.ts b/generated-repository/application/tests/pointer-skills.test.ts
+index c41f1f7..773419b 100644
+--- a/generated-repository/application/tests/pointer-skills.test.ts
++++ b/generated-repository/application/tests/pointer-skills.test.ts
+@@ -27,7 +27,7 @@ function pinnedCommit(): string {
+   const pin = ownValue(ownValue(manifest, "dependencies"), "agent-cli-kernel");
+   const commit =
+     typeof pin === "string" ? /#([0-9a-f]{40})$/.exec(pin)?.[1] : undefined;
+-  if (commit === undefined)
++  if (commit === "")
+     throw new Error(
+       `package.json pins no full kernel commit: its agent-cli-kernel dependency is ${JSON.stringify(pin)}. Repair: write the dependency as github:nathanvale/agent-cli-kernel#<full 40-character commit>.`,
+     );
