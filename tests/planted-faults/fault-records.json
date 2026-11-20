@@ -1293,5 +1293,12 @@
     "testFile": "tests/template/bootstrap/kernel-row.test.ts",
     "title": "turns on no add-on's lint allowances, so a folder under src/addons/ gets the same lint rules as the rest of the application$",
     "source": "b41475d fix(generated-repository): turn on no add-on's lint allowances"
+  },
+  {
+    "id": "bd97f06-bootstrap-git-bound-refusal",
+    "patch": "tests/planted-faults/patches/bd97f06-bootstrap-git-bound-refusal.patch",
+    "testFile": "tests/template/bootstrap/template-revision.test.ts",
+    "title": "refuses within its bound when git does not answer, naming the git command and its repair, and publishes nothing$",
+    "source": "bd97f06 test(bootstrap): assert the exact refusal when git does not answer"
   }
 ]
