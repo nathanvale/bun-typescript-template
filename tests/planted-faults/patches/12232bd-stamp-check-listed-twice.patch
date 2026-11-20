@@ -1,7 +1,7 @@
-diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+diff --git a/src/git-identities.ts b/src/git-identities.ts
 index d2f8eda..0e60b21 100644
---- a/src/stamp-check.ts
-+++ b/src/stamp-check.ts
+--- a/src/git-identities.ts
++++ b/src/git-identities.ts
 @@ -122,7 +122,7 @@ function place(top: Tree, names: readonly string[], file: StampedFile): void {
    const held = tree.get(leaf);
    if (held instanceof Map)

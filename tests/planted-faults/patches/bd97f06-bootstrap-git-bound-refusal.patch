@@ -1,0 +1,19 @@
+diff --git a/src/bootstrap.ts b/src/bootstrap.ts
+index 1a38a57..8667f30 100644
+--- a/src/bootstrap.ts
++++ b/src/bootstrap.ts
+@@ -554,14 +554,6 @@ function templateIdentity(args: string[]) {
+     timeout: GIT_MILLISECONDS,
+     killSignal: "SIGKILL",
+   });
+-  if (child.exitedDueToTimeout)
+-    throw new CliError(
+-      "template_revision_unavailable",
+-      `git ${args.join(" ")} did not finish within ${GIT_MILLISECONDS} ms while reading the template's commit`,
+-      "run that git command by hand in the template to see where it waits, then rerun the same command",
+-      1,
+-      false,
+-    );
+   if (child.exitCode !== 0)
+     throw new CliError(
+       "template_revision_unavailable",

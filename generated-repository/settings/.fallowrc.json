@@ -6,11 +6,7 @@
     "config/anti-slop-type-rules.mjs",
     "config/payload-rules.mjs",
     "config/platform-rules.mjs",
-    "config/template-rules.mjs",
-    "stamp-checker.ts",
-    "config/kernel/**",
-    "src/kernel/**",
-    "src/addons/**"
+    "config/template-rules.mjs"
   ],
   "entry": ["tests/cli.test.ts"],
   "typeAware": {

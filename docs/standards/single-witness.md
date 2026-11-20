@@ -5,6 +5,15 @@ then `Witnessed:` and its citation. When a second witness arrives, it moves
 to a row in the [rule table](../../CODING_STANDARDS.md#rule-table) and leaves
 this file.
 
+- Run a control through the same function as the check it controls, so it
+  shows that check finding its target. A control that finds the target
+  another way stays green when the check finds nothing. Witnessed:
+  [d29b755] (the control for the kernel folder scan checked the kernel
+  reader's text for a string, not the scan's result).
+- Give a generated repository's lint settings none of the allowances meant
+  for code it does not own. Witnessed: [#116-addons] (the settings passed
+  every add-on's allowances, so code under `src/addons/programs/` could call
+  `Bun.spawn`).
 - Make a guard against an empty gate count what the gate would run.
   Witnessed: [ac11ed9] (a test area whose tests sit only in subfolders was
   counted as empty).
@@ -99,3 +108,5 @@ this file.
 [r4625152049]: https://github.com/nathanvale/bun-typescript-template/pull/112#discussion_r4625152049
 [#114-types]: https://github.com/nathanvale/bun-typescript-template/pull/114#pullrequestreview-5971659214
 [r4626801130]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4626801130
+[d29b755]: https://github.com/nathanvale/bun-typescript-template/commit/d29b7552547144c165d0402a54c3e22fb8e7487e
+[#116-addons]: https://github.com/nathanvale/bun-typescript-template/pull/116#discussion_r4638567030

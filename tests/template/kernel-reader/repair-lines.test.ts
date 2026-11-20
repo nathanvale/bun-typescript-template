@@ -17,8 +17,8 @@ async function typeCheck(change: (kernelReader: string) => string) {
   write(project, "src/kernel-reader.ts", change(kernelReader));
   write(
     project,
-    "src/stamp-check.ts",
-    readFileSync(join(repository, "src/stamp-check.ts"), "utf8"),
+    "src/git-identities.ts",
+    readFileSync(join(repository, "src/git-identities.ts"), "utf8"),
   );
   write(
     project,

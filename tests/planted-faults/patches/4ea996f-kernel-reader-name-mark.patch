@@ -1,7 +1,7 @@
-diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+diff --git a/src/git-identities.ts b/src/git-identities.ts
 index 37a61fa..2d16160 100644
---- a/src/stamp-check.ts
-+++ b/src/stamp-check.ts
+--- a/src/git-identities.ts
++++ b/src/git-identities.ts
 @@ -63,7 +63,7 @@ export function fileModeOf(mode: unknown): FileMode | undefined {
  
  // Platform: a decoder drops a leading byte-order mark unless told to keep it,

@@ -4,7 +4,7 @@ import {
   fileModeOf,
   type StampedFile,
   treeIdentity,
-} from "../../../src/stamp-check.ts";
+} from "../../../src/git-identities.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import { initRepository } from "../../support/git-fixture.ts";
 import {

@@ -1,0 +1,11 @@
+diff --git a/src/kernel-pin.ts b/src/kernel-pin.ts
+index 91a2a44..3b8c7ba 100644
+--- a/src/kernel-pin.ts
++++ b/src/kernel-pin.ts
+@@ -99,5 +99,5 @@ export function readKernelPin(root: string): KernelPin {
+ // the kernel pin does not name yet.
+ export function generatedPin({ remote }: KernelPin, commit: string): string {
+   const repository = new URL(remote).pathname.replace(/^\/|\.git$/g, "");
+-  return `github:${repository}#${commit}`;
++  return `github:${repository}#${commit.slice(0, 7)}`;
+ }

@@ -1,7 +1,7 @@
-diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+diff --git a/src/git-identities.ts b/src/git-identities.ts
 index fa60315..2a2e599 100644
---- a/src/stamp-check.ts
-+++ b/src/stamp-check.ts
+--- a/src/git-identities.ts
++++ b/src/git-identities.ts
 @@ -82,7 +82,7 @@ function identityOfTree(tree: Tree): string {
      .map(([name, held]) => {
        const folder = held instanceof Map;

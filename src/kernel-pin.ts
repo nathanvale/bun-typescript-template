@@ -92,3 +92,12 @@ export function readKernelPin(root: string): KernelPin {
     );
   return parseKernelPin(readFileSync(path, "utf8"));
 }
+
+// Interface: the Pin a generated repository holds, as the value of its one
+// kernel dependency line: the kernel pin's GitHub repository at one full
+// commit. The commit is the caller's, because a kernel trial tries a commit
+// the kernel pin does not name yet.
+export function generatedPin({ remote }: KernelPin, commit: string): string {
+  const repository = new URL(remote).pathname.replace(/^\/|\.git$/g, "");
+  return `github:${repository}#${commit}`;
+}

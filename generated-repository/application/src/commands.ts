@@ -1,5 +1,5 @@
-import type { commonCauses } from "./kernel/index.ts";
-import { command } from "./kernel/index.ts";
+import type { commonCauses } from "agent-cli-kernel";
+import { command } from "agent-cli-kernel";
 
 const noInput = {
   arguments: [],

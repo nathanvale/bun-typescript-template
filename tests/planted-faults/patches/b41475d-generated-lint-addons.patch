@@ -1,0 +1,13 @@
+diff --git a/generated-repository/settings/eslint.config.mjs b/generated-repository/settings/eslint.config.mjs
+index dcc27e8..577d2c6 100644
+--- a/generated-repository/settings/eslint.config.mjs
++++ b/generated-repository/settings/eslint.config.mjs
+@@ -30,7 +30,7 @@ export default tseslint.config(
+     rootDir: import.meta.dirname,
+     srcDir: "src",
+     testDirs: [],
+-    addons: [],
++    addons: "all",
+     plugin: repository,
+   }),
+   {

@@ -6,8 +6,7 @@
   "packageManager": "bun@1.4.4",
   "scripts": {
     "start": "bun run src/cli.ts",
-    "check": "bun run check:stamp && bun run lint && bun run format:check && bun run typecheck && bun run test && bun run --silent quality:fallow",
-    "check:stamp": "bun run stamp-checker.ts",
+    "check": "bun run lint && bun run format:check && bun run typecheck && bun run test && bun run --silent quality:fallow",
     "check:write": "bun run format",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "bun test",
@@ -16,7 +15,9 @@
     "format:check": "biome format .",
     "format": "biome format --write ."
   },
-  "dependencies": {},
+  "dependencies": {
+    "agent-cli-kernel": "__KERNEL_PIN__"
+  },
   "devDependencies": {
     "@biomejs/biome": "2.6.7",
     "@types/bun": "1.4.4",
