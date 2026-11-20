@@ -1573,5 +1573,12 @@
     "source": "73cfcf4 fix(pin-verification): settle the Sol standards and spec reviews of T5",
     "testFile": "tests/template/kernel-trial/hosted-check.test.ts",
     "title": "the pin verification job stops within ten minutes, and sets up Bun with no cache$"
+  },
+  {
+    "id": "3522db5-pin-verification-command-group",
+    "patch": "tests/planted-faults/patches/3522db5-pin-verification-command-group.patch",
+    "source": "3522db5 fix(pin-verification): stop the command test's whole process group at its bound",
+    "testFile": "tests/template/pin-move/pin-verification-command.test.ts",
+    "title": "that outlives its bound is stopped with its whole process group, so the git it started does not run on$"
   }
 ]
