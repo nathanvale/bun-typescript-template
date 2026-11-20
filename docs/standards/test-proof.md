@@ -96,7 +96,7 @@ repository broke it.
   prevent the test timeout and cleanup), [#90-process] (bootstrap helpers
   could wait indefinitely for a generated repository command),
   [#109-bound] (a process-runner case started a nested child with no time
-  limit).
+  limit), [d29b755] (a child bounded at 20 s ran under a 5 s test timeout).
 - Template tests: reuse `spawnBounded` (`tests/support/process.ts`), which
   runs the child through `startChild` (`scripts/process-runner.ts`), for that
   bound.
@@ -227,3 +227,4 @@ repository broke it.
 [#102-arguments]: https://github.com/nathanvale/bun-typescript-template/pull/102#discussion_r4609659207
 [#102-mock-key]: https://github.com/nathanvale/bun-typescript-template/pull/102#discussion_r4609902952
 [#102-copy-key]: https://github.com/nathanvale/bun-typescript-template/pull/102#discussion_r4609902960
+[d29b755]: https://github.com/nathanvale/bun-typescript-template/commit/d29b7552547144c165d0402a54c3e22fb8e7487e

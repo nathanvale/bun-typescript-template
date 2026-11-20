@@ -19,7 +19,9 @@ here.
 - Isolate a test's git from the caller's configuration with `gitEnv` from
   `tests/support/git-fixture.ts`, and set it on `process.env` around an
   in-process subject that runs git. The standards fixture used to inherit
-  runtime configuration. Witnessed: [#85-env], [#92-git]. The shared environment
+  runtime configuration. Witnessed: [#85-env], [#92-git], [d29b755] (the in-process kernel row tests
+  ran Bootstrap, which reads the template's commit with git, under the
+  caller's configuration). The shared environment
   disables the global and system files and clears runtime configuration (`GIT_CONFIG_COUNT`, its `KEY_n` and
   `VALUE_n` pairs, and `GIT_CONFIG_PARAMETERS`). A user's `diff.orderFile`
   changed what the staged readers listed. Witnessed: [f929eb7], [7a62deb],
@@ -53,3 +55,4 @@ here.
 [#109-git]: https://github.com/nathanvale/bun-typescript-template/pull/109#discussion_r4609955976
 [#113-path]: https://github.com/nathanvale/bun-typescript-template/pull/113#pullrequestreview-5971206975
 [#113-lazy]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4626555126
+[d29b755]: https://github.com/nathanvale/bun-typescript-template/commit/d29b7552547144c165d0402a54c3e22fb8e7487e
