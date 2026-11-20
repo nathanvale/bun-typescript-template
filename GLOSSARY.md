@@ -30,6 +30,11 @@ agent-cli-design skill together. It is broader than the kernel.
 The command, `bun run bootstrap`, that creates a generated repository with the
 kernel at the template's Pin and the add-ons asked for.
 
+**Source packet**:
+The planning material for the repository Bootstrap is asked to make, given as an
+absolute path or an HTTP(S) address. Bootstrap records it in the generated
+repository.
+
 **Recipe**:
 One row of the recipe table. It says which folders Bootstrap copies into a
 generated repository and which check command that repository runs.
@@ -40,6 +45,10 @@ The module that holds the recipe Bootstrap follows. It holds one row.
 **Generated repository**:
 A repository created by Bootstrap.
 _Avoid_: project, host (unqualified), app (for a generated repository)
+
+**CLI inventory**:
+The check that a repository has exactly one application CLI, found across its
+source, manifests, scripts and documented invocations.
 
 **Pointer skill**:
 A short skill that Bootstrap writes into a generated repository at
@@ -113,6 +122,31 @@ _Avoid_: reader (unqualified; Reader is the Contract 3 word for a program that p
 **Kernel seam**:
 The Seam at the kernel reader's Interface, where a kernel repository at one
 commit is supplied. A test can supply a stand-in.
+
+### Coding standards
+
+**Rule table**:
+The table of coding standards this repository has learned from review, with
+what enforces each one today.
+
+**Review only**:
+The level of a rule row that has no gate, so the reviewer applies its guide.
+
+**Partial**:
+The level of a rule row whose gates cover only part of it, so the reviewer
+applies the guide to the rest.
+
+**Planned (parked)**:
+A gate agreed for a rule row that does not exist yet and has no slot to be
+built in.
+
+**Single witness**:
+A lesson seen once, held until a second distinct witness lets it become a rule
+row.
+
+**Unproved**:
+A case with no passing evidence from the run or host it needs, reported as
+unproved and never as a pass.
 
 ### Shared tool words
 
