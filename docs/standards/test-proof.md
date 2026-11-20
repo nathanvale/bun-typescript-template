@@ -11,7 +11,7 @@ repository broke it.
   [185c90d], [5990897], [fa359ec] (a parser's five refusals had no test),
   [97f9e9b] (a length check accepted any parse failure; take the reason from
   an independent parser call), [#90-inventory] (exit 1 also covered other
-  errors).
+  errors), [#116-refusal] (exit 1 also covered git's general refusal).
 - Assert the route's response when a test says a command remains available.
   Exit zero with empty output can pass without a response. Witnessed:
   [#90-routes].
@@ -199,3 +199,4 @@ repository broke it.
 [#109-bound]: https://github.com/nathanvale/bun-typescript-template/pull/109#discussion_r4610027050
 [d29b755]: https://github.com/nathanvale/bun-typescript-template/commit/d29b7552547144c165d0402a54c3e22fb8e7487e
 [#116-git]: https://github.com/nathanvale/bun-typescript-template/pull/116#discussion_r4638549429
+[#116-refusal]: https://github.com/nathanvale/bun-typescript-template/pull/116#discussion_r4638686792
