@@ -1284,7 +1284,7 @@
     "id": "5e9351a-bootstrap-git-bound",
     "patch": "tests/planted-faults/patches/5e9351a-bootstrap-git-bound.patch",
     "testFile": "tests/template/bootstrap/template-revision.test.ts",
-    "title": "refuses within its bound when git does not answer, and publishes nothing$",
+    "title": "refuses within its bound when git does not answer, naming the git command and its repair, and publishes nothing$",
     "source": "5e9351a fix(bootstrap): bound the git reads for Template provenance"
   },
   {
