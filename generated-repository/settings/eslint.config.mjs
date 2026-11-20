@@ -30,7 +30,7 @@ export default tseslint.config(
     rootDir: import.meta.dirname,
     srcDir: "src",
     testDirs: [],
-    addons: "all",
+    addons: [],
     plugin: repository,
   }),
   {
