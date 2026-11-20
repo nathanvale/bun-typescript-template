@@ -174,6 +174,20 @@ export function fetchBranchCommit(
   return held();
 }
 
+// Interface: the commit that the pin's branch points at on the pin's remote
+// (see pinBranchCommit), with the clone at `repository` holding it (see
+// fetchBranchCommit), so a clone made before the branch moved can be judged
+// against it. Every command that verifies against a kernel clone reads the
+// branch commit through it. It refuses as pinBranchCommit does.
+export function branchCommitHeldBy(
+  pin: Pick<KernelPin, "remote" | "branch">,
+  repository: string,
+): string {
+  const branchCommit = pinBranchCommit(pin);
+  fetchBranchCommit(repository, pin.remote, branchCommit);
+  return branchCommit;
+}
+
 // Platform: git merge-base --is-ancestor exits 0 for yes and 1 for no. Any
 // other exit means git could not read the history, as in a shallow clone or
 // one that lacks a commit, and is never read as no.
@@ -326,8 +340,7 @@ export async function main(argv: readonly string[]): Promise<number> {
   const active: TrialActive = {};
   try {
     return await withStopSignals(active, async () => {
-      const branchCommit = pinBranchCommit(pin);
-      fetchBranchCommit(kernel.repository, pin.remote, branchCommit);
+      const branchCommit = branchCommitHeldBy(pin, kernel.repository);
       verifyPin(kernel, pin, branchCommit);
       const { report, written } = movePin(
         await kernelTrial({ kernel, folder, active }),

@@ -12,7 +12,7 @@ import {
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import { git, gitEnv, inherited } from "../../support/git-fixture.ts";
-import { withToolsFirst } from "../../support/hung-git.ts";
+import { gitReadingRemoteAs, withToolsFirst } from "../../support/hung-git.ts";
 import {
   absentCommit,
   commitOn,
@@ -54,14 +54,6 @@ function pinnedAt(commit: string): string {
     folder("pin-verification-template-"),
     commit,
     pin.carryOutIdentity,
-  );
-}
-
-function gitReadingRemoteAs(bin: string, named: string, instead: string) {
-  writeFileSync(
-    join(bin, "git"),
-    `#!/bin/sh\nfor argument; do\n  shift\n  if [ "$argument" = ${JSON.stringify(named)} ]; then argument=${JSON.stringify(instead)}; fi\n  set -- "$@" "$argument"\ndone\nexec ${JSON.stringify(Bun.which("git"))} "$@"\n`,
-    { mode: 0o755 },
   );
 }
 

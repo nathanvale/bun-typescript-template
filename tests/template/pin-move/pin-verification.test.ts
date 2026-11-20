@@ -1,9 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
 import { KernelRefusal, readKernel } from "../../../src/kernel-reader.ts";
 import {
+  branchCommitHeldBy,
   fetchBranchCommit,
   PinRefusal,
   pinBranchCommit,
@@ -11,7 +12,11 @@ import {
 } from "../../../scripts/pin-move.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
-import { withToolsFirst } from "../../support/hung-git.ts";
+import {
+  gitReadingRemoteAs,
+  gitTracingTo,
+  withToolsFirst,
+} from "../../support/hung-git.ts";
 import { processWatchdog } from "../../support/process.ts";
 import {
   commitIn,
@@ -85,14 +90,6 @@ function branchTip(repository: string): string {
   return remote.exitCode === 0
     ? remote.stdout.toString().trim()
     : git(repository, "rev-parse", `refs/heads/${pin.branch}`);
-}
-
-function gitTracingTo(bin: string, trace: string) {
-  writeFileSync(
-    join(bin, "git"),
-    `#!/bin/sh\nGIT_TRACE2_EVENT=${JSON.stringify(trace)} exec ${JSON.stringify(Bun.which("git"))} "$@"\n`,
-    { mode: 0o755 },
-  );
 }
 
 function holds(repository: string, commit: string): boolean {
@@ -220,6 +217,26 @@ describe("pin verification", () => {
         gitResult(repository, "fetch", "--quiet", "--no-tags", remote, second),
       );
       expect(maintenanceStarted()).toBe(true);
+    },
+    processWatchdog(1),
+  );
+
+  test(
+    "reads the pin's branch commit from the pin's remote and holds it in a clone made before the branch moved",
+    async () => {
+      const remote = kernelClone(folder("pin-verification-remote-"));
+      const work = folder("pin-verification-");
+      git(work, "clone", "--quiet", "--no-checkout", remote, "clone");
+      const repository = join(work, "clone");
+      const moved = commitOn(remote, [pin.commit], "after the clone");
+      moveBranch(remote, "main", moved);
+      const bin = join(work, "bin");
+      mkdirSync(bin);
+      gitReadingRemoteAs(bin, pin.remote, remote);
+      const branchCommit = await withToolsFirst(bin, () =>
+        branchCommitHeldBy(pin, repository),
+      );
+      expect([branchCommit, holds(repository, moved)]).toEqual([moved, true]);
     },
     processWatchdog(1),
   );
