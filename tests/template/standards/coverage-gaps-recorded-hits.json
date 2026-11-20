@@ -1,4 +1,15 @@
 {
   "about": "Runtime files and exports that no test imported when the coverage gaps test landed (18 November 2026), so only a test that spawns them proves them. The test fails on any gap fallow reports that is not listed here, and on any listed gap that fallow no longer reports: remove an entry in the change that adds a test importing it.",
-  "hits": []
+  "hits": [
+    {
+      "path": "scripts/pin-move.ts",
+      "export": "main",
+      "reason": "The pin move command's main predates MAG-127, and only the pin move command tests that spawn it prove it. Fallow reports it once .fallowrc.json lists scripts/pin-verification.ts and scripts/kernel-trial-command.ts as entries, because both import scripts/pin-move.ts."
+    },
+    {
+      "path": "src/bootstrap.ts",
+      "export": "main",
+      "reason": "Bootstrap's main predates MAG-127, and only the Bootstrap tests that spawn it prove it. Fallow reports it once .fallowrc.json lists scripts/kernel-trial-command.ts as an entry, which reaches src/bootstrap.ts through the kernel trial."
+    }
+  ]
 }

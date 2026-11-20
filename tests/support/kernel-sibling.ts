@@ -14,6 +14,15 @@ const pinnedCommit = readKernelPin(ROOT).commit;
 // changes no test.
 export const trialBase = "315862fa13c81de3ff7fd19a4be341182b57f778";
 
+// Interface: a template commit that holds slice S5, which the pin's branch
+// reaches through the kernel repository's carried history, from before the
+// carry-out commit.
+export const templateCommitHoldingS5 =
+  "77ebdeafb1f49d0b32307b3ead7273d265ad4918";
+
+// Interface: a full commit identity no kernel repository holds.
+export const absentCommit = "0123456789abcdef0123456789abcdef01234567";
+
 export function siblingKernel(): string {
   return findSiblingKernel(ROOT, process.env);
 }

@@ -129,6 +129,14 @@ version.
 The one full commit that a pin names.
 _Avoid_: tag, branch, short hash (for a pinned commit)
 
+**Pin verification**:
+Checking, from git history alone, that a pinned commit is reachable from where
+the pin's kernel branch points on the pin's own remote, and that the carry-out
+commit is that commit or an ancestor of it. A pin move runs it on the new
+commit. The template's hosted check runs it on the template's own pin on pull
+requests, on pushes to main and weekly.
+_Avoid_: pin check (say pin verification)
+
 **Pin move**:
 Changing a pin to another commit, in the template or in a generated
 repository. A pin move needs a passed kernel trial. When the pin names a

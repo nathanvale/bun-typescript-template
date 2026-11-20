@@ -1,0 +1,12 @@
+diff --git a/.github/workflows/pin-verification.yml b/.github/workflows/pin-verification.yml
+index fb2296d..fca9f6b 100644
+--- a/.github/workflows/pin-verification.yml
++++ b/.github/workflows/pin-verification.yml
+@@ -6,7 +6,6 @@ name: Pin verification
+ # runs weekly, because the kernel repository can change under a pin that
+ # does not.
+ on:
+-  pull_request:
+   push:
+     branches: [main]
+   schedule:

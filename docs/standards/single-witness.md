@@ -115,6 +115,16 @@ this file.
 - Check that a path a check needs as a file is a file: `existsSync` answers
   yes for a folder too. Witnessed: [47e2ec3] (the pointer skill check passed
   a Full skill line naming a folder in the installed kernel).
+- Assert a schedule's whole value. A test that reads only some cron fields
+  passes a schedule that runs far more often. Witnessed: [73cfcf4] (the
+  weekly test read the day fields only, so `* * * * 0` passed).
+- Set `no-cache: true` on a hosted job's Bun setup when its install must
+  start from an empty cache. Witnessed: [73cfcf4] (the pin verification job
+  set up Bun with its default caching).
+- Declare each command a package script runs in `.fallowrc.json`'s
+  `entry`, and record any gap that exposes in the coverage gaps test's
+  recorded hits. Witnessed: [c08e107] (`pin-verification` and
+  `kernel-trial` landed as package scripts with no entry).
 
 [ac11ed9]: https://github.com/nathanvale/bun-typescript-template/commit/ac11ed98b7d538e8a304cac053aaefcaaf6b2cb3
 [cd2498b]: https://github.com/nathanvale/bun-typescript-template/commit/cd2498b7189a2d45d1906b9c870e8d13da6cd2dd
@@ -144,3 +154,5 @@ this file.
 [16c6e4d]: https://github.com/nathanvale/bun-typescript-template/commit/16c6e4d565cd37f750ccc56b48438ae2818a2f24
 [0352f0d]: https://github.com/nathanvale/bun-typescript-template/commit/0352f0d113e82a3aa9559b5a811d353f16458be4
 [47e2ec3]: https://github.com/nathanvale/bun-typescript-template/commit/47e2ec3c245279421f11ab054db621c97e213333
+[73cfcf4]: https://github.com/nathanvale/bun-typescript-template/commit/73cfcf430e43456684ad90d6057eff2473f99bc3
+[c08e107]: https://github.com/nathanvale/bun-typescript-template/commit/c08e107766fe533f3ed2756158797df15fa64f12

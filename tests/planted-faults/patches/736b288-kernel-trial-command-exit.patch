@@ -1,0 +1,13 @@
+diff --git a/scripts/kernel-trial-command.ts b/scripts/kernel-trial-command.ts
+index 39dd462..bdd8d70 100644
+--- a/scripts/kernel-trial-command.ts
++++ b/scripts/kernel-trial-command.ts
+@@ -45,7 +45,7 @@ export async function main(
+     if (!(error instanceof TrialRefusal) && !(error instanceof KernelRefusal))
+       throw error;
+     process.stderr.write(`${error.code}: ${error.message}\n`);
+-    return 1;
++    return 0;
+   } finally {
+     rmSync(folder, { recursive: true, force: true });
+   }
