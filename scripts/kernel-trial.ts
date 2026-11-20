@@ -9,10 +9,6 @@ import {
 
 const passed: unique symbol = Symbol("a passed kernel trial");
 
-// Interface: the record that a kernel trial passed for one kernel commit,
-// with the lockfile it qualified. Only kernelTrial makes one, so a function
-// that takes one cannot be called for a commit no trial passed. It is
-// frozen, and `lockfile` gives a copy of the bytes each time it is read.
 export type TrialPassed = {
   readonly [passed]: true;
   readonly kernel: KernelSeam;
@@ -23,9 +19,6 @@ export type Qualified = Pick<TrialPassed, "kernel" | "lockfile">;
 
 const made = new WeakMap<TrialPassed, Qualified>();
 
-// Interface: the commit and lockfile a passed trial qualified, as the trial
-// recorded them. It refuses a record the trial did not make, such as a
-// copy with a field replaced.
 export function qualifiedBy(trial: TrialPassed): Qualified {
   const found = made.get(trial);
   if (found === undefined)
@@ -59,9 +52,6 @@ const repair =
 const stopRepair =
   "Nothing was written, and nothing is wrong with the kernel commit. Run the kernel trial, or the pin move, again when it can run to its end.";
 
-// Interface: a kernel trial that did not pass. `trial_stopped` is a trial a
-// signal stopped, which says nothing about the commit, so its repair is to
-// run again; `trial_failed` is every other.
 export class TrialRefusal extends Error {
   readonly code: "trial_failed" | "trial_stopped";
   constructor(
@@ -73,9 +63,6 @@ export class TrialRefusal extends Error {
   }
 }
 
-// Interface: the step a kernel trial is running, for a caller that stops it
-// on a signal: set `stoppedBy`, then call `stop`. A stopped trial starts no
-// further step.
 export type TrialActive = {
   stop?: (() => void) | undefined;
   stoppedBy?: string;
@@ -116,12 +103,6 @@ function shortened(test: readonly string[]): readonly string[] {
   ];
 }
 
-// Interface: what a failed step's refusal shows of its output. Each failing
-// test's lines, from the first bun test "error:" line after the previous
-// "(fail)" line to its own "(fail)" line, come first wherever they are in the
-// output, since the order test files run in can leave them far from the
-// end. Each test shows at most 30 lines and all of them at most 120, with a
-// line saying what was left out. Then the last 20 lines.
 function shownOutput(output: string): string {
   const lines = output.trimEnd().split("\n");
   const shown: string[] = [];
@@ -144,10 +125,6 @@ function stopOf(active: TrialActive): string | undefined {
   return active.stoppedBy;
 }
 
-// Interface: one step of the kernel trial: Bun with `args` in `folder`,
-// stopped with its whole process group once `limitMilliseconds` passes, or
-// when its caller stops `active`. It refuses a step that a stop reached,
-// that exits non-zero, or that does not finish in time.
 export async function trialStep(
   folder: string,
   name: string,
@@ -180,15 +157,6 @@ export async function trialStep(
     );
 }
 
-// Interface: the kernel trial. It makes a repository from the candidate
-// kernel commit in `folder`/first with no lockfile, and installs there to
-// make one, because the first lockfile has nothing to come from. It confirms
-// that lockfile exists, then makes a fresh repository in `folder`/second
-// with those exact bytes, installs frozen, and runs that repository's check
-// command, whose tests start the tool with each add-on. It writes only in
-// `folder`, never in the template. Only the trial installs packages. It
-// reads the request once, before its first wait, and records the commit it
-// tried.
 export async function kernelTrial(trial: KernelTrial): Promise<TrialPassed> {
   const { folder, declarationPath, kernelFrom, active = {} } = trial;
   const { repository, commit } = trial.kernel;

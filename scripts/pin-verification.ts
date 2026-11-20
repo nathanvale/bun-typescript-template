@@ -8,8 +8,6 @@ const templateRoot = resolve(import.meta.dir, "..");
 const usage =
   "Usage: bun run pin-verification [--kernel <path to the kernel repository>]\n";
 
-// Interface: the pin verification command's arguments: nothing, or the
-// kernel repository's path after --kernel. Anything else is undefined.
 export function argumentsOf(
   argv: readonly string[],
 ): { readonly path?: string } | undefined {
@@ -20,12 +18,6 @@ export function argumentsOf(
     : undefined;
 }
 
-// Interface: pin verification of the kernel pin at `root`, against the
-// kernel repository at `kernel`. It reads where the pin's branch points on
-// the pin's own remote, fetches that commit into the kernel repository if it
-// lacks it (a clone made before the branch moved does), then verifies the
-// pinned commit with verifyPin, and returns the line the command prints. It
-// refuses as verifyPin and pinBranchCommit do.
 export function verifyKernelPin(root: string, kernel: string): string {
   const pin = readKernelPin(root);
   const branchCommit = branchCommitHeldBy(pin, kernel);
@@ -33,10 +25,6 @@ export function verifyKernelPin(root: string, kernel: string): string {
   return `Pin verified: ${pin.commit} is reachable from ${branchCommit}, where branch ${pin.branch} points on ${pin.remote}, and has the carry-out commit ${pin.carryOutIdentity} as an ancestor.\n`;
 }
 
-// Interface: the pin verification command, which the hosted check runs. The
-// kernel repository defaults to the sibling beside the template. It exits 0
-// when the pin passes, 1 on a refusal, printing its code and message, and 2
-// on arguments it cannot read.
 export function main(argv: readonly string[], root = templateRoot): number {
   const given = argumentsOf(argv);
   if (given === undefined) {

@@ -15,8 +15,6 @@ import {
   treeIdentity,
 } from "./git-identities.ts";
 
-// Interface: the one kernel path the template knows. Every other path comes
-// from the kernel declaration read at the commit.
 export const kernelDeclarationPath =
   "kernel/config/kernel/kernel-declaration.json";
 
@@ -523,8 +521,6 @@ function utf8TextOf(bytes: Uint8Array | undefined): string {
   return text;
 }
 
-// Interface: the kernel reader's first refusals, for a caller that reads
-// history, not files. Returns the repository's real path.
 export function openCommit(seam: KernelSeam): string {
   const { commit } = seam;
   if (!fullIdentity.test(commit))
@@ -537,16 +533,6 @@ export function openCommit(seam: KernelSeam): string {
   return repository;
 }
 
-// Interface: reads the kernel at one full commit from the git objects of the
-// repository at a local path, and never from its working tree, so the
-// repository may sit on another commit with edits in progress. It reads the
-// kernel declaration at `declarationPath` in that commit and takes every
-// other path from it. Each file's `path` is the one it will have in a
-// generated repository: its path in the kernel repository with `sourceRoot`
-// removed. It refuses by throwing a KernelRefusal, whose message ends with
-// its repair line, before it returns anything. A git call that does not
-// finish within its bound throws an Error with its own repair line. No
-// network, no cache, no credential.
 export function readKernel(
   seam: KernelSeam,
   declarationPath: string = kernelDeclarationPath,

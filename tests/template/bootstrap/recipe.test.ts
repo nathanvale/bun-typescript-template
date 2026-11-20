@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, statSync } from "node:fs";
-import { cp, mkdir, readdir, rm, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { join, relative, resolve } from "node:path";
 import {
   KERNEL_RECIPE,
   LINT_RULE_FILES,
@@ -164,22 +164,40 @@ async function filesUnder(root: string, prefix = ""): Promise<string[]> {
   return files;
 }
 
-async function copiedFiles(recipe: ProjectRecipe): Promise<string[]> {
-  const files: string[] = [];
+async function copiedPairs(
+  recipe: ProjectRecipe,
+): Promise<{ from: string; to: string }[]> {
+  const pairs: { from: string; to: string }[] = [];
   for (const copy of recipe.copies) {
     const source = join(ROOT, copy.from);
     for (const entry of await readdir(source, { withFileTypes: true })) {
       if (UNCOPIED_NAMES.includes(entry.name)) continue;
       if (copy.only !== undefined && !copy.only.includes(entry.name)) continue;
-      const targets = entry.isDirectory()
-        ? (await filesUnder(source, entry.name)).map((path) =>
-            join(copy.into, path),
-          )
-        : [join(copy.into, entry.name)];
-      files.push(...targets);
+      const paths = entry.isDirectory()
+        ? await filesUnder(source, entry.name)
+        : [entry.name];
+      pairs.push(
+        ...paths.map((path) => ({
+          from: join(source, path),
+          to: join(copy.into, path),
+        })),
+      );
     }
   }
-  return files;
+  return pairs;
+}
+
+async function copiedFiles(recipe: ProjectRecipe): Promise<string[]> {
+  return (await copiedPairs(recipe)).map(({ to }) => to);
+}
+
+function isUtf8Text(bytes: Uint8Array): boolean {
+  try {
+    new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function duplicates(values: string[]): string[] {
@@ -224,6 +242,15 @@ describe("project recipe", () => {
         collisions: [],
       });
     }
+  });
+
+  test("every file a row copies is UTF-8 text, because token substitution rewrites each copied file as text", async () => {
+    const notText: string[] = [];
+    for (const recipe of [...RECIPES, KERNEL_RECIPE])
+      for (const { from } of await copiedPairs(recipe))
+        if (!isUtf8Text(await readFile(from)))
+          notText.push(relative(ROOT, from));
+    expect(notText).toEqual([]);
   });
 
   test("each row's Template provenance values match what Bootstrap writes today", () => {

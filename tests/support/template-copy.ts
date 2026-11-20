@@ -25,9 +25,6 @@ const copied = [
   kernelPinFile,
 ];
 
-// Interface: a copy, in its own git repository, of the template's files that
-// Bootstrap, the kernel trial and the pin move read, less the paths in
-// `omit`, so a test can run them on a template the real one must not become.
 export function templateCopy(folder: string, omit: readonly string[] = []) {
   const copy = join(folder, "template");
   for (const path of copied)
@@ -39,9 +36,6 @@ export function templateCopy(folder: string, omit: readonly string[] = []) {
   return copy;
 }
 
-// Interface: calls one exported function of a module in the copy, in a child
-// process so the module's own folder is the copy, with `argument` as JSON.
-// The child prints what the function returned, or the refusal it threw.
 export async function callInCopy(
   copy: string,
   module: string,

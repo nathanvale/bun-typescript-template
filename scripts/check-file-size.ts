@@ -170,7 +170,6 @@ function stagedBlobs(root: string, objects: readonly string[]) {
       decoder.decode(output.subarray(offset, headerEnd)),
       object,
     );
-    // Platform: Git puts a line feed after exactly the advertised number of blob bytes.
     const start = headerEnd + 1;
     const end = start + size;
     if (output[end] !== lineFeed)

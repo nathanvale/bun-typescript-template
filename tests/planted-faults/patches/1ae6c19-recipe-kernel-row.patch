@@ -1,12 +1,12 @@
 diff --git a/src/recipe.ts b/src/recipe.ts
-index 709eeba..ff3e27e 100644
+index 4b9ed8c..fd677cf 100644
 --- a/src/recipe.ts
 +++ b/src/recipe.ts
-@@ -109,6 +109,7 @@ export const RECIPES: readonly ProjectRecipe[] = [
+@@ -117,6 +117,7 @@ export const RECIPES: readonly ProjectRecipe[] = [
    },
    starterRow("simple"),
    starterRow("complex"),
 +  { ...starterRow("complex"), cli: "kernel" },
  ];
  
- // Interface: the kernel row. It copies the template's own files for a
+ export const KERNEL_RECIPE: ProjectRecipe = {

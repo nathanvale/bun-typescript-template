@@ -18,10 +18,7 @@ export function withoutRepositoryLocation(
 }
 
 // Platform: `bun run` prepends the caller's node_modules/.bin folders to PATH,
-// and a git hook exports the caller's repository location. Drop both so a
-// child process sees only what its own tree installs, and finds its
-// repository from its own folder. It reads the environment when a child
-// starts, so a caller that isolates git first passes that on.
+// and a git hook exports the caller's repository location.
 function ownTools(
   env: Readonly<Record<string, string | undefined>>,
 ): Record<string, string | undefined> {
@@ -58,13 +55,6 @@ export type Child = {
   readonly finished: Promise<Finished>;
 };
 
-// Interface: the template's one process runner, for its scripts and the tests
-// that judge them. It imports only Node, so a test can copy it byte for byte
-// into a fixture repository. `stop` sends SIGTERM, then SIGKILL once the grace
-// runs out; a grace of zero sends SIGKILL at once. With `ownGroup` (the
-// default) every signal from `stop` reaches every process the child started;
-// `signal` reaches the child alone. After a stop, `finished` waits for the
-// child, not its pipes, and holds the output that arrived before it died.
 export function startChild(
   argv: readonly string[],
   {

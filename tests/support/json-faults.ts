@@ -7,8 +7,6 @@ export function withField(
   return undefined;
 }
 
-// Interface: the reason the runtime's own JSON parser gives for refusing
-// `text`, taken from a call of its own so a test does not copy the wording.
 export function reasonJsonRefuses(text: string): string {
   try {
     JSON.parse(text);

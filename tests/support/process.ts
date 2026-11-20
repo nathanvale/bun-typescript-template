@@ -4,16 +4,12 @@ import { type Child, startChild } from "../../scripts/process-runner.ts";
 const exitBound = 20_000;
 const psMilliseconds = 10_000;
 
-// Interface: once `ledger` holds the line `line`, `signal` goes to the child
-// alone, as a terminal or CI runner would send it.
 export type SignalAt = {
   readonly ledger: string;
   readonly line: string;
   readonly signal: "SIGTERM" | "SIGINT" | "SIGHUP";
 };
 
-// Interface: `reached` resolves once the ledger holds the line, and rejects
-// naming both once the bound passes first. `stop` ends the wait unsettled.
 export type LedgerWatch = {
   readonly reached: Promise<void>;
   readonly stop: () => void;
@@ -26,8 +22,6 @@ function holdsLine(ledger: string, line: string): boolean {
   );
 }
 
-// Interface: whether a process with `pid` still exists, alive or a zombie
-// its parent has not reaped.
 export function processAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
@@ -172,11 +166,6 @@ function pipeHolders(rows: readonly ProcessRow[]): string[] {
     });
 }
 
-// Interface: what was left of a child when its bound passed, for the failure
-// that names the bound: one `ps` row (pid, parent, group, state, elapsed,
-// command) for the child and each process it started, or a line saying the
-// child had exited, then on Linux each process holding a pipe this test reads.
-// When ps cannot start or does not answer, it says so rather than naming no one.
 async function stuckProcesses(pid: number): Promise<string> {
   const rows = await processRows();
   if (rows === undefined)
@@ -205,10 +194,6 @@ function freeze(pid: number, group: boolean): void {
   }
 }
 
-// Interface: a run that outlives its bound is frozen at once with SIGSTOP (its
-// whole group with `processGroup`), listed, then killed with SIGKILL, and
-// fails naming the bound and the processes left, so a hung case does no more
-// work, leaves no fixture process behind and says what it was waiting on.
 export async function spawnBounded(
   argv: readonly string[],
   options: {

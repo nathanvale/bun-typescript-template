@@ -7,9 +7,6 @@ const PACKET_TOKEN = "__SOURCE_PACKET__";
 const PIN_TOKEN = "__KERNEL_PIN__";
 const COMMIT_TOKEN = "__KERNEL_COMMIT__";
 
-// Interface: what replaces each token. `kernelPin` is the Pin a generated
-// repository holds, and `kernelCommit` its pinned commit, which each pointer
-// skill names; a row whose files hold neither token gives neither.
 export type Tokens = {
   readonly name: string;
   readonly sourcePacket: string;
@@ -17,10 +14,6 @@ export type Tokens = {
   readonly kernelCommit?: string;
 };
 
-// Interface: replaces each token in every file under `root`, reading and
-// rewriting each as UTF-8 text, and returns how many files it rewrote. It
-// damages a file that is not UTF-8 text, so nothing that must keep its bytes
-// may be in `root` when it runs.
 export async function substituteTokens(
   root: string,
   tokens: Tokens,

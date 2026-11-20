@@ -50,9 +50,6 @@ let repository = "";
 let renaming = "";
 const trials = new Map<string, Promise<TrialPassed>>();
 
-// Interface: the kernel trial of `commit`, run on first use and kept for the
-// file, so a test or a fault replay that selects one test runs only the
-// trials it needs.
 function trialAt(commit: string): Promise<TrialPassed> {
   const kept = trials.get(commit);
   if (kept !== undefined) return kept;
