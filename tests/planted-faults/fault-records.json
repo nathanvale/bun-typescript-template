@@ -1370,5 +1370,47 @@
     "testFile": "tests/template/bootstrap/kernel-row-lockfile.test.ts",
     "title": "a kernel lockfile asked of a template that holds none is refused before any staging folder exists$",
     "source": "a30972e feat(bootstrap): the kernel row takes its lockfile as an input"
+  },
+  {
+    "id": "a639dc0-kernel-trial-record",
+    "patch": "tests/planted-faults/patches/a639dc0-kernel-trial-record.patch",
+    "testFile": "tests/template/pin-move/pin-move.test.ts",
+    "title": "refuses a record of a passed trial with a field replaced",
+    "source": "a639dc0 fix(pin-move): settle the Sol standards and spec reviews of T3"
+  },
+  {
+    "id": "a639dc0-kernel-trial-step-bound",
+    "patch": "tests/planted-faults/patches/a639dc0-kernel-trial-step-bound.patch",
+    "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
+    "title": "that outlives its bound is stopped at the bound and refused$",
+    "source": "a639dc0 fix(pin-move): settle the Sol standards and spec reviews of T3"
+  },
+  {
+    "id": "a639dc0-pin-move-missing-branch",
+    "patch": "tests/planted-faults/patches/a639dc0-pin-move-missing-branch.patch",
+    "testFile": "tests/template/pin-move/pin-verification.test.ts",
+    "title": "refuses every commit when the repository has no branch of the pin's name$",
+    "source": "a639dc0 fix(pin-move): settle the Sol standards and spec reviews of T3"
+  },
+  {
+    "id": "a639dc0-pin-move-arguments",
+    "patch": "tests/planted-faults/patches/a639dc0-pin-move-arguments.patch",
+    "testFile": "tests/template/pin-move/pin-move-command.test.ts",
+    "title": "reads as",
+    "source": "a639dc0 fix(pin-move): settle the Sol standards and spec reviews of T3"
+  },
+  {
+    "id": "a639dc0-pin-move-report-bytes",
+    "patch": "tests/planted-faults/patches/a639dc0-pin-move-report-bytes.patch",
+    "testFile": "tests/template/pin-move/pin-move-report.test.ts",
+    "title": "tells apart two file names",
+    "source": "a639dc0 fix(pin-move): settle the Sol standards and spec reviews of T3"
+  },
+  {
+    "id": "a639dc0-process-runner-live-env",
+    "patch": "tests/planted-faults/patches/a639dc0-process-runner-live-env.patch",
+    "testFile": "tests/template/process-runner/process-runner.test.ts",
+    "title": "sees a variable the caller set after the runner loaded$",
+    "source": "a639dc0 fix(pin-move): settle the Sol standards and spec reviews of T3"
   }
 ]

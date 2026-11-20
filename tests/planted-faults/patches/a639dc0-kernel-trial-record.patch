@@ -1,0 +1,13 @@
+diff --git a/scripts/kernel-trial.ts b/scripts/kernel-trial.ts
+index dd10033..627399d 100644
+--- a/scripts/kernel-trial.ts
++++ b/scripts/kernel-trial.ts
+@@ -27,7 +27,7 @@ const made = new WeakMap<TrialPassed, Qualified>();
+ // recorded them. It refuses a record the trial did not make, such as a
+ // copy with a field replaced.
+ export function qualifiedBy(trial: TrialPassed): Qualified {
+-  const found = made.get(trial);
++  const found = made.get(trial) ?? trial;
+   if (found === undefined)
+     throw new TrialRefusal(
+       "That record of a passed kernel trial was not made by the kernel trial.",

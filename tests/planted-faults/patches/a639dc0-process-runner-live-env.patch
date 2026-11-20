@@ -1,0 +1,21 @@
+diff --git a/scripts/process-runner.ts b/scripts/process-runner.ts
+index 6a939aa..09f976e 100644
+--- a/scripts/process-runner.ts
++++ b/scripts/process-runner.ts
+@@ -38,6 +38,7 @@ function ownTools(
+   };
+ }
+ 
++const loadedTools = ownTools(process.env);
+ const defaultGraceMilliseconds = 2_000;
+ // Platform: The child's group has no live process to signal. ESRCH: every member is
+ // reaped. EPERM: macOS answers it when every member left is a zombie.
+@@ -69,7 +70,7 @@ export function startChild(
+   argv: readonly string[],
+   {
+     cwd,
+-    env = ownTools(process.env),
++    env = loadedTools,
+     ownGroup = true,
+     limitMilliseconds,
+     graceMilliseconds = defaultGraceMilliseconds,
