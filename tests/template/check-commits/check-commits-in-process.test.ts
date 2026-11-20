@@ -69,6 +69,19 @@ describe("release", () => {
     );
   });
 
+  test("a worktree git refuses to remove leaves another worktree's stale registration, which git worktree prune would delete", async () => {
+    const { root, run } = repositoryAt();
+    const stale = worktreeAt(root, "stale");
+    rmSync(stale.dir, { recursive: true, force: true });
+    const { dir, admin } = worktreeAt(root, "locked");
+    git(root, "worktree", "lock", dir);
+
+    await captured(() => release(run, dir, admin));
+
+    expect(existsSync(admin)).toBe(false);
+    expect(existsSync(stale.admin)).toBe(true);
+  });
+
   test("a locked worktree whose administrative folder lost its gitdir file keeps that folder", async () => {
     const { root, run } = repositoryAt();
     const { dir, admin } = worktreeAt(root, "headless");

@@ -246,3 +246,16 @@ test(
   },
   testTimeout,
 );
+
+test("the process runner imports only Node's own modules, so a fixture repository can copy it byte for byte", () => {
+  const source = readFileSync(
+    join(import.meta.dir, "../../../scripts/process-runner.ts"),
+    "utf8",
+  );
+  const imported = [
+    ...source.matchAll(/\bfrom\s+"([^"]+)"|\bimport\s*\(\s*"([^"]+)"/g),
+  ].map(([, from, dynamic]) => from ?? dynamic ?? "");
+
+  expect(imported.length).toBeGreaterThan(0);
+  expect(imported.filter((name) => !name.startsWith("node:"))).toEqual([]);
+});
