@@ -4,6 +4,9 @@ Use this reference when reviewing what a gate covers or reproducing a
 refusal. The [rule table](../../CODING_STANDARDS.md#rule-table) names the
 gates and their witnesses.
 
+A gate that would check nothing must fail. The names of this repository's own
+gates belong to its standards, not to the glossary.
+
 ## File size
 
 - `bun run check:file-size` counts tokens with the pinned `tiktoken`

@@ -41,6 +41,15 @@ These sources define the command contract the CLI kernel implements.
   kernel repository beside the template. Its refusal names its code and its
   repair.
 
+## Moving the pin and reading the kernel
+
+- A pin move needs a passed kernel trial. When the pin names a kernel branch,
+  the new commit must be reachable from it.
+- The kernel reader reads the kernel's files from git objects at one commit,
+  never from a working tree. Its seam takes a local path to a kernel
+  repository and one full commit. Its adapters are the sibling repository, any
+  local clone, and a test stand-in.
+
 ## The kernel trial on any commit
 
 - To try a kernel commit without moving the pin, run

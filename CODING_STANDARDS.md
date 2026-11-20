@@ -30,9 +30,9 @@ Each rule row names what enforces it today:
 
 The Gates cell names each gate as `script`, `lint`, `job` or `fault` with its
 id, and links the gate note. A `fault` id is a record id in
-`tests/planted-faults/fault-records.json`. **Planned (parked)** names agreed
-gates that do not exist yet. Plan units U4 to U6 in the description of [#8]
-first named them. The lints and the fault replay have landed. The rest has no
+`tests/planted-faults/fault-records.json`. **Planned (parked)** names the parked
+gates: agreed gates that do not exist yet. Plan units U4 to U6 in the
+description of [#8] first named them. The lints and the fault replay have landed. The rest has no
 slot, and [MAG-98], the Contract 3 scope issue, does not list them.
 
 When a planned gate lands, name it in the Gates cell, mark the row Partial,

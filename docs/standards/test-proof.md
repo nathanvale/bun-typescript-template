@@ -68,8 +68,8 @@ repository broke it.
 - Call and assert each function a script or the CLI runs, unexported ones
   too, from the test that imports its file, beside the process proof that
   spawns the entry. Coverage cannot see into a spawned process, so a
-  function proved only that way reads as untested and its mutants never
-  run.
+  function proved only that way reads as untested and no negative control
+  of it ever runs.
 - Resolve each path from the environment a function is given, not from the
   process's own folder, so an in-process call runs on what the test injects.
   Witnessed: [244b63a].

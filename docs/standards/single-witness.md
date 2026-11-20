@@ -103,8 +103,8 @@ this file.
   before you trust it. Witnessed: [r4625304802] (`git ls-tree -r` lists no
   empty folder, so a tree identity built from the listed files was not
   git's).
-- Allow nothing with an empty allowlist, not with a name you expect to match
-  nothing, since the tool looks that name up too. Witnessed: [r4625603158]
+- Allow nothing with an empty list of allowed names, not with a name you
+  expect to match nothing, since the tool looks that name up too. Witnessed: [r4625603158]
   (`GIT_ALLOW_PROTOCOL=none` let git run a `git-remote-none` helper found on
   `PATH`).
 - Check a name another tool reads by that tool's rules, not only by the
