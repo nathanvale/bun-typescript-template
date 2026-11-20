@@ -124,7 +124,9 @@ export function pinBranchCommit(
 // commit the pin's branch points at on `remote`: a clone made before the
 // branch moved lacks it. When it is missing, it fetches that one commit from
 // `remote`, within `limitMilliseconds`, and says whether the clone holds it
-// afterwards. A fetch that fails or runs out of time changes nothing, and
+// afterwards. It runs no automatic maintenance, which git starts in the
+// background after a fetch and which then writes into the clone after this
+// returns. A fetch that fails or runs out of time changes nothing, and
 // pin verification then refuses the commit as unreadable history. Before
 // any fetch it refuses, as the kernel reader does, a path that is not the
 // top of a git repository, so it never writes into an enclosing one.
@@ -143,6 +145,10 @@ export function fetchBranchCommit(
       "git",
       "-C",
       local,
+      "-c",
+      "maintenance.auto=false",
+      "-c",
+      "gc.auto=0",
       "fetch",
       "--quiet",
       "--no-tags",

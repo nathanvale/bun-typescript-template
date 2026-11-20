@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { realpathSync } from "node:fs";
+import { mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
 import { KernelRefusal, readKernel } from "../../../src/kernel-reader.ts";
@@ -11,6 +11,8 @@ import {
 } from "../../../scripts/pin-move.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
+import { withToolsFirst } from "../../support/hung-git.ts";
+import { processWatchdog } from "../../support/process.ts";
 import {
   commitIn,
   git,
@@ -83,6 +85,14 @@ function branchTip(repository: string): string {
   return remote.exitCode === 0
     ? remote.stdout.toString().trim()
     : git(repository, "rev-parse", `refs/heads/${pin.branch}`);
+}
+
+function gitTracingTo(bin: string, trace: string) {
+  writeFileSync(
+    join(bin, "git"),
+    `#!/bin/sh\nGIT_TRACE2_EVENT=${JSON.stringify(trace)} exec ${JSON.stringify(Bun.which("git"))} "$@"\n`,
+    { mode: 0o755 },
+  );
 }
 
 function holds(repository: string, commit: string): boolean {
@@ -184,6 +194,35 @@ describe("pin verification", () => {
       refusalOf(repository, pin.commit, branchCommit),
     ]).toEqual([true, "no refusal"]);
   });
+
+  test(
+    "fetches into a clone without starting git's automatic maintenance, which would run on in the clone after the fetch returns",
+    async () => {
+      const remote = kernelClone(folder("pin-verification-remote-"));
+      const work = folder("pin-verification-");
+      git(work, "clone", "--quiet", "--no-checkout", remote, "clone");
+      const repository = join(work, "clone");
+      const trace = join(work, "git-trace.json");
+      const bin = join(work, "bin");
+      mkdirSync(bin);
+      gitTracingTo(bin, trace);
+      const first = commitOn(remote, [pin.commit], "first after the clone");
+      moveBranch(remote, "main", first);
+      const fetched = await withToolsFirst(bin, () =>
+        fetchBranchCommit(repository, remote, first),
+      );
+      const maintenanceStarted = () =>
+        readFileSync(trace, "utf8").includes('"maintenance","run"');
+      expect([fetched, maintenanceStarted()]).toEqual([true, false]);
+      const second = commitOn(remote, [first], "second after the clone");
+      moveBranch(remote, "main", second);
+      await withToolsFirst(bin, () =>
+        gitResult(repository, "fetch", "--quiet", "--no-tags", remote, second),
+      );
+      expect(maintenanceStarted()).toBe(true);
+    },
+    processWatchdog(1),
+  );
 
   test("refuses, before any fetch, a path inside another repository, and writes nothing into that repository", () => {
     const remote = kernelClone(folder("pin-verification-remote-"));
