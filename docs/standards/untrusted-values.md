@@ -122,7 +122,9 @@ boundary trusts the types.
   Witnessed: [r4609956011] (a missing patch file read as an empty patch, so
   replay reported that it held no hunk and `--changed-since` skipped its
   fault), [r4625304821] (a folder in a source folder that could not be listed
-  read as empty, so the file comparison passed without reading it).
+  read as empty, so the file comparison passed without reading it),
+  [b9c3ba0] (git's exit 128 from an ancestry check in a shallow clone read as
+  "not an ancestor", so pin verification gave the wrong refusal and repair).
 - Call an entry absent only when its lookup fails because nothing has that
   name: `ENOENT`, or `ENOTDIR` for a name on the way. Report every other
   lookup failure. Witnessed: [r4625594357], [r4625772325] (every failed
@@ -177,3 +179,4 @@ boundary trusts the types.
 [8de7e09]: https://github.com/nathanvale/bun-typescript-template/commit/8de7e09c322e1b40304bad9f9332cb976048102e
 [a639dc0]: https://github.com/nathanvale/bun-typescript-template/commit/a639dc0cb92d859552ca1eec75ee1a66d3cc0ced
 [2a68a20]: https://github.com/nathanvale/bun-typescript-template/commit/2a68a201a1a56a15a41447450070484b96db5b5d
+[b9c3ba0]: https://github.com/nathanvale/bun-typescript-template/commit/b9c3ba00521b068d6ab1aca20453e8e8012d3f52

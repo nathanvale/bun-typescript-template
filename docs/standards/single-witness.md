@@ -9,6 +9,27 @@ this file.
   SIGTERM and SIGHUP, and write nothing after the stop. Witnessed:
   [f815bb0] (Ctrl-C ended the pin move command while its trial's install
   ran on in its own process group).
+- Give a stop its own refusal and repair: a signal says nothing about the
+  input. Witnessed: [60bf97c] (a stopped kernel trial told the operator to
+  correct the kernel commit).
+- Read a branch from the remote a record names, never from a clone's own
+  references, which can hold unpushed commits or name another repository.
+  Witnessed: [b9c3ba0] (pin verification accepted an unpushed commit, and
+  another repository's main, as reachable from the pin's branch).
+- Build an expected abbreviated commit with git in the same repository, as
+  the code under test does; git lengthens it as the repository grows.
+  Witnessed: [16c6e4d] (a pin move report test fixed it at 7 characters).
+- Prove a committed lockfile with a frozen install and the check command,
+  not by comparing it with a fresh resolution, which moves whenever a ranged
+  dependency publishes. Witnessed: [16c6e4d] (a kernel trial test demanded
+  byte equality with the kernel lockfile).
+- Bound a test by the work it does: walk a fixed sample, not live history
+  that grows. Witnessed: [16c6e4d] (pin verification walked every kernel
+  commit since the carry-out under a fixed 60 s bound).
+- Resolve a test's outside dependency the same way in fault replay's
+  worktree as in the checkout, and refuse naming the setting when none is
+  found. Witnessed: [0352f0d] (fault replay reported BROKEN for kernel tests
+  because its worktree had no kernel repository beside it).
 - Run a control through the same function as the check it controls, so it
   shows that check finding its target. A control that finds the target
   another way stays green when the check finds nothing. Witnessed:
@@ -115,3 +136,7 @@ this file.
 [d29b755]: https://github.com/nathanvale/bun-typescript-template/commit/d29b7552547144c165d0402a54c3e22fb8e7487e
 [#116-addons]: https://github.com/nathanvale/bun-typescript-template/pull/116#discussion_r4638567030
 [f815bb0]: https://github.com/nathanvale/bun-typescript-template/commit/f815bb0d66a1be6710829e4eaa550d6dca0f47f5
+[60bf97c]: https://github.com/nathanvale/bun-typescript-template/commit/60bf97c64f5464921262437ba827163ddbed3d92
+[b9c3ba0]: https://github.com/nathanvale/bun-typescript-template/commit/b9c3ba00521b068d6ab1aca20453e8e8012d3f52
+[16c6e4d]: https://github.com/nathanvale/bun-typescript-template/commit/16c6e4d565cd37f750ccc56b48438ae2818a2f24
+[0352f0d]: https://github.com/nathanvale/bun-typescript-template/commit/0352f0d113e82a3aa9559b5a811d353f16458be4

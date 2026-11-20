@@ -42,7 +42,9 @@ repository broke it.
 - Prove that a fixture meant to lack something lacks it, and fail loudly
   when its location supplies it. `STATE_TEST_DIR` can place a test folder
   inside the checkout, where git finds the parent repository for a case that
-  expects none. Witnessed: [8946615].
+  expects none. Witnessed: [8946615], [16c6e4d] (the hosted step's fixture
+  remote already sat at the pinned commit, so its test passed with the
+  checkout removed).
 - Require one recorded process before checking that it exited. A missing
   process ledger lets an empty-result check pass. Witnessed: [#84-ledger].
 - Show that a planted input changes the result when nothing blocks it, with
@@ -110,7 +112,9 @@ repository broke it.
   bound.
 - In `finally` or per-case teardown, release the CLI, its ledgered children,
   then its temporary folders. Witnessed: [d592b6d], [70c7280], [#84-cleanup],
-  [#91-cleanup], [5533cd6].
+  [#91-cleanup], [5533cd6], [5d136f6] (kernel trials of test kernel
+  repositories left a git clone in the developer's Bun cache on every run;
+  give each test file its own cache and remove it).
 - At teardown, send SIGKILL, and only to a pid still in its ledgered process
   group. Witnessed: [0ebe7cf], [1a29b19].
 
@@ -210,3 +214,5 @@ repository broke it.
 [a639dc0]: https://github.com/nathanvale/bun-typescript-template/commit/a639dc0cb92d859552ca1eec75ee1a66d3cc0ced
 [783f5b1]: https://github.com/nathanvale/bun-typescript-template/commit/783f5b1a263d81c44f2d9136ea3dc250719744d1
 [f815bb0]: https://github.com/nathanvale/bun-typescript-template/commit/f815bb0d66a1be6710829e4eaa550d6dca0f47f5
+[16c6e4d]: https://github.com/nathanvale/bun-typescript-template/commit/16c6e4d565cd37f750ccc56b48438ae2818a2f24
+[5d136f6]: https://github.com/nathanvale/bun-typescript-template/commit/5d136f66c27eb2f209252625b7e8da884a4d77f9
