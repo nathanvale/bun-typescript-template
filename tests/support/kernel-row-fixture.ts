@@ -41,6 +41,7 @@ export function kernelRowFixture() {
         sourcePacket: "/abs/packets/demo",
         kernel: { repository: kernel, commit },
         declarationPath: declarationPathIn(layout),
+        lockfile: "none",
       },
     };
   };

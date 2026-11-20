@@ -127,6 +127,10 @@ export const KERNEL_RECIPE: ProjectRecipe = {
   checkCommand: "bun run check",
 };
 
+// Interface: the kernel lockfile, which Bootstrap gives a repository the
+// kernel row makes when asked for it. Only the pin move writes it.
+export const KERNEL_LOCKFILE = "generated-repository/bun.lock";
+
 export function lintsCode(recipe: ProjectRecipe): boolean {
   return recipe.copies.includes(LINT_RULES);
 }

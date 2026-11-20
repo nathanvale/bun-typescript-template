@@ -55,11 +55,6 @@
       "term": "Add-on selection",
       "reason": "Nathan's 10:52 decision of 20 November 2026 on MAG-114 keeps a generated repository's add-on choice only in installedAddons, so the template selects none.",
       "ticket": "MAG-114"
-    },
-    {
-      "term": "Kernel lockfile",
-      "reason": "The template's one lockfile for generated repositories does not exist yet. MAG-126 makes the pin move that writes it.",
-      "ticket": "MAG-126"
     }
   ]
 }

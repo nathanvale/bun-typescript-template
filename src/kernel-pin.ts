@@ -1,5 +1,7 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import type { KernelSeam } from "./kernel-reader.ts";
 
 const file = "kernel-pin.json";
 const fullCommit = /^[0-9a-f]{40}$/;
@@ -100,4 +102,10 @@ export function readKernelPin(root: string): KernelPin {
 export function generatedPin({ remote }: KernelPin, commit: string): string {
   const repository = new URL(remote).pathname.replace(/^\/|\.git$/g, "");
   return `github:${repository}#${commit}`;
+}
+
+// Interface: the Pin when the kernel comes from a local clone, as only tests
+// ask: a git address of the clone at the seam's commit.
+export function clonePin({ repository, commit }: KernelSeam): string {
+  return `git+${pathToFileURL(realpathSync(repository)).href}#${commit}`;
 }
