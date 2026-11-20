@@ -1720,5 +1720,26 @@
     "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
     "title": "that fails keeps each failing test's own lines in its refusal, wherever they come in the output, and its last lines$",
     "source": "fe76ccb fix(kernel-trial): a failed step's refusal keeps each failing test's own lines"
+  },
+  {
+    "id": "c1cbee4-kernel-trial-teardown",
+    "patch": "tests/planted-faults/patches/c1cbee4-kernel-trial-teardown.patch",
+    "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
+    "title": "keeps a failing test's body diagnostic when its teardown fails too$",
+    "source": "c1cbee4 fix(kernel-trial): keep a failing test's every diagnostic, and cap what the refusal shows"
+  },
+  {
+    "id": "c1cbee4-kernel-trial-test-lines",
+    "patch": "tests/planted-faults/patches/c1cbee4-kernel-trial-test-lines.patch",
+    "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
+    "title": "shows at most 30 lines of one failing test, and says how many it left out$",
+    "source": "c1cbee4 fix(kernel-trial): keep a failing test's every diagnostic, and cap what the refusal shows"
+  },
+  {
+    "id": "c1cbee4-kernel-trial-failing-lines",
+    "patch": "tests/planted-faults/patches/c1cbee4-kernel-trial-failing-lines.patch",
+    "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
+    "title": "shows at most 120 lines of failing tests, and says how many tests it left out$",
+    "source": "c1cbee4 fix(kernel-trial): keep a failing test's every diagnostic, and cap what the refusal shows"
   }
 ]
