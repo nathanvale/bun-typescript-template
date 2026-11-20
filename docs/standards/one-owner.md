@@ -23,9 +23,9 @@ here.
   clone and the pin move's ls-remote, so a good commit was refused as
   unreadable history), [72f0f5c] (the pin verification command read the
   branch without fetching, and the same race broke two fault replays).
-- Import shared test fakes and fixtures from
-  `tests/kernel/kernel-repair/handlers.ts` and `shapes.ts`. Witnessed:
-  [810345d], [cf72627].
+- Import shared test fakes and fixtures from their one owner. In the kernel
+  repository that is `tests/kernel/kernel-repair/handlers.ts` and `shapes.ts`.
+  Witnessed: [810345d], [cf72627].
 - Give admission commands that launch Git the same isolated environment as
   direct fixture calls. Witnessed: [#91-git].
 - Isolate a test's git from the caller's configuration with `gitEnv` from

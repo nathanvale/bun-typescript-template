@@ -6,7 +6,7 @@ repository, run its check command, commit, and have the gates refuse
 mistakes. Read this index before driving, then use the matching feature file
 as the recipe.
 
-## Baseline preconditions
+## Starting preconditions
 
 - A run root launched by [the session helper](../SKILL.md#launch), with
   `ready:` printed and the commit under test named.
