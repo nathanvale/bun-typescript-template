@@ -1825,5 +1825,19 @@
     "testFile": "tests/template/naming/shared-tool-words.test.ts",
     "title": "^SW\\.d ",
     "source": "43f02d2 feat(glossary): leave the kernel's words to the kernel"
+  },
+  {
+    "id": "76c8d28-recipe-pin",
+    "patch": "tests/planted-faults/patches/76c8d28-recipe-pin.patch",
+    "testFile": "tests/template/bootstrap/recipe.test.ts",
+    "title": "refuses a row without the Pin$",
+    "source": "76c8d28 feat(bootstrap)!: make one shape, the kernel at the template's Pin"
+  },
+  {
+    "id": "76c8d28-recipe-pin-folder",
+    "patch": "tests/planted-faults/patches/76c8d28-recipe-pin-folder.patch",
+    "testFile": "tests/template/bootstrap/recipe.test.ts",
+    "title": "refuses a row whose Pin copies another folder's settings$",
+    "source": "76c8d28 feat(bootstrap)!: make one shape, the kernel at the template's Pin"
   }
 ]

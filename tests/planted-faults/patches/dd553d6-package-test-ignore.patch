@@ -1,13 +1,13 @@
 diff --git a/package.json b/package.json
-index 768cdef..8b360f5 100644
+index 9859dc3..4f7d8b9 100644
 --- a/package.json
 +++ b/package.json
-@@ -16,7 +16,7 @@
-     "fault-replay": "bun run scripts/planted-faults.ts replay",
-     "planted-fault:add": "bun run scripts/planted-faults.ts add",
+@@ -19,7 +19,7 @@
+     "pin-move": "bun run scripts/pin-move.ts",
+     "pin-verification": "bun run scripts/pin-verification.ts",
      "pretest": "bun run doctor",
--    "test": "bun test --parallel=2 --path-ignore-patterns 'starters/**' --path-ignore-patterns 'generated-repository/**'",
-+    "test": "bun test --parallel=2 --path-ignore-patterns 'starters/**'",
+-    "test": "bun test --parallel=2 --path-ignore-patterns 'generated-repository/**'",
++    "test": "bun test --parallel=2",
      "test:area": "bun run scripts/test-area.ts",
      "typecheck": "tsc --noEmit -p tsconfig.json",
-     "admit:static": "bun run src/static-admission.ts",
+     "lint": "eslint . --max-warnings 0",
