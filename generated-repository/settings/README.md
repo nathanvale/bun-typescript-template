@@ -20,9 +20,9 @@ prints the result.
 ## The kernel
 
 The kernel repository owns the kernel. This repository names it by one
-dependency line in `package.json`, pinned to a full kernel commit, and
-`bun install --frozen-lockfile` places it under `node_modules/`. Do not edit
-it there: change the kernel in the kernel repository.
+dependency line in `package.json`, pinned to a full kernel commit, and an
+install places it under `node_modules/`. Do not edit it there: change the
+kernel in the kernel repository.
 
 The add-ons come with the kernel, under `agent-cli-kernel/addons/`. A command
 gets an add-on's capability only when `installedAddons` in `src/cli.ts` lists
