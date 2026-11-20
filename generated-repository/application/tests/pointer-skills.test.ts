@@ -73,12 +73,17 @@ test("each pointer skill names the commit package.json pins", () => {
   ).toEqual([]);
 });
 
-function lockedCommit(): string {
+function lockedKernel() {
   const lock = readFileSync(join(root, "bun.lock"), "utf8");
-  return (
-    /"agent-cli-kernel": "[^"\n]*#([0-9a-f]{40})"/.exec(lock)?.[1] ??
-    "no full kernel commit"
-  );
+  return {
+    declared:
+      /"agent-cli-kernel": "[^"\n]*#([0-9a-f]{40})"/.exec(lock)?.[1] ??
+      "no full kernel commit",
+    resolved:
+      /"agent-cli-kernel": \["agent-cli-kernel@[^"\n]*#([0-9a-f]{7,40})"/.exec(
+        lock,
+      )?.[1],
+  };
 }
 
 function installedTag(): string | undefined {
@@ -88,14 +93,19 @@ function installedTag(): string | undefined {
 
 test("bun.lock and the installed kernel hold the commit package.json pins", () => {
   const commit = pinnedCommit();
-  const locked = lockedCommit();
+  const locked = lockedKernel();
   const installed = installedTag();
   const installedCommit = /([0-9a-f]{7,40})$/.exec(installed ?? "")?.[1];
   expect([
-    ...(locked === commit
+    ...(locked.declared === commit
       ? []
       : [
-          `bun.lock pins ${locked}, and package.json pins ${commit}. Repair: run bun install after the pin changes in package.json, commit bun.lock with it, then run bun install --frozen-lockfile.`,
+          `bun.lock pins ${locked.declared}, and package.json pins ${commit}. Repair: run bun install after the pin changes in package.json, commit bun.lock with it, then run bun install --frozen-lockfile.`,
+        ]),
+    ...(locked.resolved !== undefined && commit.startsWith(locked.resolved)
+      ? []
+      : [
+          `bun.lock resolves the kernel to ${locked.resolved ?? "no record"}, and package.json pins ${commit}. Repair: run bun update agent-cli-kernel, commit bun.lock, then run bun install --frozen-lockfile.`,
         ]),
     ...(installedCommit !== undefined && commit.startsWith(installedCommit)
       ? []

@@ -30,7 +30,8 @@ async function generated() {
 }
 
 // Interface: what a frozen install leaves for the pointer skill check to
-// read: bun.lock's kernel dependency line, the installed kernel's .bun-tag in
+// read: bun.lock's kernel dependency line and its resolved kernel record, in
+// the form a github: install writes, the installed kernel's .bun-tag in
 // the form a github: install writes, and, unless told not to, the full skill.
 function installKernel(
   destination: string,
@@ -39,7 +40,7 @@ function installKernel(
 ): void {
   writeFileSync(
     join(destination, "bun.lock"),
-    `{\n  "workspaces": {\n    "": {\n      "dependencies": {\n        "agent-cli-kernel": "github:nathanvale/agent-cli-kernel#${commit}",\n      },\n    },\n  },\n}\n`,
+    `{\n  "workspaces": {\n    "": {\n      "dependencies": {\n        "agent-cli-kernel": "github:nathanvale/agent-cli-kernel#${commit}",\n      },\n    },\n  },\n  "packages": {\n    "agent-cli-kernel": ["agent-cli-kernel@github:nathanvale/agent-cli-kernel#${commit.slice(0, 7)}", {}, "nathanvale-agent-cli-kernel-${commit.slice(0, 7)}", "sha512-AA=="],\n  },\n}\n`,
   );
   mkdirSync(join(destination, installedKernel), { recursive: true });
   writeFileSync(
@@ -124,6 +125,29 @@ describe("the generated repository's pointer skill check", () => {
       expect(stderr).toContain(
         `bun.lock pins ${other}, and package.json pins ${commit}. Repair: run bun install after the pin changes in package.json, commit bun.lock with it, then run bun install --frozen-lockfile.`,
       );
+      expect(stderr).not.toContain('+   "the installed kernel is');
+      expect(stderr).toContain(onlyOneFailed);
+    },
+    processWatchdog(1),
+  );
+
+  test(
+    "fails when bun.lock resolves the kernel to another commit than package.json pins, which a frozen install would install",
+    async () => {
+      const { destination, commit } = await generated();
+      installKernel(destination, commit);
+      const other = "315862fa13c81de3ff7fd19a4be341182b57f778";
+      moveText(
+        join(destination, "bun.lock"),
+        `agent-cli-kernel#${commit.slice(0, 7)}"`,
+        `agent-cli-kernel#${other.slice(0, 7)}"`,
+      );
+      const { exit, stderr } = await pointerCheck(destination);
+      expect({ exit, stderr }).toMatchObject({ exit: 1 });
+      expect(stderr).toContain(
+        `bun.lock resolves the kernel to ${other.slice(0, 7)}, and package.json pins ${commit}. Repair: run bun update agent-cli-kernel, commit bun.lock, then run bun install --frozen-lockfile.`,
+      );
+      expect(stderr).not.toContain('+   "bun.lock pins');
       expect(stderr).not.toContain('+   "the installed kernel is');
       expect(stderr).toContain(onlyOneFailed);
     },
