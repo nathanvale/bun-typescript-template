@@ -11,7 +11,9 @@ repository broke it.
   [185c90d], [5990897], [fa359ec] (a parser's five refusals had no test),
   [97f9e9b] (a length check accepted any parse failure; take the reason from
   an independent parser call), [#90-inventory] (exit 1 also covered other
-  errors), [#116-refusal] (exit 1 also covered git's general refusal).
+  errors), [#116-refusal] (exit 1 also covered git's general refusal),
+  [a639dc0] (pin move refusal tests compared only a code that two refusals
+  share).
 - Assert the route's response when a test says a command remains available.
   Exit zero with empty output can pass without a response. Witnessed:
   [#90-routes].
@@ -76,7 +78,8 @@ repository broke it.
   `bun run planted-fault:add <fix sha> <source path> <test file> <title>`,
   then `bun run fault-replay <id>` until it prints `KILLED`. Witnessed:
   [9050fec], [b8664cf] (each recorded faults for refusals that had landed
-  with no record).
+  with no record), [a639dc0] (the kernel trial's step bound and the pin
+  move's missing-branch and argument refusals landed with none).
 - Replay affected fault records when you edit or move a test that catches
   a planted fault, or change the source its patch targets. Keep the patch
   and test selector current in the same commit and require `KILLED`.
@@ -97,7 +100,9 @@ repository broke it.
   could wait indefinitely for a generated repository command),
   [#109-bound] (a process-runner case started a nested child with no time
   limit), [d29b755] (a child bounded at 20 s ran under a 5 s test timeout),
-  [#116-git] (Bootstrap read the template's commit with git and no limit).
+  [#116-git] (Bootstrap read the template's commit with git and no limit),
+  [a639dc0] (a test bounded bash but stopped only bash, not the git it
+  started; give it its own process group).
 - Template tests: reuse `spawnBounded` (`tests/support/process.ts`), which
   runs the child through `startChild` (`scripts/process-runner.ts`), for that
   bound.
@@ -200,3 +205,4 @@ repository broke it.
 [d29b755]: https://github.com/nathanvale/bun-typescript-template/commit/d29b7552547144c165d0402a54c3e22fb8e7487e
 [#116-git]: https://github.com/nathanvale/bun-typescript-template/pull/116#discussion_r4638549429
 [#116-refusal]: https://github.com/nathanvale/bun-typescript-template/pull/116#discussion_r4638686792
+[a639dc0]: https://github.com/nathanvale/bun-typescript-template/commit/a639dc0cb92d859552ca1eec75ee1a66d3cc0ced
