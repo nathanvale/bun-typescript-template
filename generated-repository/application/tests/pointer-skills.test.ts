@@ -5,6 +5,7 @@ import { join } from "node:path";
 const root = join(import.meta.dir, "..");
 const skillFolder = join(root, ".agents", "skills");
 const fullSkillLine = /^Full skill: `([^`\n]+)`$/m;
+const installedKernel = "node_modules/agent-cli-kernel/";
 const pinnedCommitLine = /^Pinned commit: `([^`\n]*)`$/m;
 
 type PointerSkill = {
@@ -67,6 +68,21 @@ test("each pointer skill names the commit package.json pins", () => {
       .map(
         ({ name, pinnedCommit }) =>
           `.agents/skills/${name}/SKILL.md names ${pinnedCommit}, and package.json pins ${commit}. Repair: write ${commit} on its Pinned commit line, then read the full skill at that commit for any change.`,
+      ),
+  ).toEqual([]);
+});
+
+test("each pointer skill names a full skill inside the installed kernel", () => {
+  expect(
+    pointerSkills()
+      .filter(
+        ({ fullSkill }) =>
+          !fullSkill.startsWith(installedKernel) ||
+          fullSkill.split("/").includes(".."),
+      )
+      .map(
+        ({ name, fullSkill }) =>
+          `.agents/skills/${name}/SKILL.md names ${fullSkill}, which is not inside the installed kernel, ${installedKernel}. Repair: write the path of the skill the installed kernel ships, as ${installedKernel}skills/<name>/SKILL.md, on its Full skill line.`,
       ),
   ).toEqual([]);
 });

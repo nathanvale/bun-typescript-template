@@ -153,7 +153,7 @@ describe("the kernel trial", () => {
       );
       expect({
         exit: pointer.exit,
-        ran: pointer.stderr.includes("\n 3 pass\n 0 fail\n"),
+        ran: /\n [1-9]\d* pass\n 0 fail\n/.test(pointer.stderr),
       }).toEqual({ exit: 0, ran: true });
     },
     trialTimeout(1),

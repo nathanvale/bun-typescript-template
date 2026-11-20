@@ -17,7 +17,7 @@ import { processWatchdog, spawnBounded } from "../../support/process.ts";
 
 const run = kernelRowFixture();
 const pointer = ".agents/skills/agent-cli-kernel/SKILL.md";
-const onlyOneFailed = "\n 2 pass\n 1 fail\n";
+const onlyOneFailed = "\n 3 pass\n 1 fail\n";
 const fullSkill =
   "node_modules/agent-cli-kernel/skills/agent-cli-kernel/SKILL.md";
 
@@ -109,6 +109,33 @@ describe("the generated repository's pointer skill check", () => {
       expect({ exit, stderr }).toMatchObject({ exit: 1 });
       expect(stderr).toContain(
         `${pointer} names ${fullSkill}, which the installed kernel at ${commit} does not hold. Repair: run bun install --frozen-lockfile; if it is still missing, find where the kernel at ${commit} keeps the skill and write that path on its Full skill line.`,
+      );
+      expect(stderr).toContain(onlyOneFailed);
+    },
+    processWatchdog(1),
+  );
+
+  test.each([
+    [
+      "a path that exists outside it",
+      ".agents/skills/agent-cli-kernel/SKILL.md",
+    ],
+    [
+      "a path that climbs out of it",
+      "node_modules/agent-cli-kernel/../../.agents/skills/agent-cli-kernel/SKILL.md",
+    ],
+  ])(
+    "fails when the pointer names a full skill outside the installed kernel: %s",
+    async (_case, outside) => {
+      const { destination } = await generated();
+      installFullSkill(destination);
+      editPointer(destination, (text) =>
+        text.replace(/^Full skill: .*$/m, `Full skill: \`${outside}\``),
+      );
+      const { exit, stderr } = await pointerCheck(destination);
+      expect({ exit, stderr }).toMatchObject({ exit: 1 });
+      expect(stderr).toContain(
+        `${pointer} names ${outside}, which is not inside the installed kernel, node_modules/agent-cli-kernel/. Repair: write the path of the skill the installed kernel ships, as node_modules/agent-cli-kernel/skills/<name>/SKILL.md, on its Full skill line.`,
       );
       expect(stderr).toContain(onlyOneFailed);
     },
