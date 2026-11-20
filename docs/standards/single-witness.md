@@ -112,6 +112,9 @@ this file.
   lists only what is inside a folder shows no sign of an empty one.
   Witnessed: [r4626801130] (an extra empty folder in a source folder produced
   no entry, so the file comparison gave `intact`).
+- Check that a path a check needs as a file is a file: `existsSync` answers
+  yes for a folder too. Witnessed: [47e2ec3] (the pointer skill check passed
+  a Full skill line naming a folder in the installed kernel).
 
 [ac11ed9]: https://github.com/nathanvale/bun-typescript-template/commit/ac11ed98b7d538e8a304cac053aaefcaaf6b2cb3
 [cd2498b]: https://github.com/nathanvale/bun-typescript-template/commit/cd2498b7189a2d45d1906b9c870e8d13da6cd2dd
@@ -140,3 +143,4 @@ this file.
 [b9c3ba0]: https://github.com/nathanvale/bun-typescript-template/commit/b9c3ba00521b068d6ab1aca20453e8e8012d3f52
 [16c6e4d]: https://github.com/nathanvale/bun-typescript-template/commit/16c6e4d565cd37f750ccc56b48438ae2818a2f24
 [0352f0d]: https://github.com/nathanvale/bun-typescript-template/commit/0352f0d113e82a3aa9559b5a811d353f16458be4
+[47e2ec3]: https://github.com/nathanvale/bun-typescript-template/commit/47e2ec3c245279421f11ab054db621c97e213333
