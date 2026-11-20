@@ -1,13 +1,13 @@
 diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
-index ad9eb56..7c5c104 100644
+index 05b4950..0a9118d 100644
 --- a/scripts/pin-move.ts
 +++ b/scripts/pin-move.ts
-@@ -254,7 +254,7 @@ export async function main(argv: readonly string[]): Promise<number> {
-   };
-   for (const signal of stopSignals) process.on(signal, stop);
+@@ -270,7 +270,7 @@ export async function main(argv: readonly string[]): Promise<number> {
+   const active: TrialActive = {};
    try {
--    const branchCommit = pinBranchCommit(pin);
-+    const branchCommit = kernel.commit;
-     verifyPin(kernel, pin, branchCommit);
-     const { report, written } = movePin(
-       await kernelTrial({ kernel, folder, active }),
+     return await withStopSignals(active, async () => {
+-      const branchCommit = pinBranchCommit(pin);
++      const branchCommit = kernel.commit;
+       verifyPin(kernel, pin, branchCommit);
+       const { report, written } = movePin(
+         await kernelTrial({ kernel, folder, active }),
