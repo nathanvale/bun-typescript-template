@@ -19,9 +19,8 @@ after it in every file and folder name. It refuses a word noted
 ### Creating a repository
 
 **Template**:
-The canonical owner of portable template source and of its own pin. Bootstrap
-gives each generated repository a pin of its own, at the template's Pin. The
-template does not own the kernel or add-on source.
+The canonical owner of portable template source and of its own pin. It does not
+own the kernel or add-on source.
 
 **Foundation**:
 The template, kernel repository, composer, checker, exemplar and
@@ -33,8 +32,7 @@ kernel at the template's Pin and the add-ons asked for.
 
 **Recipe**:
 One row of the recipe table. It says which folders Bootstrap copies into a
-generated repository, which of them carries the Pin, and which check command
-the repository runs. The type check refuses a row without the Pin.
+generated repository and which check command that repository runs.
 
 **Recipe table**:
 The module that holds the recipe Bootstrap follows. It holds one row.
@@ -61,10 +59,8 @@ _Avoid_: version (unqualified); release, pin (for a template version)
 
 **Kernel split**:
 The whole change that moves the kernel and add-on source and their tests out
-of the template into the kernel repository, while each generated repository
-gets the kernel through its pin. It covers every step, from preparation to
-removing every recipe row without the Pin.
-For the single step that moves the files, say carry-out.
+of the template into the kernel repository, so that each generated repository
+gets the kernel through its pin.
 _Avoid_: extraction, migration (when the kernel split is meant)
 
 **Sibling repository**:
@@ -90,10 +86,7 @@ _Avoid_: pin check (say pin verification)
 
 **Pin move**:
 Changing a pin to another commit, in the template or in a generated
-repository. A pin move needs a passed kernel trial. When the pin names a
-kernel branch, the new commit must be reachable from it. A Template upgrade
-does not move a generated repository's pin; a pin move is always its own act.
-The kernel's glossary defines [Pin](https://github.com/nathanvale/agent-cli-kernel/blob/main/GLOSSARY.md).
+repository. It is always its own act: a Template upgrade does not do it.
 _Avoid_: bump, update, upgrade (for a pin move)
 
 **Pin move report**:
@@ -103,8 +96,7 @@ _Avoid_: diff, changelog (for a pin move report)
 
 **Kernel trial**:
 Making one repository from a candidate kernel commit, with every add-on
-selected, and running that repository's check command. It must pass before a
-pin move. It may also run on any kernel change as advice only.
+selected, and running that repository's check command.
 _Avoid_: canary, dry run (for a kernel trial)
 
 ### Reading and installing a kernel
@@ -115,14 +107,12 @@ move has written it. Every add-on selection shares it.
 _Avoid_: lockfile (unqualified); package set lockfile (for the kernel lockfile)
 
 **Kernel reader**:
-The Module that reads the kernel's files from git objects at one commit in a
-kernel repository, and never from a working tree.
+The Module that reads the kernel's files at one commit of a kernel repository.
 _Avoid_: reader (unqualified; Reader is the Contract 3 word for a program that parses an envelope)
 
 **Kernel seam**:
-The Seam at the kernel reader's Interface: a local path to a kernel repository
-and one full commit. Its Adapters are the git object stores it can read: the
-sibling repository, any local clone, and a test stand-in.
+The Seam at the kernel reader's Interface, where a kernel repository at one
+commit is supplied. A test can supply a stand-in.
 
 ### Shared tool words
 
