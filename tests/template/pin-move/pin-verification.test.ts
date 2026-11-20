@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
 import { readKernel } from "../../../src/kernel-reader.ts";
-import { PinRefusal, verifyPin } from "../../../src/pin-move.ts";
+import { PinRefusal, verifyPin } from "../../../scripts/pin-move.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import { git, gitResult } from "../../support/git-fixture.ts";

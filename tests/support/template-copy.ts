@@ -1,12 +1,21 @@
 import { cpSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { ROOT } from "./bootstrap-cli-fixture.ts";
-import { commit, gitEnv, inherited, initRepository } from "./git-fixture.ts";
+import {
+  commit,
+  git,
+  gitEnv,
+  inherited,
+  initRepository,
+} from "./git-fixture.ts";
 import { spawnBounded } from "./process.ts";
 
 const copied = [
   "src",
   "scripts/process-runner.ts",
+  "scripts/kernel-trial.ts",
+  "scripts/pin-move.ts",
+  "scripts/pin-move-report.ts",
   "generated-repository",
   "config",
   "tests/support/test-folder.ts",
@@ -22,6 +31,7 @@ export function templateCopy(folder: string, omit: readonly string[] = []) {
     cpSync(join(ROOT, path), join(copy, path), { recursive: true });
   for (const path of omit) rmSync(join(copy, path), { force: true });
   initRepository(copy);
+  git(copy, "add", "--all");
   commit(copy, "the template copy", {});
   return copy;
 }

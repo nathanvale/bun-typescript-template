@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { KernelSeam } from "./kernel-reader.ts";
@@ -93,6 +93,16 @@ export function readKernelPin(root: string): KernelPin {
       `is missing at ${root}. The template holds no kernel source, so this kernel pin is its only record of the kernel repository. ${restoreRepair}`,
     );
   return parseKernelPin(readFileSync(path, "utf8"));
+}
+
+// Interface: writes the kernel pin at `root` as the pin move does, and says
+// whether its bytes changed. Equal bytes are not written again.
+export function writeKernelPin(root: string, pin: KernelPin): boolean {
+  const path = join(root, file);
+  const text = `${JSON.stringify(pin, null, 2)}\n`;
+  if (existsSync(path) && readFileSync(path, "utf8") === text) return false;
+  writeFileSync(path, text);
+  return true;
 }
 
 // Interface: the Pin a generated repository holds, as the value of its one

@@ -16,6 +16,13 @@ These sources define the command contract the CLI kernel implements.
   [citation convention](../standards/gate-coverage.md#comments) and consult
   the MAG-98 findings ledger under [Coordination context](#coordination-context).
 
+## The kernel repository in tests
+
+- The `pin-move` and `kernel-trial` test areas read the kernel repository
+  beside the template, where the hosted check places it at the pinned commit.
+- From a worktree or any other folder, clone the kernel repository elsewhere
+  and name its path in `KERNEL_REPOSITORY`.
+
 ## Coordination context
 
 These private planning records live outside this repository. Your task brief

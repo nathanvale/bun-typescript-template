@@ -2,14 +2,14 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { readKernelPin } from "../../src/kernel-pin.ts";
 import { ROOT } from "./bootstrap-cli-fixture.ts";
-import { git } from "./git-fixture.ts";
+import { git, gitOutput } from "./git-fixture.ts";
 import { gitWithInput } from "./git-object-fixture.ts";
 
 const pinnedCommit = readKernelPin(ROOT).commit;
 
-// Interface: the kernel commit tests build on, the first a generated
-// repository can install. It stays put when the pin moves, so a pin move
-// changes no test.
+// Interface: the kernel commit the kernel trial and pin move tests build on,
+// the first a generated repository can install. It stays put when the pin
+// moves, so a pin move changes no test.
 export const trialBase = "0b64b0e480a77ae6abbd3e671497354309182b42";
 
 // Interface: the real kernel repository the tests read. The hosted check
@@ -83,4 +83,8 @@ export function commitOn(
 
 export function moveBranch(root: string, branch: string, commit: string) {
   git(root, "update-ref", `refs/heads/${branch}`, commit);
+}
+
+export function fileAt(root: string, commit: string, path: string): string {
+  return gitOutput(root, "show", `${commit}:${path}`);
 }

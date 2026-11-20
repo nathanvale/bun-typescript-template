@@ -27,11 +27,6 @@
       "ticket": "MAG-114"
     },
     {
-      "term": "Pin move report",
-      "reason": "A pin move produces it. MAG-126 builds the pin move.",
-      "ticket": "MAG-126"
-    },
-    {
       "term": "Negative control",
       "reason": "The standards guides say RED-then-GREEN for it today. No ticket is known to bring it into a tracked file here; MAG-114 is the kernel split spec, which uses the word.",
       "ticket": "MAG-114"
