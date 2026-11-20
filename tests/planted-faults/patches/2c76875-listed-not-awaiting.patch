@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-ownership.ts b/scripts/glossary-ownership.ts
+index bb930ac..2a21583 100644
+--- a/scripts/glossary-ownership.ts
++++ b/scripts/glossary-ownership.ts
+@@ -64,7 +64,7 @@ export function ownershipProblems(
+           `GLOSSARY.md holds "${name}" among the entries awaiting kernel acceptance, and ${ownershipFile} does not list it. Repair: list it in kernelEntries, or move its entry out of that section.`,
+       ),
+     ...listed
+-      .filter((name) => !awaiting.includes(name))
++      .filter((name) => !awaiting.includes(name) && !listed.includes(name))
+       .map(
+         (name) =>
+           `${ownershipFile} lists "${name}", and GLOSSARY.md does not hold it among the entries awaiting kernel acceptance. Repair: move its entry there, or remove it from kernelEntries.`,

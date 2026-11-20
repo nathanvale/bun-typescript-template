@@ -1,0 +1,13 @@
+diff --git a/GLOSSARY.md b/GLOSSARY.md
+index 829b468..37ac210 100644
+--- a/GLOSSARY.md
++++ b/GLOSSARY.md
+@@ -235,7 +235,7 @@ _Avoid_: check (unqualified)
+ **Hosted check**:
+ A repository's check command and gates as its forge runs them on pull requests
+ and pushes.
+-_Avoid_: CI (unqualified)
++_Avoid_: CI
+ 
+ **Gate**:
+ A required validation that can refuse a change before it lands in a repository. A gate that

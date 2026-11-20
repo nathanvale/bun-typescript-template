@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-ownership.ts b/scripts/glossary-ownership.ts
+index bb930ac..5c54e09 100644
+--- a/scripts/glossary-ownership.ts
++++ b/scripts/glossary-ownership.ts
+@@ -25,7 +25,7 @@ function namesIn(text: string): string[] {
+ export function awaitingEntries(glossary: string): string[] {
+   const from = only(glossary, awaitingHeading);
+   const to = only(glossary, sharedHeading);
+-  if (to < from)
++  if (to < 0)
+     throw new Error(
+       `GLOSSARY.md puts "${sharedHeading.trim()}" before "${awaitingHeading.trim()}". Repair: move the shared section after the awaiting entries.`,
+     );

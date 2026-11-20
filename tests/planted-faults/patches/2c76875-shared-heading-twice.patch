@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-ownership.ts b/scripts/glossary-ownership.ts
+index bb930ac..6b3aeed 100644
+--- a/scripts/glossary-ownership.ts
++++ b/scripts/glossary-ownership.ts
+@@ -7,7 +7,7 @@ const termLine = /^\*\*(.+)\*\*:$/gm;
+ 
+ function only(text: string, heading: string): number {
+   const at = text.indexOf(heading);
+-  if (at < 0 || text.indexOf(heading, at + heading.length) >= 0)
++  if (at < 0)
+     throw new Error(
+       `GLOSSARY.md needs exactly one "${heading.trim()}" heading. Repair: keep one, and no other heading with that text.`,
+     );

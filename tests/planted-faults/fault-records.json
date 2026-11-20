@@ -1825,5 +1825,68 @@
     "testFile": "tests/template/naming/glossary-files.test.ts",
     "title": "^GM.m a row that owns words but gives them no place fails",
     "source": "e47887b fix(glossary): refuse a map row that owns words and gives them no place"
+  },
+  {
+    "id": "2c76875-shared-section-end",
+    "patch": "tests/planted-faults/patches/2c76875-shared-section-end.patch",
+    "testFile": "tests/template/naming/shared-tool-words.test.ts",
+    "title": "^SW\\.a ",
+    "source": "2c76875 feat(glossary): group the shared tool words, export them, and record the kernel transfer"
+  },
+  {
+    "id": "2c76875-shared-heading-twice",
+    "patch": "tests/planted-faults/patches/2c76875-shared-heading-twice.patch",
+    "testFile": "tests/template/naming/shared-tool-words.test.ts",
+    "title": "^SW\\.b ",
+    "source": "2c76875 feat(glossary): group the shared tool words, export them, and record the kernel transfer"
+  },
+  {
+    "id": "2c76875-shared-before-awaiting",
+    "patch": "tests/planted-faults/patches/2c76875-shared-before-awaiting.patch",
+    "testFile": "tests/template/naming/shared-tool-words.test.ts",
+    "title": "^SW\\.c ",
+    "source": "2c76875 feat(glossary): group the shared tool words, export them, and record the kernel transfer"
+  },
+  {
+    "id": "2c76875-awaiting-unlisted",
+    "patch": "tests/planted-faults/patches/2c76875-awaiting-unlisted.patch",
+    "testFile": "tests/template/naming/shared-tool-words.test.ts",
+    "title": "^SW\\.d ",
+    "source": "2c76875 feat(glossary): group the shared tool words, export them, and record the kernel transfer"
+  },
+  {
+    "id": "2c76875-listed-not-awaiting",
+    "patch": "tests/planted-faults/patches/2c76875-listed-not-awaiting.patch",
+    "testFile": "tests/template/naming/shared-tool-words.test.ts",
+    "title": "^SW\\.e ",
+    "source": "2c76875 feat(glossary): group the shared tool words, export them, and record the kernel transfer"
+  },
+  {
+    "id": "2c76875-listed-shared",
+    "patch": "tests/planted-faults/patches/2c76875-listed-shared.patch",
+    "testFile": "tests/template/naming/shared-tool-words.test.ts",
+    "title": "^SW\\.f ",
+    "source": "2c76875 feat(glossary): group the shared tool words, export them, and record the kernel transfer"
+  },
+  {
+    "id": "2c76875-entries-not-array",
+    "patch": "tests/planted-faults/patches/2c76875-entries-not-array.patch",
+    "testFile": "tests/template/naming/shared-tool-words.test.ts",
+    "title": "^SW\\.g ",
+    "source": "2c76875 feat(glossary): group the shared tool words, export them, and record the kernel transfer"
+  },
+  {
+    "id": "2c76875-export-not-use",
+    "patch": "tests/planted-faults/patches/2c76875-export-not-use.patch",
+    "testFile": "tests/template/naming/shared-tool-words.test.ts",
+    "title": "^the export and glossary-ownership\\.json are not read",
+    "source": "2c76875 feat(glossary): group the shared tool words, export them, and record the kernel transfer"
+  },
+  {
+    "id": "2c76875-shared-definition-drift",
+    "patch": "tests/planted-faults/patches/2c76875-shared-definition-drift.patch",
+    "testFile": "tests/template/naming/shared-tool-words.test.ts",
+    "title": "^the shared tool words in GLOSSARY\\.md are the template's recorded export",
+    "source": "2c76875 feat(glossary): group the shared tool words, export them, and record the kernel transfer"
   }
 ]

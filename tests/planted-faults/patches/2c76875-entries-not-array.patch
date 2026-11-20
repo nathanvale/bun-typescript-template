@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-ownership.ts b/scripts/glossary-ownership.ts
+index bb930ac..f1916be 100644
+--- a/scripts/glossary-ownership.ts
++++ b/scripts/glossary-ownership.ts
+@@ -42,7 +42,7 @@ function listedEntries(text: string): string[] {
+     typeof parsed === "object" && parsed !== null
+       ? new Map(Object.entries(parsed)).get("kernelEntries")
+       : undefined;
+-  if (!Array.isArray(list) || !list.every((n) => typeof n === "string"))
++  if (!Array.isArray(list))
+     throw new Error(
+       `${ownershipFile} needs a "kernelEntries" array of strings. Repair: list each entry the kernel is to own.`,
+     );
