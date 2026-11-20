@@ -1,0 +1,35 @@
+name: Pin verification
+
+# Pin verification of the template's kernel pin. It runs on every pull
+# request and every push to main with no path filter, because a required
+# check that a path filter skips never reports and blocks merging. It also
+# runs weekly, because the kernel repository can change under a pin that
+# does not.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # 16:23 UTC on Sunday: 03:23 on Monday in Melbourne during daylight
+    # saving (AEDT, UTC+11, October to April) and 02:23 outside it (AEST,
+    # UTC+10). Off the hour, because GitHub delays or drops scheduled runs at
+    # the top of the hour.
+    - cron: "23 16 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pin-verification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+          no-cache: true
+      - run: bun install --frozen-lockfile
+      - uses: ./.github/actions/kernel-sibling
+      - run: bun run pin-verification

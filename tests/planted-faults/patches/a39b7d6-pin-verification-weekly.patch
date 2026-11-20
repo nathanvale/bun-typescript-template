@@ -1,0 +1,13 @@
+diff --git a/.github/workflows/pin-verification.yml b/.github/workflows/pin-verification.yml
+index fb2296d..39f22cd 100644
+--- a/.github/workflows/pin-verification.yml
++++ b/.github/workflows/pin-verification.yml
+@@ -14,7 +14,7 @@ on:
+     # saving (AEDT, UTC+11, October to April) and 02:23 outside it (AEST,
+     # UTC+10). Off the hour, because GitHub delays or drops scheduled runs at
+     # the top of the hour.
+-    - cron: "23 16 * * 0"
++    - cron: "23 16 * * *"
+   workflow_dispatch:
+ 
+ permissions:

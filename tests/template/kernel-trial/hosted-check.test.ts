@@ -1,11 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { kernelPinFile, readKernelPin } from "../../../src/kernel-pin.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import { git, gitEnv, inherited } from "../../support/git-fixture.ts";
 import {
+  absentCommit,
   commitOn,
   kernelClone,
   moveBranch,
@@ -16,17 +17,32 @@ import { processWatchdog, spawnBounded } from "../../support/process.ts";
 const folder = ownedFolders();
 const sibling = "./.github/actions/kernel-sibling";
 
-type Step = { readonly uses?: string; readonly run?: string };
+type Step = {
+  readonly uses?: string;
+  readonly run?: string;
+  readonly with?: Record<string, unknown>;
+};
 type Job = {
+  readonly "timeout-minutes"?: number;
   readonly env?: Record<string, string>;
   readonly steps: readonly Step[];
 };
 
+type Workflow = {
+  readonly on: Record<string, unknown>;
+  readonly jobs: Record<string, Job>;
+};
+
+const workflows = join(ROOT, ".github/workflows");
+
+function workflowOf(workflow: string): Workflow {
+  return Bun.YAML.parse(
+    readFileSync(join(workflows, workflow), "utf8"),
+  ) as Workflow;
+}
+
 function jobOf(workflow: string, job: string): Job {
-  const parsed = Bun.YAML.parse(
-    readFileSync(join(ROOT, ".github/workflows", workflow), "utf8"),
-  ) as { jobs: Record<string, Job> };
-  const found = parsed.jobs[job];
+  const found = workflowOf(workflow).jobs[job];
   if (found === undefined) throw new Error(`${workflow} has no job ${job}.`);
   return found;
 }
@@ -58,6 +74,7 @@ describe("the hosted check", () => {
     ["ci.yml", "test", "bun run test"],
     ["ci.yml", "fault-replay", "bun run fault-replay"],
     ["macos-nightly.yml", "check", "bun run check"],
+    ["pin-verification.yml", "pin-verification", "bun run pin-verification"],
   ])(
     "%s job %s places the kernel repository beside the template after its checkout and before its tests",
     (workflow, job, runs) => {
@@ -79,6 +96,61 @@ describe("the hosted check", () => {
       KERNEL_REPOSITORY: "${{ github.workspace }}/../agent-cli-kernel",
     });
   });
+
+  test("the pin verification workflow runs on every pull request, on every push to main, by hand, and once a week", () => {
+    expect(workflowOf("pin-verification.yml").on).toEqual({
+      pull_request: null,
+      push: { branches: ["main"] },
+      schedule: [{ cron: "23 16 * * 0" }],
+      workflow_dispatch: null,
+    });
+  });
+
+  test("the pin verification job stops within ten minutes, and sets up Bun with no cache", () => {
+    const job = jobOf("pin-verification.yml", "pin-verification");
+    expect([
+      job["timeout-minutes"],
+      job.steps.find(({ uses }) => uses?.startsWith("oven-sh/setup-bun"))?.with,
+    ]).toEqual([10, { "bun-version": "1.4.4", "no-cache": true }]);
+  });
+
+  test("no workflow filters its pull requests or pushes by path, because a required check that a path filter skips never reports and blocks merging", () => {
+    const filtered = readdirSync(workflows).flatMap((workflow) =>
+      ["pull_request", "push"].flatMap((event) => {
+        const trigger = Object(workflowOf(workflow).on[event]) as object;
+        return ["paths", "paths-ignore"]
+          .filter((filter) => Object.hasOwn(trigger, filter))
+          .map((filter) => `${workflow} ${event} ${filter}`);
+      }),
+    );
+    expect(filtered).toEqual([]);
+  });
+
+  test(
+    "its step fails, and so does its job, when the kernel pin names a commit the remote does not hold",
+    async () => {
+      const work = folder("hosted-check-");
+      const remote = kernelClone(join(work, "remote"), trialBase);
+      const template = join(work, "runner/template");
+      mkdirSync(template, { recursive: true });
+      writeFileSync(
+        join(template, kernelPinFile),
+        JSON.stringify({
+          ...readKernelPin(ROOT),
+          remote,
+          commit: absentCommit,
+        }),
+      );
+      const run = await spawnBounded(["bash", "-e", "-c", actionScript()], {
+        cwd: template,
+        env: { ...inherited(), ...gitEnv },
+        processGroup: true,
+      });
+      expect(run.exit).not.toBe(0);
+      expect(run.stderr).toContain(absentCommit);
+    },
+    processWatchdog(1),
+  );
 
   test(
     "its step clones the remote the kernel pin names, with its history, into the folder beside the template, at the pinned commit",

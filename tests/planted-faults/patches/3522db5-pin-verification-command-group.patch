@@ -1,0 +1,12 @@
+diff --git a/tests/template/pin-move/pin-verification-command.test.ts b/tests/template/pin-move/pin-verification-command.test.ts
+index 7d9008d..12863d8 100644
+--- a/tests/template/pin-move/pin-verification-command.test.ts
++++ b/tests/template/pin-move/pin-verification-command.test.ts
+@@ -183,7 +183,6 @@ describe("the pin verification command", () => {
+           bin === undefined
+             ? env
+             : { ...env, PATH: `${bin}${delimiter}${env.PATH ?? ""}` },
+-        processGroup: true,
+         ...(bound === undefined ? {} : { boundMilliseconds: bound }),
+       },
+     );
