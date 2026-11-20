@@ -1438,7 +1438,7 @@
     "id": "f815bb0-pin-move-signals",
     "patch": "tests/planted-faults/patches/f815bb0-pin-move-signals.patch",
     "testFile": "tests/template/pin-move/pin-move-command.test.ts",
-    "title": "stopped by SIGTERM during its kernel trial",
+    "title": "stops its running trial step when SIGTERM reaches it, and refuses as stopped$",
     "source": "f815bb0 fix(pin-move): stop the trial's running step on SIGINT, SIGTERM or SIGHUP"
   },
   {

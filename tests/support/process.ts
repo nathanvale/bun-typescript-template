@@ -26,25 +26,15 @@ function holdsLine(ledger: string, line: string): boolean {
   );
 }
 
-// Interface: resolves with what `found` returns once it returns a value, and
-// rejects once the bound passes first. `stop` ends the wait unsettled.
-export function watchFor<Found>(
-  found: () => Found | undefined,
-  boundMilliseconds: number,
-): { readonly reached: Promise<Found>; readonly stop: () => void } {
-  const started = Date.now();
-  let poll: ReturnType<typeof setInterval> | undefined;
-  const reached = new Promise<Found>((resolve, reject) => {
-    poll = setInterval(() => {
-      const value = found();
-      if (value !== undefined) resolve(value);
-      else if (Date.now() - started >= boundMilliseconds)
-        reject(new Error(`Nothing was found within ${boundMilliseconds} ms.`));
-      else return;
-      clearInterval(poll);
-    }, 5);
-  });
-  return { reached, stop: () => clearInterval(poll) };
+// Interface: whether a process with `pid` still exists, alive or a zombie
+// its parent has not reaped.
+export function processAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function watchLedger(

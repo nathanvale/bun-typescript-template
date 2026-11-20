@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { kernelPinFile, readKernelPin } from "../../../src/kernel-pin.ts";
 import { argumentsOf } from "../../../scripts/pin-move.ts";
@@ -27,7 +27,8 @@ import {
 import {
   processWatchdog,
   spawnBounded,
-  watchFor,
+  processAlive,
+  watchLedger,
 } from "../../support/process.ts";
 import { templateCopy } from "../../support/template-copy.ts";
 
@@ -165,53 +166,57 @@ describe("the pin move command", () => {
   );
 
   test(
-    "stopped by SIGTERM during its kernel trial, stops the running step, writes nothing, removes the trial's folder and exits 1",
+    "stops its running trial step when SIGTERM reaches it, and refuses as stopped",
     async () => {
-      const copy = copyPinnedAt(trialBase);
-      const temporary = folder("pin-move-temporary-");
-      const cli = startChild(
-        [
-          process.execPath,
-          join(copy, "scripts/pin-move.ts"),
-          trialBase,
-          "--kernel",
-          siblingKernel(),
-        ],
-        {
-          cwd: copy,
-          env: { ...inherited(), ...gitEnv, TMPDIR: temporary },
-          limitMilliseconds: trialTimeout(1) - 20_000,
-        },
-      );
-      const installing = watchFor(
-        () =>
-          readdirSync(temporary)
-            .map((entry) => join(temporary, entry, "first/node_modules"))
-            .find((path) => existsSync(path)),
-        60_000,
-      );
+      const work = folder("pin-move-signal-");
+      const ledger = join(work, "ledger");
+      const pidFile = join(work, "pid");
+      const held = `const { writeFileSync } = require("node:fs");
+writeFileSync(${JSON.stringify(pidFile)}, String(process.pid));
+writeFileSync(${JSON.stringify(ledger)}, "started\\n");
+await Bun.sleep(30_000);`;
+      const script = `const { withStopSignals } = await import(${JSON.stringify(join(ROOT, "scripts/pin-move.ts"))});
+const { trialStep } = await import(${JSON.stringify(join(ROOT, "scripts/kernel-trial.ts"))});
+const active = {};
+try {
+  await withStopSignals(active, () => trialStep(${JSON.stringify(work)}, "held step", ["-e", ${JSON.stringify(held)}], 40_000, active));
+  process.stdout.write("no refusal");
+} catch (error) {
+  process.stdout.write(JSON.stringify({ code: error.code, message: error.message }));
+}`;
+      const command = startChild([process.execPath, "--eval", script], {
+        cwd: work,
+        limitMilliseconds: 50_000,
+      });
+      const started = watchLedger(ledger, "started", 20_000);
       try {
-        await installing.reached;
-        cli.signal("SIGTERM");
-        const run = await cli.finished;
+        const first = await Promise.race([
+          started.reached.then(() => "started"),
+          command.finished.then(
+            (run) => `exited ${run.exitCode}: ${run.stderr}`,
+          ),
+        ]);
+        expect(first).toBe("started");
+        const pid = Number(readFileSync(pidFile, "utf8"));
+        command.signal("SIGTERM");
+        const run = await command.finished;
         expect({
           exit: run.exitCode,
-          timedOut: run.timedOut,
-          stopped:
-            /^trial_stopped: The kernel trial.* stopped by SIGTERM.* Repair: Nothing was written, and nothing is wrong with the kernel commit\./.test(
-              run.stderr,
-            ),
-        }).toEqual({ exit: 1, timedOut: false, stopped: true });
-        expect(readdirSync(temporary)).toEqual([]);
-        expect(
-          gitOutput(copy, "status", "--porcelain", "--untracked-files=all"),
-        ).toBe("");
+          refusal: JSON.parse(run.stdout) as unknown,
+        }).toEqual({
+          exit: 0,
+          refusal: {
+            code: "trial_stopped",
+            message: `The kernel trial's held step in ${work} was stopped by SIGTERM. Repair: Nothing was written, and nothing is wrong with the kernel commit. Run the kernel trial, or the pin move, again when it can run to its end.`,
+          },
+        });
+        expect(processAlive(pid)).toBe(false);
       } finally {
-        installing.stop();
-        cli.stop();
-        await cli.finished;
+        started.stop();
+        command.stop();
+        await command.finished;
       }
     },
-    trialTimeout(1),
+    processWatchdog(3),
   );
 });

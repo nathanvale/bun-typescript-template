@@ -228,6 +228,26 @@ function refusalExit(error: unknown): number {
 
 const stopSignals = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
 
+// Interface: runs `work` with SIGINT, SIGTERM and SIGHUP stopping the step
+// `active` holds, instead of ending the process, and removes those handlers
+// when `work` settles. The pin move command runs its whole trial and pin
+// move inside it.
+export async function withStopSignals<Result>(
+  active: TrialActive,
+  work: () => Promise<Result>,
+): Promise<Result> {
+  const stop = (signal: string) => {
+    active.stoppedBy ??= signal;
+    active.stop?.();
+  };
+  for (const signal of stopSignals) process.on(signal, stop);
+  try {
+    return await work();
+  } finally {
+    for (const signal of stopSignals) process.off(signal, stop);
+  }
+}
+
 // Interface: the pin move command. The kernel repository defaults to the
 // sibling beside the template. It reads the pin's branch from the pin's
 // remote and verifies the commit before the trial, so a refused commit costs
@@ -248,25 +268,21 @@ export async function main(argv: readonly string[]): Promise<number> {
   };
   const folder = mkdtempSync(join(tmpdir(), "kernel-trial-"));
   const active: TrialActive = {};
-  const stop = (signal: string) => {
-    active.stoppedBy ??= signal;
-    active.stop?.();
-  };
-  for (const signal of stopSignals) process.on(signal, stop);
   try {
-    const branchCommit = pinBranchCommit(pin);
-    verifyPin(kernel, pin, branchCommit);
-    const { report, written } = movePin(
-      await kernelTrial({ kernel, folder, active }),
-      templateRoot,
-      branchCommit,
-    );
-    process.stdout.write(pinMoveReportText(report, written));
-    return 0;
+    return await withStopSignals(active, async () => {
+      const branchCommit = pinBranchCommit(pin);
+      verifyPin(kernel, pin, branchCommit);
+      const { report, written } = movePin(
+        await kernelTrial({ kernel, folder, active }),
+        templateRoot,
+        branchCommit,
+      );
+      process.stdout.write(pinMoveReportText(report, written));
+      return 0;
+    });
   } catch (error) {
     return refusalExit(error);
   } finally {
-    for (const signal of stopSignals) process.off(signal, stop);
     rmSync(folder, { recursive: true, force: true });
   }
 }

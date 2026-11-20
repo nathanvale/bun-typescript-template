@@ -26,6 +26,7 @@ import {
   trialTimeout,
 } from "../../support/kernel-trial-fixture.ts";
 import {
+  processAlive,
   processWatchdog,
   spawnBounded,
   watchLedger,
@@ -262,15 +263,6 @@ describe("a kernel trial whose caller changes the seam while it runs", () => {
   );
 });
 
-function alive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 describe("a kernel trial step", () => {
   test(
     "that its caller stops is stopped with its process, and refused as stopped",
@@ -294,7 +286,7 @@ await Bun.sleep(20_000);`;
         code: "trial_stopped",
         message: `The kernel trial's held step in ${work} was stopped by SIGTERM. Repair: ${stopRepair}`,
       });
-      expect(alive(pid)).toBe(false);
+      expect(processAlive(pid)).toBe(false);
     },
     processWatchdog(2),
   );
