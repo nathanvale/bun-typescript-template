@@ -14,6 +14,7 @@
     "check:file-size": "bun --no-install scripts/check-file-size.ts",
     "check:names": "bun run scripts/check-names.ts",
     "fault-replay": "bun run scripts/planted-faults.ts replay",
+    "kernel-trial": "bun run scripts/kernel-trial-command.ts",
     "planted-fault:add": "bun run scripts/planted-faults.ts add",
     "pin-move": "bun run scripts/pin-move.ts",
     "pin-verification": "bun run scripts/pin-verification.ts",

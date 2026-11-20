@@ -15,6 +15,7 @@ const copied = [
   "src",
   "scripts/process-runner.ts",
   "scripts/kernel-trial.ts",
+  "scripts/kernel-trial-command.ts",
   "scripts/pin-move.ts",
   "scripts/pin-move-report.ts",
   "scripts/pin-verification.ts",
