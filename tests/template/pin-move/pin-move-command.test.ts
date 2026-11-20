@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { kernelPinFile, readKernelPin } from "../../../src/kernel-pin.ts";
 import { argumentsOf } from "../../../scripts/pin-move.ts";
+import { startChild } from "../../../scripts/process-runner.ts";
 import { KERNEL_LOCKFILE } from "../../../src/recipe.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
@@ -17,7 +18,11 @@ import {
   pinnedTemplate,
   trialTimeout,
 } from "../../support/kernel-trial-fixture.ts";
-import { processWatchdog, spawnBounded } from "../../support/process.ts";
+import {
+  processWatchdog,
+  spawnBounded,
+  watchFor,
+} from "../../support/process.ts";
 import { templateCopy } from "../../support/template-copy.ts";
 
 const folder = ownedFolders();
@@ -126,5 +131,55 @@ describe("the pin move command", () => {
       ).toBe(`?? ${KERNEL_LOCKFILE}\n`);
     },
     trialTimeout(2),
+  );
+
+  test(
+    "stopped by SIGTERM during its kernel trial, stops the running step, writes nothing, removes the trial's folder and exits 1",
+    async () => {
+      const copy = copyPinnedAt(trialBase);
+      const temporary = folder("pin-move-temporary-");
+      const cli = startChild(
+        [
+          process.execPath,
+          join(copy, "scripts/pin-move.ts"),
+          trialBase,
+          "--kernel",
+          siblingKernel(),
+        ],
+        {
+          cwd: copy,
+          env: { ...inherited(), ...gitEnv, TMPDIR: temporary },
+          limitMilliseconds: trialTimeout(1) - 20_000,
+        },
+      );
+      const installing = watchFor(
+        () =>
+          readdirSync(temporary)
+            .map((entry) => join(temporary, entry, "first/node_modules"))
+            .find((path) => existsSync(path)),
+        60_000,
+      );
+      try {
+        await installing.reached;
+        cli.signal("SIGTERM");
+        const run = await cli.finished;
+        expect({
+          exit: run.exitCode,
+          timedOut: run.timedOut,
+          stopped: /^trial_failed: The kernel trial.* stopped by SIGTERM/.test(
+            run.stderr,
+          ),
+        }).toEqual({ exit: 1, timedOut: false, stopped: true });
+        expect(readdirSync(temporary)).toEqual([]);
+        expect(
+          gitOutput(copy, "status", "--porcelain", "--untracked-files=all"),
+        ).toBe("");
+      } finally {
+        installing.stop();
+        cli.stop();
+        await cli.finished;
+      }
+    },
+    trialTimeout(1),
   );
 });

@@ -24,6 +24,7 @@ import {
 import {
   kernelTrial,
   qualifiedBy,
+  type TrialActive,
   type TrialPassed,
   TrialRefusal,
 } from "./kernel-trial.ts";
@@ -174,10 +175,14 @@ function refusalExit(error: unknown): number {
   return 1;
 }
 
+const stopSignals = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
+
 // Interface: the pin move command. The kernel repository defaults to the
 // sibling beside the template. It verifies the commit before the trial, so a
 // refused commit costs no install, and keeps the trial's folder only for the
-// run.
+// run. SIGINT, SIGTERM or SIGHUP stops the trial's running step with its
+// process group; the command then writes nothing, removes the trial's
+// folder and exits 1.
 export async function main(argv: readonly string[]): Promise<number> {
   const given = argumentsOf(argv);
   if (given === undefined) {
@@ -190,10 +195,16 @@ export async function main(argv: readonly string[]): Promise<number> {
     commit: given.commit,
   };
   const folder = mkdtempSync(join(tmpdir(), "kernel-trial-"));
+  const active: TrialActive = {};
+  const stop = (signal: string) => {
+    active.stoppedBy ??= signal;
+    active.stop?.();
+  };
+  for (const signal of stopSignals) process.on(signal, stop);
   try {
     verifyPin(kernel, pin);
     const { report, written } = movePin(
-      await kernelTrial({ kernel, folder }),
+      await kernelTrial({ kernel, folder, active }),
       templateRoot,
     );
     process.stdout.write(pinMoveReportText(report, written));
@@ -201,6 +212,7 @@ export async function main(argv: readonly string[]): Promise<number> {
   } catch (error) {
     return refusalExit(error);
   } finally {
+    for (const signal of stopSignals) process.off(signal, stop);
     rmSync(folder, { recursive: true, force: true });
   }
 }

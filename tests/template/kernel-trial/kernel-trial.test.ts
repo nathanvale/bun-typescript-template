@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
 import {
   kernelTrial,
+  type TrialActive,
   TrialRefusal,
   trialStep,
 } from "../../../scripts/kernel-trial.ts";
@@ -30,10 +31,16 @@ import {
   trialOf,
   trialTimeout,
 } from "../../support/kernel-trial-fixture.ts";
-import { processWatchdog, spawnBounded } from "../../support/process.ts";
+import {
+  processWatchdog,
+  spawnBounded,
+  watchLedger,
+} from "../../support/process.ts";
 import { callInCopy, templateCopy } from "../../support/template-copy.ts";
 
 const folder = ownedFolders();
+const repair =
+  "Correct the kernel commit, or the template files the trial copies, until that step passes, then run the kernel trial again. The pin does not move until it passes.";
 const text = (bytes: Uint8Array) => Buffer.from(bytes).toString("utf8");
 
 function templateState() {
@@ -225,7 +232,57 @@ describe("a kernel trial whose caller changes the seam while it runs", () => {
   );
 });
 
+function alive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 describe("a kernel trial step", () => {
+  test(
+    "that its caller stops is stopped with its process, and refused as stopped",
+    async () => {
+      const work = folder("kernel-trial-step-");
+      const ledger = join(work, "ledger");
+      const pidFile = join(work, "pid");
+      const held = `const { writeFileSync } = require("node:fs");
+writeFileSync(${JSON.stringify(pidFile)}, String(process.pid));
+writeFileSync(${JSON.stringify(ledger)}, "started\\n");
+await Bun.sleep(20_000);`;
+      const active: TrialActive = {};
+      const refused = refusalOf(
+        trialStep(work, "held step", ["-e", held], 25_000, active),
+      );
+      await watchLedger(ledger, "started", 10_000).reached;
+      const pid = Number(readFileSync(pidFile, "utf8"));
+      active.stoppedBy = "SIGTERM";
+      active.stop?.();
+      expect(await refused).toEqual({
+        code: "trial_failed",
+        message: `The kernel trial's held step in ${work} was stopped by SIGTERM. Repair: ${repair}`,
+      });
+      expect(alive(pid)).toBe(false);
+    },
+    processWatchdog(2),
+  );
+
+  test("after a stop, starts no further step", async () => {
+    const work = folder("kernel-trial-step-");
+    expect(
+      await refusalOf(
+        trialStep(work, "next step", ["-e", "process.exit(0)"], 10_000, {
+          stoppedBy: "SIGINT",
+        }),
+      ),
+    ).toEqual({
+      code: "trial_failed",
+      message: `The kernel trial was stopped by SIGINT before its next step in ${work}. Repair: ${repair}`,
+    });
+  });
+
   test(
     "that outlives its bound is stopped at the bound and refused",
     async () => {
@@ -239,7 +296,7 @@ describe("a kernel trial step", () => {
         code: "trial_failed",
         message: `The kernel trial's slow step in ${work} did not finish within 300 ms. Its last lines:\n\n Repair: Correct the kernel commit, or the template files the trial copies, until that step passes, then run the kernel trial again. The pin does not move until it passes.`,
       });
-      expect(elapsed).toBeLessThan(3_000);
+      expect([elapsed >= 300, elapsed < 1_000]).toEqual([true, true]);
     },
     processWatchdog(1),
   );

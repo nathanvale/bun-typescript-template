@@ -63,30 +63,58 @@ export class TrialRefusal extends Error {
   }
 }
 
+// Interface: the step a kernel trial is running, for a caller that stops it
+// on a signal: set `stoppedBy`, then call `stop`. A stopped trial starts no
+// further step.
+export type TrialActive = {
+  stop?: (() => void) | undefined;
+  stoppedBy?: string;
+};
+
 export type KernelTrial = {
   readonly kernel: KernelSeam;
   readonly folder: string;
   readonly declarationPath?: string;
   readonly kernelFrom?: "remote" | "clone";
+  readonly active?: TrialActive;
 };
 
 function lastLines(output: string): string {
   return output.trimEnd().split("\n").slice(-20).join("\n");
 }
 
+function stopOf(active: TrialActive): string | undefined {
+  return active.stoppedBy;
+}
+
 // Interface: one step of the kernel trial: Bun with `args` in `folder`,
-// stopped with its whole process group once `limitMilliseconds` passes.
-// It refuses a step that exits non-zero or does not finish in time.
+// stopped with its whole process group once `limitMilliseconds` passes, or
+// when its caller stops `active`. It refuses a step that a stop reached,
+// that exits non-zero, or that does not finish in time.
 export async function trialStep(
   folder: string,
   name: string,
   args: readonly string[],
   limitMilliseconds: number,
+  active: TrialActive = {},
 ): Promise<void> {
-  const run = await startChild([process.execPath, ...args], {
+  if (active.stoppedBy !== undefined)
+    throw new TrialRefusal(
+      `The kernel trial was stopped by ${active.stoppedBy} before its ${name} in ${folder}.`,
+    );
+  const child = startChild([process.execPath, ...args], {
     cwd: folder,
     limitMilliseconds,
-  }).finished;
+  });
+  active.stop = child.stop;
+  const run = await child.finished.finally(() => {
+    active.stop = undefined;
+  });
+  const stoppedBy = stopOf(active);
+  if (stoppedBy !== undefined)
+    throw new TrialRefusal(
+      `The kernel trial's ${name} in ${folder} was stopped by ${stoppedBy}.`,
+    );
   if (run.timedOut || run.exitCode !== 0)
     throw new TrialRefusal(
       `The kernel trial's ${name} in ${folder} ${run.timedOut ? `did not finish within ${limitMilliseconds} ms` : `exited ${run.exitCode}`}. Its last lines:\n${lastLines(run.stdout + run.stderr)}\n`,
@@ -103,7 +131,7 @@ export async function trialStep(
 // reads the request once, before its first wait, and records the commit it
 // tried.
 export async function kernelTrial(trial: KernelTrial): Promise<TrialPassed> {
-  const { folder, declarationPath, kernelFrom } = trial;
+  const { folder, declarationPath, kernelFrom, active = {} } = trial;
   const { repository, commit } = trial.kernel;
   const kernel = Object.freeze({ repository, commit });
   const render = async (name: string, lockfile: "none" | Uint8Array) => {
@@ -119,7 +147,7 @@ export async function kernelTrial(trial: KernelTrial): Promise<TrialPassed> {
     return destination;
   };
   const first = await render("first", "none");
-  await trialStep(first, "install", ["install"], installMilliseconds);
+  await trialStep(first, "install", ["install"], installMilliseconds, active);
   const made = join(first, "bun.lock");
   if (!existsSync(made))
     throw new TrialRefusal(
@@ -132,7 +160,14 @@ export async function kernelTrial(trial: KernelTrial): Promise<TrialPassed> {
     "frozen install",
     ["install", "--frozen-lockfile"],
     installMilliseconds,
+    active,
   );
-  await trialStep(second, "check command", ["run", "check"], checkMilliseconds);
+  await trialStep(
+    second,
+    "check command",
+    ["run", "check"],
+    checkMilliseconds,
+    active,
+  );
   return recordOf(kernel, lockfile);
 }
