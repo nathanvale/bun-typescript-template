@@ -127,7 +127,10 @@ boundary trusts the types.
   fault), [r4625304821] (a folder in a source folder that could not be listed
   read as empty, so the file comparison passed without reading it),
   [b9c3ba0] (git's exit 128 from an ancestry check in a shallow clone read as
-  "not an ancestor", so pin verification gave the wrong refusal and repair).
+  "not an ancestor", so pin verification gave the wrong refusal and repair),
+  [47e2ec3] (a failed `git rev-parse --git-common-dir` dropped a place to
+  look, so an unreadable checkout was reported as a missing kernel
+  repository).
 - Call an entry absent only when its lookup fails because nothing has that
   name: `ENOENT`, or `ENOTDIR` for a name on the way. Report every other
   lookup failure. Witnessed: [r4625594357], [r4625772325] (every failed
@@ -184,3 +187,4 @@ boundary trusts the types.
 [2a68a20]: https://github.com/nathanvale/bun-typescript-template/commit/2a68a201a1a56a15a41447450070484b96db5b5d
 [b9c3ba0]: https://github.com/nathanvale/bun-typescript-template/commit/b9c3ba00521b068d6ab1aca20453e8e8012d3f52
 [64d3900]: https://github.com/nathanvale/bun-typescript-template/commit/64d39009bbc86a2b392ebf4cd96641dec5b57fd6
+[47e2ec3]: https://github.com/nathanvale/bun-typescript-template/commit/47e2ec3c245279421f11ab054db621c97e213333
