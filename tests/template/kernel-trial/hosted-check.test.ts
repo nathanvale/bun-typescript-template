@@ -5,7 +5,12 @@ import { kernelPinFile, readKernelPin } from "../../../src/kernel-pin.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import { git, gitEnv, inherited } from "../../support/git-fixture.ts";
-import { kernelClone, trialBase } from "../../support/kernel-sibling.ts";
+import {
+  commitOn,
+  kernelClone,
+  moveBranch,
+  trialBase,
+} from "../../support/kernel-sibling.ts";
 import { processWatchdog, spawnBounded } from "../../support/process.ts";
 
 const folder = ownedFolders();
@@ -80,6 +85,11 @@ describe("the hosted check", () => {
     async () => {
       const work = folder("hosted-check-");
       const remote = kernelClone(join(work, "remote"), trialBase);
+      moveBranch(
+        remote,
+        "main",
+        commitOn(remote, [trialBase], "a commit after the pinned one"),
+      );
       const template = join(work, "runner/template");
       mkdirSync(template, { recursive: true });
       writeFileSync(

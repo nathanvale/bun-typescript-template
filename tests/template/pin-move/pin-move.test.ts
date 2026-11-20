@@ -192,7 +192,9 @@ describe("the pin move", () => {
         added: [],
         changed: ["package.json"],
         removed: [],
-        log: [`${changed.slice(0, 7)} name another redaction version`],
+        log: [
+          `${git(repository, "rev-parse", "--short", changed)} name another redaction version`,
+        ],
       });
     },
     trialTimeout(1),

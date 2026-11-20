@@ -3,7 +3,6 @@ import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
 import {
-  kernelTrial,
   type TrialActive,
   TrialRefusal,
   trialStep,
@@ -11,16 +10,8 @@ import {
 import { KERNEL_LOCKFILE } from "../../../src/recipe.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
-import {
-  git,
-  gitEnv,
-  gitOutput,
-  inherited,
-} from "../../support/git-fixture.ts";
-import {
-  bootstrapRow,
-  withIsolatedGit,
-} from "../../support/kernel-row-fixture.ts";
+import { git, gitEnv, inherited } from "../../support/git-fixture.ts";
+import { bootstrapRow } from "../../support/kernel-row-fixture.ts";
 import {
   kernelClone,
   siblingKernel,
@@ -42,13 +33,6 @@ const folder = ownedFolders();
 const repair =
   "Correct the kernel commit, or the template files the trial copies, until that step passes, then run the kernel trial again. The pin does not move until it passes.";
 const text = (bytes: Uint8Array) => Buffer.from(bytes).toString("utf8");
-
-function templateState() {
-  return {
-    status: gitOutput(ROOT, "status", "--porcelain", "--untracked-files=all"),
-    diff: gitOutput(ROOT, "diff", "HEAD"),
-  };
-}
 
 function changedFiles(copy: string): string {
   return git(copy, "status", "--porcelain", "--untracked-files=all");
@@ -107,20 +91,42 @@ describe("the kernel trial", () => {
   );
 
   test(
-    "of the pinned commit, installed from GitHub, qualifies the template's kernel lockfile and leaves the template as it was",
+    "the template's kernel lockfile installs frozen, unchanged, and passes the check command in a repository the kernel row makes at the pinned commit",
     async () => {
-      const pin = readKernelPin(ROOT);
-      const before = templateState();
-      const passed = await withIsolatedGit(() =>
-        kernelTrial({
-          kernel: { repository: siblingKernel(), commit: pin.commit },
-          folder: join(folder("kernel-trial-"), "trial"),
-        }),
+      const work = folder("kernel-lockfile-");
+      const destination = join(work, "made");
+      await bootstrapRow({
+        destination,
+        sourcePacket: "/abs/packets/demo",
+        kernel: {
+          repository: siblingKernel(),
+          commit: readKernelPin(ROOT).commit,
+        },
+        lockfile: "committed",
+      });
+      const committed = readFileSync(join(ROOT, KERNEL_LOCKFILE), "utf8");
+      const env = { ...inherited(), ...gitEnv };
+      const install = await spawnBounded(
+        [process.execPath, "install", "--frozen-lockfile"],
+        {
+          cwd: destination,
+          env,
+          boundMilliseconds: 120_000,
+          processGroup: true,
+        },
       );
-      expect(text(passed.lockfile)).toBe(
-        readFileSync(join(ROOT, KERNEL_LOCKFILE), "utf8"),
-      );
-      expect(templateState()).toEqual(before);
+      const check = await spawnBounded([process.execPath, "run", "check"], {
+        cwd: destination,
+        env,
+        boundMilliseconds: 240_000,
+        processGroup: true,
+      });
+      expect({
+        install: install.exit,
+        lockfile:
+          readFileSync(join(destination, "bun.lock"), "utf8") === committed,
+        check: check.exit,
+      }).toEqual({ install: 0, lockfile: true, check: 0 });
     },
     trialTimeout(1),
   );

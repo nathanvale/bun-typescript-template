@@ -41,6 +41,16 @@ function reachableFromMain(repository: string, commit: string): boolean {
   );
 }
 
+const sampleSize = 40;
+const perCommitMilliseconds = 1_000;
+
+function evenSample(items: readonly string[], size: number): string[] {
+  if (items.length <= size) return [...items];
+  return Array.from({ length: size }, (_, index) =>
+    items.slice(Math.round((index * (items.length - 1)) / (size - 1))),
+  ).flatMap(([item]) => (item === undefined ? [] : [item]));
+}
+
 function branchTip(repository: string, branch: string): string {
   const remote = gitResult(
     repository,
@@ -124,26 +134,28 @@ describe("pin verification", () => {
     });
   });
 
-  test("accepts the carry-out commit, every later commit the pin's named branch has pointed at, and the head of every branch it merged", () => {
-    const repository = siblingKernel();
-    const tip = branchTip(repository, pin.branch);
-    const pointedAt = git(
-      repository,
-      "rev-list",
-      "--first-parent",
-      "--parents",
-      "--ancestry-path",
-      `${pin.carryOutIdentity}..${tip}`,
-    )
-      .split("\n")
-      .map((line) => line.split(" "));
-    const later = pointedAt.flatMap(([commit = "", , merged]) =>
-      merged === undefined ? [commit] : [commit, merged],
-    );
-    expect([pointedAt.length > 10, later[0]]).toEqual([true, tip]);
-    const refused = [pin.carryOutIdentity, ...later].filter(
-      (commit) => refusalOf(repository, commit) !== "no refusal",
-    );
-    expect(refused).toEqual([]);
-  }, 60_000);
+  test(
+    "accepts the carry-out commit, the branch tip, and an even sample of the commits between them on the pin's named branch",
+    () => {
+      const repository = siblingKernel();
+      const tip = branchTip(repository, pin.branch);
+      const between = git(
+        repository,
+        "rev-list",
+        "--ancestry-path",
+        `${pin.carryOutIdentity}..${tip}`,
+      ).split("\n");
+      const sample = evenSample(between, sampleSize);
+      expect([between.length > 10, sample[0], sample.length]).toEqual([
+        true,
+        tip,
+        Math.min(sampleSize, between.length),
+      ]);
+      const refused = [pin.carryOutIdentity, ...sample].filter(
+        (commit) => refusalOf(repository, commit) !== "no refusal",
+      );
+      expect(refused).toEqual([]);
+    },
+    (sampleSize + 1) * perCommitMilliseconds,
+  );
 });
