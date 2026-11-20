@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-ownership.ts b/scripts/glossary-ownership.ts
+index bb930ac..fd64f68 100644
+--- a/scripts/glossary-ownership.ts
++++ b/scripts/glossary-ownership.ts
+@@ -58,7 +58,7 @@ export function ownershipProblems(
+   const shared = new Set(sharedEntries(glossary));
+   return [
+     ...awaiting
+-      .filter((name) => !listed.includes(name))
++      .filter((name) => listed.includes(name) && !listed.includes(name))
+       .map(
+         (name) =>
+           `GLOSSARY.md holds "${name}" among the entries awaiting kernel acceptance, and ${ownershipFile} does not list it. Repair: list it in kernelEntries, or move its entry out of that section.`,

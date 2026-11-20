@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-ownership.ts b/scripts/glossary-ownership.ts
+index bb930ac..0279338 100644
+--- a/scripts/glossary-ownership.ts
++++ b/scripts/glossary-ownership.ts
+@@ -15,7 +15,7 @@ function only(text: string, heading: string): number {
+ }
+ 
+ export function sharedSection(glossary: string): string {
+-  return glossary.slice(only(glossary, sharedHeading));
++  return glossary.slice(only(glossary, sharedHeading)).split("\n## ")[0] + "\n";
+ }
+ 
+ function namesIn(text: string): string[] {

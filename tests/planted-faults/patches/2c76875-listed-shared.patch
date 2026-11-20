@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-ownership.ts b/scripts/glossary-ownership.ts
+index bb930ac..e61bfb5 100644
+--- a/scripts/glossary-ownership.ts
++++ b/scripts/glossary-ownership.ts
+@@ -70,7 +70,7 @@ export function ownershipProblems(
+           `${ownershipFile} lists "${name}", and GLOSSARY.md does not hold it among the entries awaiting kernel acceptance. Repair: move its entry there, or remove it from kernelEntries.`,
+       ),
+     ...listed
+-      .filter((name) => shared.has(name))
++      .filter((name) => shared.has(name) && !awaiting.includes(name))
+       .map(
+         (name) =>
+           `${ownershipFile} lists "${name}", a shared tool word, so it would have two owners. Repair: remove it from kernelEntries; shared tool words stay template-owned.`,
