@@ -1748,5 +1748,12 @@
     "testFile": "tests/template/pin-move/pin-verification-command.test.ts",
     "title": "fetches the commit the pin's branch points at into a kernel clone made before the branch moved, so the pin is verified$",
     "source": "72f0f5c fix(pin-verification): fetch the pin's branch commit into a kernel clone made before the branch moved"
+  },
+  {
+    "id": "fe86efe-pin-move",
+    "patch": "tests/planted-faults/patches/fe86efe-pin-move.patch",
+    "testFile": "tests/template/pin-move/pin-verification.test.ts",
+    "title": "fetches into a clone without starting git's automatic maintenance, which would run on in the clone after the fetch returns$",
+    "source": "fe86efe fix(pin-move): fetch the branch commit without starting git's automatic maintenance"
   }
 ]
