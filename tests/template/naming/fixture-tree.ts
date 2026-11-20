@@ -55,6 +55,8 @@ const sources = [
   "scripts/check-names.ts",
   "scripts/check-file-size.ts",
   "scripts/glossary.ts",
+  "scripts/glossary-additions.ts",
+  "scripts/glossary-map.ts",
   "scripts/repository.ts",
   ".claude/settings.json",
   ".claude/hooks/names-check.sh",
@@ -194,7 +196,7 @@ export function runHook(
   { cwd, projectFolder }: { cwd: string; projectFolder: string },
 ) {
   const input = join(emptyFolder(), "tool-call.json");
-  writeFileSync(input, JSON.stringify(call));
+  writeFileSync(input, typeof call === "string" ? call : JSON.stringify(call));
   return runInFixture(["/bin/sh", "-c", `( ${command} ) < "$TOOL_CALL"`], cwd, {
     TOOL_CALL: input,
     CLAUDE_PROJECT_DIR: projectFolder,

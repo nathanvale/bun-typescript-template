@@ -16,7 +16,7 @@ const { emptyRepository, folder, namesRepository, outsideRepository } =
   namesCheckFixture();
 
 const usage =
-  "Usage: bun run check:names <path> [path ...] | --staged | --tool-call";
+  "Usage: bun run check:names <path> [path ...] | --staged | --tool-call | --against <revision>";
 
 const allowlistRefusal =
   'src/allowlist uses "allowlist", which GLOSSARY.md lists under Avoid for "Recorded hit". Repair: rename it with the glossary word.\n';
@@ -280,31 +280,32 @@ test("in process: --tool-call judges a file by the repository that owns it, not 
   ).toEqual({ stderr: "", code: 0 });
 });
 
-test("in process: --tool-call passes a file outside any repository, and in one with no names check", async () => {
+test("in process: --tool-call passes a file outside any repository, and in another repository with no names check", async () => {
   const outside = outsideRepository();
+  const given = namesRepository();
   expect(
     await check(
-      outside,
+      given,
       ["--tool-call"],
       hook(writeCall(join(outside, "docs/host.md"), outside)),
     ),
   ).toEqual({ stderr: "", code: 0 });
   const bare = emptyRepository();
   expect(
-    await check(bare, ["--tool-call"], hook(writeCall("docs/host.md", bare))),
+    await check(given, ["--tool-call"], hook(writeCall("docs/host.md", bare))),
   ).toEqual({ stderr: "", code: 0 });
   put(bare, recordedHitsFile, JSON.stringify({ hits: [] }));
   expect(
-    await check(bare, ["--tool-call"], hook(writeCall("docs/host.md", bare))),
+    await check(given, ["--tool-call"], hook(writeCall("docs/host.md", bare))),
   ).toEqual({ stderr: "", code: 0 });
   rmSync(join(bare, recordedHitsFile));
   put(bare, "GLOSSARY.md", glossary);
   expect(
-    await check(bare, ["--tool-call"], hook(writeCall("docs/host.md", bare))),
+    await check(given, ["--tool-call"], hook(writeCall("docs/host.md", bare))),
   ).toEqual({ stderr: "", code: 0 });
   put(bare, recordedHitsFile, JSON.stringify({ hits: [] }));
   expect(
-    await check(bare, ["--tool-call"], hook(writeCall("docs/host.md", bare))),
+    await check(given, ["--tool-call"], hook(writeCall("docs/host.md", bare))),
   ).toEqual({ stderr: hostRefusal, code: 1 });
 });
 

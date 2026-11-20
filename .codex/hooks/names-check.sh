@@ -9,5 +9,5 @@ case "$status" in
   0) exit 0 ;;
   1) exit 2 ;;
 esac
-echo "names check hook: check:names --tool-call exited $status (cause above), so the names this tool call creates went unchecked. Repair: run bun run check:names <path> for each path it creates. Done when that command passes." >&2
-exit 1
+echo "names check hook: check:names --tool-call exited $status (cause above), so the names this tool call creates went unchecked and the call is stopped. Repair: fix the cause above, or run bun run check:names <path> for each path it creates. Done when that command passes." >&2
+exit 2

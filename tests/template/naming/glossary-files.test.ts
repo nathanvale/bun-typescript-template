@@ -1,8 +1,9 @@
 import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { ownedFolders, write } from "../../support/fixture-files.ts";
+import { mapProblems } from "../../../scripts/glossary-map.ts";
 import {
-  mapProblems,
   readGlossary,
   readRecordedUnusedTerms,
   recordedUnusedTermsFile,
@@ -11,6 +12,7 @@ import {
 } from "../../../scripts/glossary.ts";
 
 const root = join(import.meta.dir, "../../..");
+const ownedFolder = ownedFolders();
 
 function read(path: string): string {
   return readFileSync(join(root, path), "utf8");
@@ -52,6 +54,48 @@ test("GM.a a map pointer to a missing path fails", () => {
     ),
   ).toEqual([
     "GLOSSARY-MAP.md points to missing/GLOSSARY.md, which does not exist. Repair: correct the link, or remove its row.",
+  ]);
+});
+
+function mapIn(files: Record<string, string>): string {
+  const folder = ownedFolder("map-");
+  for (const [path, content] of Object.entries(files))
+    write(folder, path, content);
+  return folder;
+}
+
+const ownedMap = (rows: readonly string[]) =>
+  ["| Glossary | Owns | Where |", "| --- | --- | --- |", ...rows].join("\n");
+
+test("GM.h a link to a heading the target does not have fails, and one it has passes", () => {
+  expect(mapProblems("[map](GLOSSARY-MAP.md#glossary-map)", root)).toEqual([]);
+  expect(mapProblems("[map](GLOSSARY-MAP.md#no-such-heading)", root)).toEqual([
+    "GLOSSARY-MAP.md points to GLOSSARY-MAP.md#no-such-heading, and GLOSSARY-MAP.md has no heading with that anchor. Repair: correct the anchor, or drop it.",
+  ]);
+});
+
+test("GM.i an owner row with no name, or a second row for one owner, fails", () => {
+  const rows = ownedMap([
+    "|  | Words | [GLOSSARY.md](GLOSSARY.md) |",
+    "| Kernel | Words | [here](GLOSSARY.md) |",
+    "| kernel | More words | [there](AGENTS.md) |",
+  ]);
+  expect(mapProblems(rows, root)).toEqual([
+    "GLOSSARY-MAP.md has a row with no owner name in its first cell. Repair: name the glossary or project that owns those words.",
+    'GLOSSARY-MAP.md gives GLOSSARY.md to both "" and "Kernel". Repair: keep the row of the one that owns it.',
+    'GLOSSARY-MAP.md lists the owner "kernel" in two rows, so its words have two owners. Repair: merge the rows.',
+  ]);
+});
+
+test("GM.j an owner whose glossary file defines no term fails", () => {
+  const folder = mapIn({ "GLOSSARY.md": "# Notes\nNo terms here.\n" });
+  expect(
+    mapProblems(
+      ownedMap(["| Kernel | Words | [GLOSSARY.md](GLOSSARY.md) |"]),
+      folder,
+    ),
+  ).toEqual([
+    'GLOSSARY-MAP.md makes "Kernel" the owner of GLOSSARY.md, which defines no term. Repair: point the row at the glossary that defines its words.',
   ]);
 });
 

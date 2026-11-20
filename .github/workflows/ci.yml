@@ -18,6 +18,9 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: File size
         run: bun run check:file-size
+      - name: Recorded lists
+        if: github.event_name == 'pull_request'
+        run: bun run check:names --against "origin/${{ github.base_ref }}"
       - name: Lint
         run: bun run lint
       - name: Format

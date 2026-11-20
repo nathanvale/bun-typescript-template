@@ -213,6 +213,10 @@ repository meets.
      rename belongs to a larger change: add a recorded hit with its reason
      and the change that will remove it. A name newer than its rule takes
      one of the two repairs above.
+     A new recorded hit or recorded unused term is refused by
+     `bun run check:names --against origin/main` (a hosted check) until a
+     reviewed change gives the entry an `approved` field naming the ticket or
+     pull request that agreed it.
 4. Remove the entry of a recorded hit that no longer occurs, and of a
    recorded unused term that a tracked file now uses.
 5. Commit nothing: the caller approves a rename by committing it.

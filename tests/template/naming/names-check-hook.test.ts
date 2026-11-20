@@ -1,5 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
-import { mkdirSync, readFileSync, statSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { processWatchdog } from "../../support/process.ts";
 import {
@@ -236,7 +236,7 @@ test(
 );
 
 test(
-  "NG.c a tool call the gate cannot read goes ahead with exit 1 and a notice",
+  "NG.c a tool call the gate cannot read stops the call with exit 2 and a notice",
   async () => {
     const tree = await gitTree();
     const [command = ""] = hookCommands(tree, claudeSettings, "Write");
@@ -247,17 +247,17 @@ test(
       stdout: "",
       stderr: [
         "--tool-call reads a Write call's file_path and an apply_patch call's command, not a Bash call. Repair: wire the names check hook to those two tools.",
-        "names check hook: check:names --tool-call exited 2 (cause above), so the names this tool call creates went unchecked. Repair: run bun run check:names <path> for each path it creates. Done when that command passes.",
+        "names check hook: check:names --tool-call exited 2 (cause above), so the names this tool call creates went unchecked and the call is stopped. Repair: fix the cause above, or run bun run check:names <path> for each path it creates. Done when that command passes.",
         "",
       ].join("\n"),
-      exit: 1,
+      exit: 2,
     });
   },
   processWatchdog(2),
 );
 
 test(
-  "NG.g a Write call with no file_path goes ahead with exit 1, naming the missing field",
+  "NG.g a Write call with no file_path stops the call with exit 2, naming the missing field",
   async () => {
     const tree = await gitTree();
     const [command = ""] = hookCommands(tree, claudeSettings, "Write");
@@ -268,11 +268,60 @@ test(
       stdout: "",
       stderr: [
         "--tool-call got a Write call whose tool_input has no string file_path, so it cannot tell which names the call creates. Repair: pass the tool call as the hook receives it.",
-        "names check hook: check:names --tool-call exited 2 (cause above), so the names this tool call creates went unchecked. Repair: run bun run check:names <path> for each path it creates. Done when that command passes.",
+        "names check hook: check:names --tool-call exited 2 (cause above), so the names this tool call creates went unchecked and the call is stopped. Repair: fix the cause above, or run bun run check:names <path> for each path it creates. Done when that command passes.",
         "",
       ].join("\n"),
-      exit: 1,
+      exit: 2,
     });
+  },
+  processWatchdog(2),
+);
+
+const brokenCheckNotice =
+  "names check hook: check:names --tool-call exited 2 (cause above), so the names this tool call creates went unchecked and the call is stopped. Repair: fix the cause above, or run bun run check:names <path> for each path it creates. Done when that command passes.";
+
+test(
+  "NG.h a Write in this repository whose GLOSSARY.md is missing stops with exit 2 and the repair, where a foreign repository passes",
+  async () => {
+    const tree = await gitTree();
+    rmSync(join(tree, "GLOSSARY.md"));
+    const [command = ""] = hookCommands(tree, claudeSettings, "Write");
+    const from = { cwd: tree, projectFolder: tree };
+    expect(
+      await runHook(
+        command,
+        writeCall(join(tree, "docs/mutation-notes.md"), tree),
+        from,
+      ),
+    ).toEqual({
+      stdout: "",
+      stderr: `names check: ${tree} has no GLOSSARY.md or no tests/template/naming/recorded-hits.json, so it cannot judge the names this call creates. Repair: restore both with git restore GLOSSARY.md tests/template/naming/recorded-hits.json.\n${brokenCheckNotice}\n`,
+      exit: 2,
+    });
+    const elsewhere = emptyFolder();
+    await runFixtureGit(elsewhere, "init", "--quiet", "--initial-branch=main");
+    expect(
+      await runHook(
+        command,
+        writeCall(join(elsewhere, "docs/mutation-notes.md"), tree),
+        from,
+      ),
+    ).toEqual(silent);
+  },
+  processWatchdog(3),
+);
+
+test(
+  "NG.i a malformed tool call payload stops the Write with exit 2",
+  async () => {
+    const tree = await gitTree();
+    const [command = ""] = hookCommands(tree, claudeSettings, "Write");
+    const outcome = await runHook(command, "{ not json", {
+      cwd: tree,
+      projectFolder: tree,
+    });
+    expect(outcome.exit).toBe(2);
+    expect(outcome.stderr).toEndWith(`${brokenCheckNotice}\n`);
   },
   processWatchdog(2),
 );

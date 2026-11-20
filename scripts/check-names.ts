@@ -1,5 +1,6 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
+import { recordedAdditionProblems } from "./glossary-additions.ts";
 import {
   namesOnPaths,
   newNameProblems,
@@ -12,7 +13,7 @@ import {
 import { holdsTestFile, readRepository, testFilePlaces } from "./repository.ts";
 
 const usage =
-  "Usage: bun run check:names <path> [path ...] | --staged | --tool-call";
+  "Usage: bun run check:names <path> [path ...] | --staged | --tool-call | --against <revision>";
 
 class UsageError extends Error {}
 
@@ -104,8 +105,20 @@ function hasNamesCheck(tree: string): boolean {
   );
 }
 
-function problemsCreating(file: string): string[] {
+function sameTree(one: string, other: string): boolean {
+  return realpathSync(one) === realpathSync(other);
+}
+
+function problemsCreating(root: string, file: string): string[] {
   const tree = owningTree(file);
+  const own =
+    tree === undefined
+      ? pathWithin(root, file) !== undefined
+      : sameTree(tree, root);
+  if (own && !hasNamesCheck(root))
+    throw new Error(
+      `names check: ${root} has no GLOSSARY.md or no ${recordedHitsFile}, so it cannot judge the names this call creates. Repair: restore both with git restore GLOSSARY.md ${recordedHitsFile}.`,
+    );
   if (tree === undefined || !hasNamesCheck(tree)) return [];
   return problemsIn(
     tree,
@@ -154,7 +167,11 @@ function createdPaths(tool: unknown, input: Map<string, unknown>): string[] {
   return reader.created(value);
 }
 
-function toolCallProblems(hookInput: string, fallbackCwd: string): string[] {
+function toolCallProblems(
+  hookInput: string,
+  root: string,
+  fallbackCwd: string,
+): string[] {
   const call = ownFields(JSON.parse(hookInput));
   const cwd = call.get("cwd");
   const from =
@@ -162,7 +179,7 @@ function toolCallProblems(hookInput: string, fallbackCwd: string): string[] {
   return createdPaths(
     call.get("tool_name"),
     ownFields(call.get("tool_input")),
-  ).flatMap((path) => problemsCreating(resolve(from, path)));
+  ).flatMap((path) => problemsCreating(root, resolve(from, path)));
 }
 
 type Mode = (environment: Environment) => Promise<string[]>;
@@ -171,7 +188,7 @@ const modes = new Map<string, Mode>([
   ["--staged", ({ root }) => Promise.resolve(stagedProblems(root))],
   [
     "--tool-call",
-    async ({ cwd, stdin }) => toolCallProblems(await stdin(), cwd),
+    async ({ root, cwd, stdin }) => toolCallProblems(await stdin(), root, cwd),
   ],
 ]);
 
@@ -182,6 +199,16 @@ function problemsFor(
   const [first, ...rest] = args;
   if (first === undefined)
     throw new UsageError("Give at least one path, --staged or --tool-call.");
+  if (first === "--against") {
+    const [revision, ...extra] = rest;
+    if (revision === undefined || revision.startsWith("--") || extra.length > 0)
+      throw new UsageError("--against takes one revision.");
+    return Promise.resolve(
+      recordedAdditionProblems(environment.root, revision, (path) =>
+        readFileSync(join(environment.root, path), "utf8"),
+      ),
+    );
+  }
   const mode = modes.get(first);
   if (mode === undefined)
     return Promise.resolve(
