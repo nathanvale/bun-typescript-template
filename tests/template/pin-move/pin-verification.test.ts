@@ -16,13 +16,13 @@ import {
   kernelClone,
   moveBranch,
   siblingKernel,
+  templateCommitHoldingS5,
 } from "../../support/kernel-sibling.ts";
 
 const pin = readKernelPin(ROOT);
 const folder = ownedFolders();
 const unreachableRepair =
   "Repair: Give a commit that branch reaches on the pin's remote. Push the commit there first if it is only local.";
-const templateCommitHoldingS5 = "77ebdeafb1f49d0b32307b3ead7273d265ad4918";
 
 function refusalOf(
   repository: string,

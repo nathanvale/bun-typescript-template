@@ -6,6 +6,7 @@ import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import { git, gitEnv, inherited } from "../../support/git-fixture.ts";
 import {
+  absentCommit,
   commitOn,
   kernelClone,
   moveBranch,
@@ -16,8 +17,13 @@ import { processWatchdog, spawnBounded } from "../../support/process.ts";
 const folder = ownedFolders();
 const sibling = "./.github/actions/kernel-sibling";
 
-type Step = { readonly uses?: string; readonly run?: string };
+type Step = {
+  readonly uses?: string;
+  readonly run?: string;
+  readonly with?: Record<string, unknown>;
+};
 type Job = {
+  readonly "timeout-minutes"?: number;
   readonly env?: Record<string, string>;
   readonly steps: readonly Step[];
 };
@@ -92,18 +98,20 @@ describe("the hosted check", () => {
   });
 
   test("the pin verification workflow runs on every pull request, on every push to main, by hand, and once a week", () => {
-    const { on } = workflowOf("pin-verification.yml");
-    const [cron = ""] = (
-      on.schedule as readonly { readonly cron: string }[]
-    ).map(({ cron }) => cron);
-    const [, , dayOfMonth, month, dayOfWeek] = cron.split(" ");
-    const weekly = [dayOfMonth, month, /^[0-6]$/.test(dayOfWeek ?? "")];
-    expect({ ...on, schedule: weekly } as unknown).toEqual({
+    expect(workflowOf("pin-verification.yml").on).toEqual({
       pull_request: null,
       push: { branches: ["main"] },
-      schedule: ["*", "*", true],
+      schedule: [{ cron: "23 16 * * 0" }],
       workflow_dispatch: null,
     });
+  });
+
+  test("the pin verification job stops within ten minutes, and sets up Bun with no cache", () => {
+    const job = jobOf("pin-verification.yml", "pin-verification");
+    expect([
+      job["timeout-minutes"],
+      job.steps.find(({ uses }) => uses?.startsWith("oven-sh/setup-bun"))?.with,
+    ]).toEqual([10, { "bun-version": "1.4.4", "no-cache": true }]);
   });
 
   test("no workflow filters its pull requests or pushes by path, because a required check that a path filter skips never reports and blocks merging", () => {
@@ -125,10 +133,13 @@ describe("the hosted check", () => {
       const remote = kernelClone(join(work, "remote"), trialBase);
       const template = join(work, "runner/template");
       mkdirSync(template, { recursive: true });
-      const absent = "0123456789abcdef0123456789abcdef01234567";
       writeFileSync(
         join(template, kernelPinFile),
-        JSON.stringify({ ...readKernelPin(ROOT), remote, commit: absent }),
+        JSON.stringify({
+          ...readKernelPin(ROOT),
+          remote,
+          commit: absentCommit,
+        }),
       );
       const run = await spawnBounded(["bash", "-e", "-c", actionScript()], {
         cwd: template,
@@ -136,7 +147,7 @@ describe("the hosted check", () => {
         processGroup: true,
       });
       expect(run.exit).not.toBe(0);
-      expect(run.stderr).toContain(absent);
+      expect(run.stderr).toContain(absentCommit);
     },
     processWatchdog(1),
   );

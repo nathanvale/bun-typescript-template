@@ -18,6 +18,7 @@ import {
   kernelClone,
   moveBranch,
   siblingKernel,
+  templateCommitHoldingS5,
   trialBase,
 } from "../../support/kernel-sibling.ts";
 import {
@@ -108,7 +109,7 @@ describe("the pin move command", () => {
   test(
     "refuses a commit before the carry-out with its code, before any trial",
     async () => {
-      const commit = "77ebdeafb1f49d0b32307b3ead7273d265ad4918";
+      const commit = templateCommitHoldingS5;
       const run = await pinMove(copyPinnedAt(trialBase), [
         commit,
         "--kernel",
