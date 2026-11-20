@@ -1,0 +1,13 @@
+diff --git a/scripts/kernel-trial-command.ts b/scripts/kernel-trial-command.ts
+index 39dd462..ac5f4b6 100644
+--- a/scripts/kernel-trial-command.ts
++++ b/scripts/kernel-trial-command.ts
+@@ -27,7 +27,7 @@ export async function main(
+   const given = argumentsOf(argv);
+   if (given === undefined) {
+     process.stderr.write(usage);
+-    return 2;
++    return 1;
+   }
+   const kernel = {
+     repository: given.path ?? siblingKernelPath(root, readKernelPin(root)),

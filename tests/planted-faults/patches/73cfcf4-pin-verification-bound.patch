@@ -1,0 +1,12 @@
+diff --git a/.github/workflows/pin-verification.yml b/.github/workflows/pin-verification.yml
+index 84671ee..61ba97a 100644
+--- a/.github/workflows/pin-verification.yml
++++ b/.github/workflows/pin-verification.yml
+@@ -23,7 +23,6 @@ permissions:
+ jobs:
+   pin-verification:
+     runs-on: ubuntu-latest
+-    timeout-minutes: 10
+     steps:
+       - uses: actions/checkout@v4
+       - uses: oven-sh/setup-bun@v2

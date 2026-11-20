@@ -1559,5 +1559,19 @@
     "source": "736b288 feat(kernel-trial): run the kernel trial on any kernel commit as a command",
     "testFile": "tests/template/kernel-trial/kernel-trial-command.test.ts",
     "title": "in process, exits 2 with its usage on arguments it cannot read, and 1 with the kernel reader's code on a commit the kernel repository does not hold$"
+  },
+  {
+    "id": "736b288-kernel-trial-command-usage",
+    "patch": "tests/planted-faults/patches/736b288-kernel-trial-command-usage.patch",
+    "source": "736b288 feat(kernel-trial): run the kernel trial on any kernel commit as a command",
+    "testFile": "tests/template/kernel-trial/kernel-trial-command.test.ts",
+    "title": "with no commit prints its usage and exits 2$"
+  },
+  {
+    "id": "73cfcf4-pin-verification-bound",
+    "patch": "tests/planted-faults/patches/73cfcf4-pin-verification-bound.patch",
+    "source": "73cfcf4 fix(pin-verification): settle the Sol standards and spec reviews of T5",
+    "testFile": "tests/template/kernel-trial/hosted-check.test.ts",
+    "title": "the pin verification job stops within ten minutes, and sets up Bun with no cache$"
   }
 ]
