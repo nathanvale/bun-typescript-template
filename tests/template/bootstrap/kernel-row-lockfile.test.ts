@@ -73,4 +73,28 @@ describe("the kernel row's lockfile", () => {
       "agent-cli-kernel": `git+${pathToFileURL(realpathSync(request.kernel.repository)).href}#${request.kernel.commit}`,
     });
   });
+
+  test("supplied bytes the caller changes after the call reach the generated repository as they were given", async () => {
+    const { destination, request } = run();
+    const bytes = new Uint8Array(Buffer.from("as given\n"));
+    const made = bootstrapRow({ ...request, lockfile: bytes });
+    bytes.fill(0x78);
+    await made;
+    expect(readFileSync(join(destination, "bun.lock"), "utf8")).toBe(
+      "as given\n",
+    );
+  });
+
+  test("a kernel seam the caller changes after the call leaves the Pin at the commit the kernel reader checked", async () => {
+    const { destination, request } = run();
+    const kernel = { ...request.kernel };
+    const checked = kernel.commit;
+    const made = bootstrapRow({ ...request, kernel, kernelFrom: "clone" });
+    kernel.commit = "f".repeat(40);
+    await made;
+    const { dependencies } = generatedJson(destination, "package.json") as {
+      dependencies: Record<string, string>;
+    };
+    expect(dependencies["agent-cli-kernel"]).toEndWith(`#${checked}`);
+  });
 });

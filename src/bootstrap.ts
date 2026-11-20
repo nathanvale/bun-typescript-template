@@ -661,7 +661,7 @@ export type KernelBootstrap = {
 
 async function lockfileFor(lockfile: KernelBootstrap["lockfile"]) {
   if (lockfile !== "committed")
-    return lockfile === "none" ? undefined : lockfile;
+    return lockfile === "none" ? undefined : lockfile.slice();
   const path = join(TEMPLATE_ROOT, KERNEL_LOCKFILE);
   if ((await lstatIfPresent(path))?.isFile() !== true)
     throw new CliError(
@@ -674,30 +674,32 @@ async function lockfileFor(lockfile: KernelBootstrap["lockfile"]) {
   return new Uint8Array(await readFile(path));
 }
 
-// Interface: Bootstrap through the kernel row, which the command line does
-// not offer yet. It reads the kernel commit and the lockfile before any
-// staging folder exists, so a missing repository, commit or kernel
-// lockfile leaves nothing behind. It copies no kernel source: package.json
-// names the kernel by its Pin, one dependency line at that commit in full.
-// The lockfile is the template's kernel lockfile, the bytes supplied, or none;
-// only the kernel trial and tests use the last two. Only tests ask for
-// `kernelFrom: "clone"`: a Pin naming the local clone at the seam.
+// Interface: Bootstrap through the kernel row, which reads the kernel commit
+// and the lockfile before any staging folder exists, so a refusal leaves
+// nothing behind. package.json names the kernel
+// by its Pin, one dependency line at that full commit. The lockfile is the
+// kernel lockfile, the bytes supplied, or none; only the trial and tests use
+// the last two. Only tests ask for `kernelFrom: "clone"`. It reads each
+// request field once, before its first wait.
 export async function bootstrapWithKernel(
   request: KernelBootstrap,
 ): Promise<BootstrapResult> {
-  validateSourcePacket(request.sourcePacket);
-  const name = resolveRepositoryName(request.destination, request.name);
-  const { commit } = readKernel(request.kernel, request.declarationPath);
-  const lockfile = await lockfileFor(request.lockfile);
+  const { destination, sourcePacket, declarationPath, kernelFrom } = request;
+  const { kernel: seam, lockfile: given } = request;
+  const kernel = { repository: seam.repository, commit: seam.commit };
+  validateSourcePacket(sourcePacket);
+  const name = resolveRepositoryName(destination, request.name);
+  const { commit } = readKernel(kernel, declarationPath);
+  const lockfile = await lockfileFor(given);
   return bootstrap({
-    destination: resolve(request.destination),
+    destination: resolve(destination),
     json: false,
     name,
     recipe: KERNEL_RECIPE,
-    sourcePacket: request.sourcePacket,
+    sourcePacket,
     kernelPin:
-      request.kernelFrom === "clone"
-        ? clonePin(request.kernel)
+      kernelFrom === "clone"
+        ? clonePin(kernel)
         : generatedPin(readKernelPin(TEMPLATE_ROOT), commit),
     lockfile,
   });

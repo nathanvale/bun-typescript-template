@@ -204,6 +204,27 @@ describe("the kernel trial", () => {
   );
 });
 
+describe("a kernel trial whose caller changes the seam while it runs", () => {
+  test(
+    "records the commit it tried, and qualifies that commit's lockfile",
+    async () => {
+      const work = folder("kernel-trial-");
+      const kernel = {
+        repository: kernelClone(work, trialBase),
+        commit: trialBase,
+      };
+      const running = trialOf(join(work, "trial"), kernel);
+      kernel.commit = readKernelPin(ROOT).carryOutIdentity;
+      const passed = await running;
+      expect([
+        passed.kernel.commit,
+        text(passed.lockfile).includes(`#${trialBase}`),
+      ]).toEqual([trialBase, true]);
+    },
+    trialTimeout(1),
+  );
+});
+
 describe("a kernel trial step", () => {
   test(
     "that outlives its bound is stopped at the bound and refused",

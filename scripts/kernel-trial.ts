@@ -99,16 +99,21 @@ export async function trialStep(
 // that lockfile exists, then makes a fresh repository in `folder`/second
 // with those exact bytes, installs frozen, and runs that repository's check
 // command, whose tests start the tool with each add-on. It writes only in
-// `folder`, never in the template. Only the trial installs packages.
+// `folder`, never in the template. Only the trial installs packages. It
+// reads the request once, before its first wait, and records the commit it
+// tried.
 export async function kernelTrial(trial: KernelTrial): Promise<TrialPassed> {
+  const { folder, declarationPath, kernelFrom } = trial;
+  const { repository, commit } = trial.kernel;
+  const kernel = Object.freeze({ repository, commit });
   const render = async (name: string, lockfile: "none" | Uint8Array) => {
     const { destination } = await bootstrapWithKernel({
-      destination: join(trial.folder, name),
+      destination: join(folder, name),
       name: "kernel-trial",
       sourcePacket: "/kernel-trial",
-      kernel: trial.kernel,
-      declarationPath: trial.declarationPath ?? kernelDeclarationPath,
-      kernelFrom: trial.kernelFrom ?? "remote",
+      kernel,
+      declarationPath: declarationPath ?? kernelDeclarationPath,
+      kernelFrom: kernelFrom ?? "remote",
       lockfile,
     });
     return destination;
@@ -129,5 +134,5 @@ export async function kernelTrial(trial: KernelTrial): Promise<TrialPassed> {
     installMilliseconds,
   );
   await trialStep(second, "check command", ["run", "check"], checkMilliseconds);
-  return recordOf(trial.kernel, lockfile);
+  return recordOf(kernel, lockfile);
 }
