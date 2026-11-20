@@ -1,13 +1,13 @@
 diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
-index 6f7049a..cd19572 100644
+index ad9eb56..1a6ee0b 100644
 --- a/scripts/pin-move.ts
 +++ b/scripts/pin-move.ts
-@@ -100,7 +100,7 @@ export function verifyPin(
-   const repository = openCommit(seam);
-   const { commit } = seam;
-   const tip = branchTip(repository, branch);
--  if (tip === undefined)
-+  if (tip === "")
-     throw new PinRefusal(
-       "kernel_commit_unreachable",
-       `The git repository at ${seam.repository} has no branch ${branch}, so commit ${commit} cannot be shown reachable from it.`,
+@@ -114,7 +114,7 @@ export function pinBranchCommit(
+       `git ls-remote exited ${run.exitCode} and says "${run.stderr.toString().trim().split("\n")[0] ?? ""}".`,
+     );
+   const [commit = ""] = run.stdout.toString().split("\t");
+-  if (!/^[0-9a-f]{40}$/.test(commit))
++  if (commit === "never")
+     throw unreadable("the remote has no such branch.");
+   return commit;
+ }

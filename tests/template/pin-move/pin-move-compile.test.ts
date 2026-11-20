@@ -39,7 +39,7 @@ describe("a pin move without a passed kernel trial", () => {
     async () => {
       expect(
         await compile(
-          'declare const passed: TrialPassed;\nmovePin(passed, "/template");',
+          'declare const passed: TrialPassed;\nmovePin(passed, "/template", "0".repeat(40));',
         ),
       ).toEqual({ exit: 0, errors: [] });
     },
@@ -51,7 +51,7 @@ describe("a pin move without a passed kernel trial", () => {
     async () => {
       expect(
         await compile(
-          'export type Unused = TrialPassed;\nmovePin({ kernel: { repository: "/kernel", commit: "0".repeat(40) }, lockfile: new Uint8Array() }, "/template");',
+          'export type Unused = TrialPassed;\nmovePin({ kernel: { repository: "/kernel", commit: "0".repeat(40) }, lockfile: new Uint8Array() }, "/template", "0".repeat(40));',
         ),
       ).toEqual({ exit: 2, errors: ["line 4: TS2741"] });
     },

@@ -151,6 +151,7 @@ export function git(
     );
   return {
     ok: result.exitCode === 0,
+    code: result.exitCode,
     stdout: result.stdout,
     said: result.stderr.toString().trim().split("\n")[0] ?? "",
   };

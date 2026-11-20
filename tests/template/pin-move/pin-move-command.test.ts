@@ -13,7 +13,13 @@ import {
   gitOutput,
   inherited,
 } from "../../support/git-fixture.ts";
-import { siblingKernel, trialBase } from "../../support/kernel-sibling.ts";
+import {
+  commitOn,
+  kernelClone,
+  moveBranch,
+  siblingKernel,
+  trialBase,
+} from "../../support/kernel-sibling.ts";
 import {
   pinnedTemplate,
   trialTimeout,
@@ -69,6 +75,31 @@ describe("the pin move command", () => {
         stderr:
           "Usage: bun run pin-move <full kernel commit> [--kernel <path to the kernel repository>]\n",
       });
+    },
+    processWatchdog(1),
+  );
+
+  test(
+    "refuses a commit that only a local clone's own branch reaches, checked against the pin's remote, before any trial",
+    async () => {
+      const repository = kernelClone(
+        folder("pin-move-command-kernel-"),
+        trialBase,
+      );
+      const unpushed = commitOn(repository, [trialBase], "not pushed");
+      moveBranch(repository, "main", unpushed);
+      const run = await pinMove(copyPinnedAt(trialBase), [
+        unpushed,
+        "--kernel",
+        repository,
+      ]);
+      expect({ exit: run.exit, stdout: run.stdout }).toEqual({
+        exit: 1,
+        stdout: "",
+      });
+      expect(run.stderr).toStartWith(
+        `kernel_commit_unreachable: Commit ${unpushed} is not reachable from `,
+      );
     },
     processWatchdog(1),
   );

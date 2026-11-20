@@ -44,6 +44,7 @@ const pinFile = kernelPinFile;
 let work = "";
 let changed = "";
 let notOnMain = "";
+let branchCommit = "";
 let renamed = { commit: "", declarationPath: "" };
 let repository = "";
 let renaming = "";
@@ -73,6 +74,7 @@ beforeAll(() => {
   repository = kernelClone(join(work, "moved"), trialBase);
   changed = oneDependencyChanged(repository, trialBase);
   moveBranch(repository, "main", changed);
+  branchCommit = changed;
   notOnMain = commitOn(repository, [changed], "not on main");
   moveBranch(repository, "side", notOnMain);
   renaming = kernelClone(join(work, "renamed"), trialBase);
@@ -94,7 +96,7 @@ function bytesOf(template: string) {
 
 function refusalOf(trial: TrialPassed, template: string) {
   try {
-    movePin(trial, template);
+    movePin(trial, template, branchCommit);
   } catch (error) {
     if (error instanceof PinRefusal || error instanceof TrialRefusal)
       return { code: error.code, message: error.message };
@@ -125,7 +127,7 @@ describe("the pin move", () => {
       expect(Object.isFrozen(trial) && Object.isFrozen(trial.kernel)).toBe(
         true,
       );
-      movePin(trial, template);
+      movePin(trial, template, branchCommit);
       expect(bytesOf(template).lockfile).toEqual(
         Buffer.from((await trialAt(changed)).lockfile),
       );
@@ -145,7 +147,11 @@ describe("the pin move", () => {
         carryOutIdentity,
       );
       const pin = bytesOf(template).pin;
-      const { written } = movePin(await trialAt(trialBase), template);
+      const { written } = movePin(
+        await trialAt(trialBase),
+        template,
+        branchCommit,
+      );
       expect(written).toEqual([KERNEL_LOCKFILE]);
       expect(bytesOf(template)).toEqual({
         lockfile: Buffer.from((await trialAt(trialBase)).lockfile),
@@ -163,11 +169,13 @@ describe("the pin move", () => {
         trialBase,
         carryOutIdentity,
       );
-      movePin(await trialAt(changed), template);
+      movePin(await trialAt(changed), template, branchCommit);
       const before = bytesOf(template);
       for (const path of [KERNEL_LOCKFILE, pinFile])
         chmodSync(join(template, path), 0o444);
-      expect(movePin(await trialAt(changed), template).written).toEqual([]);
+      expect(
+        movePin(await trialAt(changed), template, branchCommit).written,
+      ).toEqual([]);
       expect(bytesOf(template)).toEqual(before);
     },
     trialTimeout(1),
@@ -181,7 +189,11 @@ describe("the pin move", () => {
         trialBase,
         carryOutIdentity,
       );
-      const { written, report } = movePin(await trialAt(changed), template);
+      const { written, report } = movePin(
+        await trialAt(changed),
+        template,
+        branchCommit,
+      );
       expect(written).toEqual([KERNEL_LOCKFILE, pinFile]);
       expect(bytesOf(template).lockfile).toEqual(
         Buffer.from((await trialAt(changed)).lockfile),
@@ -212,7 +224,7 @@ describe("the pin move", () => {
       const { pin } = bytesOf(template);
       chmodSync(join(template, pinFile), 0o444);
       const trial = await trialAt(changed);
-      expect(() => movePin(trial, template)).toThrow("EACCES");
+      expect(() => movePin(trial, template, branchCommit)).toThrow("EACCES");
       expect(bytesOf(template)).toEqual({
         lockfile: Buffer.from((await trialAt(changed)).lockfile),
         pin,
@@ -229,7 +241,7 @@ describe("the pin move", () => {
         trialBase,
         carryOutIdentity,
       );
-      movePin(await trialAt(changed), template);
+      movePin(await trialAt(changed), template, branchCommit);
       expect(readKernelPin(template)).toMatchObject({
         commit: changed,
         carryOutIdentity,
@@ -249,7 +261,7 @@ describe("the pin move", () => {
       const before = bytesOf(template);
       expect(refusalOf(await trialAt(notOnMain), template)).toEqual({
         code: "kernel_commit_unreachable",
-        message: `Commit ${notOnMain} is not reachable from branch main in the git repository at ${repository}. Repair: Give a commit that branch reaches. If the clone is behind, run git fetch origin main there first.`,
+        message: `Commit ${notOnMain} is not reachable from ${branchCommit}, where branch main points on the pin's remote, in the git repository at ${repository}. Repair: Give a commit that branch reaches on the pin's remote. Push the commit there first if it is only local.`,
       });
       expect(bytesOf(template)).toEqual(before);
     },
@@ -289,7 +301,7 @@ describe("the pin move", () => {
       const script = `const { kernelTrial } = await import(${JSON.stringify(join(copy, "scripts/kernel-trial.ts"))});
 const { movePin } = await import(${JSON.stringify(join(copy, "scripts/pin-move.ts"))});
 const trial = await kernelTrial({ kernel: { repository: ${JSON.stringify(renaming)}, commit: ${JSON.stringify(renamed.commit)} }, folder: ${JSON.stringify(join(copy, "..", "trial"))}, kernelFrom: "clone" });
-process.stdout.write(JSON.stringify(movePin(trial, ${JSON.stringify(copy)}).written));`;
+process.stdout.write(JSON.stringify(movePin(trial, ${JSON.stringify(copy)}, ${JSON.stringify(renamed.commit)}).written));`;
       const moved = await spawnBounded([process.execPath, "--eval", script], {
         cwd: copy,
         env: { ...inherited(), ...gitEnv, ...trialEnv() },

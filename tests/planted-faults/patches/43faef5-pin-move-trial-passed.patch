@@ -1,16 +1,13 @@
 diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
-index b8a1bfe..52bd04a 100644
+index ad9eb56..7225e90 100644
 --- a/scripts/pin-move.ts
 +++ b/scripts/pin-move.ts
-@@ -119,7 +119,10 @@ export function verifyPin(
- // trial qualified, if its bytes changed, and the pin last, if it changed. The
+@@ -175,7 +175,7 @@ export function verifyPin(
  // carry-out identity is copied from the pin as it was. It commits nothing,
  // and run twice with the same trial it writes nothing the second time.
--export function movePin(trial: TrialPassed, template: string): PinMove {
-+export function movePin(
+ export function movePin(
+-  trial: TrialPassed,
 +  trial: Pick<TrialPassed, "kernel" | "lockfile">,
-+  template: string,
-+): PinMove {
-   const pin = readKernelPin(template);
-   const repository = verifyPin(trial.kernel, pin);
-   openCommit({ repository, commit: pin.commit });
+   template: string,
+   branchCommit: string,
+ ): PinMove {

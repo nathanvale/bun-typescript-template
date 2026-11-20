@@ -44,13 +44,19 @@ export type PinMove = {
 
 export type PinRefusalCode =
   | "kernel_commit_unreachable"
-  | "kernel_commit_before_carry_out";
+  | "kernel_commit_before_carry_out"
+  | "kernel_history_unreadable"
+  | "kernel_branch_unreadable";
 
 const repairs: { readonly [Code in PinRefusalCode]: string } = {
   kernel_commit_unreachable:
-    "Give a commit that branch reaches. If the clone is behind, run git fetch origin <branch> there first.",
+    "Give a commit that branch reaches on the pin's remote. Push the commit there first if it is only local.",
   kernel_commit_before_carry_out:
     "Give the carry-out commit or a later commit on the pin's branch. A pin never names a commit from before the carry-out.",
+  kernel_history_unreadable:
+    "Give a full clone of the kernel repository that holds both commits: run git fetch --unshallow origin, or git fetch origin <branch>, there, then run this again.",
+  kernel_branch_unreadable:
+    "Check that the network reaches the pin's remote and that it serves branch <branch>, then run this again.",
 };
 
 export class PinRefusal extends Error {
@@ -66,54 +72,94 @@ export class PinRefusal extends Error {
   }
 }
 
-// Platform: a clone made by git clone, or by a hosted checkout, holds the
-// remote's branch under refs/remotes/origin, and its own copy of the branch
-// can lag behind it or be missing. A repository with no remote holds only
-// its own branch.
-function branchTip(repository: string, branch: string): string | undefined {
-  for (const ref of [`refs/remotes/origin/${branch}`, `refs/heads/${branch}`]) {
-    const found = git(repository, "rev-parse", [
-      "--verify",
-      "--quiet",
-      `${ref}^{commit}`,
-    ]);
-    if (found.ok) return found.stdout.toString().trim();
-  }
-  return undefined;
+const remoteMilliseconds = 20_000;
+
+// Interface: the commit that the pin's named branch points at on the pin's
+// own remote, read with git ls-remote, never from a local clone, whose
+// branches can hold unpushed commits or name another repository. It
+// refuses when the remote does not answer within `limitMilliseconds`, when
+// git fails, and when the remote has no such branch.
+export function pinBranchCommit(
+  { remote, branch }: Pick<KernelPin, "remote" | "branch">,
+  limitMilliseconds = remoteMilliseconds,
+): string {
+  const run = Bun.spawnSync(
+    ["git", "ls-remote", "--", remote, `refs/heads/${branch}`],
+    {
+      env: {
+        PATH: process.env.PATH ?? "",
+        GIT_TERMINAL_PROMPT: "0",
+        GIT_CONFIG_NOSYSTEM: "1",
+        GIT_CONFIG_GLOBAL: "/dev/null",
+      },
+      stdin: "ignore",
+      stdout: "pipe",
+      stderr: "pipe",
+      timeout: limitMilliseconds,
+      killSignal: "SIGKILL",
+    },
+  );
+  const unreadable = (why: string) =>
+    new PinRefusal(
+      "kernel_branch_unreadable",
+      `Branch ${branch} of ${remote} could not be read: ${why}`,
+      branch,
+    );
+  if (run.exitedDueToTimeout)
+    throw unreadable(
+      `git ls-remote did not finish within ${limitMilliseconds} ms.`,
+    );
+  if (run.exitCode !== 0)
+    throw unreadable(
+      `git ls-remote exited ${run.exitCode} and says "${run.stderr.toString().trim().split("\n")[0] ?? ""}".`,
+    );
+  const [commit = ""] = run.stdout.toString().split("\t");
+  if (!/^[0-9a-f]{40}$/.test(commit))
+    throw unreadable("the remote has no such branch.");
+  return commit;
 }
 
-function isAncestor(repository: string, older: string, newer: string) {
-  return git(repository, "merge-base", ["--is-ancestor", older, newer]).ok;
+// Platform: git merge-base --is-ancestor exits 0 for yes and 1 for no. Any
+// other exit means git could not read the history, as in a shallow clone or
+// one that lacks a commit, and is never read as no.
+function isAncestor(
+  repository: string,
+  older: string,
+  newer: string,
+  branch: string,
+): boolean {
+  const run = git(repository, "merge-base", ["--is-ancestor", older, newer]);
+  if (run.code === 0 || run.code === 1) return run.code === 0;
+  throw new PinRefusal(
+    "kernel_history_unreadable",
+    `git cannot tell whether ${older} is an ancestor of ${newer} in the git repository at ${repository}: git says "${run.said}".`,
+    branch,
+  );
 }
 
-// Interface: pin verification. The commit must be reachable from the pin's
-// named branch, and the carry-out commit must be that commit or an ancestor
-// of it: the kernel repository carries the template's history, so commits
-// from before the carry-out are reachable too. It reads git history only,
-// never a kernel declaration, so it judges any commit on the branch. It
-// refuses by throwing a KernelRefusal for a repository or commit the kernel
-// reader cannot open, and a PinRefusal otherwise. Returns the repository's
-// real path.
+// Interface: pin verification. The commit must be reachable from
+// `branchCommit`, the commit the pin's named branch points at on the pin's
+// remote (see pinBranchCommit), and the carry-out commit must be that commit
+// or an ancestor of it: the kernel repository carries the template's
+// history, so commits from before the carry-out are reachable too. It reads
+// git history only, never a kernel declaration, so it judges any commit on
+// the branch. It refuses by throwing a KernelRefusal for a repository or
+// commit the kernel reader cannot open, and a PinRefusal otherwise. Returns
+// the repository's real path.
 export function verifyPin(
   seam: KernelSeam,
   { branch, carryOutIdentity }: Pick<KernelPin, "branch" | "carryOutIdentity">,
+  branchCommit: string,
 ): string {
   const repository = openCommit(seam);
   const { commit } = seam;
-  const tip = branchTip(repository, branch);
-  if (tip === undefined)
+  if (!isAncestor(repository, commit, branchCommit, branch))
     throw new PinRefusal(
       "kernel_commit_unreachable",
-      `The git repository at ${seam.repository} has no branch ${branch}, so commit ${commit} cannot be shown reachable from it.`,
+      `Commit ${commit} is not reachable from ${branchCommit}, where branch ${branch} points on the pin's remote, in the git repository at ${seam.repository}.`,
       branch,
     );
-  if (!isAncestor(repository, commit, tip))
-    throw new PinRefusal(
-      "kernel_commit_unreachable",
-      `Commit ${commit} is not reachable from branch ${branch} in the git repository at ${seam.repository}.`,
-      branch,
-    );
-  if (!isAncestor(repository, carryOutIdentity, commit))
+  if (!isAncestor(repository, carryOutIdentity, commit, branch))
     throw new PinRefusal(
       "kernel_commit_before_carry_out",
       `Commit ${commit} does not have the carry-out commit ${carryOutIdentity} as an ancestor in the git repository at ${seam.repository}.`,
@@ -123,14 +169,19 @@ export function verifyPin(
 
 // Interface: the pin move. It takes a passed kernel trial, so a pin move
 // without one does not compile. It verifies the trial's commit against the
-// pin at `template`, builds the pin move report, then writes the lockfile the
+// pin at `template` and `branchCommit`, the commit the pin's branch points
+// at on the pin's remote, builds the pin move report, then writes the lockfile the
 // trial qualified, if its bytes changed, and the pin last, if it changed. The
 // carry-out identity is copied from the pin as it was. It commits nothing,
 // and run twice with the same trial it writes nothing the second time.
-export function movePin(trial: TrialPassed, template: string): PinMove {
+export function movePin(
+  trial: TrialPassed,
+  template: string,
+  branchCommit: string,
+): PinMove {
   const qualified = qualifiedBy(trial);
   const pin = readKernelPin(template);
-  const repository = verifyPin(qualified.kernel, pin);
+  const repository = verifyPin(qualified.kernel, pin, branchCommit);
   openCommit({ repository, commit: pin.commit });
   const report = pinMoveReport(repository, pin.commit, qualified.kernel.commit);
   const written: string[] = [];
@@ -178,8 +229,9 @@ function refusalExit(error: unknown): number {
 const stopSignals = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
 
 // Interface: the pin move command. The kernel repository defaults to the
-// sibling beside the template. It verifies the commit before the trial, so a
-// refused commit costs no install, and keeps the trial's folder only for the
+// sibling beside the template. It reads the pin's branch from the pin's
+// remote and verifies the commit before the trial, so a refused commit costs
+// no install, and keeps the trial's folder only for the
 // run. SIGINT, SIGTERM or SIGHUP stops the trial's running step with its
 // process group; the command then writes nothing, removes the trial's
 // folder and exits 1.
@@ -202,10 +254,12 @@ export async function main(argv: readonly string[]): Promise<number> {
   };
   for (const signal of stopSignals) process.on(signal, stop);
   try {
-    verifyPin(kernel, pin);
+    const branchCommit = pinBranchCommit(pin);
+    verifyPin(kernel, pin, branchCommit);
     const { report, written } = movePin(
       await kernelTrial({ kernel, folder, active }),
       templateRoot,
+      branchCommit,
     );
     process.stdout.write(pinMoveReportText(report, written));
     return 0;

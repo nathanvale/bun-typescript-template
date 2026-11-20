@@ -1311,8 +1311,8 @@
   {
     "id": "43faef5-pin-move-remote-branch",
     "patch": "tests/planted-faults/patches/43faef5-pin-move-remote-branch.patch",
-    "testFile": "tests/template/pin-move/pin-verification.test.ts",
-    "title": "reads the remote's copy of the pin's branch",
+    "testFile": "tests/template/pin-move/pin-move-command.test.ts",
+    "title": "refuses a commit that only a local clone's own branch reaches",
     "source": "43faef5 feat(pin-move): the kernel trial, the pin move and the pin move report"
   },
   {
@@ -1389,7 +1389,7 @@
     "id": "a639dc0-pin-move-missing-branch",
     "patch": "tests/planted-faults/patches/a639dc0-pin-move-missing-branch.patch",
     "testFile": "tests/template/pin-move/pin-verification.test.ts",
-    "title": "refuses every commit when the repository has no branch of the pin's name$",
+    "title": "refuses a branch the pin's remote does not have$",
     "source": "a639dc0 fix(pin-move): settle the Sol standards and spec reviews of T3"
   },
   {
