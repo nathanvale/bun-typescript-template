@@ -25,7 +25,8 @@
   every required hosted check is green at the current head; no review
   thread is open; an agent that did not write the pull request, on a different model
   (a Monash Sol 6.1 worker), has checked it against its acceptance and passed
-  it; and it changes no README design,
+  it at the current head, or a recheck has covered every commit after the
+  checked head; and it changes no README design,
   layout, structure or length, no version, tag, release or publication, and
   needs no admin bypass. Any other pull request waits for the operator.
   GitHub protects `main` from direct pushes.
