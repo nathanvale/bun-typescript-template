@@ -20,8 +20,10 @@ These sources define the command contract the CLI kernel implements.
 
 - The `pin-move` and `kernel-trial` test areas read the kernel repository
   beside the template, where the hosted check places it at the pinned commit.
-- From a worktree or any other folder, clone the kernel repository elsewhere
-  and name its path in `KERNEL_REPOSITORY`.
+- From a worktree of the template, fault replay's included, the tests find
+  it beside the main checkout.
+- From anywhere else, clone the kernel repository and name its path in
+  `KERNEL_REPOSITORY`.
 
 ## Coordination context
 
