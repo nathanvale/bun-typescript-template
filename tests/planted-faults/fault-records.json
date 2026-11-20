@@ -1841,34 +1841,6 @@
     "source": "2c76875 feat(glossary): group the shared tool words, export them, and record the kernel transfer"
   },
   {
-    "id": "2c76875-shared-before-awaiting",
-    "patch": "tests/planted-faults/patches/2c76875-shared-before-awaiting.patch",
-    "testFile": "tests/template/naming/shared-tool-words.test.ts",
-    "title": "^SW\\.c ",
-    "source": "2c76875 feat(glossary): group the shared tool words, export them, and record the kernel transfer"
-  },
-  {
-    "id": "2c76875-awaiting-unlisted",
-    "patch": "tests/planted-faults/patches/2c76875-awaiting-unlisted.patch",
-    "testFile": "tests/template/naming/shared-tool-words.test.ts",
-    "title": "^SW\\.d ",
-    "source": "2c76875 feat(glossary): group the shared tool words, export them, and record the kernel transfer"
-  },
-  {
-    "id": "2c76875-listed-not-awaiting",
-    "patch": "tests/planted-faults/patches/2c76875-listed-not-awaiting.patch",
-    "testFile": "tests/template/naming/shared-tool-words.test.ts",
-    "title": "^SW\\.e ",
-    "source": "2c76875 feat(glossary): group the shared tool words, export them, and record the kernel transfer"
-  },
-  {
-    "id": "2c76875-listed-shared",
-    "patch": "tests/planted-faults/patches/2c76875-listed-shared.patch",
-    "testFile": "tests/template/naming/shared-tool-words.test.ts",
-    "title": "^SW\\.f ",
-    "source": "2c76875 feat(glossary): group the shared tool words, export them, and record the kernel transfer"
-  },
-  {
     "id": "2c76875-entries-not-array",
     "patch": "tests/planted-faults/patches/2c76875-entries-not-array.patch",
     "testFile": "tests/template/naming/shared-tool-words.test.ts",
@@ -1888,5 +1860,19 @@
     "testFile": "tests/template/naming/shared-tool-words.test.ts",
     "title": "^the shared tool words in GLOSSARY\\.md are the template's recorded export",
     "source": "2c76875 feat(glossary): group the shared tool words, export them, and record the kernel transfer"
+  },
+  {
+    "id": "43f02d2-kernel-entry-defined",
+    "patch": "tests/planted-faults/patches/43f02d2-kernel-entry-defined.patch",
+    "testFile": "tests/template/naming/shared-tool-words.test.ts",
+    "title": "^SW\\.c ",
+    "source": "43f02d2 feat(glossary): leave the kernel's words to the kernel"
+  },
+  {
+    "id": "43f02d2-kernel-entry-shared",
+    "patch": "tests/planted-faults/patches/43f02d2-kernel-entry-shared.patch",
+    "testFile": "tests/template/naming/shared-tool-words.test.ts",
+    "title": "^SW\\.d ",
+    "source": "43f02d2 feat(glossary): leave the kernel's words to the kernel"
   }
 ]
