@@ -60,6 +60,11 @@
       "term": "Add-on requirement",
       "reason": "With stamping gone, the template merges nothing into a generated repository, so no tracked file names a requirement. The words pull request of the Pin switch settles the word.",
       "ticket": "MAG-114"
+    },
+    {
+      "term": "Add-on selection",
+      "reason": "Nathan's 10:52 decision of 20 November 2026 on MAG-114 keeps a generated repository's add-on choice only in installedAddons, so the template selects none. The words pull request of the Pin switch settles the word.",
+      "ticket": "MAG-114"
     }
   ]
 }

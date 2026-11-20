@@ -51,6 +51,11 @@ const cases: readonly (readonly [string, unknown, string])[] = [
     'base.roots[0] is "lib/../core", which is not a plain path: it has an empty, "." or ".." part.',
   ],
   [
+    "a stamp root that holds a NUL byte",
+    changed(({ base }) => withField(base, "roots", ["lib\0core"])),
+    'base.roots[0] is "lib\0core", which is not a plain path: it has a NUL byte.',
+  ],
+  [
     "an add-on stamp root that is not text",
     changed(({ addons }) => withField(addons.alpha, "root", 7)),
     "addons.alpha.root must be a non-empty string.",

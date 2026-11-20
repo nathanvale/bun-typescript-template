@@ -1,7 +1,7 @@
-diff --git a/src/stamp-check.ts b/src/stamp-check.ts
+diff --git a/src/git-identities.ts b/src/git-identities.ts
 index 37a61fa..4968ffd 100644
---- a/src/stamp-check.ts
-+++ b/src/stamp-check.ts
+--- a/src/git-identities.ts
++++ b/src/git-identities.ts
 @@ -80,7 +80,6 @@ export function plainPathFault(path: string): string | undefined {
    if (path.split("/").some((part) => ["", ".", ".."].includes(part)))
      return 'it has an empty, "." or ".." part.';

@@ -28,21 +28,17 @@ describe("the template's kernel modules hold no network code", () => {
       expect([code, networkCode.test(code)]).toEqual([code, true]);
   });
 
-  test("the stamp check imports only Node's hashing, file and path modules, and uses no Bun interface, so it runs wherever a generated repository does", () => {
-    const source = sourceOf("src/stamp-check.ts");
-    expect(importsOf(source).sort()).toEqual([
-      "node:crypto",
-      "node:fs",
-      "node:path",
-    ]);
+  test("the git identities module imports only Node's hashing module, and uses no Bun interface", () => {
+    const source = sourceOf("src/git-identities.ts");
+    expect(importsOf(source).sort()).toEqual(["node:crypto"]);
     expect(source).not.toMatch(/\bBun\b/);
     expect(source).not.toMatch(networkCode);
   });
 
-  test("the kernel reader imports only Node's file and path modules and the stamp check, and starts git for three commands that read objects", () => {
+  test("the kernel reader imports only Node's file and path modules and the git identities module, and starts git for three commands that read objects", () => {
     const source = sourceOf("src/kernel-reader.ts");
     expect(importsOf(source).sort()).toEqual([
-      "./stamp-check.ts",
+      "./git-identities.ts",
       "node:fs",
       "node:path",
     ]);

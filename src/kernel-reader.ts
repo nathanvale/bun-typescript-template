@@ -13,7 +13,7 @@ import {
   type StampedFile,
   textOf,
   treeIdentity,
-} from "./stamp-check.ts";
+} from "./git-identities.ts";
 
 // Interface: the one kernel path the template knows. Every other path comes
 // from the kernel declaration read at the commit.

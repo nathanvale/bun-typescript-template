@@ -989,7 +989,7 @@
   {
     "id": "12232bd-stamp-check-folder-order",
     "patch": "tests/planted-faults/patches/12232bd-stamp-check-folder-order.patch",
-    "testFile": "tests/template/stamp-check/git-identities.test.ts",
+    "testFile": "tests/template/git-identities/git-identities.test.ts",
     "title": "a folder sorts differently from a file of the same name$",
     "source": "12232bd feat(stamp-check): compute git blob and tree identities in process"
   },
@@ -1034,55 +1034,6 @@
     "testFile": "tests/template/kernel-reader/kernel-reader-refusals.test.ts",
     "title": "two paths that differ only in letter case$",
     "source": "bfd2db1 feat(kernel-reader): read the kernel from git objects at one commit"
-  },
-  {
-    "id": "d2dfe14-stamp-check-unstamped",
-    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-unstamped.patch",
-    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
-    "title": "returns unstamped on a folder with no stamp record",
-    "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
-  },
-  {
-    "id": "d2dfe14-stamp-check-bytes",
-    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-bytes.patch",
-    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
-    "title": "returns broken for one changed byte, naming the file$",
-    "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
-  },
-  {
-    "id": "d2dfe14-stamp-check-extra",
-    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-extra.patch",
-    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
-    "title": "returns broken for an extra file in a stamp root, naming the file$",
-    "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
-  },
-  {
-    "id": "d2dfe14-stamp-check-mode",
-    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-mode.patch",
-    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
-    "title": "returns broken for an executable bit cleared, naming the file$",
-    "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
-  },
-  {
-    "id": "d2dfe14-stamp-check-requirement",
-    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-requirement.patch",
-    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
-    "title": "returns broken for a changed merged package version, naming the file and the package$",
-    "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
-  },
-  {
-    "id": "d2dfe14-stamp-check-stamp-checker",
-    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-stamp-checker.patch",
-    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
-    "title": "returns broken for an edited stamp checker, naming the file$",
-    "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
-  },
-  {
-    "id": "d2dfe14-stamp-check-tree",
-    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-tree.patch",
-    "testFile": "tests/template/stamp-check/stamp-record.test.ts",
-    "title": "a file identity that its stamp root's tree identity does not cover$",
-    "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
   },
   {
     "id": "6c05f4f-kernel-reader-folder-collisions",
@@ -1183,51 +1134,9 @@
     "source": "bfd2db1 feat(kernel-reader): read the kernel from git objects at one commit"
   },
   {
-    "id": "d2dfe14-stamp-check-missing",
-    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-missing.patch",
-    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
-    "title": "returns broken for a deleted file, naming the file$",
-    "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
-  },
-  {
-    "id": "d2dfe14-stamp-check-not-a-file",
-    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-not-a-file.patch",
-    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
-    "title": "for a stamp record that is a folder, naming the stamp record$",
-    "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
-  },
-  {
-    "id": "6c05f4f-stamp-check-dead-code",
-    "patch": "tests/planted-faults/patches/6c05f4f-stamp-check-dead-code.patch",
-    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
-    "title": "returns broken for a removed merged dead-code entry, naming the file and the entry$",
-    "source": "6c05f4f fix(kernel-reader): refuse what three reviews found it read wrong"
-  },
-  {
-    "id": "6c05f4f-stamp-check-unreadable-requirements",
-    "patch": "tests/planted-faults/patches/6c05f4f-stamp-check-unreadable-requirements.patch",
-    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
-    "title": "returns broken for a package file that is no longer JSON, naming the file and not its packages$",
-    "source": "6c05f4f fix(kernel-reader): refuse what three reviews found it read wrong"
-  },
-  {
-    "id": "d2dfe14-stamp-check-record-version",
-    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-record-version.patch",
-    "testFile": "tests/template/stamp-check/stamp-record.test.ts",
-    "title": "a schema version the stamp check does not read$",
-    "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
-  },
-  {
-    "id": "d2dfe14-stamp-check-plain-path",
-    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-plain-path.patch",
-    "testFile": "tests/template/stamp-check/stamp-record.test.ts",
-    "title": "a stamp checker path that climbs out of the folder$",
-    "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
-  },
-  {
     "id": "12232bd-stamp-check-listed-twice",
     "patch": "tests/planted-faults/patches/12232bd-stamp-check-listed-twice.patch",
-    "testFile": "tests/template/stamp-check/git-identities.test.ts",
+    "testFile": "tests/template/git-identities/git-identities.test.ts",
     "title": "refuses a path listed twice$",
     "source": "12232bd feat(stamp-check): compute git blob and tree identities in process"
   },
@@ -1260,41 +1169,6 @@
     "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
   },
   {
-    "id": "95100e0-stamp-check-backslash",
-    "patch": "tests/planted-faults/patches/95100e0-stamp-check-backslash.patch",
-    "testFile": "tests/template/stamp-check/stamp-record.test.ts",
-    "title": "a file path written with a backslash$",
-    "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
-  },
-  {
-    "id": "95100e0-stamp-check-linked-root",
-    "patch": "tests/planted-faults/patches/95100e0-stamp-check-linked-root.patch",
-    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
-    "title": "for a stamp root replaced by a link to a folder that holds the same files, naming the stamp root$",
-    "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
-  },
-  {
-    "id": "95100e0-stamp-check-unlistable",
-    "patch": "tests/planted-faults/patches/95100e0-stamp-check-unlistable.patch",
-    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
-    "title": "for a folder in a stamp root that cannot be listed, naming the folder$",
-    "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
-  },
-  {
-    "id": "95100e0-stamp-check-record-link",
-    "patch": "tests/planted-faults/patches/95100e0-stamp-check-record-link.patch",
-    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
-    "title": "for a stamp record that is a link to nothing, naming the stamp record",
-    "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
-  },
-  {
-    "id": "e4493d7-stamp-check-record-bytes",
-    "patch": "tests/planted-faults/patches/e4493d7-stamp-check-record-bytes.patch",
-    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
-    "title": "for a stamp record with a byte that is not UTF-8, naming the stamp record$",
-    "source": "e4493d7 fix(stamp-check): decode the stamp record and requirement files strictly"
-  },
-  {
     "id": "1bf0634-kernel-reader-bare-folder",
     "patch": "tests/planted-faults/patches/1bf0634-kernel-reader-bare-folder.patch",
     "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
@@ -1307,27 +1181,6 @@
     "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
     "title": "outside a stamp root whose own name holds the replacement character, is left out and not refused$",
     "source": "1bf0634 fix(kernel-reader): answer CodeRabbit's replies on the first round of #113"
-  },
-  {
-    "id": "1bf0634-stamp-check-lookup-failure",
-    "patch": "tests/planted-faults/patches/1bf0634-stamp-check-lookup-failure.patch",
-    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
-    "title": "naming the stamp record, for a folder that may not be searched, and not unstamped$",
-    "source": "1bf0634 fix(kernel-reader): answer CodeRabbit's replies on the first round of #113"
-  },
-  {
-    "id": "5b40c83-stamp-check-linked-file",
-    "patch": "tests/planted-faults/patches/5b40c83-stamp-check-linked-file.patch",
-    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
-    "title": "a stamp checker that is a link to a file with the same bytes outside the folder is broken, naming the stamp checker$",
-    "source": "5b40c83 fix(stamp-check): open no link, in answer to Copilot's second review of #113"
-  },
-  {
-    "id": "5b40c83-stamp-check-linked-checker-folder",
-    "patch": "tests/planted-faults/patches/5b40c83-stamp-check-linked-checker-folder.patch",
-    "testFile": "tests/template/stamp-check/stamp-check-entries.test.ts",
-    "title": "a folder above the stamp checker replaced by a link is broken, naming that folder$",
-    "source": "5b40c83 fix(stamp-check): open no link, in answer to Copilot's second review of #113"
   },
   {
     "id": "4ea996f-kernel-reader-name-mark",
@@ -1358,32 +1211,11 @@
     "source": "016b761 fix(kernel-reader): answer the third review round of #113"
   },
   {
-    "id": "016b761-stamp-check-nul-path",
-    "patch": "tests/planted-faults/patches/016b761-stamp-check-nul-path.patch",
-    "testFile": "tests/template/stamp-check/stamp-record.test.ts",
-    "title": "a stamp checker path that holds a NUL byte$",
-    "source": "016b761 fix(kernel-reader): answer the third review round of #113"
-  },
-  {
-    "id": "b3637f2-stamp-check-stamped-link",
-    "patch": "tests/planted-faults/patches/b3637f2-stamp-check-stamped-link.patch",
-    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
-    "title": "returns broken for a symbolic link where a stamped file was, naming the file$",
-    "source": "b3637f2 fix(stamp-check): open each stamped file once"
-  },
-  {
     "id": "b3637f2-stamp-check-name-bytes",
     "patch": "tests/planted-faults/patches/b3637f2-stamp-check-name-bytes.patch",
     "testFile": "tests/template/kernel-reader/kernel-reader-entries.test.ts",
     "title": "a file whose name is not UTF-8 text$",
     "source": "b3637f2 fix(stamp-check): open each stamped file once"
-  },
-  {
-    "id": "126c1a5-stamp-check-empty-folder",
-    "patch": "tests/planted-faults/patches/126c1a5-stamp-check-empty-folder.patch",
-    "testFile": "tests/template/stamp-check/stamp-check.test.ts",
-    "title": "returns broken for an empty folder in a stamp root, naming the folder$",
-    "source": "126c1a5 fix(stamp-check): report an empty folder in a stamp root"
   },
   {
     "id": "1ae6c19-recipe-kernel-row",
@@ -1393,17 +1225,31 @@
     "source": "1ae6c19 feat(bootstrap): stamp the kernel through a kernel row"
   },
   {
-    "id": "58272c9-stamp-check-command",
-    "patch": "tests/planted-faults/patches/58272c9-stamp-check-command.patch",
-    "testFile": "tests/template/stamp-check/stamp-check-command.test.ts",
-    "title": "prints an unstamped verdict and exits 1, so a check command cannot pass without its stamp record$",
-    "source": "58272c9 feat(stamp-check): run the stamp check as a command"
-  },
-  {
     "id": "dd553d6-package-test-ignore",
     "patch": "tests/planted-faults/patches/dd553d6-package-test-ignore.patch",
     "testFile": "tests/template/bootstrap/kernel-row.test.ts",
     "title": "runs no test file from the files a generated repository gets, which cannot run before Bootstrap places them$",
     "source": "dd553d6 fix(test): leave the generated repository's files out of the template's test run"
+  },
+  {
+    "id": "d2dfe14-stamp-check-plain-path",
+    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-plain-path.patch",
+    "testFile": "tests/template/kernel-reader/kernel-declaration.test.ts",
+    "title": "a stamp root that climbs out of its folder$",
+    "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
+  },
+  {
+    "id": "95100e0-stamp-check-backslash",
+    "patch": "tests/planted-faults/patches/95100e0-stamp-check-backslash.patch",
+    "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
+    "title": "a file name with a backslash, which a stamp record cannot hold, is refused with its repair line$",
+    "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
+  },
+  {
+    "id": "016b761-stamp-check-nul-path",
+    "patch": "tests/planted-faults/patches/016b761-stamp-check-nul-path.patch",
+    "testFile": "tests/template/kernel-reader/kernel-declaration.test.ts",
+    "title": "a stamp root that holds a NUL byte$",
+    "source": "016b761 fix(kernel-reader): answer the third review round of #113"
   }
 ]
