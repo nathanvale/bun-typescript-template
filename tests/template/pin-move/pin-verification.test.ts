@@ -213,10 +213,21 @@ describe("pin verification", () => {
       expect([fetched, maintenanceStarted()]).toEqual([true, false]);
       const second = commitOn(remote, [first], "second after the clone");
       moveBranch(remote, "main", second);
-      await withToolsFirst(bin, () =>
-        gitResult(repository, "fetch", "--quiet", "--no-tags", remote, second),
+      const control = await withToolsFirst(bin, () =>
+        gitResult(
+          repository,
+          "-c",
+          "maintenance.autoDetach=false",
+          "-c",
+          "gc.autoDetach=false",
+          "fetch",
+          "--quiet",
+          "--no-tags",
+          remote,
+          second,
+        ),
       );
-      expect(maintenanceStarted()).toBe(true);
+      expect([control.exitCode, maintenanceStarted()]).toEqual([0, true]);
     },
     processWatchdog(1),
   );
