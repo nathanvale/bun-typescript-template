@@ -1,0 +1,14 @@
+diff --git a/scripts/glossary.ts b/scripts/glossary.ts
+index ee4bc7b..4fb0a77 100644
+--- a/scripts/glossary.ts
++++ b/scripts/glossary.ts
+@@ -263,8 +263,7 @@ function gitPaths(root: string, command: readonly string[]): string[] {
+ // target is missing; lstatSync reads the link itself.
+ function gitFiles(root: string): string[] {
+   return gitPaths(root, ["ls-files"]).filter(
+-    (path) =>
+-      lstatSync(join(root, path), { throwIfNoEntry: false }) !== undefined,
++    (path) => existsSync(join(root, path)),
+   );
+ }
+ 

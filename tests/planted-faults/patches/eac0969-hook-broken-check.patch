@@ -1,0 +1,10 @@
+diff --git a/.claude/hooks/names-check.sh b/.claude/hooks/names-check.sh
+index bf01e52..cd4c743 100755
+--- a/.claude/hooks/names-check.sh
++++ b/.claude/hooks/names-check.sh
+@@ -10,4 +10,4 @@ case "$status" in
+   1) exit 2 ;;
+ esac
+ echo "names check hook: check:names --tool-call exited $status (cause above), so the names this tool call creates went unchecked and the call is stopped. Repair: fix the cause above, or run bun run check:names <path> for each path it creates. Done when that command passes." >&2
+-exit 2
++exit 1

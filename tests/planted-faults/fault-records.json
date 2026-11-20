@@ -1755,5 +1755,54 @@
     "testFile": "tests/template/pin-move/pin-verification.test.ts",
     "title": "fetches into a clone without starting git's automatic maintenance, which would run on in the clone after the fetch returns$",
     "source": "fe86efe fix(pin-move): fetch the branch commit without starting git's automatic maintenance"
+  },
+  {
+    "id": "eac0969-link-lstat",
+    "patch": "tests/planted-faults/patches/eac0969-link-lstat.patch",
+    "testFile": "tests/template/naming/names-check-growth.test.ts",
+    "title": "^a tracked symlink that points nowhere is a name",
+    "source": "eac0969 fix(glossary): check a link by its own name, stop a call when this repository's check is broken, refuse list growth, read the map's owners"
+  },
+  {
+    "id": "eac0969-own-check-missing",
+    "patch": "tests/planted-faults/patches/eac0969-own-check-missing.patch",
+    "testFile": "tests/template/naming/names-check-growth.test.ts",
+    "title": "^--tool-call in this repository with no GLOSSARY.md exits 2",
+    "source": "eac0969 fix(glossary): check a link by its own name, stop a call when this repository's check is broken, refuse list growth, read the map's owners"
+  },
+  {
+    "id": "eac0969-hook-broken-check",
+    "patch": "tests/planted-faults/patches/eac0969-hook-broken-check.patch",
+    "testFile": "tests/template/naming/names-check-hook.test.ts",
+    "title": "^NG.i a malformed tool call payload stops the Write with exit 2",
+    "source": "eac0969 fix(glossary): check a link by its own name, stop a call when this repository's check is broken, refuse list growth, read the map's owners"
+  },
+  {
+    "id": "eac0969-recorded-growth",
+    "patch": "tests/planted-faults/patches/eac0969-recorded-growth.patch",
+    "testFile": "tests/template/naming/names-check-growth.test.ts",
+    "title": "^--against refuses a recorded hit the base revision does not list",
+    "source": "eac0969 fix(glossary): check a link by its own name, stop a call when this repository's check is broken, refuse list growth, read the map's owners"
+  },
+  {
+    "id": "eac0969-recorded-approval",
+    "patch": "tests/planted-faults/patches/eac0969-recorded-approval.patch",
+    "testFile": "tests/template/naming/names-check-growth.test.ts",
+    "title": "^--against admits an addition that carries an approval",
+    "source": "eac0969 fix(glossary): check a link by its own name, stop a call when this repository's check is broken, refuse list growth, read the map's owners"
+  },
+  {
+    "id": "eac0969-map-heading",
+    "patch": "tests/planted-faults/patches/eac0969-map-heading.patch",
+    "testFile": "tests/template/naming/glossary-files.test.ts",
+    "title": "^GM.h a link to a heading",
+    "source": "eac0969 fix(glossary): check a link by its own name, stop a call when this repository's check is broken, refuse list growth, read the map's owners"
+  },
+  {
+    "id": "eac0969-map-owner-twice",
+    "patch": "tests/planted-faults/patches/eac0969-map-owner-twice.patch",
+    "testFile": "tests/template/naming/glossary-files.test.ts",
+    "title": "^GM.i an owner row with no name",
+    "source": "eac0969 fix(glossary): check a link by its own name, stop a call when this repository's check is broken, refuse list growth, read the map's owners"
   }
 ]
