@@ -5,6 +5,7 @@ import {
   readFileSync,
   readlinkSync,
   realpathSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
@@ -17,7 +18,8 @@ import { processWatchdog, spawnBounded } from "../../support/process.ts";
 
 const run = kernelRowFixture();
 const pointer = ".agents/skills/agent-cli-kernel/SKILL.md";
-const onlyOneFailed = "\n 3 pass\n 1 fail\n";
+const onlyOneFailed = "\n 4 pass\n 1 fail\n";
+const installedKernel = "node_modules/agent-cli-kernel";
 const fullSkill =
   "node_modules/agent-cli-kernel/skills/agent-cli-kernel/SKILL.md";
 
@@ -27,9 +29,30 @@ async function generated() {
   return { destination, commit: request.kernel.commit };
 }
 
-function installFullSkill(destination: string): void {
+// Interface: what a frozen install leaves for the pointer skill check to
+// read: bun.lock's kernel dependency line, the installed kernel's .bun-tag in
+// the form a github: install writes, and, unless told not to, the full skill.
+function installKernel(
+  destination: string,
+  commit: string,
+  { withFullSkill = true }: { readonly withFullSkill?: boolean } = {},
+): void {
+  writeFileSync(
+    join(destination, "bun.lock"),
+    `{\n  "workspaces": {\n    "": {\n      "dependencies": {\n        "agent-cli-kernel": "github:nathanvale/agent-cli-kernel#${commit}",\n      },\n    },\n  },\n}\n`,
+  );
+  mkdirSync(join(destination, installedKernel), { recursive: true });
+  writeFileSync(
+    join(destination, installedKernel, ".bun-tag"),
+    `nathanvale-agent-cli-kernel-${commit.slice(0, 7)}`,
+  );
+  if (!withFullSkill) return;
   mkdirSync(join(destination, fullSkill, ".."), { recursive: true });
   writeFileSync(join(destination, fullSkill), "# The full skill\n");
+}
+
+function moveText(path: string, from: string, to: string): void {
+  writeFileSync(path, readFileSync(path, "utf8").replace(from, to));
 }
 
 function editPointer(
@@ -74,12 +97,70 @@ describe("the kernel row's pointer skills", () => {
 });
 
 describe("the generated repository's pointer skill check", () => {
-  test(
-    "passes when the pointer names the pinned commit and the installed kernel holds the full skill",
-    async () => {
-      const { destination } = await generated();
-      installFullSkill(destination);
+  test.each([
+    ["a github: install, which names the commit's first 7 characters", false],
+    ["a git+file: install, which names the full commit", true],
+  ])(
+    "passes when the pointer, bun.lock and the installed kernel name the pinned commit, after %s",
+    async (_case, fullTag) => {
+      const { destination, commit } = await generated();
+      installKernel(destination, commit);
+      if (fullTag)
+        writeFileSync(join(destination, installedKernel, ".bun-tag"), commit);
       expect(await pointerCheck(destination)).toMatchObject({ exit: 0 });
+    },
+    processWatchdog(1),
+  );
+
+  test(
+    "fails when bun.lock pins another commit than package.json, as after a pin move with no install",
+    async () => {
+      const { destination, commit } = await generated();
+      installKernel(destination, commit);
+      const other = "b".repeat(40);
+      moveText(join(destination, "bun.lock"), commit, other);
+      const { exit, stderr } = await pointerCheck(destination);
+      expect({ exit, stderr }).toMatchObject({ exit: 1 });
+      expect(stderr).toContain(
+        `bun.lock pins ${other}, and package.json pins ${commit}. Repair: run bun install after the pin changes in package.json, commit bun.lock with it, then run bun install --frozen-lockfile.`,
+      );
+      expect(stderr).not.toContain('+   "the installed kernel is');
+      expect(stderr).toContain(onlyOneFailed);
+    },
+    processWatchdog(1),
+  );
+
+  test(
+    "fails when the installed kernel is another commit than package.json and bun.lock pin, as after a pull with no install",
+    async () => {
+      const { destination, commit } = await generated();
+      installKernel(destination, commit);
+      const other = "c".repeat(40);
+      for (const path of ["package.json", "bun.lock", pointer])
+        moveText(join(destination, path), commit, other);
+      const { exit, stderr } = await pointerCheck(destination);
+      expect({ exit, stderr }).toMatchObject({ exit: 1 });
+      expect(stderr).toContain(
+        `the installed kernel is nathanvale-agent-cli-kernel-${commit.slice(0, 7)}, and package.json pins ${other}. Repair: run bun install --frozen-lockfile.`,
+      );
+      expect(stderr).not.toContain('+   "bun.lock pins');
+      expect(stderr).toContain(onlyOneFailed);
+    },
+    processWatchdog(1),
+  );
+
+  test(
+    "fails when no kernel is installed, naming the frozen install",
+    async () => {
+      const { destination, commit } = await generated();
+      installKernel(destination, commit);
+      rmSync(join(destination, installedKernel, ".bun-tag"));
+      const { exit, stderr } = await pointerCheck(destination);
+      expect({ exit, stderr }).toMatchObject({ exit: 1 });
+      expect(stderr).toContain(
+        `the installed kernel is not there, and package.json pins ${commit}. Repair: run bun install --frozen-lockfile.`,
+      );
+      expect(stderr).toContain(onlyOneFailed);
     },
     processWatchdog(1),
   );
@@ -88,7 +169,7 @@ describe("the generated repository's pointer skill check", () => {
     "fails when the pointer names a commit package.json does not pin",
     async () => {
       const { destination, commit } = await generated();
-      installFullSkill(destination);
+      installKernel(destination, commit);
       const other = "a".repeat(40);
       editPointer(destination, (text) => text.replace(commit, other));
       const { exit, stderr } = await pointerCheck(destination);
@@ -105,6 +186,7 @@ describe("the generated repository's pointer skill check", () => {
     "fails when the installed kernel does not hold the full skill the pointer names",
     async () => {
       const { destination, commit } = await generated();
+      installKernel(destination, commit, { withFullSkill: false });
       const { exit, stderr } = await pointerCheck(destination);
       expect({ exit, stderr }).toMatchObject({ exit: 1 });
       expect(stderr).toContain(
@@ -127,8 +209,8 @@ describe("the generated repository's pointer skill check", () => {
   ])(
     "fails when the pointer names a full skill outside the installed kernel: %s",
     async (_case, outside) => {
-      const { destination } = await generated();
-      installFullSkill(destination);
+      const { destination, commit } = await generated();
+      installKernel(destination, commit);
       editPointer(destination, (text) =>
         text.replace(/^Full skill: .*$/m, `Full skill: \`${outside}\``),
       );
@@ -146,7 +228,7 @@ describe("the generated repository's pointer skill check", () => {
     "fails when the full skill the pointer names is a folder in the installed kernel, not a file",
     async () => {
       const { destination, commit } = await generated();
-      installFullSkill(destination);
+      installKernel(destination, commit);
       const folderPath =
         "node_modules/agent-cli-kernel/skills/agent-cli-kernel";
       editPointer(destination, (text) =>
@@ -166,7 +248,7 @@ describe("the generated repository's pointer skill check", () => {
     "fails naming package.json when its kernel dependency pins no full commit",
     async () => {
       const { destination, commit } = await generated();
-      installFullSkill(destination);
+      installKernel(destination, commit);
       const manifest = join(destination, "package.json");
       writeFileSync(
         manifest,
@@ -177,7 +259,7 @@ describe("the generated repository's pointer skill check", () => {
       expect(stderr).toContain(
         'package.json pins no full kernel commit: its agent-cli-kernel dependency is "github:nathanvale/agent-cli-kernel#main". Repair: write the dependency as github:nathanvale/agent-cli-kernel#<full 40-character commit>.',
       );
-      expect(stderr).toContain("\n 2 pass\n 2 fail\n");
+      expect(stderr).toContain("\n 2 pass\n 3 fail\n");
     },
     processWatchdog(1),
   );
@@ -185,8 +267,8 @@ describe("the generated repository's pointer skill check", () => {
   test(
     "fails when no skill names a full skill, so it never checks nothing",
     async () => {
-      const { destination } = await generated();
-      installFullSkill(destination);
+      const { destination, commit } = await generated();
+      installKernel(destination, commit);
       editPointer(destination, (text) =>
         text.replace(/^Full skill: .*\n/m, ""),
       );

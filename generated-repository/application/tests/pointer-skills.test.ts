@@ -5,7 +5,8 @@ import { join } from "node:path";
 const root = join(import.meta.dir, "..");
 const skillFolder = join(root, ".agents", "skills");
 const fullSkillLine = /^Full skill: `([^`\n]+)`$/m;
-const installedKernel = "node_modules/agent-cli-kernel/";
+const installedKernelFolder = "node_modules/agent-cli-kernel";
+const installedKernel = `${installedKernelFolder}/`;
 const pinnedCommitLine = /^Pinned commit: `([^`\n]*)`$/m;
 
 type PointerSkill = {
@@ -70,6 +71,38 @@ test("each pointer skill names the commit package.json pins", () => {
           `.agents/skills/${name}/SKILL.md names ${pinnedCommit}, and package.json pins ${commit}. Repair: write ${commit} on its Pinned commit line, then read the full skill at that commit for any change.`,
       ),
   ).toEqual([]);
+});
+
+function lockedCommit(): string {
+  const lock = readFileSync(join(root, "bun.lock"), "utf8");
+  return (
+    /"agent-cli-kernel": "[^"\n]*#([0-9a-f]{40})"/.exec(lock)?.[1] ??
+    "no full kernel commit"
+  );
+}
+
+function installedTag(): string | undefined {
+  const tag = join(root, installedKernelFolder, ".bun-tag");
+  return existsSync(tag) ? readFileSync(tag, "utf8").trim() : undefined;
+}
+
+test("bun.lock and the installed kernel hold the commit package.json pins", () => {
+  const commit = pinnedCommit();
+  const locked = lockedCommit();
+  const installed = installedTag();
+  const installedCommit = /([0-9a-f]{7,40})$/.exec(installed ?? "")?.[1];
+  expect([
+    ...(locked === commit
+      ? []
+      : [
+          `bun.lock pins ${locked}, and package.json pins ${commit}. Repair: run bun install after the pin changes in package.json, commit bun.lock with it, then run bun install --frozen-lockfile.`,
+        ]),
+    ...(installedCommit !== undefined && commit.startsWith(installedCommit)
+      ? []
+      : [
+          `the installed kernel is ${installed ?? "not there"}, and package.json pins ${commit}. Repair: run bun install --frozen-lockfile.`,
+        ]),
+  ]).toEqual([]);
 });
 
 test("each pointer skill names a full skill inside the installed kernel", () => {
