@@ -236,6 +236,11 @@ worktree. Its named test must pass without the patch and fail with it. The
 hosted check replays every fault record. Pre-push replays fault records
 affected by the push.
 
+**Fault timing**:
+The seconds one planted fault took to replay, kept in its own file beside
+the fault records. Fault replay's shard planner balances its parts by them,
+and counts a fault with no timing as a short one.
+
 **Anchor**:
 The text one changed region of a planted fault's patch is placed by. A hunk
 can hold several changed regions, runs of lines it removes or adds, with
