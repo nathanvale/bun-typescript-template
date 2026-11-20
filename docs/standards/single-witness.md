@@ -16,11 +16,13 @@ this file.
   references, which can hold unpushed commits or name another repository.
   Witnessed: [b9c3ba0] (pin verification accepted an unpushed commit, and
   another repository's main, as reachable from the pin's branch).
-- Fetch the exact commit a remote reports into the local clone before
-  judging it there; the branch can move after the clone was made.
-  Witnessed: [a73e057] (kernel main moved between the hosted job's clone and
-  the pin move's ls-remote, so a good commit was refused as unreadable
-  history).
+- Stop a fetch from leaving git's automatic maintenance running in the clone
+  it fetched into: pass `maintenance.auto=false` and `gc.auto=0`, because git
+  starts `maintenance run --auto --detach` after a fetch, and it works in the
+  clone after the fetch returns, so a test's folder removal can fail on an
+  entry that vanished. Witnessed: [fe86efe] (hosted test (2) failed once with
+  ENOENT on lstat of a fixture folder nothing removed; the cause is shown by
+  mechanism, not by a red run of that test).
 - Build an expected abbreviated commit with git in the same repository, as
   the code under test does; git lengthens it as the repository grows.
   Witnessed: [16c6e4d] (a pin move report test fixed it at 7 characters).
@@ -169,7 +171,7 @@ this file.
 [16c6e4d]: https://github.com/nathanvale/bun-typescript-template/commit/16c6e4d565cd37f750ccc56b48438ae2818a2f24
 [0352f0d]: https://github.com/nathanvale/bun-typescript-template/commit/0352f0d113e82a3aa9559b5a811d353f16458be4
 [47e2ec3]: https://github.com/nathanvale/bun-typescript-template/commit/47e2ec3c245279421f11ab054db621c97e213333
-[a73e057]: https://github.com/nathanvale/bun-typescript-template/commit/a73e0573e663dc3c00ebe731b217c34b67a8187c
+[fe86efe]: https://github.com/nathanvale/bun-typescript-template/commit/fe86efe7178d0824cb80f3b678f8f85b88b21f53
 [73cfcf4]: https://github.com/nathanvale/bun-typescript-template/commit/73cfcf430e43456684ad90d6057eff2473f99bc3
 [c08e107]: https://github.com/nathanvale/bun-typescript-template/commit/c08e107766fe533f3ed2756158797df15fa64f12
 [fe76ccb]: https://github.com/nathanvale/bun-typescript-template/commit/fe76ccb74790ed9221ef35d073d1319152a7a93c

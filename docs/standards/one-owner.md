@@ -16,6 +16,13 @@ here.
   until the reader ran that rule's helper too), [d3a35b6] (the pin move's
   fetch skipped the kernel reader's repository check and wrote kernel
   objects into an enclosing repository).
+- Read a remote's branch commit and hold it in the clone through one
+  function, `branchCommitHeldBy`, which every command that verifies against
+  a kernel clone calls: a clone made before the branch moved lacks the
+  commit. Witnessed: [a73e057] (kernel main moved between the hosted job's
+  clone and the pin move's ls-remote, so a good commit was refused as
+  unreadable history), [72f0f5c] (the pin verification command read the
+  branch without fetching, and the same race broke two fault replays).
 - Import shared test fakes and fixtures from
   `tests/kernel/kernel-repair/handlers.ts` and `shapes.ts`. Witnessed:
   [810345d], [cf72627].
@@ -67,3 +74,5 @@ here.
 [a639dc0]: https://github.com/nathanvale/bun-typescript-template/commit/a639dc0cb92d859552ca1eec75ee1a66d3cc0ced
 [d3a35b6]: https://github.com/nathanvale/bun-typescript-template/commit/d3a35b6f615b5422255514ed5b644181ae963872
 [73cfcf4]: https://github.com/nathanvale/bun-typescript-template/commit/73cfcf430e43456684ad90d6057eff2473f99bc3
+[a73e057]: https://github.com/nathanvale/bun-typescript-template/commit/a73e0573e663dc3c00ebe731b217c34b67a8187c
+[72f0f5c]: https://github.com/nathanvale/bun-typescript-template/commit/72f0f5c88516a703b761fb066f781869d9b97808
