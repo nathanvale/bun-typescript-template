@@ -98,7 +98,10 @@ boundary trusts the types.
   matched no file under it), [r4625243640] (the record's plain-path
   refusal split a path on `/` alone, so `..\outside` passed, and a backslash
   separates folders on Windows), [#113-copilot] (a path with a NUL byte
-  passed the plain-path rule and threw at the first file system call).
+  passed the plain-path rule and threw at the first file system call),
+  [64d3900] (the pointer skill check accepted a Full skill path anywhere in
+  the repository, the pointer skill itself included, and one climbing out
+  of the installed kernel with `..`).
 
 ## Links
 
@@ -180,3 +183,4 @@ boundary trusts the types.
 [a639dc0]: https://github.com/nathanvale/bun-typescript-template/commit/a639dc0cb92d859552ca1eec75ee1a66d3cc0ced
 [2a68a20]: https://github.com/nathanvale/bun-typescript-template/commit/2a68a201a1a56a15a41447450070484b96db5b5d
 [b9c3ba0]: https://github.com/nathanvale/bun-typescript-template/commit/b9c3ba00521b068d6ab1aca20453e8e8012d3f52
+[64d3900]: https://github.com/nathanvale/bun-typescript-template/commit/64d39009bbc86a2b392ebf4cd96641dec5b57fd6
