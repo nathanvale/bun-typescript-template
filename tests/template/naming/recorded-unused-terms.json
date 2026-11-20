@@ -12,18 +12,8 @@
       "ticket": "MAG-108"
     },
     {
-      "term": "Prepared parent",
-      "reason": "MAG-122 makes the carry-out commit on top of it, in the kernel repository. No ticket is known to name it in a tracked file here.",
-      "ticket": "MAG-122"
-    },
-    {
       "term": "Kernel migration",
       "reason": "Not designed. No ticket is known to bring it into a tracked file here; MAG-114 is the kernel split spec, which uses the word.",
-      "ticket": "MAG-114"
-    },
-    {
-      "term": "Kernel repository alignment",
-      "reason": "Not decided. No ticket is known to bring it into a tracked file here; MAG-114 is the kernel split spec, which uses the word.",
       "ticket": "MAG-114"
     },
     {
@@ -39,21 +29,6 @@
     {
       "term": "Claim tag",
       "reason": "A word for the plan. No ticket is known to bring it into a tracked file here; MAG-114 is the kernel split spec, which uses the word.",
-      "ticket": "MAG-114"
-    },
-    {
-      "term": "Add-on requirement",
-      "reason": "Nathan's decision of 20 November 2026 on MAG-114 makes an add-on requirement a package declared in the kernel's package.json, which the template does not hold, so no tracked file here names one.",
-      "ticket": "MAG-114"
-    },
-    {
-      "term": "Add-on selection",
-      "reason": "Nathan's 10:52 decision of 20 November 2026 on MAG-114 keeps a generated repository's add-on choice only in installedAddons, so the template selects none.",
-      "ticket": "MAG-114"
-    },
-    {
-      "term": "Fault timing",
-      "reason": "The kernel repository uses it: its fault replay keeps one timing file per planted fault (kernel pull request 54). This glossary owns the word for both repositories. The template's fault replay keeps no timings, and it comes into use here only when the template's planted faults move to one file each, as the kernel's did; no ticket plans that yet, so MAG-114, which carries the kernel split's glossary alignment, holds it.",
       "ticket": "MAG-114"
     }
   ]

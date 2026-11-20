@@ -26,6 +26,15 @@ These sources define the command contract the CLI kernel implements.
 - From anywhere else, clone the kernel repository and name its path in
   `KERNEL_REPOSITORY`.
 
+## The template's pin
+
+- The template's pin is `kernel-pin.json`. It names the kernel repository,
+  its remote, one full commit, the branch that commit must stay reachable
+  from, and the carry-out identity no pin may precede.
+- A generated repository's pin is one dependency line in its `package.json`:
+  `"agent-cli-kernel": "github:nathanvale/agent-cli-kernel#<full 40-character commit>"`.
+  The kernel's glossary defines Pin.
+
 ## Pin verification
 
 - For a red `pin-verification` job, run `bun run pin-verification` with the

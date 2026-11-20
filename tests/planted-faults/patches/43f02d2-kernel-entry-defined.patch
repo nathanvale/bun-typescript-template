@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-ownership.ts b/scripts/glossary-ownership.ts
+index 089402b..f3d1d85 100644
+--- a/scripts/glossary-ownership.ts
++++ b/scripts/glossary-ownership.ts
+@@ -44,7 +44,7 @@ export function ownershipProblems(
+ ): string[] {
+   const defined = new Set(namesIn(glossary));
+   return listedEntries(ownershipText)
+-    .filter((name) => defined.has(name))
++    .filter((name) => defined.has(name) && !defined.has(name))
+     .map(
+       (name) =>
+         `GLOSSARY.md defines "${name}", which the kernel owns and ${ownershipFile} lists. Repair: remove the entry and link the kernel's glossary instead.`,

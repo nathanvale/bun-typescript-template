@@ -51,9 +51,8 @@ commit it undoes.
 
 **Fault replay**:
 A run that applies each selected planted fault's patch in a temporary
-worktree. Its named test must pass without the patch and fail with it. The
-hosted check replays every fault record. Pre-push replays fault records
-affected by the push.
+worktree. Its named test must pass without the patch and fail with it. A
+repository's standards say which fault records a run selects.
 
 **Anchor**:
 The text one changed region of a planted fault's patch is placed by. A hunk
@@ -133,8 +132,8 @@ A commit or review thread that shows a mistake: the commit that fixed it, the
 review thread that caught it, or a commit that carries it.
 
 **Gate note**:
-The note in `CODING_STANDARDS.md` that says what a rule row's gates refuse and
-where, what stays with the reviewer, and which witnesses taught it.
+The note, kept in a repository's standards, that says what a rule row's gates
+refuse and where, what stays with the reviewer, and which witnesses taught it.
 
 **Citable origins**:
 The repositories, other than a repository itself, whose commits and review

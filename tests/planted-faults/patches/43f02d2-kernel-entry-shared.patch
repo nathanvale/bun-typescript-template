@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-ownership.ts b/scripts/glossary-ownership.ts
+index 089402b..8760596 100644
+--- a/scripts/glossary-ownership.ts
++++ b/scripts/glossary-ownership.ts
+@@ -42,7 +42,7 @@ export function ownershipProblems(
+   glossary: string,
+   ownershipText: string,
+ ): string[] {
+-  const defined = new Set(namesIn(glossary));
++  const defined = new Set(namesIn(glossary.slice(0, glossary.indexOf(sharedHeading))));
+   return listedEntries(ownershipText)
+     .filter((name) => defined.has(name))
+     .map(
