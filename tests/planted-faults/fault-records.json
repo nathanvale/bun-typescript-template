@@ -1505,6 +1505,27 @@
     "source": "16c6e4d test(pin-move): make four tests hold as the kernel and npm move"
   },
   {
+    "id": "a73e057-pin-move-fetch",
+    "patch": "tests/planted-faults/patches/a73e057-pin-move-fetch.patch",
+    "testFile": "tests/template/pin-move/pin-verification.test.ts",
+    "title": "fetches the commit the pin's branch points at into a clone made before the branch moved",
+    "source": "a73e057 fix(pin-move): fetch the remote branch's commit into a clone that lacks it"
+  },
+  {
+    "id": "a73e057-pin-move-fetch-bound",
+    "patch": "tests/planted-faults/patches/a73e057-pin-move-fetch-bound.patch",
+    "testFile": "tests/template/pin-move/pin-verification.test.ts",
+    "title": "gives up a fetch that does not finish within its bound$",
+    "source": "a73e057 fix(pin-move): fetch the remote branch's commit into a clone that lacks it"
+  },
+  {
+    "id": "d3a35b6-pin-move-fetch-top-level",
+    "patch": "tests/planted-faults/patches/d3a35b6-pin-move-fetch-top-level.patch",
+    "testFile": "tests/template/pin-move/pin-verification.test.ts",
+    "title": "refuses, before any fetch, a path inside another repository, and writes nothing into that repository$",
+    "source": "d3a35b6 fix(pin-move): refuse a kernel path inside another repository before fetching"
+  },
+  {
     "id": "2c064b8-pin-verification-exit",
     "patch": "tests/planted-faults/patches/2c064b8-pin-verification-exit.patch",
     "source": "2c064b8 feat(pin-verification): verify the template's kernel pin as a command",
