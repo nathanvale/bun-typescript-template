@@ -60,6 +60,11 @@
       "term": "Kernel lockfile",
       "reason": "The template's one lockfile for generated repositories does not exist yet. MAG-126 makes the pin move that writes it.",
       "ticket": "MAG-126"
+    },
+    {
+      "term": "Fault timing",
+      "reason": "The kernel repository uses it: its fault replay keeps one timing file per planted fault (kernel pull request 54). The template's fault replay keeps no timings yet, and this glossary owns the word for both repositories.",
+      "ticket": "MAG-114"
     }
   ]
 }
