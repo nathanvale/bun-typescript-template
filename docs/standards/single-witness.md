@@ -115,6 +115,9 @@ this file.
 - Check that a path a check needs as a file is a file: `existsSync` answers
   yes for a folder too. Witnessed: [47e2ec3] (the pointer skill check passed
   a Full skill line naming a folder in the installed kernel).
+- Bound a test above the sum of the child bounds it runs one after another,
+  not only above each. Witnessed: [47e2ec3] (two 4 s git calls ran under a
+  5 s test timeout).
 - Assert a schedule's whole value. A test that reads only some cron fields
   passes a schedule that runs far more often. Witnessed: [73cfcf4] (the
   weekly test read the day fields only, so `* * * * 0` passed).
