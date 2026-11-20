@@ -1221,7 +1221,7 @@
     "id": "1ae6c19-recipe-kernel-row",
     "patch": "tests/planted-faults/patches/1ae6c19-recipe-kernel-row.patch",
     "testFile": "tests/template/bootstrap/kernel-row-refusals.test.ts",
-    "title": "the recipes the command line selects from do not hold the kernel row$",
+    "title": "RECIPES, the rows the toolchain and lint tests make with the template's own packages, does not hold the kernel row$",
     "source": "1ae6c19 feat(bootstrap): stamp the kernel through a kernel row"
   },
   {

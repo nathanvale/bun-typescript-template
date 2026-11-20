@@ -81,9 +81,9 @@ export class KernelRefusal extends Error {
   readonly repair: string;
   constructor(
     readonly code: KernelRefusalCode,
-    cause: string,
+    readonly reason: string,
   ) {
-    super(`${cause} Repair: ${repairs[code]}`);
+    super(`${reason} Repair: ${repairs[code]}`);
     this.repair = repairs[code];
   }
 }

@@ -15,11 +15,7 @@ import {
   bootstrapRow,
   withEnvironment,
 } from "../../support/kernel-row-fixture.ts";
-import {
-  kernelClone,
-  siblingKernel,
-  trialBase,
-} from "../../support/kernel-sibling.ts";
+import { kernelClone, trialBase } from "../../support/kernel-sibling.ts";
 import {
   oneDependencyChanged,
   kernelTrials,
@@ -97,21 +93,39 @@ describe("the kernel trial", () => {
   );
 
   test(
-    "the template's kernel lockfile installs frozen, unchanged, and passes the check command in a repository the kernel row makes at the pinned commit",
+    "the template's kernel lockfile installs frozen, unchanged, and passes the check command, pointer skill check included, in a repository Bootstrap's command line makes with --kernel at the pinned commit",
     async () => {
       const work = folder("kernel-lockfile-");
       const destination = join(work, "made");
-      await bootstrapRow({
-        destination,
-        sourcePacket: "/abs/packets/demo",
-        kernel: {
-          repository: siblingKernel(),
-          commit: readKernelPin(ROOT).commit,
-        },
-        lockfile: "committed",
-      });
-      const committed = readFileSync(join(ROOT, KERNEL_LOCKFILE), "utf8");
+      const { commit } = readKernelPin(ROOT);
       const env = { ...inherited(), ...gitEnv };
+      const made = await spawnBounded(
+        [
+          process.execPath,
+          "run",
+          "src/bootstrap.ts",
+          "--profile",
+          "durable",
+          "--kernel",
+          "--destination",
+          destination,
+          "--source-packet",
+          "/abs/packets/demo",
+          "--json",
+        ],
+        { cwd: ROOT, env, processGroup: true },
+      );
+      expect({ exit: made.exit, stderr: made.stderr }).toEqual({
+        exit: 0,
+        stderr: "",
+      });
+      expect(
+        readFileSync(
+          join(destination, ".claude/skills/agent-cli-kernel/SKILL.md"),
+          "utf8",
+        ),
+      ).toContain(`\nPinned commit: \`${commit}\`\n`);
+      const committed = readFileSync(join(ROOT, KERNEL_LOCKFILE), "utf8");
       const install = await spawnBounded(
         [process.execPath, "install", "--frozen-lockfile"],
         {
@@ -133,6 +147,37 @@ describe("the kernel trial", () => {
           readFileSync(join(destination, "bun.lock"), "utf8") === committed,
         check: check.exit,
       }).toEqual({ install: 0, lockfile: true, check: 0 });
+      const pointer = await spawnBounded(
+        [process.execPath, "test", "tests/pointer-skills.test.ts"],
+        { cwd: destination, env, processGroup: true },
+      );
+      expect({
+        exit: pointer.exit,
+        ran: pointer.stderr.includes("\n 3 pass\n 0 fail\n"),
+      }).toEqual({ exit: 0, ran: true });
+    },
+    trialTimeout(1),
+  );
+
+  test(
+    "is refused at the check command for a kernel commit without the full skill the pointer skill names, the commit before the author skill landed",
+    async () => {
+      const work = folder("kernel-trial-");
+      const commit = "0b64b0e480a77ae6abbd3e671497354309182b42";
+      const refusal = await refusalOf(
+        trialOf(join(work, "trial"), {
+          repository: kernelClone(work, trialBase),
+          commit,
+        }),
+      );
+      expect(refusal).toMatchObject({ code: "trial_failed" });
+      const { message } = refusal as { message: string };
+      expect(message).toStartWith(
+        `The kernel trial's check command in ${join(work, "trial/second")} exited 1. Its last lines:\n`,
+      );
+      expect(message).toContain(
+        `.agents/skills/agent-cli-kernel/SKILL.md names node_modules/agent-cli-kernel/skills/agent-cli-kernel/SKILL.md, which the installed kernel at ${commit} does not hold.`,
+      );
     },
     trialTimeout(1),
   );

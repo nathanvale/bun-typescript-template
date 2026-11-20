@@ -23,6 +23,7 @@ export interface BootstrapOptions {
 interface ParsedFlags {
   destination?: string;
   json: boolean;
+  kernel: boolean;
   monorepo: boolean;
   name?: string;
   profile?: Profile;
@@ -47,6 +48,7 @@ Usage:
   bun run bootstrap --profile durable --destination PATH --source-packet PATH_OR_URL [--name NAME] [--monorepo] [--json]
   bun run bootstrap --profile durable --starter simple --destination PATH --source-packet PATH_OR_URL [--name NAME] [--json]
   bun run bootstrap --profile durable --starter complex --destination PATH --source-packet PATH_OR_URL [--name NAME] [--json]
+  bun run bootstrap --profile durable --kernel --destination PATH --source-packet PATH_OR_URL [--name NAME] [--json]
 
 Profiles:
   scratch  Dump-and-run repository with only run, typecheck, and test essentials.
@@ -55,6 +57,11 @@ Profiles:
 CLI starters:
   simple   Read-only CLI with Contract Core 2.0 help and discovery.
   complex  State-changing CLI with typed contracts and Branch Stations.
+
+Kernel:
+  --kernel  CLI on the installed kernel, named by the template's pin, with the
+            kernel lockfile and a pointer skill for each kernel skill. Reads the
+            kernel repository beside the template, or at KERNEL_REPOSITORY.
 
 Safety:
   An existing non-empty destination is refused and never overwritten.
@@ -139,11 +146,15 @@ function assignBooleanFlag(flags: ParsedFlags, token: string): boolean {
     flags.json = true;
     return true;
   }
+  if (token === "--kernel") {
+    flags.kernel = true;
+    return true;
+  }
   return false;
 }
 
 function parseFlags(argv: string[]): ParsedFlags {
-  const flags: ParsedFlags = { json: false, monorepo: false };
+  const flags: ParsedFlags = { json: false, kernel: false, monorepo: false };
 
   for (let index = 0; index < argv.length; index += 1) {
     const token = tokenAt(argv, index);
@@ -188,6 +199,7 @@ function selectProjectRecipe(
     profile,
     monorepo: flags.monorepo,
     starter: flags.starter,
+    kernel: flags.kernel,
   });
   if (choice.status === "selected") {
     return choice.recipe;

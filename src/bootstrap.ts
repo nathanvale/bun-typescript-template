@@ -23,8 +23,13 @@ import {
   validateSourcePacket,
 } from "./bootstrap-arguments.ts";
 import { CliError } from "./cli-error.ts";
-import { clonePin, generatedPin, readKernelPin } from "./kernel-pin.ts";
-import { type KernelSeam, readKernel } from "./kernel-reader.ts";
+import {
+  clonePin,
+  findSiblingKernel,
+  generatedPin,
+  readKernelPin,
+} from "./kernel-pin.ts";
+import { KernelRefusal, type KernelSeam, readKernel } from "./kernel-reader.ts";
 import {
   type Copy,
   KERNEL_LOCKFILE,
@@ -419,17 +424,39 @@ export async function bootstrapWithKernel(
   });
 }
 
+// Interface: Bootstrap through the kernel row from the command line: the
+// template's pinned commit, read from the kernel repository findSiblingKernel
+// finds, with the kernel lockfile.
+function bootstrapOnKernel(
+  options: BootstrapOptions,
+): Promise<BootstrapResult> {
+  return bootstrapWithKernel({
+    destination: options.destination,
+    name: options.name,
+    sourcePacket: options.sourcePacket,
+    kernel: {
+      repository: findSiblingKernel(TEMPLATE_ROOT, process.env),
+      commit: readKernelPin(TEMPLATE_ROOT).commit,
+    },
+    lockfile: "committed",
+  });
+}
+
+function failureOf(error: unknown): CliError {
+  if (error instanceof CliError) return error;
+  if (error instanceof KernelRefusal)
+    return new CliError(error.code, error.reason, error.repair, 1, false);
+  return new CliError(
+    "runtime_failure",
+    error instanceof Error ? error.message : "unexpected runtime failure",
+    RUNTIME_FAILURE_REPAIR,
+    1,
+    false,
+  );
+}
+
 function writeError(error: unknown, json: boolean): number {
-  const failure =
-    error instanceof CliError
-      ? error
-      : new CliError(
-          "runtime_failure",
-          error instanceof Error ? error.message : "unexpected runtime failure",
-          RUNTIME_FAILURE_REPAIR,
-          1,
-          false,
-        );
+  const failure = failureOf(error);
   const envelope = {
     schemaVersion: SCHEMA_VERSION,
     status: "refused",
@@ -456,7 +483,10 @@ export async function main(argv: string[]): Promise<number> {
       process.stdout.write(HELP);
       return 0;
     }
-    const result = await bootstrap(options);
+    const result =
+      options.recipe === KERNEL_RECIPE
+        ? await bootstrapOnKernel(options)
+        : await bootstrap(options);
     process.stdout.write(
       options.json
         ? `${JSON.stringify(result)}\n`
