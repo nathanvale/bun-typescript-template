@@ -1,0 +1,12 @@
+diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
+index 0d1dbc7..9f9c75a 100644
+--- a/scripts/pin-move.ts
++++ b/scripts/pin-move.ts
+@@ -200,7 +200,6 @@ export async function main(argv: readonly string[]): Promise<number> {
+     active.stoppedBy ??= signal;
+     active.stop?.();
+   };
+-  for (const signal of stopSignals) process.on(signal, stop);
+   try {
+     verifyPin(kernel, pin);
+     const { report, written } = movePin(

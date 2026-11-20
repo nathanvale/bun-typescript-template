@@ -1412,5 +1412,47 @@
     "testFile": "tests/template/process-runner/process-runner.test.ts",
     "title": "sees a variable the caller set after the runner loaded$",
     "source": "a639dc0 fix(pin-move): settle the Sol standards and spec reviews of T3"
+  },
+  {
+    "id": "2a68a20-bootstrap-lockfile-copy",
+    "patch": "tests/planted-faults/patches/2a68a20-bootstrap-lockfile-copy.patch",
+    "testFile": "tests/template/bootstrap/kernel-row-lockfile.test.ts",
+    "title": "supplied bytes the caller changes after the call reach the generated repository as they were given$",
+    "source": "2a68a20 fix(pin-move): read the trial and kernel row requests once, before their first wait"
+  },
+  {
+    "id": "2a68a20-bootstrap-seam",
+    "patch": "tests/planted-faults/patches/2a68a20-bootstrap-seam.patch",
+    "testFile": "tests/template/bootstrap/kernel-row-lockfile.test.ts",
+    "title": "a kernel seam the caller changes after the call leaves the Pin at the commit the kernel reader checked$",
+    "source": "2a68a20 fix(pin-move): read the trial and kernel row requests once, before their first wait"
+  },
+  {
+    "id": "2a68a20-kernel-trial-seam",
+    "patch": "tests/planted-faults/patches/2a68a20-kernel-trial-seam.patch",
+    "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
+    "title": "records the commit it tried, and qualifies that commit's lockfile$",
+    "source": "2a68a20 fix(pin-move): read the trial and kernel row requests once, before their first wait"
+  },
+  {
+    "id": "f815bb0-pin-move-signals",
+    "patch": "tests/planted-faults/patches/f815bb0-pin-move-signals.patch",
+    "testFile": "tests/template/pin-move/pin-move-command.test.ts",
+    "title": "stopped by SIGTERM during its kernel trial",
+    "source": "f815bb0 fix(pin-move): stop the trial's running step on SIGINT, SIGTERM or SIGHUP"
+  },
+  {
+    "id": "f815bb0-kernel-trial-stopped",
+    "patch": "tests/planted-faults/patches/f815bb0-kernel-trial-stopped.patch",
+    "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
+    "title": "that its caller stops is stopped with its process, and refused as stopped$",
+    "source": "f815bb0 fix(pin-move): stop the trial's running step on SIGINT, SIGTERM or SIGHUP"
+  },
+  {
+    "id": "f815bb0-kernel-trial-stopped-before",
+    "patch": "tests/planted-faults/patches/f815bb0-kernel-trial-stopped-before.patch",
+    "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
+    "title": "after a stop, starts no further step$",
+    "source": "f815bb0 fix(pin-move): stop the trial's running step on SIGINT, SIGTERM or SIGHUP"
   }
 ]

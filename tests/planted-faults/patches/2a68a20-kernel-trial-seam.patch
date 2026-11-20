@@ -1,0 +1,13 @@
+diff --git a/scripts/kernel-trial.ts b/scripts/kernel-trial.ts
+index 402ac26..a07aad0 100644
+--- a/scripts/kernel-trial.ts
++++ b/scripts/kernel-trial.ts
+@@ -139,7 +139,7 @@ export async function kernelTrial(trial: KernelTrial): Promise<TrialPassed> {
+       destination: join(folder, name),
+       name: "kernel-trial",
+       sourcePacket: "/kernel-trial",
+-      kernel,
++      kernel: trial.kernel,
+       declarationPath: declarationPath ?? kernelDeclarationPath,
+       kernelFrom: kernelFrom ?? "remote",
+       lockfile,

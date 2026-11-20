@@ -1,0 +1,13 @@
+diff --git a/src/bootstrap.ts b/src/bootstrap.ts
+index 11820cc..a766591 100644
+--- a/src/bootstrap.ts
++++ b/src/bootstrap.ts
+@@ -699,7 +699,7 @@ export async function bootstrapWithKernel(
+     sourcePacket,
+     kernelPin:
+       kernelFrom === "clone"
+-        ? clonePin(kernel)
++        ? clonePin(seam)
+         : generatedPin(readKernelPin(TEMPLATE_ROOT), commit),
+     lockfile,
+   });
