@@ -124,6 +124,9 @@ this file.
   of its output: the order test files run in decides what the tail holds.
   Witnessed: [fe76ccb] (the hosted kernel trial's tail held only later
   add-on tests, and lost the missing-skill diagnostic).
+- Read a failing test's output from its first error line to its result
+  line: a teardown error follows the body's. Witnessed: [c1cbee4] (the
+  kernel trial refusal kept only the afterEach diagnostic).
 - Bound a test above the sum of the child bounds it runs one after another,
   not only above each. Witnessed: [47e2ec3] (two 4 s git calls ran under a
   5 s test timeout).
@@ -170,3 +173,4 @@ this file.
 [73cfcf4]: https://github.com/nathanvale/bun-typescript-template/commit/73cfcf430e43456684ad90d6057eff2473f99bc3
 [c08e107]: https://github.com/nathanvale/bun-typescript-template/commit/c08e107766fe533f3ed2756158797df15fa64f12
 [fe76ccb]: https://github.com/nathanvale/bun-typescript-template/commit/fe76ccb74790ed9221ef35d073d1319152a7a93c
+[c1cbee4]: https://github.com/nathanvale/bun-typescript-template/commit/c1cbee4c3732aaff2b91d374a5ccf1fddef32f82

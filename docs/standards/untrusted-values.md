@@ -48,7 +48,8 @@ boundary trusts the types.
   file with `fstatSync`).
 - State a complexity bound for each traversal and append. Witnessed:
   [r4580077771] (a shared subgraph cost about 2^35 visits), [d972ded]
-  (quadratic append).
+  (quadratic append), [c1cbee4] (a kernel trial refusal copied every
+  failing test line, 4.49 MB from 200,000 lines).
 
 ## Bytes
 
@@ -188,3 +189,4 @@ boundary trusts the types.
 [b9c3ba0]: https://github.com/nathanvale/bun-typescript-template/commit/b9c3ba00521b068d6ab1aca20453e8e8012d3f52
 [64d3900]: https://github.com/nathanvale/bun-typescript-template/commit/64d39009bbc86a2b392ebf4cd96641dec5b57fd6
 [47e2ec3]: https://github.com/nathanvale/bun-typescript-template/commit/47e2ec3c245279421f11ab054db621c97e213333
+[c1cbee4]: https://github.com/nathanvale/bun-typescript-template/commit/c1cbee4c3732aaff2b91d374a5ccf1fddef32f82
