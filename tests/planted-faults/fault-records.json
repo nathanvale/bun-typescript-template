@@ -1559,5 +1559,19 @@
     "testFile": "tests/template/bootstrap/kernel-row-refusals.test.ts",
     "title": "reports a missing kernel repository at KERNEL_REPOSITORY in its envelope, with the kernel reader's code and repair, before any folder is made$",
     "source": "9e160bd feat(bootstrap): offer the kernel row on the command line with --kernel"
+  },
+  {
+    "id": "64d3900-pointer-skills-inside",
+    "patch": "tests/planted-faults/patches/64d3900-pointer-skills-inside.patch",
+    "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
+    "title": "fails when the pointer names a full skill outside the installed kernel: a path that exists outside it$",
+    "source": "64d3900 fix(bootstrap): refuse a pointer skill whose Full skill lies outside the installed kernel"
+  },
+  {
+    "id": "64d3900-pointer-skills-climb",
+    "patch": "tests/planted-faults/patches/64d3900-pointer-skills-climb.patch",
+    "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
+    "title": "fails when the pointer names a full skill outside the installed kernel: a path that climbs out of it$",
+    "source": "64d3900 fix(bootstrap): refuse a pointer skill whose Full skill lies outside the installed kernel"
   }
 ]
