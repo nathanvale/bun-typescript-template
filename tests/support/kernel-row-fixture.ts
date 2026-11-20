@@ -22,9 +22,6 @@ export type KernelRowRun = {
   readonly request: KernelBootstrap;
 };
 
-// Interface: a small kernel repository in a test folder and a request that
-// bootstraps a repository from it, through the kernel row, into a folder
-// that does not exist yet.
 export function kernelRowFixture() {
   const folder = ownedFolders();
   return (layout: Layout = firstLayout): KernelRowRun => {
@@ -47,15 +44,10 @@ export function kernelRowFixture() {
   };
 }
 
-// Interface: runs `work` in this process with git isolated from the
-// caller's configuration, because Bootstrap reads the template's commit with
-// git for Template provenance.
 function withIsolatedGit<Result>(work: () => Promise<Result>): Promise<Result> {
   return withEnvironment(gitEnv, work);
 }
 
-// Interface: runs `work` in this process with `variables` set on
-// process.env, and restores each one afterwards.
 export async function withEnvironment<Result>(
   variables: Readonly<Record<string, string>>,
   work: () => Promise<Result>,
@@ -90,8 +82,6 @@ export async function bootstrapRefusal(request: KernelBootstrap) {
   throw new Error("The bootstrap was not refused.");
 }
 
-// Interface: what a refused run left in the folder that would hold the
-// generated repository, or "no folder" when it never made that folder.
 export function leftBehind({
   parent,
 }: KernelRowRun): readonly string[] | "no folder" {

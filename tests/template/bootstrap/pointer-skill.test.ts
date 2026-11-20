@@ -29,10 +29,6 @@ async function generated() {
   return { destination, commit: request.kernel.commit };
 }
 
-// Interface: what a frozen install leaves for the pointer skill check to
-// read: bun.lock's kernel dependency line and its resolved kernel record, in
-// the form a github: install writes, the installed kernel's .bun-tag in
-// the form a github: install writes, and, unless told not to, the full skill.
 function installKernel(
   destination: string,
   commit: string,

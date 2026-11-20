@@ -3,8 +3,6 @@ import {
   type KernelRefusalCode,
 } from "../../src/kernel-reader.ts";
 
-// Interface: the repair line each kernel reader refusal must end with, written
-// out here so a test compares the source's text with a second copy.
 export const repairs = {
   repository:
     "Put a clone of the kernel repository at that path, or give the path of one that is there.",

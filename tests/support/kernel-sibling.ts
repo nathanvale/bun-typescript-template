@@ -7,28 +7,17 @@ import { gitWithInput } from "./git-object-fixture.ts";
 
 const pinnedCommit = readKernelPin(ROOT).commit;
 
-// Interface: the kernel commit the kernel trial and pin move tests build on,
-// the first a generated repository can install and pass its check command
-// at: kernel pull request 52's merge commit, the first to ship the full skill
-// its pointer skill names. It stays put when the pin moves, so a pin move
-// changes no test.
 export const trialBase = "315862fa13c81de3ff7fd19a4be341182b57f778";
 
-// Interface: a template commit that holds slice S5, which the pin's branch
-// reaches through the kernel repository's carried history, from before the
-// carry-out commit.
 export const templateCommitHoldingS5 =
   "77ebdeafb1f49d0b32307b3ead7273d265ad4918";
 
-// Interface: a full commit identity no kernel repository holds.
 export const absentCommit = "0123456789abcdef0123456789abcdef01234567";
 
 export function siblingKernel(): string {
   return findSiblingKernel(ROOT, process.env);
 }
 
-// Interface: a clone of the sibling kernel repository in `folder`, with no
-// remote and no working tree, whose main branch ends at `mainAt`.
 export function kernelClone(folder: string, mainAt = pinnedCommit): string {
   mkdirSync(folder, { recursive: true });
   git(folder, "clone", "--quiet", "--no-checkout", siblingKernel(), "kernel");
@@ -44,9 +33,6 @@ export type TopLevelEdit = {
   readonly rename?: readonly [from: string, to: string];
 };
 
-// Interface: a new commit whose tree is the first parent's with top-level
-// entries replaced or renamed, made with git's plumbing so the clone needs
-// no working tree. It moves no branch.
 export function commitOn(
   root: string,
   parents: readonly [string, ...string[]],

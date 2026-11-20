@@ -1,8 +1,5 @@
 import { afterEach, spyOn } from "bun:test";
 
-// Interface: captures for one test file what an in-process subject writes to
-// process.stdout or process.stderr, instead of printing it. Call it at the
-// file's top; each capture is undone after its test.
 export function streamWrites() {
   const spies: { mockRestore(): void }[] = [];
   afterEach(() => {

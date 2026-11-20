@@ -31,10 +31,6 @@ function cacheInfo(root: string, entry: ObjectEntry): string {
   return `${entry.mode ?? "100644"},${blob},${entry.path}`;
 }
 
-// Interface: commits the entries as git objects through the index alone, so a
-// path the host's file system could not hold (two names that differ only in
-// case, a symbolic link, a submodule) still reaches the commit. The working
-// tree is left as it was. Returns the full commit.
 export function commitObjects(
   root: string,
   subject: string,
@@ -89,9 +85,6 @@ export function gitWithInput(
   return run.stdout.toString().trim();
 }
 
-// Interface: stages one file whose path is given as raw bytes, so a name that
-// is not UTF-8 text, or that holds a line feed, reaches the next commit. Only
-// git's own index reader takes such a path: a process argument is always text.
 export function stageRawPath(
   root: string,
   rawPath: Uint8Array,
@@ -138,9 +131,6 @@ function treeWith(
   );
 }
 
-// Interface: a new commit on top of `commit` whose tree holds one more entry,
-// an empty folder at `folder`. Only git's plumbing can make one: the index
-// and a working tree hold files, never an empty folder.
 export function commitEmptyFolder(
   root: string,
   commit: string,

@@ -76,9 +76,6 @@ function evenSample(items: readonly string[], size: number): string[] {
   ).flatMap(([item]) => (item === undefined ? [] : [item]));
 }
 
-// Interface: where the sibling kernel repository's copy of the pin's branch
-// points: its clone of the remote's branch, which the hosted check's fresh
-// clone holds, or its own branch when it has no remote.
 function branchTip(repository: string): string {
   const remote = gitResult(
     repository,

@@ -70,9 +70,6 @@ export function declarationText(declaration: unknown): string {
     : `${JSON.stringify(declaration, null, 2)}\n`;
 }
 
-// Interface: the entries of one small kernel repository in `layout`: two
-// stamp roots for the kernel, one for each of two add-ons, the kernel
-// declaration, and three files outside every stamp root.
 export function kernelEntries(
   layout: Layout = firstLayout,
   declaration: unknown = declarationFor(layout),

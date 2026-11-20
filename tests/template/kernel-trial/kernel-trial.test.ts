@@ -315,8 +315,6 @@ function failedStep(work: string, shown: string): string {
   return `The kernel trial's check command in ${work} exited 1. ${shown}\n ${stepRepair}`;
 }
 
-// Interface: the refusal of a check command step whose child writes `lines`
-// to stderr and exits 1.
 function stepRefusal(work: string, lines: readonly string[]) {
   const script = `process.stderr.write(${JSON.stringify(lines.join("\n"))}); process.exit(1);`;
   return refusalOf(trialStep(work, "check command", ["-e", script], 10_000));
