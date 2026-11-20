@@ -9,6 +9,7 @@ import {
   rename,
   rm,
   rmdir,
+  symlink,
   writeFile,
 } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
@@ -33,6 +34,7 @@ import {
   type Profile,
   type ProjectRecipe,
   type Starter,
+  SKILL_FOLDER,
   UNCOPIED_NAMES,
 } from "./recipe.ts";
 import { substituteTokens } from "./token-substitution.ts";
@@ -227,6 +229,18 @@ async function copyRecipe(
   }
 }
 
+// Platform: a relative symbolic link, so it resolves wherever the generated
+// repository is cloned. It is made after token substitution, which refuses
+// any entry that is not a regular file.
+async function linkSkills(staging: string): Promise<void> {
+  const skills = join(staging, SKILL_FOLDER);
+  if ((await lstatIfPresent(skills)) === undefined) return;
+  const links = join(staging, ".claude", "skills");
+  await mkdir(links, { recursive: true });
+  for (const name of await readdir(skills))
+    await symlink(join("..", "..", SKILL_FOLDER, name), join(links, name));
+}
+
 async function installStaging(
   staging: string,
   destination: string,
@@ -328,6 +342,7 @@ async function bootstrap(options: BootstrapOptions): Promise<BootstrapResult> {
     await copyRecipe(recipe, staging);
     await writeRepositoryContext(staging, options);
     const generatedFiles = await substituteTokens(staging, options);
+    await linkSkills(staging);
     if (options.lockfile !== undefined)
       await writeFile(join(staging, "bun.lock"), options.lockfile);
     await installStaging(staging, options.destination, destinationState);
@@ -399,6 +414,7 @@ export async function bootstrapWithKernel(
       kernelFrom === "clone"
         ? clonePin(kernel)
         : generatedPin(readKernelPin(TEMPLATE_ROOT), commit),
+    kernelCommit: commit,
     lockfile,
   });
 }

@@ -23,6 +23,8 @@ const bootstrapModules = [
   "src/token-substitution.ts",
 ];
 const ownFiles = [
+  ".agents/skills/agent-cli-kernel/SKILL.md",
+  ".claude/skills/agent-cli-kernel",
   ".cli-design-template.json",
   ".fallowrc.json",
   ".gitignore",
@@ -42,6 +44,7 @@ const ownFiles = [
   "src/commands.ts",
   "tests/add-on-start-up.test.ts",
   "tests/cli.test.ts",
+  "tests/pointer-skills.test.ts",
   "tests/support/test-folder.ts",
   "tsconfig.base.json",
   "tsconfig.json",
@@ -93,11 +96,13 @@ describe("the kernel row", () => {
       const { destination, request } = run(layout);
       await bootstrapRow(request);
       expect(await listFiles(destination)).toEqual(ownFiles);
-      const withToken = ownFiles.filter((file) =>
-        /__REPOSITORY_NAME__|__SOURCE_PACKET__|__KERNEL_PIN__/.test(
-          readFileSync(join(destination, file), "utf8"),
-        ),
-      );
+      const withToken = ownFiles
+        .filter((file) => !file.startsWith(".claude/"))
+        .filter((file) =>
+          /__REPOSITORY_NAME__|__SOURCE_PACKET__|__KERNEL_PIN__|__KERNEL_COMMIT__/.test(
+            readFileSync(join(destination, file), "utf8"),
+          ),
+        );
       expect(withToken).toEqual([]);
       expect(readFileSync(join(destination, "src/cli.ts"), "utf8")).toContain(
         'cli: "demo-app",',

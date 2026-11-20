@@ -39,6 +39,16 @@ asked for.
 A repository created by Bootstrap.
 _Avoid_: project, host (unqualified), app (for a generated repository)
 
+**Pointer skill**:
+A short skill that Bootstrap writes into a generated repository at
+`.agents/skills/<name>/SKILL.md`, and links from `.claude/skills/`, for one
+skill the installed kernel ships. It carries that skill's trigger, sends the
+reader to the full skill under `node_modules/agent-cli-kernel/`, and names
+the pinned commit it was written for. The generated repository's tests fail
+when that commit is not the one its pin names, or when the installed kernel
+does not hold the full skill.
+_Avoid_: stub, copy (for a pointer skill)
+
 **Repository shape**:
 One kind of repository that Bootstrap can make, set by its Repository profile
 and its package layout.
@@ -108,7 +118,7 @@ generated repository's pin is its one kernel dependency line in
 `package.json`, `"agent-cli-kernel": "github:nathanvale/agent-cli-kernel#<full 40-character commit>"`.
 The pinned commit identifies the kernel; a pin has no version number. Say
 kernel pin wherever a toolchain pin could be meant.
-_Avoid_: version, release (for a kernel pin), pointer (say pin), pin record (say pin), lock (for a pin)
+_Avoid_: version, release (for a kernel pin), pointer (say pin; a pointer skill is not a pin), pin record (say pin), lock (for a pin)
 
 **Toolchain pin**:
 The one Bun version this repository runs on, recorded as `packageManager` in

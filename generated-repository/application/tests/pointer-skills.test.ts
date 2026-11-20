@@ -1,0 +1,84 @@
+import { expect, test } from "bun:test";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const root = join(import.meta.dir, "..");
+const skillFolder = join(root, ".agents", "skills");
+const fullSkillLine = /^Full skill: `([^`\n]+)`$/m;
+const pinnedCommitLine = /^Pinned commit: `([^`\n]*)`$/m;
+
+type PointerSkill = {
+  readonly name: string;
+  readonly fullSkill: string;
+  readonly pinnedCommit: string;
+};
+
+function ownValue(value: unknown, key: string): unknown {
+  if (typeof value !== "object" || value === null) return undefined;
+  const found: unknown = Object.getOwnPropertyDescriptor(value, key)?.value;
+  return found;
+}
+
+function pinnedCommit(): string {
+  const manifest: unknown = JSON.parse(
+    readFileSync(join(root, "package.json"), "utf8"),
+  );
+  const pin = ownValue(ownValue(manifest, "dependencies"), "agent-cli-kernel");
+  const commit =
+    typeof pin === "string" ? /#([0-9a-f]{40})$/.exec(pin)?.[1] : undefined;
+  if (commit === undefined)
+    throw new Error(
+      `package.json pins no full kernel commit: its agent-cli-kernel dependency is ${JSON.stringify(pin)}. Repair: write the dependency as github:nathanvale/agent-cli-kernel#<full 40-character commit>.`,
+    );
+  return commit;
+}
+
+function pointerSkills(): PointerSkill[] {
+  const names = existsSync(skillFolder) ? readdirSync(skillFolder).sort() : [];
+  return names.flatMap((name) => {
+    const text = readFileSync(join(skillFolder, name, "SKILL.md"), "utf8");
+    const fullSkill = fullSkillLine.exec(text)?.[1];
+    if (fullSkill === undefined) return [];
+    return [
+      {
+        name,
+        fullSkill,
+        pinnedCommit: pinnedCommitLine.exec(text)?.[1] ?? "no Pinned commit",
+      },
+    ];
+  });
+}
+
+test("the repository has a pointer skill", () => {
+  expect(
+    pointerSkills().length === 0
+      ? [
+          `No skill in .agents/skills names a Full skill. Repair: restore the pointer skills Bootstrap wrote, each with its Full skill and Pinned commit lines.`,
+        ]
+      : [],
+  ).toEqual([]);
+});
+
+test("each pointer skill names the commit package.json pins", () => {
+  const commit = pinnedCommit();
+  expect(
+    pointerSkills()
+      .filter((skill) => skill.pinnedCommit !== commit)
+      .map(
+        ({ name, pinnedCommit }) =>
+          `.agents/skills/${name}/SKILL.md names ${pinnedCommit}, and package.json pins ${commit}. Repair: write ${commit} on its Pinned commit line, then read the full skill at that commit for any change.`,
+      ),
+  ).toEqual([]);
+});
+
+test("the installed kernel holds the full skill each pointer skill names", () => {
+  const commit = pinnedCommit();
+  expect(
+    pointerSkills()
+      .filter(({ fullSkill }) => !existsSync(join(root, fullSkill)))
+      .map(
+        ({ name, fullSkill }) =>
+          `.agents/skills/${name}/SKILL.md names ${fullSkill}, which the installed kernel at ${commit} does not hold. Repair: run bun install --frozen-lockfile; if it is still missing, find where the kernel at ${commit} keeps the skill and write that path on its Full skill line.`,
+      ),
+  ).toEqual([]);
+});

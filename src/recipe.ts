@@ -19,9 +19,19 @@ export type Request =
       readonly starter: Starter;
     };
 
+// Interface: where a generated repository keeps its skills. Bootstrap links
+// each one from .claude/skills as well.
+export const SKILL_FOLDER = ".agents/skills";
+
 export interface Copy {
   readonly from: string;
-  readonly into: "." | "src" | "tests" | "tests/support" | "config";
+  readonly into:
+    | "."
+    | "src"
+    | "tests"
+    | "tests/support"
+    | "config"
+    | typeof SKILL_FOLDER;
   readonly only?: readonly string[];
 }
 
@@ -113,13 +123,15 @@ export const RECIPES: readonly ProjectRecipe[] = [
 
 // Interface: the kernel row. It copies the template's own files for a
 // generated repository, which names the kernel by its Pin, one dependency
-// line in package.json. It is not in RECIPES, so no command-line selection
+// line in package.json, and a pointer skill for each skill the installed
+// kernel ships. It is not in RECIPES, so no command-line selection
 // reaches it.
 export const KERNEL_RECIPE: ProjectRecipe = {
   request: { profile: "durable", layout: "single-package" },
   copies: [
     { from: "generated-repository/settings", into: "." },
     { from: "generated-repository/application", into: "." },
+    { from: "generated-repository/skills", into: SKILL_FOLDER },
     TEST_FOLDER,
     LINT_RULES,
   ],

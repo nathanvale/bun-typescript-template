@@ -5,13 +5,16 @@ import { CliError } from "./cli-error.ts";
 const NAME_TOKEN = "__REPOSITORY_NAME__";
 const PACKET_TOKEN = "__SOURCE_PACKET__";
 const PIN_TOKEN = "__KERNEL_PIN__";
+const COMMIT_TOKEN = "__KERNEL_COMMIT__";
 
 // Interface: what replaces each token. `kernelPin` is the Pin a generated
-// repository holds; a row whose files hold no Pin token gives none.
+// repository holds, and `kernelCommit` its pinned commit, which each pointer
+// skill names; a row whose files hold neither token gives neither.
 export type Tokens = {
   readonly name: string;
   readonly sourcePacket: string;
   readonly kernelPin?: string;
+  readonly kernelCommit?: string;
 };
 
 // Interface: replaces each token in every file under `root`, reading and
@@ -42,7 +45,8 @@ export async function substituteTokens(
     const substituted = current
       .replaceAll(NAME_TOKEN, tokens.name)
       .replaceAll(PACKET_TOKEN, tokens.sourcePacket)
-      .replaceAll(PIN_TOKEN, tokens.kernelPin ?? PIN_TOKEN);
+      .replaceAll(PIN_TOKEN, tokens.kernelPin ?? PIN_TOKEN)
+      .replaceAll(COMMIT_TOKEN, tokens.kernelCommit ?? COMMIT_TOKEN);
     await writeFile(path, substituted, "utf8");
     count += 1;
   }

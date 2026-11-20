@@ -16,6 +16,7 @@ export interface BootstrapOptions {
   recipe: ProjectRecipe;
   sourcePacket: string;
   kernelPin?: string;
+  kernelCommit?: string;
   lockfile?: Uint8Array | undefined;
 }
 

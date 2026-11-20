@@ -8,9 +8,11 @@ import { gitWithInput } from "./git-object-fixture.ts";
 const pinnedCommit = readKernelPin(ROOT).commit;
 
 // Interface: the kernel commit the kernel trial and pin move tests build on,
-// the first a generated repository can install. It stays put when the pin
-// moves, so a pin move changes no test.
-export const trialBase = "0b64b0e480a77ae6abbd3e671497354309182b42";
+// the first a generated repository can install and pass its check command
+// at: kernel pull request 52's merge commit, the first to ship the full skill
+// its pointer skill names. It stays put when the pin moves, so a pin move
+// changes no test.
+export const trialBase = "315862fa13c81de3ff7fd19a4be341182b57f778";
 
 export function siblingKernel(): string {
   return findSiblingKernel(ROOT, process.env);
