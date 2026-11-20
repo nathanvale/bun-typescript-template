@@ -1743,11 +1743,11 @@
     "source": "c1cbee4 fix(kernel-trial): keep a failing test's every diagnostic, and cap what the refusal shows"
   },
   {
-    "id": "72f0f5c-pin-verification",
-    "patch": "tests/planted-faults/patches/72f0f5c-pin-verification.patch",
+    "id": "e6e0ddd-pin-move-held",
+    "patch": "tests/planted-faults/patches/e6e0ddd-pin-move-held.patch",
+    "source": "e6e0ddd refactor(pin-move): one function reads the pin's branch commit and holds it in the clone",
     "testFile": "tests/template/pin-move/pin-verification-command.test.ts",
-    "title": "fetches the commit the pin's branch points at into a kernel clone made before the branch moved, so the pin is verified$",
-    "source": "72f0f5c fix(pin-verification): fetch the pin's branch commit into a kernel clone made before the branch moved"
+    "title": "fetches the commit the pin's branch points at into a kernel clone made before the branch moved, so the pin is verified$"
   },
   {
     "id": "fe86efe-pin-move",
