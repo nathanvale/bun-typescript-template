@@ -1811,5 +1811,12 @@
     "testFile": "tests/template/naming/glossary-files.test.ts",
     "title": "^GM.k a glossary row whose target is not a GLOSSARY.md file fails",
     "source": "2788181 fix(glossary): refuse a map row that owns words but points at a file that is not a GLOSSARY.md"
+  },
+  {
+    "id": "f6aaef7-map-own-glossary",
+    "patch": "tests/planted-faults/patches/f6aaef7-map-own-glossary.patch",
+    "testFile": "tests/template/naming/glossary-files.test.ts",
+    "title": "^GM.l a map that links no GLOSSARY.md of this repository fails",
+    "source": "f6aaef7 fix(glossary): refuse a map that links no GLOSSARY.md of its own repository"
   }
 ]
