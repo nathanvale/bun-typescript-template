@@ -1517,5 +1517,12 @@
     "testFile": "tests/template/pin-move/pin-verification.test.ts",
     "title": "gives up a fetch that does not finish within its bound$",
     "source": "a73e057 fix(pin-move): fetch the remote branch's commit into a clone that lacks it"
+  },
+  {
+    "id": "d3a35b6-pin-move-fetch-top-level",
+    "patch": "tests/planted-faults/patches/d3a35b6-pin-move-fetch-top-level.patch",
+    "testFile": "tests/template/pin-move/pin-verification.test.ts",
+    "title": "refuses, before any fetch, a path inside another repository, and writes nothing into that repository$",
+    "source": "d3a35b6 fix(pin-move): refuse a kernel path inside another repository before fetching"
   }
 ]
