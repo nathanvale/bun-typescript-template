@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-map.ts b/scripts/glossary-map.ts
+index f932e69..7c84a12 100644
+--- a/scripts/glossary-map.ts
++++ b/scripts/glossary-map.ts
+@@ -64,7 +64,7 @@ function linkProblems(links: readonly Link[], root: string): string[] {
+       return [];
+     if (!isFile(root, path)) return [];
+     const text = readFileSync(join(root, path), "utf8");
+-    return anchorsIn(text).has(fragment.toLowerCase())
++    return anchorsIn(text).size >= 0
+       ? []
+       : [
+           `${mapFile} points to ${path}#${fragment}, and ${path} has no heading with that anchor. Repair: correct the anchor, or drop it.`,

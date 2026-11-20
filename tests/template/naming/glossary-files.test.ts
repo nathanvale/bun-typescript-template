@@ -1,8 +1,9 @@
 import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { ownedFolders, write } from "../../support/fixture-files.ts";
+import { mapProblems } from "../../../scripts/glossary-map.ts";
 import {
-  mapProblems,
   readGlossary,
   readRecordedUnusedTerms,
   recordedUnusedTermsFile,
@@ -11,6 +12,7 @@ import {
 } from "../../../scripts/glossary.ts";
 
 const root = join(import.meta.dir, "../../..");
+const ownedFolder = ownedFolders();
 
 function read(path: string): string {
   return readFileSync(join(root, path), "utf8");
@@ -53,6 +55,100 @@ test("GM.a a map pointer to a missing path fails", () => {
   ).toEqual([
     "GLOSSARY-MAP.md points to missing/GLOSSARY.md, which does not exist. Repair: correct the link, or remove its row.",
   ]);
+});
+
+function mapIn(files: Record<string, string>): string {
+  const folder = ownedFolder("map-");
+  for (const [path, content] of Object.entries(files))
+    write(folder, path, content);
+  return folder;
+}
+
+const own = "| This repository | Words | [GLOSSARY.md](GLOSSARY.md) |";
+const ownedMap = (rows: readonly string[]) =>
+  ["| Glossary | Owns | Where |", "| --- | --- | --- |", ...rows].join("\n");
+
+test("GM.h a link to a heading the target does not have fails, and one it has passes", () => {
+  expect(
+    mapProblems("[own](GLOSSARY.md) [map](GLOSSARY-MAP.md#glossary-map)", root),
+  ).toEqual([]);
+  expect(
+    mapProblems(
+      "[own](GLOSSARY.md) [map](GLOSSARY-MAP.md#no-such-heading)",
+      root,
+    ),
+  ).toEqual([
+    "GLOSSARY-MAP.md points to GLOSSARY-MAP.md#no-such-heading, and GLOSSARY-MAP.md has no heading with that anchor. Repair: correct the anchor, or drop it.",
+  ]);
+});
+
+test("GM.i an owner row with no name, or a second row for one owner, fails", () => {
+  const rows = ownedMap([
+    "|  | Words | [GLOSSARY.md](GLOSSARY.md) |",
+    "| Kernel | Words | [here](GLOSSARY.md) |",
+    "| kernel | No word | [there](AGENTS.md) |",
+  ]);
+  expect(mapProblems(rows, root)).toEqual([
+    "GLOSSARY-MAP.md has a row with no owner name in its first cell. Repair: name the glossary or project that owns those words.",
+    'GLOSSARY-MAP.md gives GLOSSARY.md to both "" and "Kernel". Repair: keep the row of the one that owns it.',
+    'GLOSSARY-MAP.md lists the owner "kernel" in two rows, so its words have two owners. Repair: merge the rows.',
+  ]);
+});
+
+test("GM.j an owner whose glossary file defines no term fails", () => {
+  const folder = mapIn({ "GLOSSARY.md": "# Notes\nNo terms here.\n" });
+  expect(
+    mapProblems(
+      ownedMap(["| Kernel | Words | [GLOSSARY.md](GLOSSARY.md) |"]),
+      folder,
+    ),
+  ).toEqual([
+    'GLOSSARY-MAP.md makes "Kernel" the owner of GLOSSARY.md, which defines no term. Repair: point the row at the glossary that defines its words.',
+  ]);
+});
+
+test("GM.k a glossary row whose target is not a GLOSSARY.md file fails, unless it owns no word", () => {
+  expect(
+    mapProblems(
+      ownedMap([own, "| Kernel | Kernel words | [here](package.json) |"]),
+      root,
+    ),
+  ).toEqual([
+    'GLOSSARY-MAP.md makes "Kernel" the owner of package.json, which is not a GLOSSARY.md file. Repair: point the row at the glossary that defines its words, or begin its Owns cell with "No word".',
+  ]);
+  expect(
+    mapProblems(
+      ownedMap([own, "| Kernel | No word. A copy | [here](package.json) |"]),
+      root,
+    ),
+  ).toEqual([]);
+});
+
+test("GM.l a map that links no GLOSSARY.md of this repository fails, as the audit's package.json proof does", () => {
+  expect(mapProblems("[Glossary](package.json)", root)).toEqual([
+    "GLOSSARY-MAP.md does not link this repository's own GLOSSARY.md, so it names no glossary that this check can read. Repair: link GLOSSARY.md in the row of the glossary that owns this repository's words.",
+  ]);
+});
+
+test("GM.m a row that owns words but gives them no place fails, and a row that names its place passes", () => {
+  for (const where of ["\u2014", "-", "none", ""])
+    expect(
+      mapProblems(
+        ownedMap([own, `| Kernel | Kernel words | ${where} |`]),
+        root,
+      ),
+    ).toEqual([
+      'GLOSSARY-MAP.md makes "Kernel" the owner of words but gives them no place: its Where cell links nothing and names nothing. Repair: link the GLOSSARY.md that defines them, or say where they live.',
+    ]);
+  expect(
+    mapProblems(
+      ownedMap([own, "| Agent ecosystem | Shared words | In Linear |"]),
+      root,
+    ),
+  ).toEqual([]);
+  expect(
+    mapProblems(ownedMap([own, "| Kernel | No word. A copy | \u2014 |"]), root),
+  ).toEqual([]);
 });
 
 test("GM.b a map that points to no file fails", () => {

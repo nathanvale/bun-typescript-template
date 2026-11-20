@@ -142,6 +142,22 @@ this file.
   `entry`, and record any gap that exposes in the coverage gaps test's
   recorded hits. Witnessed: [c08e107] (`pin-verification` and
   `kernel-trial` landed as package scripts with no entry).
+- Read a tracked path's own entry (`lstatSync`), never the file it points to:
+  `existsSync` follows a symlink, so a tracked link that points nowhere drops
+  out of a full-tree check. Witnessed: [eac0969] (a dangling tracked symlink
+  with a forbidden name passed the full-tree names check).
+- Tell a foreign repository from this repository's own broken check by the
+  tree that owns the path, and stop the call when the broken one is this
+  repository's: a missing rule file here is a failure, not a pass. Witnessed:
+  [eac0969] (the hooks exited 0 when `GLOSSARY.md` was missing, and a
+  malformed payload exited 1, which does not block).
+- Check a list of recorded exceptions against its base revision, and refuse
+  an addition no reviewed change approved: a check that reads only the
+  current list lets a new bad name and its new recorded hit pass together.
+  Witnessed: [eac0969] (both recorded lists could grow with no check).
+- Read what a map claims, not only that its targets exist: its owner rows and
+  the heading each link names. Witnessed: [eac0969] (a duplicate owner and a
+  missing heading anchor passed the map check).
 
 [ac11ed9]: https://github.com/nathanvale/bun-typescript-template/commit/ac11ed98b7d538e8a304cac053aaefcaaf6b2cb3
 [cd2498b]: https://github.com/nathanvale/bun-typescript-template/commit/cd2498b7189a2d45d1906b9c870e8d13da6cd2dd
@@ -176,3 +192,4 @@ this file.
 [c08e107]: https://github.com/nathanvale/bun-typescript-template/commit/c08e107766fe533f3ed2756158797df15fa64f12
 [fe76ccb]: https://github.com/nathanvale/bun-typescript-template/commit/fe76ccb74790ed9221ef35d073d1319152a7a93c
 [c1cbee4]: https://github.com/nathanvale/bun-typescript-template/commit/c1cbee4c3732aaff2b91d374a5ccf1fddef32f82
+[eac0969]: https://github.com/nathanvale/bun-typescript-template/commit/eac09690ab5e5488b1f53e672d357766675b417e

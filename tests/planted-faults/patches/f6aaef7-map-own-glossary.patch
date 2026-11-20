@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-map.ts b/scripts/glossary-map.ts
+index 152cfba..32198df 100644
+--- a/scripts/glossary-map.ts
++++ b/scripts/glossary-map.ts
+@@ -144,7 +144,7 @@ export function mapProblems(map: string, root: string): string[] {
+     return [
+       `${mapFile} points to no glossary file, so this check would check nothing. Repair: link each glossary it names.`,
+     ];
+-  const ownGlossary = links.some(({ path }) => path === "GLOSSARY.md");
++  const ownGlossary = links.length > 0;
+   return [
+     ...(ownGlossary
+       ? []

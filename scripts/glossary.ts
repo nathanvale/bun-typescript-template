@@ -1,4 +1,4 @@
-import { existsSync, lstatSync, readFileSync } from "node:fs";
+import { lstatSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 export const recordedHitsFile = "tests/template/naming/recorded-hits.json";
@@ -79,12 +79,11 @@ export function readGlossary(text: string): Glossary {
   return { terms, qualify };
 }
 
-function recordedFields(
+export function recordedEntries(
   file: string,
   text: string,
   list: string,
-  keys: readonly string[],
-): string[][] {
+): Map<string, unknown>[] {
   const parsed: unknown = JSON.parse(text);
   const entries: unknown =
     typeof parsed === "object" && parsed !== null
@@ -94,10 +93,23 @@ function recordedFields(
     throw new Error(
       `${file} has no "${list}" array. Repair: add "${list}": [] at its top level.`,
     );
-  return entries.map((entry: unknown, index) => {
-    const own = new Map<string, unknown>(
-      typeof entry === "object" && entry !== null ? Object.entries(entry) : [],
-    );
+  return entries.map(
+    (entry: unknown) =>
+      new Map<string, unknown>(
+        typeof entry === "object" && entry !== null
+          ? Object.entries(entry)
+          : [],
+      ),
+  );
+}
+
+function recordedFields(
+  file: string,
+  text: string,
+  list: string,
+  keys: readonly string[],
+): string[][] {
+  return recordedEntries(file, text, list).map((own, index) => {
     const fields = keys.flatMap((key) => {
       const value = own.get(key);
       return typeof value === "string" && value !== "" ? [value] : [];
@@ -247,9 +259,12 @@ function gitPaths(root: string, command: readonly string[]): string[] {
     .filter((path) => path !== "");
 }
 
+// Platform: existsSync follows a symlink, so it drops a tracked link whose
+// target is missing; lstatSync reads the link itself.
 function gitFiles(root: string): string[] {
-  return gitPaths(root, ["ls-files"]).filter((path) =>
-    existsSync(join(root, path)),
+  return gitPaths(root, ["ls-files"]).filter(
+    (path) =>
+      lstatSync(join(root, path), { throwIfNoEntry: false }) !== undefined,
   );
 }
 
@@ -267,6 +282,24 @@ export function stagedText(root: string, path: string): string {
   if (shown.exitCode !== 0)
     throw new Error(
       `git has no staged ${path}, so the names check cannot judge a commit by the ${path} it will contain. Repair: stage it with git add ${path}, then run the names check again.`,
+    );
+  return shown.stdout.toString();
+}
+
+export function mergeBaseOf(root: string, revision: string): string {
+  const found = git(root, ["merge-base", revision, "HEAD"]);
+  if (found.exitCode !== 0)
+    throw new Error(
+      `git has no common ancestor of ${revision} and HEAD: ${found.stderr.toString().trim()} Repair: run git fetch origin, then give a revision this branch grew from.`,
+    );
+  return found.stdout.toString().trim();
+}
+
+export function textAt(root: string, revision: string, path: string): string {
+  const shown = git(root, ["show", `${revision}:${path}`]);
+  if (shown.exitCode !== 0)
+    throw new Error(
+      `git has no ${path} at ${revision}, so the names check cannot compare it with this branch. Repair: give a revision that holds ${path}.`,
     );
   return shown.stdout.toString();
 }
@@ -290,23 +323,6 @@ export function trackedTexts(root: string): string[] {
     notReadAsUse.has(path) || !lstatSync(join(root, path)).isFile()
       ? []
       : [readFileSync(join(root, path), "utf8")],
-  );
-}
-
-export function mapProblems(map: string, root: string): string[] {
-  const paths = [...map.matchAll(/\]\(([^)\s#]+)[^)\s]*\)/g)].flatMap(
-    ([, target = ""]) => (/^[a-z]+:/i.test(target) ? [] : [target]),
-  );
-  if (paths.length === 0)
-    return [
-      "GLOSSARY-MAP.md points to no glossary file, so this check would check nothing. Repair: link each glossary it names.",
-    ];
-  return paths.flatMap((path) =>
-    existsSync(join(root, path))
-      ? []
-      : [
-          `GLOSSARY-MAP.md points to ${path}, which does not exist. Repair: correct the link, or remove its row.`,
-        ],
   );
 }
 

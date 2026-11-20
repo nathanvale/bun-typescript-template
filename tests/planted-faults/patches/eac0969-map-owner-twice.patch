@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-map.ts b/scripts/glossary-map.ts
+index f932e69..0a1ad00 100644
+--- a/scripts/glossary-map.ts
++++ b/scripts/glossary-map.ts
+@@ -80,7 +80,7 @@ function nameProblems(owner: string, owners: Set<string>): string[] {
+     return [
+       `${mapFile} has a row with no owner name in its first cell. Repair: name the glossary or project that owns those words.`,
+     ];
+-  return seen
++  return seen && false
+     ? [
+         `${mapFile} lists the owner "${owner}" in two rows, so its words have two owners. Repair: merge the rows.`,
+       ]

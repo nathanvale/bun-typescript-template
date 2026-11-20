@@ -1,13 +1,13 @@
-diff --git a/scripts/glossary.ts b/scripts/glossary.ts
-index df97e30..808892c 100644
---- a/scripts/glossary.ts
-+++ b/scripts/glossary.ts
-@@ -285,7 +285,7 @@ export function mapProblems(map: string, root: string): string[] {
-   const paths = [...map.matchAll(/\]\(([^)\s#]+)[^)\s]*\)/g)].flatMap(
-     ([, target = ""]) => (/^[a-z]+:/i.test(target) ? [] : [target]),
-   );
--  if (paths.length === 0)
-+  if (paths.length < 0)
+diff --git a/scripts/glossary-map.ts b/scripts/glossary-map.ts
+index f932e69..b620d7f 100644
+--- a/scripts/glossary-map.ts
++++ b/scripts/glossary-map.ts
+@@ -125,7 +125,7 @@ function ownerProblems(map: string, root: string): string[] {
+ 
+ export function mapProblems(map: string, root: string): string[] {
+   const links = localLinks(map);
+-  if (links.length === 0)
++  if (links.length < 0)
      return [
-       "GLOSSARY-MAP.md points to no glossary file, so this check would check nothing. Repair: link each glossary it names.",
+       `${mapFile} points to no glossary file, so this check would check nothing. Repair: link each glossary it names.`,
      ];
