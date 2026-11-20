@@ -19,6 +19,11 @@ The durable profile also supplies two CLI starters. `simple` is read-only.
 Branch Station discovery. Each generated CLI is a standalone project with its
 own dependencies, lockfile, checks and CI.
 
+`--kernel` makes a durable CLI on the installed kernel instead. Its
+`package.json` names the kernel by the template's pin, and it gets the kernel
+lockfile and a pointer skill for each kernel skill. Bootstrap reads the kernel
+repository beside this checkout.
+
 ## Bootstrap
 
 From this template checkout:
@@ -39,6 +44,10 @@ bun run bootstrap --profile durable --starter simple \
 bun run bootstrap --profile durable --starter complex \
   --destination "$HOME/code/example-control-cli" \
   --source-packet "https://example.test/vault/projects/example-control-cli/"
+
+bun run bootstrap --profile durable --kernel \
+  --destination "$HOME/code/example-kernel-cli" \
+  --source-packet "https://example.test/vault/projects/example-kernel-cli/"
 
 bun run bootstrap --profile durable \
   --destination "$HOME/code/example-monorepo" \
