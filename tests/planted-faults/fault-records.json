@@ -1251,5 +1251,33 @@
     "testFile": "tests/template/kernel-reader/kernel-declaration.test.ts",
     "title": "a stamp root that holds a NUL byte$",
     "source": "016b761 fix(kernel-reader): answer the third review round of #113"
+  },
+  {
+    "id": "f49d1f4-kernel-pin-full-commit",
+    "patch": "tests/planted-faults/patches/f49d1f4-kernel-pin-full-commit.patch",
+    "testFile": "tests/template/kernel-pin/kernel-pin.test.ts",
+    "title": "the Pin a generated repository holds names the kernel pin's GitHub repository at the commit given, in full, whatever commit the kernel pin names$",
+    "source": "f49d1f4 feat(bootstrap): the kernel row names the kernel by its Pin, and stamping is removed"
+  },
+  {
+    "id": "f49d1f4-bootstrap-pin-commit",
+    "patch": "tests/planted-faults/patches/f49d1f4-bootstrap-pin-commit.patch",
+    "testFile": "tests/template/bootstrap/kernel-row.test.ts",
+    "title": "names the kernel by its Pin: one dependency line, at the commit asked for in full$",
+    "source": "f49d1f4 feat(bootstrap): the kernel row names the kernel by its Pin, and stamping is removed"
+  },
+  {
+    "id": "f49d1f4-bootstrap-reads-kernel-first",
+    "patch": "tests/planted-faults/patches/f49d1f4-bootstrap-reads-kernel-first.patch",
+    "testFile": "tests/template/bootstrap/kernel-row-refusals.test.ts",
+    "title": "a missing kernel repository leaves nothing behind$",
+    "source": "f49d1f4 feat(bootstrap): the kernel row names the kernel by its Pin, and stamping is removed"
+  },
+  {
+    "id": "f49d1f4-token-substitution-pin",
+    "patch": "tests/planted-faults/patches/f49d1f4-token-substitution-pin.patch",
+    "testFile": "tests/template/bootstrap/kernel-row.test.ts",
+    "title": "with every token substituted$",
+    "source": "f49d1f4 feat(bootstrap): the kernel row names the kernel by its Pin, and stamping is removed"
   }
 ]

@@ -1,0 +1,13 @@
+diff --git a/src/bootstrap.ts b/src/bootstrap.ts
+index 85684f1..dcdbff5 100644
+--- a/src/bootstrap.ts
++++ b/src/bootstrap.ts
+@@ -650,7 +650,7 @@ export async function bootstrapWithKernel(
+ ): Promise<BootstrapResult> {
+   validateSourcePacket(request.sourcePacket);
+   const name = resolveRepositoryName(request.destination, request.name);
+-  const { commit } = readKernel(request.kernel, request.declarationPath);
++  const { commit } = request.kernel;
+   return bootstrap({
+     destination: resolve(request.destination),
+     json: false,
