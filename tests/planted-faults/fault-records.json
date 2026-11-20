@@ -1713,5 +1713,12 @@
     "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
     "title": "fails when bun.lock resolves the kernel to another commit than package.json pins, which a frozen install would install$",
     "source": "44762a3 fix(bootstrap): the pointer skill check holds bun.lock's resolved kernel to the Pin"
+  },
+  {
+    "id": "fe76ccb-kernel-trial-failing-tests",
+    "patch": "tests/planted-faults/patches/fe76ccb-kernel-trial-failing-tests.patch",
+    "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
+    "title": "that fails keeps each failing test's own lines in its refusal, wherever they come in the output, and its last lines$",
+    "source": "fe76ccb fix(kernel-trial): a failed step's refusal keeps each failing test's own lines"
   }
 ]
