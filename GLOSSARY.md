@@ -18,8 +18,9 @@ after it in every file and folder name. It refuses a word noted
 ### Creating a repository
 
 **Template**:
-The canonical owner of portable template source and of its own pin. Bootstrap
-gives each generated repository a pin of its own. The template does not own
+The canonical owner of portable template source and of its own pin. Bootstrap's
+kernel row (`--kernel`) gives its generated repository a pin of its own; the
+other recipes have no kernel dependency. The template does not own
 the kernel or add-on source.
 
 **Foundation**:

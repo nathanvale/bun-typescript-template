@@ -78,7 +78,7 @@ separate internal files. A workspace exposes the root CLI and keeps member
 packages as libraries. `bun run admit:cli -- <repository-root>` checks its
 entry points across source, manifests, scripts and documented invocations.
 
-Generated `AGENTS.md` gives the exact install, check and smoke commands.
+Generated `AGENTS.md` gives the exact check and smoke commands.
 `.cli-design-template.json` records source-packet and template provenance,
 including whether the source checkout had uncommitted changes.
 

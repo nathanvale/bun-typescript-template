@@ -117,6 +117,9 @@ Preconditions:
   and the check exits 2 after the tests pass.
 - The generated CLI calls itself `example` in its usage line, whatever
   `--name` or destination was given.
+- `bun run bootstrap --kernel` is not driven here; the README's Not mapped
+  yet list says why. The recipes above build the older starters, so a green
+  run proves nothing about the Pin.
 - The `--starter` flags copy from `starters/`, which [MAG-129] removes. This map
   leaves them out until that settles.
 
