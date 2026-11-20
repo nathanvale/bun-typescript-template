@@ -32,15 +32,11 @@ import {
 import { KernelRefusal, type KernelSeam, readKernel } from "./kernel-reader.ts";
 import {
   type Copy,
+  copiesOf,
   KERNEL_LOCKFILE,
   KERNEL_RECIPE,
-  type Layout,
-  lintsCode,
-  type Profile,
-  type ProjectRecipe,
-  type Starter,
+  type Recipe,
   SKILL_FOLDER,
-  UNCOPIED_NAMES,
 } from "./recipe.ts";
 import { substituteTokens } from "./token-substitution.ts";
 
@@ -50,18 +46,16 @@ const TEMPLATE_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 export interface BootstrapResult {
   destination: string;
   generatedFiles: number;
-  profile: Profile;
   runId: string;
   schemaVersion: number;
   sourcePacket: string;
-  starter?: Starter;
   status: "created";
-  variant: Layout;
 }
 
-function starterOption(recipe: ProjectRecipe): { starter?: Starter } {
-  const { starter } = recipe.request;
-  return starter === undefined ? {} : { starter };
+interface Generation extends BootstrapOptions {
+  readonly kernelPin: string;
+  readonly kernelCommit: string;
+  readonly lockfile: Uint8Array | undefined;
 }
 
 function isMissingPathError(error: unknown): boolean {
@@ -141,10 +135,7 @@ async function validateDestination(
 }
 
 function isCopied(name: string, only: readonly string[] | undefined): boolean {
-  return (
-    !UNCOPIED_NAMES.includes(name) &&
-    (only === undefined || only.includes(name))
-  );
+  return only === undefined || only.includes(name);
 }
 
 async function copyDirectoryContents(
@@ -180,13 +171,13 @@ async function requireSourceFolder(source: string): Promise<void> {
   if (stats === undefined)
     throw sourceRefusal(
       source,
-      "profile_source_missing",
+      "recipe_source_missing",
       "recipe folder is missing",
     );
   if (!stats.isDirectory())
     throw sourceRefusal(
       source,
-      "profile_source_wrong_type",
+      "recipe_source_wrong_type",
       "recipe folder is not a folder",
     );
 }
@@ -196,13 +187,13 @@ async function requireSourceFile(source: string): Promise<void> {
   if (stats === undefined)
     throw sourceRefusal(
       source,
-      "profile_source_missing",
+      "recipe_source_missing",
       "recipe file is missing",
     );
   if (!stats.isFile())
     throw sourceRefusal(
       source,
-      "profile_source_wrong_type",
+      "recipe_source_wrong_type",
       "recipe file is not a regular file",
     );
 }
@@ -215,15 +206,12 @@ async function requireCopySource(copy: Copy): Promise<void> {
   }
 }
 
-async function requireProfileSources(recipe: ProjectRecipe): Promise<void> {
-  await Promise.all(recipe.copies.map(requireCopySource));
+async function requireRecipeSources(recipe: Recipe): Promise<void> {
+  await Promise.all(copiesOf(recipe).map(requireCopySource));
 }
 
-async function copyRecipe(
-  recipe: ProjectRecipe,
-  staging: string,
-): Promise<void> {
-  for (const copy of recipe.copies) {
+async function copyRecipe(recipe: Recipe, staging: string): Promise<void> {
+  for (const copy of copiesOf(recipe)) {
     const into = join(staging, copy.into);
     await mkdir(into, { recursive: true });
     await copyDirectoryContents(
@@ -290,22 +278,18 @@ function templateIdentity(args: string[]) {
   return child.stdout.toString().trim();
 }
 
-const MARKER_GUIDANCE =
-  "A comment that opens with `Platform:` or `Interface:` makes a claim that a reviewer checks. It is not a way to keep a comment.";
+const COMMENT_GUIDANCE = `## Comments
 
-function commentGuidance(recipe: ProjectRecipe): string {
-  const refusal = lintsCode(recipe)
-    ? "Lint refuses a comment in code, so say it in a name, a type or a test title."
-    : "Write no comment in code. Say it in a name, a type or a test title.";
-  const owner = lintsCode(recipe)
-    ? "\nThe lint rule files in config/ are the template's. Change a lint rule in the template, not here.\n"
-    : "";
-  return `## Comments\n\n${refusal}\n${MARKER_GUIDANCE}\n${owner}`;
-}
+Lint refuses a comment in code, so say it in a name, a type or a test title.
+A comment that opens with \`Platform:\` or \`Interface:\` makes a claim that a reviewer checks. It is not a way to keep a comment.
+
+The lint rule files in config/ are the template's. Change a lint rule in the template, not here.
+`;
 
 async function writeRepositoryContext(
   staging: string,
   options: BootstrapOptions,
+  recipe: Recipe,
 ): Promise<void> {
   const revision = templateIdentity(["rev-parse", "HEAD"]);
   const dirty = templateIdentity(["status", "--porcelain"]);
@@ -314,8 +298,6 @@ async function writeRepositoryContext(
     templateRevision: revision,
     templateDirty: dirty.length > 0,
     sourcePacket: options.sourcePacket,
-    starter: options.recipe.cli,
-    profile: options.recipe.request.profile,
     entryPoint: "src/cli.ts",
     commandOwner: "src/commands.ts",
     registrationVersion: 1,
@@ -324,17 +306,17 @@ async function writeRepositoryContext(
     join(staging, ".cli-design-template.json"),
     `${JSON.stringify(metadata, null, 2)}\n`,
   );
-  const check = options.recipe.checkCommand;
+  const check = recipe.checkCommand;
   await writeFile(
     join(staging, "AGENTS.md"),
-    `# Repository commands\n\nUse the existing repository CLI at src/cli.ts. Add commands through src/commands.ts.\nKeep domain implementation in separate files and preserve one public application CLI.\n\nCheck command: ${check}\nSmoke: bun run start --help\nSource packet: ${options.sourcePacket}\nTemplate source: ${metadata.templateRevision}\n\n${commentGuidance(options.recipe)}`,
+    `# Repository commands\n\nUse the existing repository CLI at src/cli.ts. Add commands through src/commands.ts.\nKeep domain implementation in separate files and preserve one public application CLI.\n\nCheck command: ${check}\nSmoke: bun run start --help\nSource packet: ${options.sourcePacket}\nTemplate source: ${metadata.templateRevision}\n\n${COMMENT_GUIDANCE}`,
   );
 }
 
-async function bootstrap(options: BootstrapOptions): Promise<BootstrapResult> {
+async function bootstrap(options: Generation): Promise<BootstrapResult> {
   const destinationState = await validateDestination(options.destination);
-  const { recipe } = options;
-  await requireProfileSources(recipe);
+  const recipe = KERNEL_RECIPE;
+  await requireRecipeSources(recipe);
 
   await mkdir(dirname(options.destination), { recursive: true });
   const staging = await mkdtemp(
@@ -342,7 +324,7 @@ async function bootstrap(options: BootstrapOptions): Promise<BootstrapResult> {
   );
   try {
     await copyRecipe(recipe, staging);
-    await writeRepositoryContext(staging, options);
+    await writeRepositoryContext(staging, options, recipe);
     const generatedFiles = await substituteTokens(staging, options);
     await linkSkills(staging);
     if (options.lockfile !== undefined)
@@ -351,13 +333,10 @@ async function bootstrap(options: BootstrapOptions): Promise<BootstrapResult> {
     return {
       destination: options.destination,
       generatedFiles,
-      profile: recipe.request.profile,
       runId: randomUUID(),
       schemaVersion: SCHEMA_VERSION,
       sourcePacket: options.sourcePacket,
-      ...starterOption(recipe),
       status: "created",
-      variant: recipe.request.layout,
     };
   } finally {
     await rm(staging, { force: true, recursive: true });
@@ -403,7 +382,6 @@ export async function bootstrapWithKernel(
     destination: resolve(destination),
     json: false,
     name,
-    recipe: KERNEL_RECIPE,
     sourcePacket,
     kernelPin:
       kernelFrom === "clone"
@@ -470,14 +448,11 @@ export async function main(argv: string[]): Promise<number> {
       process.stdout.write(HELP);
       return 0;
     }
-    const result =
-      options.recipe === KERNEL_RECIPE
-        ? await bootstrapOnKernel(options)
-        : await bootstrap(options);
+    const result = await bootstrapOnKernel(options);
     process.stdout.write(
       options.json
         ? `${JSON.stringify(result)}\n`
-        : `Created ${result.profile} ${result.variant} repository at ${result.destination}\n`,
+        : `Created a repository with the kernel at the template's Pin at ${result.destination}\n`,
     );
     return 0;
   } catch (error) {

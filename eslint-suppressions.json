@@ -4,16 +4,6 @@
       "count": 2
     }
   },
-  "tests/support/static-admission-fallow.ts": {
-    "repository/tests-use-test-folder": {
-      "count": 1
-    }
-  },
-  "tests/support/static-admission-project.ts": {
-    "repository/tests-use-test-folder": {
-      "count": 4
-    }
-  },
   "tests/template/toolchain/toolchain-resolution.test.ts": {
     "repository/tests-use-test-folder": {
       "count": 2

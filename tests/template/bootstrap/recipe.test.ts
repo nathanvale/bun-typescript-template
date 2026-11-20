@@ -1,156 +1,24 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, statSync } from "node:fs";
+import { existsSync, statSync, writeFileSync } from "node:fs";
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import {
+  copiesOf,
+  KERNEL_LOCKFILE,
   KERNEL_RECIPE,
   LINT_RULE_FILES,
-  lintsCode,
-  PROFILES,
-  type ProjectRecipe,
-  RECIPES,
-  type Selection,
-  STARTERS,
-  selectRecipe,
-  UNCOPIED_NAMES,
+  PIN_SETTINGS,
+  type Recipe,
 } from "../../../src/recipe.ts";
-import { rowKey } from "../../support/bootstrap-cli-fixture.ts";
+import { ownedFolders } from "../../support/fixture-files.ts";
+import { siblingKernel } from "../../support/kernel-sibling.ts";
 import { EXPECTED_RULE_FILES } from "../../support/lint-rule-files.ts";
-import { spawnBounded } from "../../support/process.ts";
+import { processWatchdog, spawnBounded } from "../../support/process.ts";
 import { testFolder } from "../../support/test-folder.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 const bootstrapBound = 20_000;
 const bootstrapTestTimeout = 30_000;
-
-const MONOREPO_NEEDS_DURABLE = {
-  status: "refused",
-  message: "--monorepo is available only with --profile durable",
-  repair: "remove --monorepo or choose --profile durable",
-};
-const STARTER_NEEDS_DURABLE = {
-  status: "refused",
-  message: "--starter is available only with --profile durable",
-  repair: "remove --starter or choose --profile durable",
-};
-const STARTER_WITH_MONOREPO = {
-  status: "refused",
-  message: "--starter and --monorepo cannot be combined",
-  repair: "choose one CLI starter or the explicit monorepo example",
-};
-
-const KERNEL_NEEDS_DURABLE = {
-  status: "refused",
-  message: "--kernel is available only with --profile durable",
-  repair: "remove --kernel or choose --profile durable",
-};
-const KERNEL_WITH_STARTER = {
-  status: "refused",
-  message: "--kernel and --starter cannot be combined",
-  repair: "choose --kernel or one CLI starter",
-};
-const KERNEL_WITH_MONOREPO = {
-  status: "refused",
-  message: "--kernel and --monorepo cannot be combined",
-  repair: "choose --kernel or the explicit monorepo example",
-};
-
-const OUTCOMES: Record<string, unknown> = {
-  scratch: { status: "selected", row: "scratch single-package" },
-  "scratch simple": STARTER_NEEDS_DURABLE,
-  "scratch complex": STARTER_NEEDS_DURABLE,
-  "scratch --monorepo": MONOREPO_NEEDS_DURABLE,
-  "scratch --monorepo simple": MONOREPO_NEEDS_DURABLE,
-  "scratch --monorepo complex": MONOREPO_NEEDS_DURABLE,
-  durable: { status: "selected", row: "durable single-package" },
-  "durable simple": {
-    status: "selected",
-    row: "durable single-package simple",
-  },
-  "durable complex": {
-    status: "selected",
-    row: "durable single-package complex",
-  },
-  "durable --monorepo": { status: "selected", row: "durable monorepo" },
-  "durable --monorepo simple": STARTER_WITH_MONOREPO,
-  "durable --monorepo complex": STARTER_WITH_MONOREPO,
-  "scratch --kernel": KERNEL_NEEDS_DURABLE,
-  "scratch simple --kernel": KERNEL_NEEDS_DURABLE,
-  "scratch complex --kernel": KERNEL_NEEDS_DURABLE,
-  "scratch --monorepo --kernel": KERNEL_NEEDS_DURABLE,
-  "scratch --monorepo simple --kernel": KERNEL_NEEDS_DURABLE,
-  "scratch --monorepo complex --kernel": KERNEL_NEEDS_DURABLE,
-  "durable --kernel": {
-    status: "selected",
-    row: "durable single-package kernel",
-  },
-  "durable simple --kernel": KERNEL_WITH_STARTER,
-  "durable complex --kernel": KERNEL_WITH_STARTER,
-  "durable --monorepo --kernel": KERNEL_WITH_MONOREPO,
-  "durable --monorepo simple --kernel": KERNEL_WITH_STARTER,
-  "durable --monorepo complex --kernel": KERNEL_WITH_STARTER,
-};
-
-const PROVENANCE: Record<string, unknown> = {
-  "scratch single-package": {
-    profile: "scratch",
-    starter: "simple",
-    checkCommand: "bun run typecheck && bun run test",
-  },
-  "durable single-package": {
-    profile: "durable",
-    starter: "simple",
-    checkCommand: "bun run check",
-  },
-  "durable monorepo": {
-    profile: "durable",
-    starter: "simple",
-    checkCommand: "bun run check",
-  },
-  "durable single-package simple": {
-    profile: "durable",
-    starter: "simple",
-    checkCommand: "bun run check",
-  },
-  "durable single-package complex": {
-    profile: "durable",
-    starter: "complex",
-    checkCommand: "bun run check",
-  },
-};
-
-function selections(): Selection[] {
-  return [false, true].flatMap((kernel) =>
-    (["scratch", "durable"] as const).flatMap((profile) =>
-      [false, true].flatMap((monorepo) =>
-        ([undefined, "simple", "complex"] as const).map((starter) => ({
-          profile,
-          monorepo,
-          ...(starter === undefined ? {} : { starter }),
-          ...(kernel ? { kernel } : {}),
-        })),
-      ),
-    ),
-  );
-}
-
-function selectionKey(selection: Selection): string {
-  return [
-    selection.profile,
-    selection.monorepo ? "--monorepo" : undefined,
-    selection.starter,
-    selection.kernel === true ? "--kernel" : undefined,
-  ]
-    .filter((word) => word !== undefined)
-    .join(" ");
-}
-
-function outcome(selection: Selection): unknown {
-  const choice = selectRecipe(selection);
-  return choice.status === "selected"
-    ? { status: "selected", row: rowKey(choice.recipe) }
-    : choice;
-}
 
 async function filesUnder(root: string, prefix = ""): Promise<string[]> {
   const files: string[] = [];
@@ -165,13 +33,12 @@ async function filesUnder(root: string, prefix = ""): Promise<string[]> {
 }
 
 async function copiedPairs(
-  recipe: ProjectRecipe,
+  recipe: Recipe,
 ): Promise<{ from: string; to: string }[]> {
   const pairs: { from: string; to: string }[] = [];
-  for (const copy of recipe.copies) {
+  for (const copy of copiesOf(recipe)) {
     const source = join(ROOT, copy.from);
     for (const entry of await readdir(source, { withFileTypes: true })) {
-      if (UNCOPIED_NAMES.includes(entry.name)) continue;
       if (copy.only !== undefined && !copy.only.includes(entry.name)) continue;
       const paths = entry.isDirectory()
         ? await filesUnder(source, entry.name)
@@ -187,7 +54,7 @@ async function copiedPairs(
   return pairs;
 }
 
-async function copiedFiles(recipe: ProjectRecipe): Promise<string[]> {
+async function copiedFiles(recipe: Recipe): Promise<string[]> {
   return (await copiedPairs(recipe)).map(({ to }) => to);
 }
 
@@ -204,108 +71,114 @@ function duplicates(values: string[]): string[] {
   return values.filter((value, index) => values.indexOf(value) !== index);
 }
 
-describe("project recipe", () => {
-  test("every flag combination maps to exactly one row or one refusal", () => {
-    const outcomes = Object.fromEntries(
-      selections().map((selection) => [
-        selectionKey(selection),
-        outcome(selection),
-      ]),
-    );
-    expect(outcomes).toEqual(OUTCOMES);
-    const rows = [...RECIPES, KERNEL_RECIPE].map(rowKey);
-    expect(duplicates(rows)).toEqual([]);
-    expect(rows.toSorted()).toEqual(
-      Object.values(OUTCOMES)
-        .flatMap((value) =>
-          typeof value === "object" && value !== null && "row" in value
-            ? [String(value.row)]
-            : [],
-        )
-        .toSorted(),
-    );
-  });
-
-  test("each row's source folders exist and copy disjoint files", async () => {
-    for (const recipe of RECIPES) {
-      for (const copy of recipe.copies) {
-        const source = join(ROOT, copy.from);
-        expect({ source, exists: existsSync(source) }).toEqual({
-          source,
-          exists: true,
-        });
-        expect(statSync(source).isDirectory()).toBe(true);
-      }
-      const files = await copiedFiles(recipe);
-      expect({ row: rowKey(recipe), collisions: duplicates(files) }).toEqual({
-        row: rowKey(recipe),
-        collisions: [],
+describe("the recipe", () => {
+  test("its source folders exist and copy disjoint files", async () => {
+    for (const copy of copiesOf(KERNEL_RECIPE)) {
+      const source = join(ROOT, copy.from);
+      expect({ source, folder: statSync(source).isDirectory() }).toEqual({
+        source,
+        folder: true,
       });
     }
+    expect(duplicates(await copiedFiles(KERNEL_RECIPE))).toEqual([]);
   });
 
-  test("every file a row copies is UTF-8 text, because token substitution rewrites each copied file as text", async () => {
+  test("every file it copies is UTF-8 text, because token substitution rewrites each copied file as text", async () => {
     const notText: string[] = [];
-    for (const recipe of [...RECIPES, KERNEL_RECIPE])
-      for (const { from } of await copiedPairs(recipe))
-        if (!isUtf8Text(await readFile(from)))
-          notText.push(relative(ROOT, from));
+    for (const { from } of await copiedPairs(KERNEL_RECIPE))
+      if (!isUtf8Text(await readFile(from))) notText.push(relative(ROOT, from));
     expect(notText).toEqual([]);
   });
 
-  test("each row's Template provenance values match what Bootstrap writes today", () => {
-    const provenance: Record<string, unknown> = Object.fromEntries(
-      RECIPES.map((recipe) => [
-        rowKey(recipe),
-        {
-          profile: recipe.request.profile,
-          starter: recipe.cli,
-          checkCommand: recipe.checkCommand,
-        },
-      ]),
-    );
-    expect(provenance).toEqual(PROVENANCE);
-  });
-
-  test("the profile and starter words Bootstrap accepts are the ones the rows use", () => {
-    expect({ profiles: PROFILES, starters: STARTERS }).toEqual({
-      profiles: ["scratch", "durable"],
-      starters: ["simple", "complex"],
+  test("its Pin copies the settings whose package.json names the kernel by the token Bootstrap fills with the template's Pin", async () => {
+    const { dependencies } = JSON.parse(
+      await readFile(join(ROOT, PIN_SETTINGS.from, "package.json"), "utf8"),
+    ) as { dependencies: Record<string, string> };
+    expect({ pin: KERNEL_RECIPE.pin, dependencies }).toEqual({
+      pin: PIN_SETTINGS,
+      dependencies: { "agent-cli-kernel": "__KERNEL_PIN__" },
     });
   });
 
-  test("the four durable rows copy every lint rule file into config, and the scratch row copies none", async () => {
+  test("its check command is the generated repository's bun run check", () => {
+    expect(KERNEL_RECIPE.checkCommand).toBe("bun run check");
+  });
+
+  test("it copies every lint rule file into config", async () => {
     const ruleFiles = [...EXPECTED_RULE_FILES];
     expect(LINT_RULE_FILES.map((file) => `config/${file}`)).toEqual(ruleFiles);
-    const copied: Record<string, unknown> = {};
-    for (const recipe of RECIPES)
-      copied[rowKey(recipe)] = {
-        lintsCode: lintsCode(recipe),
-        ruleFiles: (await copiedFiles(recipe))
-          .filter((file) => file.startsWith("config/"))
-          .toSorted(),
-      };
-    const linted = { lintsCode: true, ruleFiles };
-    expect(copied).toEqual({
-      "scratch single-package": { lintsCode: false, ruleFiles: [] },
-      "durable single-package": linted,
-      "durable monorepo": linted,
-      "durable single-package simple": linted,
-      "durable single-package complex": linted,
-    });
+    expect(
+      (await copiedFiles(KERNEL_RECIPE))
+        .filter((file) => file.startsWith("config/"))
+        .toSorted(),
+    ).toEqual(ruleFiles);
   });
+});
 
-  test("a selection that no row and no refusal matches throws, naming the selection", () => {
-    const withGap = RECIPES.filter(
-      ({ request }) => request.profile !== "scratch",
-    );
+const probeFolder = ownedFolders();
 
-    expect(() =>
-      selectRecipe({ profile: "scratch", monorepo: false }, withGap),
-    ).toThrow(
-      "No recipe and no refusal matches profile scratch, monorepo false, starter none. Repair: add a recipe to RECIPES or a case to refusal().",
-    );
-  });
+async function compile(row: string) {
+  const probe = probeFolder("recipe-compile-");
+  writeFileSync(
+    join(probe, "probe.ts"),
+    `import { PIN_SETTINGS, type Recipe } from ${JSON.stringify(join(ROOT, "src/recipe.ts"))};\nexport const row: Recipe = ${row};\nexport const settings = PIN_SETTINGS;\n`,
+  );
+  writeFileSync(
+    join(probe, "tsconfig.json"),
+    JSON.stringify({
+      extends: join(ROOT, "tsconfig.base.json"),
+      compilerOptions: { typeRoots: [join(ROOT, "node_modules/@types")] },
+      files: ["probe.ts"],
+    }),
+  );
+  const run = await spawnBounded(
+    [join(ROOT, "node_modules/.bin/tsc"), "--noEmit", "-p", "tsconfig.json"],
+    { cwd: probe },
+  );
+  return {
+    exit: run.exit,
+    errors: [
+      ...run.stdout.matchAll(/probe\.ts\((\d+),\d+\): error (TS\d+)/g),
+    ].map(([, line, code]) => `line ${line}: ${code}`),
+  };
+}
+
+describe("the type check on a recipe row", () => {
+  test(
+    "the control: a row with the Pin's settings compiles",
+    async () => {
+      expect(
+        await compile(
+          '{ pin: PIN_SETTINGS, copies: [], checkCommand: "bun run check" }',
+        ),
+      ).toEqual({ exit: 0, errors: [] });
+    },
+    processWatchdog(1),
+  );
+
+  test(
+    "refuses a row without the Pin",
+    async () => {
+      expect(
+        await compile(
+          '{ copies: [{ from: "generated-repository/application", into: "." }], checkCommand: "bun run check" }',
+        ),
+      ).toEqual({ exit: 2, errors: ["line 2: TS2741"] });
+    },
+    processWatchdog(1),
+  );
+
+  test(
+    "refuses a row whose Pin copies another folder's settings",
+    async () => {
+      expect(
+        await compile(
+          '{ pin: { from: "settings", into: "." }, copies: [], checkCommand: "bun run check" }',
+        ),
+      ).toEqual({ exit: 2, errors: ["line 2: TS2322"] });
+    },
+    processWatchdog(1),
+  );
 });
 
 const carryOutFolders: string[] = [];
@@ -322,45 +195,45 @@ describe("Bootstrap carrying out a row", () => {
   test.each([
     {
       name: "a missing template source folder",
-      path: "starters/shared/src",
+      path: "generated-repository/application",
       plant: "remove",
-      code: "profile_source_missing",
-      message: "recipe folder is missing: starters/shared/src",
+      code: "recipe_source_missing",
+      message: "recipe folder is missing: generated-repository/application",
     },
     {
       name: "a missing template source file",
       path: "tests/support/test-folder.ts",
       plant: "remove",
-      code: "profile_source_missing",
+      code: "recipe_source_missing",
       message: "recipe file is missing: tests/support/test-folder.ts",
     },
     {
       name: "a folder where a template source file belongs",
       path: "config/payload-rules.mjs",
       plant: "folder",
-      code: "profile_source_wrong_type",
+      code: "recipe_source_wrong_type",
       message: "recipe file is not a regular file: config/payload-rules.mjs",
     },
     {
       name: "a file where a template source folder belongs",
-      path: "starters/shared/src",
+      path: "generated-repository/application",
       plant: "file",
-      code: "profile_source_wrong_type",
-      message: "recipe folder is not a folder: starters/shared/src",
+      code: "recipe_source_wrong_type",
+      message:
+        "recipe folder is not a folder: generated-repository/application",
     },
   ])(
     "refuses $name before any file is copied",
     async ({ path, plant, code, message }) => {
       const template = testFolder("recipe-template-");
       carryOutFolders.push(template);
-      await cp(join(ROOT, "src"), join(template, "src"), { recursive: true });
-      const durable = selectRecipe({ profile: "durable", monorepo: false });
-      if (durable.status !== "selected") throw new Error(durable.message);
-      for (const copy of durable.recipe.copies) {
-        await cp(join(ROOT, copy.from), join(template, copy.from), {
-          recursive: true,
-        });
-      }
+      for (const path of [
+        "src",
+        "kernel-pin.json",
+        KERNEL_LOCKFILE,
+        ...copiesOf(KERNEL_RECIPE).map(({ from }) => from),
+      ])
+        await cp(join(ROOT, path), join(template, path), { recursive: true });
       const planted = join(template, path);
       await rm(planted, { recursive: true });
       if (plant === "folder")
@@ -377,15 +250,17 @@ describe("Bootstrap carrying out a row", () => {
           process.execPath,
           "run",
           join(template, "src/bootstrap.ts"),
-          "--profile",
-          "durable",
           "--destination",
           destination,
           "--source-packet",
           "/abs/packets/demo",
           "--json",
         ],
-        { boundMilliseconds: bootstrapBound, processGroup: true },
+        {
+          boundMilliseconds: bootstrapBound,
+          processGroup: true,
+          env: { ...process.env, KERNEL_REPOSITORY: siblingKernel() },
+        },
       );
 
       expect({

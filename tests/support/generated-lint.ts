@@ -118,7 +118,10 @@ export function generatedLint(root: string) {
   return async (file: string, code: string, rules: ReadonlySet<string>) => {
     const [result] = await eslint.lintText(code, { filePath: file });
     return (result?.messages ?? [])
-      .filter(({ ruleId }) => ruleId === null || rules.has(ruleId))
+      .filter(
+        ({ ruleId, fatal }) =>
+          fatal === true || (ruleId !== null && rules.has(ruleId)),
+      )
       .map(({ ruleId, line }) => ({ ruleId, line }));
   };
 }

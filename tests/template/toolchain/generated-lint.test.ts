@@ -2,25 +2,25 @@ import { afterAll, expect, test } from "bun:test";
 import {
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   rmSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
-import { type ProjectRecipe, RECIPES } from "../../../src/recipe.ts";
+import { readKernelPin } from "../../../src/kernel-pin.ts";
 import {
   invoke,
-  parsePackage,
   requireSuccess,
   ROOT,
-  rowKey,
 } from "../../support/bootstrap-cli-fixture.ts";
 import {
   generatedLint,
   generatedLintProblems,
   lintRulesOn,
 } from "../../support/generated-lint.ts";
+import { kernelCheckout } from "../../support/kernel-sibling.ts";
 import { commentCases } from "../../support/lint-comment-cases.ts";
 import { antiSlopGate, repositoryGate } from "../../support/lint-gate-cases.ts";
 import { EXPECTED_RULE_FILES } from "../../support/lint-rule-files.ts";
@@ -65,56 +65,39 @@ const TEMPLATE_LINT_RULES: [string, string[]][] = [
   ["tests/template/doctor/doctor.test.ts", TEST],
   ["eslint.config.mjs", EVERY_FILE],
 ];
-const LINTED = [
-  "durable single-package",
-  "durable monorepo",
-  "durable single-package simple",
-  "durable single-package complex",
-];
 const TURN_ON =
   "Repair: copy the lint rule's entry, with its files, from the template's eslint.config.mjs into the eslint.config.mjs this recipe copies.";
 
-function recipeNamed(row: string): ProjectRecipe {
-  const recipe = RECIPES.find((candidate) => rowKey(candidate) === row);
-  if (recipe === undefined) throw new Error(`No recipe row is named ${row}.`);
-  return recipe;
+function installTemplatePackagesAndKernel(destination: string): void {
+  const modules = join(destination, "node_modules");
+  mkdirSync(modules);
+  for (const name of readdirSync(join(ROOT, "node_modules")))
+    symlinkSync(join(ROOT, "node_modules", name), join(modules, name));
+  kernelCheckout(join(modules, readKernelPin(ROOT).repository));
 }
 
-function flags({ request }: ProjectRecipe): string[] {
-  return [
-    "--profile",
-    request.profile,
-    ...(request.layout === "monorepo" ? ["--monorepo"] : []),
-    ...(request.starter === undefined ? [] : ["--starter", request.starter]),
-  ];
-}
-
-const generated = new Map<string, Promise<string>>();
-
-async function bootstrapped(row: string): Promise<string> {
+async function bootstrapped(): Promise<string> {
   const destination = join(testFolder("generated-lint-"), "repository");
   folders.push(dirname(destination));
   requireSuccess(
     await invoke(
-      ...flags(recipeNamed(row)),
       "--destination",
       destination,
       "--source-packet",
       "https://example.test/spec",
       "--json",
     ),
-    `bootstrap ${row}`,
+    "bootstrap",
   );
-  symlinkSync(join(ROOT, "node_modules"), join(destination, "node_modules"));
+  installTemplatePackagesAndKernel(destination);
   return destination;
 }
 
-function generatedFrom(row: string): Promise<string> {
-  const known = generated.get(row);
-  if (known !== undefined) return known;
-  const made = bootstrapped(row);
-  generated.set(row, made);
-  return made;
+let generated: Promise<string> | undefined;
+
+function generatedRepository(): Promise<string> {
+  generated ??= bootstrapped();
+  return generated;
 }
 
 function testFileOf(root: string): string {
@@ -250,47 +233,23 @@ test("a generated tree that narrows a lint rule to the files it has today names 
 });
 
 test(
-  "a generated monorepo turns the source and test lint rules on inside a package",
+  "a repository Bootstrap generates holds the template's lint rule files and turns on every lint rule the template turns on",
   async () => {
-    const root = await generatedFrom("durable monorepo");
-    expect({
-      source: await lintRulesOn(root, "packages/probe/src/probe.ts"),
-      test: await lintRulesOn(root, "packages/probe/tests/probe.ts"),
-    }).toEqual({ source: SOURCE.toSorted(), test: TEST.toSorted() });
-  },
-  generationTimeout,
-);
-
-test(
-  "the recipes whose generated repository has a lint script are the four durable ones",
-  async () => {
-    const linted: string[] = [];
-    for (const recipe of RECIPES) {
-      const root = await generatedFrom(rowKey(recipe));
-      const { scripts } = parsePackage(
-        readFileSync(join(root, "package.json"), "utf8"),
-      );
-      if (scripts.lint !== undefined) linted.push(rowKey(recipe));
-    }
-    expect(linted.toSorted()).toEqual(LINTED.toSorted());
-  },
-  generationTimeout,
-);
-
-test.each(LINTED)(
-  "a repository generated from the %s recipe holds the template's lint rule files and turns on every lint rule the template turns on",
-  async (row) => {
     expect(
-      await generatedLintProblems(ROOT, await generatedFrom(row), row),
+      await generatedLintProblems(
+        ROOT,
+        await generatedRepository(),
+        "generated",
+      ),
     ).toEqual([]);
   },
   generationTimeout,
 );
 
-test.each(LINTED)(
-  "a repository generated from the %s recipe refuses and admits each comment as the template does",
-  async (row) => {
-    const lint = generatedLint(await generatedFrom(row));
+test(
+  "a repository Bootstrap generates refuses and admits each comment as the template does",
+  async () => {
+    const lint = generatedLint(await generatedRepository());
     const rules = new Set(["repository/no-comments"]);
     const verdicts: [string, number[]][] = [];
     for (const [, code] of commentCases)
@@ -305,10 +264,10 @@ test.each(LINTED)(
   generationTimeout,
 );
 
-test.each(LINTED)(
-  "a repository generated from the %s recipe refuses a planted violation of each lint rule and admits its clean form",
-  async (row) => {
-    const root = await generatedFrom(row);
+test(
+  "a repository Bootstrap generates refuses a planted violation of each lint rule and admits its clean form",
+  async () => {
+    const root = await generatedRepository();
     const lint = generatedLint(root);
     const cases = [
       ...antiSlopGate.map((item) => ({ ...item, kind: "source" })),
@@ -335,40 +294,20 @@ test.each(LINTED)(
   generationTimeout,
 );
 
-const MARKERS =
-  "A comment that opens with `Platform:` or `Interface:` makes a claim that a reviewer checks. It is not a way to keep a comment.";
-const LINTED_GUIDANCE = `## Comments
+test(
+  "a generated AGENTS.md ends with the comment guidance its lint backs",
+  async () => {
+    const text = readFileSync(
+      join(await generatedRepository(), "AGENTS.md"),
+      "utf8",
+    );
+    expect(text.slice(text.indexOf("## Comments"))).toBe(`## Comments
 
 Lint refuses a comment in code, so say it in a name, a type or a test title.
-${MARKERS}
+A comment that opens with \`Platform:\` or \`Interface:\` makes a claim that a reviewer checks. It is not a way to keep a comment.
 
 The lint rule files in config/ are the template's. Change a lint rule in the template, not here.
-`;
-const UNLINTED_GUIDANCE = `## Comments
-
-Write no comment in code. Say it in a name, a type or a test title.
-${MARKERS}
-`;
-
-test(
-  "every generated AGENTS.md ends with the comment guidance its recipe's lint can back",
-  async () => {
-    const guidance: Record<string, string> = {};
-    for (const recipe of RECIPES) {
-      const text = readFileSync(
-        join(await generatedFrom(rowKey(recipe)), "AGENTS.md"),
-        "utf8",
-      );
-      guidance[rowKey(recipe)] = text.slice(text.indexOf("## Comments"));
-    }
-    expect(guidance).toEqual(
-      Object.fromEntries(
-        RECIPES.map((recipe) => [
-          rowKey(recipe),
-          LINTED.includes(rowKey(recipe)) ? LINTED_GUIDANCE : UNLINTED_GUIDANCE,
-        ]),
-      ),
-    );
+`);
   },
   generationTimeout,
 );

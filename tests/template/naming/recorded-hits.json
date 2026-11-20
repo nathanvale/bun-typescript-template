@@ -1,25 +1,4 @@
 {
   "about": "Names that used an Avoid word or an unqualified word from GLOSSARY.md when the names check landed (17 November 2026). The check fails on any hit not listed here, and on any listed hit that no longer occurs: remove an entry in the change that renames its path.",
-  "hits": [
-    {
-      "path": "profiles",
-      "word": "profile",
-      "reason": "Holds the repository profiles. Recipes, Bootstrap and the static admission check name this path; renaming it is its own change."
-    },
-    {
-      "path": "proofs",
-      "word": "proof",
-      "reason": "Holds the verification records written when each repository profile was built. No tool reads them; renaming is its own change."
-    },
-    {
-      "path": "proofs/durable/PROOF.md",
-      "word": "proof",
-      "reason": "The durable profile's verification record. Renaming it is its own change."
-    },
-    {
-      "path": "starters",
-      "word": "starter",
-      "reason": "Holds the CLI starters. It keeps its name until the CLI starters are removed (decided 17 November 2026)."
-    }
-  ]
+  "hits": []
 }

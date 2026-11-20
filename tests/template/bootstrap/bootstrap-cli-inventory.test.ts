@@ -324,93 +324,81 @@ for (const [name, source, entries] of [
 }
 
 test(
-  "one-CLI admission covers scratch, durable and workspace entry points",
-  async () => {
-    for (const [profile, extra] of [
-      ["scratch", []],
-      ["durable", []],
-      ["durable", ["--monorepo"]],
-    ] as const) {
-      const root = temporaryRoot();
-      const destination = join(root, "repository");
-      requireSuccess(
-        await invoke(
-          "--profile",
-          profile,
-          "--destination",
-          destination,
-          "--source-packet",
-          "https://example.test/spec",
-          ...extra,
-          "--json",
-        ),
-        "generate repository",
-      );
-      await writeFile(
-        join(destination, "src/args.ts"),
-        "export function cliArgs() { return process.argv.slice(2); }\n",
-      );
-      const entryPath = join(destination, "src/cli.ts");
-      await writeFile(
-        entryPath,
-        'import { cliArgs } from "./args.ts";\nvoid cliArgs;\n' +
-          (await readFile(entryPath, "utf8")),
-      );
-      const initial = await admitCli(destination);
-      expect(initial.exitCode).toBe(0);
-      expect(JSON.parse(initial.stdout)).toMatchObject({
-        entries: ["src/cli.ts"],
-        status: "admitted",
-      });
-      const manifestPath = join(destination, "package.json");
-      const manifest = parsePackage(await readFile(manifestPath, "utf8"));
-      manifest.scripts["cli-alias"] = "bun run ./src/cli.ts --help";
-      manifest.scripts["build:sample"] =
-        "bun build src/cli.ts --outfile dist/cli.js";
-      manifest.scripts["build:custom"] = "bun run scripts/build.ts";
-      await mkdir(join(destination, "scripts"));
-      await writeFile(
-        join(destination, "scripts/build.ts"),
-        'const minify = process.argv.includes("--minify");\nvoid Bun.build({entrypoints: ["src/cli.ts"], outdir: "dist", minify});\n',
-      );
-      await writeFile(
-        join(destination, "BUILD.md"),
-        "Build with `bun run scripts/build.ts --minify`.\n",
-      );
-      await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
-      expect((await admitCli(destination)).exitCode).toBe(0);
-      await writeFile(
-        join(destination, "src/second.ts"),
-        'if (import.meta.main) process.stdout.write("second CLI\\n");\n',
-      );
-      const refused = await admitCli(destination);
-      expect(refused.exitCode).toBe(1);
-      expect(JSON.parse(refused.stdout)).toMatchObject({
-        entries: ["src/cli.ts", "src/second.ts"],
-        status: "refused",
-      });
-    }
-  },
-  processWatchdog(12),
-);
-
-test(
-  "one-CLI admission finds a documented executable and workspace bin",
+  "one-CLI admission covers a generated repository's entry points",
   async () => {
     const root = temporaryRoot();
-    const destination = join(root, "workspace");
+    const destination = join(root, "repository");
     requireSuccess(
       await invoke(
-        "--profile",
-        "durable",
-        "--monorepo",
         "--destination",
         destination,
         "--source-packet",
         "https://example.test/spec",
         "--json",
       ),
-      "generate workspace",
+      "generate repository",
+    );
+    await writeFile(
+      join(destination, "src/args.ts"),
+      "export function cliArgs() { return process.argv.slice(2); }\n",
+    );
+    const entryPath = join(destination, "src/cli.ts");
+    await writeFile(
+      entryPath,
+      'import { cliArgs } from "./args.ts";\nvoid cliArgs;\n' +
+        (await readFile(entryPath, "utf8")),
+    );
+    const initial = await admitCli(destination);
+    expect(initial.exitCode).toBe(0);
+    expect(JSON.parse(initial.stdout)).toMatchObject({
+      entries: ["src/cli.ts"],
+      status: "admitted",
+    });
+    const manifestPath = join(destination, "package.json");
+    const manifest = parsePackage(await readFile(manifestPath, "utf8"));
+    manifest.scripts["cli-alias"] = "bun run ./src/cli.ts --help";
+    manifest.scripts["build:sample"] =
+      "bun build src/cli.ts --outfile dist/cli.js";
+    manifest.scripts["build:custom"] = "bun run scripts/build.ts";
+    await mkdir(join(destination, "scripts"));
+    await writeFile(
+      join(destination, "scripts/build.ts"),
+      'const minify = process.argv.includes("--minify");\nvoid Bun.build({entrypoints: ["src/cli.ts"], outdir: "dist", minify});\n',
+    );
+    await writeFile(
+      join(destination, "BUILD.md"),
+      "Build with `bun run scripts/build.ts --minify`.\n",
+    );
+    await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
+    expect((await admitCli(destination)).exitCode).toBe(0);
+    await writeFile(
+      join(destination, "src/second.ts"),
+      'if (import.meta.main) process.stdout.write("second CLI\\n");\n',
+    );
+    const refused = await admitCli(destination);
+    expect(refused.exitCode).toBe(1);
+    expect(JSON.parse(refused.stdout)).toMatchObject({
+      entries: ["src/cli.ts", "src/second.ts"],
+      status: "refused",
+    });
+  },
+  processWatchdog(4),
+);
+
+test(
+  "one-CLI admission finds a documented executable and a package's bin",
+  async () => {
+    const root = temporaryRoot();
+    const destination = join(root, "repository");
+    requireSuccess(
+      await invoke(
+        "--destination",
+        destination,
+        "--source-packet",
+        "https://example.test/spec",
+        "--json",
+      ),
+      "generate repository",
     );
     await writeFile(
       join(destination, "src/documented.ts"),
@@ -433,14 +421,18 @@ test(
       join(destination, "src/documented.ts"),
       "export const libraryValue = 1;\n",
     );
-    await writeFile(readme, "# Workspace\nRun: `bun run src/cli.ts`.\n");
-    const memberPath = join(destination, "packages/example-lib/package.json");
-    const member = JSON.parse(await readFile(memberPath, "utf8")) as Record<
-      string,
-      unknown
-    >;
-    member.bin = { extra: "src/index.ts" };
-    await writeFile(memberPath, JSON.stringify(member, null, 2) + "\n");
+    await writeFile(readme, "# Repository\nRun: `bun run src/cli.ts`.\n");
+    const member = join(destination, "packages/example-lib");
+    await mkdir(join(member, "src"), { recursive: true });
+    await writeFile(
+      join(member, "src/index.ts"),
+      "export const libraryValue = 1;\n",
+    );
+    await writeFile(
+      join(member, "package.json"),
+      JSON.stringify({ name: "example-lib", bin: { extra: "src/index.ts" } }) +
+        "\n",
+    );
     const refused = await admitCli(destination);
     expect(refused.exitCode).toBe(1);
     expect(JSON.parse(refused.stdout)).toMatchObject({

@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { invoke } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
-import { timed, whileGitHangs } from "../../support/hung-git.ts";
+import { timed, whileTemplateGitHangs } from "../../support/hung-git.ts";
 import { processWatchdog } from "../../support/process.ts";
 
 const folder = ownedFolders();
@@ -14,13 +14,11 @@ describe("Bootstrap reading the template's commit for Template provenance", () =
     "refuses within its bound when git does not answer, naming the git command and its repair, and publishes nothing",
     async () => {
       const destination = join(folder("template-revision-"), "demo-app");
-      const { value, milliseconds } = await whileGitHangs(
+      const { value, milliseconds } = await whileTemplateGitHangs(
         folder("template-revision-git-"),
         () =>
           timed(() =>
             invoke(
-              "--profile",
-              "durable",
               "--destination",
               destination,
               "--source-packet",

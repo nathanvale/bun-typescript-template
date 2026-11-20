@@ -1,5 +1,5 @@
 import { mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { findSiblingKernel, readKernelPin } from "../../src/kernel-pin.ts";
 import { ROOT } from "./bootstrap-cli-fixture.ts";
 import { git, gitOutput } from "./git-fixture.ts";
@@ -26,6 +26,19 @@ export function kernelClone(folder: string, mainAt = pinnedCommit): string {
   git(root, "update-ref", "refs/heads/main", mainAt);
   git(root, "symbolic-ref", "HEAD", "refs/heads/main");
   return root;
+}
+
+export function kernelCheckout(folder: string, commit = pinnedCommit): void {
+  git(
+    dirname(folder),
+    "clone",
+    "--quiet",
+    "--shared",
+    "--no-checkout",
+    siblingKernel(),
+    folder,
+  );
+  git(folder, "checkout", "--quiet", "--detach", commit);
 }
 
 export type TopLevelEdit = {

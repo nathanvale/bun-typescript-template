@@ -352,7 +352,7 @@ test(
       [standing]: " x",
       [nearby]: overLimit,
       "vendor/upstream/notes.txt": overLimit,
-      "starters/complex/bun.lock": overLimit,
+      "vendor/upstream/bun.lock": overLimit,
       ".claude/hooks/fallow-gate.sh": overLimit,
       ".codex/hooks/fallow-gate.sh": overLimit,
       "docs/binary.txt": `\0${overLimit}`,

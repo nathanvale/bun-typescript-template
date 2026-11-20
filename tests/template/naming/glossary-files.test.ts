@@ -161,36 +161,36 @@ test("GM.b a map that points to no file fails", () => {
 
 const fixture = readGlossary(`# Fixture glossary
 
-**CLI starter**:
-A program to start from.
+**Sample folder**:
+A folder of samples.
 
 **Test area**:
 Tests that run together.
 `);
 
 test.each([
-  ["prose that wraps a line", "two CLI\nstarters in one test area"],
-  ["a camel-case name", "const testAreas = [cliStarter];"],
-  ["a kebab-case name", "cli-starter.ts and test-area.ts"],
+  ["prose that wraps a line", "two sample\nfolders in one test area"],
+  ["a camel-case name", "const testAreas = [sampleFolder];"],
+  ["a kebab-case name", "sample-folder.ts and test-area.ts"],
 ])("terms used in %s count as used", (_kind, text) => {
   expect(termUseProblems(fixture, [text], [])).toEqual([]);
 });
 
-const noStarterYet = ["a test area", "a starter for the CLI"];
+const noSampleFolderYet = ["a test area", "a folder for samples"];
 const awaited = {
-  term: "CLI starter",
+  term: "Sample folder",
   reason: "The ticket that builds it has not landed.",
   ticket: "MAG-1",
 };
 
 test("GM.c a glossary term used nowhere fails", () => {
-  expect(termUseProblems(fixture, noStarterYet, [])).toEqual([
-    `"CLI starter" appears in no tracked file outside the glossary files. Repair: use it, remove it from GLOSSARY.md, or record it in ${recordedUnusedTermsFile} with the ticket that will use it.`,
+  expect(termUseProblems(fixture, noSampleFolderYet, [])).toEqual([
+    `"Sample folder" appears in no tracked file outside the glossary files. Repair: use it, remove it from GLOSSARY.md, or record it in ${recordedUnusedTermsFile} with the ticket that will use it.`,
   ]);
 });
 
 test("a recorded unused term passes while nothing uses it", () => {
-  expect(termUseProblems(fixture, noStarterYet, [awaited])).toEqual([]);
+  expect(termUseProblems(fixture, noSampleFolderYet, [awaited])).toEqual([]);
 });
 
 const endsInY = readGlossary(`# Fixture glossary
@@ -217,9 +217,9 @@ test("a recorded unused term that ends in y fails once a tracked file uses its p
 
 test("GM.d a recorded unused term that a tracked file now uses fails", () => {
   expect(
-    termUseProblems(fixture, ["a test area", "a CLI starter"], [awaited]),
+    termUseProblems(fixture, ["a test area", "a sample folder"], [awaited]),
   ).toEqual([
-    `${recordedUnusedTermsFile} records "CLI starter", which a tracked file now uses. Repair: remove the entry.`,
+    `${recordedUnusedTermsFile} records "Sample folder", which a tracked file now uses. Repair: remove the entry.`,
   ]);
 });
 
@@ -227,7 +227,7 @@ test("GM.e a recorded unused term that GLOSSARY.md does not define fails", () =>
   expect(
     termUseProblems(
       fixture,
-      ["a test area", "a CLI starter"],
+      ["a test area", "a sample folder"],
       [{ ...awaited, term: "Layout" }],
     ),
   ).toEqual([
@@ -242,8 +242,8 @@ test("a recorded unused term is read with its reason and its ticket", () => {
 });
 
 test.each([
-  ["a reason", { term: "CLI starter", ticket: "MAG-1" }],
-  ["a ticket", { term: "CLI starter", reason: "Not built yet." }],
+  ["a reason", { term: "Sample folder", ticket: "MAG-1" }],
+  ["a ticket", { term: "Sample folder", reason: "Not built yet." }],
   ["a term", { reason: "Not built yet.", ticket: "MAG-1" }],
 ])("GM.f a recorded unused term without %s is refused", (_field, entry) => {
   expect(() =>

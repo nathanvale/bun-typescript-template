@@ -25,6 +25,18 @@ export function whileGitHangs<T>(
   return withToolsFirst(bin, run);
 }
 
+export function whileTemplateGitHangs<T>(
+  bin: string,
+  run: () => T | Promise<T>,
+): Promise<T> {
+  writeFileSync(
+    join(bin, "git"),
+    `#!/bin/sh\nif [ "$1" = "-C" ]; then exec sleep 15; fi\nexec ${JSON.stringify(Bun.which("git"))} "$@"\n`,
+    { mode: 0o755 },
+  );
+  return withToolsFirst(bin, run);
+}
+
 export async function timed<T>(
   run: () => T | Promise<T>,
 ): Promise<{ value: T; milliseconds: number }> {

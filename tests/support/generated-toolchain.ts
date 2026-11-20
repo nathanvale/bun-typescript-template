@@ -1,7 +1,5 @@
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { RECIPES } from "../../src/recipe.ts";
-import { installedPackage } from "../../src/static-admission.ts";
 
 type Ranges = Record<string, string>;
 export type PackageJson = {
@@ -23,7 +21,12 @@ export type LockFile = {
   packages: Record<string, unknown[]>;
 };
 type Listed = [file: string, packageJson: PackageJson];
-type Template = { packageJson: PackageJson; versions: Map<string, string> };
+export type KernelDependency = { readonly name: string; readonly spec: string };
+type Template = {
+  packageJson: PackageJson;
+  versions: Map<string, string>;
+  kernel: KernelDependency | undefined;
+};
 type Entry = {
   place: string;
   name: string;
@@ -59,6 +62,10 @@ const NO_LOCK: LockFile = {
   overrides: {},
   packages: {},
 };
+
+export function installedPackage(name: string, range: string): string {
+  return range.startsWith("npm:") ? range.slice(4) : `${name}@${range}`;
+}
 
 function own<T>(record: Record<string, T>, key: string): T | undefined {
   return Object.hasOwn(record, key) ? record[key] : undefined;
@@ -116,15 +123,6 @@ function versioned(packageJson: PackageJson, catalog: Ranges) {
   return entries(packageJson, catalog).filter(comparable);
 }
 
-export function recipeFolders(tree: string): string[] {
-  const folders = RECIPES.flatMap(({ copies }) =>
-    copies.filter(({ into }) => into === ".").map(({ from }) => from),
-  );
-  return [...new Set(folders)].filter((folder) =>
-    existsSync(join(tree, folder, "package.json")),
-  );
-}
-
 function memberPatterns(workspaces: unknown): string[] | undefined {
   return Array.isArray(workspaces) &&
     workspaces.every(
@@ -153,6 +151,17 @@ async function packagesIn(folder: string, patterns: string[]) {
   );
 }
 
+function isKernel(
+  { place, name, given }: Entry,
+  kernel: KernelDependency | undefined,
+): boolean {
+  return (
+    place === `dependencies.${name}` &&
+    name === kernel?.name &&
+    given === kernel.spec
+  );
+}
+
 function versionProblems(
   folder: string,
   [file, packageJson]: Listed,
@@ -171,7 +180,10 @@ function versionProblems(
   });
   const unread = entries(packageJson, catalog)
     .filter(
-      (entry) => !comparable(entry) && !entry.given.startsWith("workspace:"),
+      (entry) =>
+        !comparable(entry) &&
+        !entry.given.startsWith("workspace:") &&
+        !isKernel(entry, template.kernel),
     )
     .map(
       ({ place, given }) =>
@@ -322,6 +334,7 @@ async function folderProblems(
 export async function toolchainProblems(
   tree: string,
   folders: readonly string[],
+  kernel?: KernelDependency,
 ): Promise<string[]> {
   const packageJson = await readPackageJson(join(tree, "package.json"));
   const versions = new Map(
@@ -331,7 +344,7 @@ export async function toolchainProblems(
   );
   const problems = await Promise.all(
     folders.map((folder) =>
-      folderProblems(tree, folder, { packageJson, versions }),
+      folderProblems(tree, folder, { packageJson, versions, kernel }),
     ),
   );
   return problems.flat();

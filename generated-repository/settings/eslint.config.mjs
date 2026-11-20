@@ -60,6 +60,14 @@ export default tseslint.config(
     },
   },
   {
+    files: ["scripts/**/*.ts"],
+    plugins: { repository },
+    rules: {
+      "repository/no-locale-compare": "error",
+      "repository/no-in-operator": "error",
+    },
+  },
+  {
     files: ["tests/**/*.{ts,mts,cts}", "**/*.test.{ts,mts,cts}"],
     plugins: { repository },
     rules: {
