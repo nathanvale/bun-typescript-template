@@ -11,7 +11,9 @@ here.
   constructor's shape rule gave admission a different refusal text.
   Witnessed: [892a700], [f2270b3], [#113-path] (the kernel reader returned a
   file name with a backslash, which the shared plain-path rule refuses,
-  until the reader ran that rule's helper too).
+  until the reader ran that rule's helper too), [d3a35b6] (the pin move's
+  fetch skipped the kernel reader's repository check and wrote kernel
+  objects into an enclosing repository).
 - Import shared test fakes and fixtures from
   `tests/kernel/kernel-repair/handlers.ts` and `shapes.ts`. Witnessed:
   [810345d], [cf72627].
@@ -60,3 +62,4 @@ here.
 [#113-lazy]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4626555126
 [d29b755]: https://github.com/nathanvale/bun-typescript-template/commit/d29b7552547144c165d0402a54c3e22fb8e7487e
 [a639dc0]: https://github.com/nathanvale/bun-typescript-template/commit/a639dc0cb92d859552ca1eec75ee1a66d3cc0ced
+[d3a35b6]: https://github.com/nathanvale/bun-typescript-template/commit/d3a35b6f615b5422255514ed5b644181ae963872
