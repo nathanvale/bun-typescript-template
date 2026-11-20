@@ -85,8 +85,8 @@ this file.
   it whole, and reported success for a malformed repository).
 - Report a folder that holds nothing as an entry itself, since a walk that
   lists only what is inside a folder shows no sign of an empty one.
-  Witnessed: [r4626801130] (an extra empty folder in a stamp root produced
-  no entry, so the stamp check gave `intact`).
+  Witnessed: [r4626801130] (an extra empty folder in a source folder produced
+  no entry, so the file comparison gave `intact`).
 
 [ac11ed9]: https://github.com/nathanvale/bun-typescript-template/commit/ac11ed98b7d538e8a304cac053aaefcaaf6b2cb3
 [cd2498b]: https://github.com/nathanvale/bun-typescript-template/commit/cd2498b7189a2d45d1906b9c870e8d13da6cd2dd

@@ -18,8 +18,9 @@ after it in every file and folder name. It refuses a word noted
 ### Creating a repository
 
 **Template**:
-The canonical owner of portable template source and of the pin. It stamps the
-kernel and add-ons and does not own their source.
+The canonical owner of portable template source and of its own pin. Bootstrap
+gives each generated repository a pin of its own. The template does not own
+the kernel or add-on source.
 
 **Foundation**:
 The template, kernel repository, composer, checker, exemplar and
@@ -56,8 +57,9 @@ _Avoid_: version (unqualified); release, pin (for a template version)
 
 **Kernel split**:
 The whole change that moves the kernel and add-on source and their tests out
-of the template into the kernel repository, while the template still stamps
-them. It covers every step, from preparation to removing the old CLI starters.
+of the template into the kernel repository, while each generated repository
+gets the kernel through its pin. It covers every step, from preparation to
+removing the old CLI starters.
 For the single step that moves the files, say carry-out.
 _Avoid_: extraction, migration (when the kernel split is meant)
 
@@ -88,23 +90,25 @@ branch. The pin records it, and no pin may name an earlier commit.
 _Avoid_: floor (unqualified), baseline
 
 **Kernel migration**:
-Moving a repository made with an old CLI starter onto the stamped kernel. It
-is neither a Template upgrade nor a Restamp.
+Moving a repository made with an old CLI starter onto an installed kernel at a
+pin. It is not a Template upgrade.
 _Avoid_: upgrade, migration (unqualified)
 
 **Kernel repository alignment**:
 The kernel repository later adopting the template's tooling, as a repository
-with no CLI starter and no stamped kernel.
-_Avoid_: Restamp, Template upgrade (for alignment)
+with no CLI starter and no installed kernel.
+_Avoid_: Template upgrade (for alignment)
 
 ### Pins
 
 **Pin**:
-The template's record of the kernel repository, one full commit in it, and the
-kernel branch that commit must stay reachable from. The pinned commit
-identifies the kernel; a pin has no version number. Say kernel pin wherever a
-toolchain pin could be meant.
-_Avoid_: version, release, dependency, package (for a kernel pin), pointer (say pin), pin record (say pin), lock (for a pin)
+A record of the kernel repository and one full commit in it. The template's
+pin also names the kernel branch that commit must stay reachable from. A
+generated repository's pin is its one kernel dependency line in
+`package.json`, `"agent-cli-kernel": "github:nathanvale/agent-cli-kernel#<full 40-character commit>"`.
+The pinned commit identifies the kernel; a pin has no version number. Say
+kernel pin wherever a toolchain pin could be meant.
+_Avoid_: version, release (for a kernel pin), pointer (say pin), pin record (say pin), lock (for a pin)
 
 **Toolchain pin**:
 The one Bun version this repository runs on, recorded as `packageManager` in
@@ -116,8 +120,10 @@ The one full commit that a pin names.
 _Avoid_: tag, branch, short hash (for a pinned commit)
 
 **Pin move**:
-Changing a pin to another commit. A pin move needs a passed kernel trial and a
-commit that is reachable from the pin's named branch.
+Changing a pin to another commit, in the template or in a generated
+repository. A pin move needs a passed kernel trial. When the pin names a
+kernel branch, the new commit must be reachable from it. A Template upgrade
+does not move a generated repository's pin; a pin move is always its own act.
 _Avoid_: bump, update, upgrade (for a pin move)
 
 **Pin move report**:
@@ -131,46 +137,18 @@ selected, and running that repository's check command. It must pass before a
 pin move. It may also run on any kernel change as advice only.
 _Avoid_: canary, dry run (for a kernel trial)
 
-### Stamping
+### The installed kernel and its add-ons
 
-**Stamp**:
-Copying stamped source from one kernel commit into a repository, byte for
-byte. The commit is the pinned commit, or a candidate commit in a kernel
-trial.
-_Avoid_: install, vendor, generate, copy (unqualified); stamp as a noun for the code that stamps or for the stamped result (say stamped source)
+**Installed kernel**:
+The kernel as Bun installs it from a generated repository's pin, under
+`node_modules/agent-cli-kernel`. The generated repository imports it by the
+package name and owns none of its source.
+_Avoid_: vendored kernel, kernel copy (for the installed kernel)
 
-**Stamped source**:
-Source owned by the kernel repository, copied byte for byte from one kernel
-commit. Copies have one canonical source owner; they are not independently
-editable contract owners.
-
-**Stamp root**:
-One folder that the kernel repository declares and that is stamped and checked
-as a unit.
-
-**Stamp record**:
-The record in a generated repository of what was stamped: the kernel commit,
-the add-on selection, the identity of every stamped file and of each stamp
-root, the requirements that were merged in, and the identity of the stamp
-checker.
-_Avoid_: lock file, manifest (unqualified)
-
-**Stamp check**:
-The offline check, in a generated repository, that its stamped source, its
-merged requirements and its stamp checker still equal its stamp record. Its
-verdict is intact, broken or unstamped. It guards against accidental edits,
-not deliberate ones.
-_Avoid_: drift check, integrity check (unqualified)
-
-**Stamp checker**:
-The file in a generated repository that runs the stamp check.
-_Avoid_: checker (unqualified; the checker is the Contract 3 checker in the Foundation)
-
-**Restamp**:
-Replacing a repository's stamped source and merged requirements with those of
-the current pin, after the stamp check finds the old ones intact. Nothing is
-merged.
-_Avoid_: sync, merge (for a restamp)
+**Kernel lockfile**:
+The one lockfile the template keeps for generated repositories, once a pin
+move has written it. Every add-on selection shares it.
+_Avoid_: lockfile (unqualified); package set lockfile (for the kernel lockfile)
 
 **Add-on**:
 An optional capability using the kernel's public interface without importing
@@ -179,19 +157,21 @@ programs, approval and diagnostics. An add-on may require another add-on to be
 selected.
 
 **Add-on selection**:
-The add-ons that one repository is stamped with. The kernel is always stamped
-and is not part of the selection.
+The add-ons that one generated repository uses, recorded only in its
+`installedAddons`. Template provenance holds no add-on list. Every add-on is
+installed with the kernel; the kernel is always used and is not part of the
+selection.
 _Avoid_: starter, profile, variant (for an add-on selection)
 
 **Add-on requirement**:
-What an add-on needs in the repository that receives it. There are two kinds:
-things merged into that repository (named packages and tool entries), and
-another add-on that must also be selected.
-_Avoid_: dependency (unqualified)
+A package an add-on needs, declared in the kernel's `package.json` as an
+ordinary dependency. The diagnostics add-on's `@logtape` packages are add-on
+requirements.
+_Avoid_: optional peer (for an add-on requirement); dependency (unqualified)
 
 **Kernel declaration**:
-The kernel repository's own statement, read at one commit, of its stamp roots
-and of each add-on requirement.
+The kernel repository's own statement, read at one commit, of its kernel and
+add-on folders and of the add-ons each add-on requires.
 _Avoid_: manifest (for a kernel declaration), hand-kept list
 
 **Kernel reader**:

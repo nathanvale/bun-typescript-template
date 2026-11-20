@@ -56,11 +56,11 @@ boundary trusts the types.
   [r4625243717], [r4625304816] (a kernel declaration with a byte that is not
   UTF-8 was decoded and read), [r4625243680], [r4625304810] (a file name
   that holds U+FFFD itself was refused as not UTF-8), [r4625592501] (paths
-  that were not UTF-8 were matched against a stamp root through their lossy
-  decoding, so one outside a stamp root whose name holds U+FFFD was refused;
+  that were not UTF-8 were matched against a source folder through their lossy
+  decoding, so one outside a source folder whose name holds U+FFFD was refused;
   compare bytes with bytes before decoding), [#113-copilot] (folder entries
   were read as decoded text, so a name that is not UTF-8 read the same as a
-  stamped name holding U+FFFD; read each name as bytes, then decode it).
+  file name holding U+FFFD; read each name as bytes, then decode it).
 - Decode a name with `ignoreBOM: true`, so that every character of it is
   kept. A strict decoder still drops a byte-order mark at the start of its
   input. Witnessed: [r4625804683] (a path that starts with U+FEFF lost its
@@ -90,7 +90,7 @@ boundary trusts the types.
   each consumer of the value matches the same files and none leaves the
   folder. Witnessed: [r4608771621] (a test area folder written as `./tests`,
   `tests/` or with `..` ran in the area runner, and the test placement check
-  matched no file under it), [r4625243640] (the stamp record's plain-path
+  matched no file under it), [r4625243640] (the record's plain-path
   refusal split a path on `/` alone, so `..\outside` passed, and a backslash
   separates folders on Windows), [#113-copilot] (a path with a NUL byte
   passed the plain-path rule and threw at the first file system call).
@@ -101,12 +101,12 @@ boundary trusts the types.
   through it or call it absent. `existsSync`, `statSync` and `readdirSync`
   follow a symbolic link and answer for what it points to. Open a file with
   `O_NOFOLLOW`, so the open itself fails on a link. Witnessed:
-  [r4625243750] (a stamp root replaced by a link to a folder with the same
-  files gave `intact`), [r4625304836] (a stamp record that was a link to
-  nothing read as absent, so the verdict was `unstamped`), [r4625772395]
+  [r4625243750] (a source folder replaced by a link to a folder with the same
+  files gave `intact`), [r4625304836] (a record file that was a link to
+  nothing read as absent, so the check reported no record), [r4625772395]
   (the reader checked a file with `statSync` and opened what a link pointed
-  to, so a stamp checker that was a link to a file with the recorded bytes
-  outside the folder gave `intact`), [#113-copilot] (a stamped file was
+  to, so a checking script that was a link to a file with the recorded bytes
+  outside the folder gave `intact`), [#113-copilot] (a source file was
   inspected with `lstatSync` and then read with `readFileSync`, which
   follows a link; read through the same open that was checked).
 
@@ -116,13 +116,13 @@ boundary trusts the types.
   folder that cannot be read does not pass for one with nothing in it.
   Witnessed: [r4609956011] (a missing patch file read as an empty patch, so
   replay reported that it held no hunk and `--changed-since` skipped its
-  fault), [r4625304821] (a folder in a stamp root that could not be listed
-  read as empty, so the stamp check passed without reading it).
+  fault), [r4625304821] (a folder in a source folder that could not be listed
+  read as empty, so the file comparison passed without reading it).
 - Call an entry absent only when its lookup fails because nothing has that
   name: `ENOENT`, or `ENOTDIR` for a name on the way. Report every other
   lookup failure. Witnessed: [r4625594357], [r4625772325] (every failed
-  `lstatSync` read as absent, so a stamp record in a folder that may not be
-  searched gave `unstamped`).
+  `lstatSync` read as absent, so a record file in a folder that may not be
+  searched was reported absent).
 
 [r4580070968]: https://github.com/nathanvale/bun-typescript-template/pull/6#discussion_r4580070968
 [r4580070979]: https://github.com/nathanvale/bun-typescript-template/pull/6#discussion_r4580070979
