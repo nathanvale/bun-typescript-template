@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { readKernelPin } from "../../../src/kernel-pin.ts";
+import { kernelPinFile, readKernelPin } from "../../../src/kernel-pin.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import { git, gitEnv, inherited } from "../../support/git-fixture.ts";
@@ -83,12 +83,13 @@ describe("the hosted check", () => {
       const template = join(work, "runner/template");
       mkdirSync(template, { recursive: true });
       writeFileSync(
-        join(template, "kernel-pin.json"),
+        join(template, kernelPinFile),
         JSON.stringify({ ...readKernelPin(ROOT), remote, commit: trialBase }),
       );
       const run = await spawnBounded(["bash", "-e", "-c", actionScript()], {
         cwd: template,
         env: { ...inherited(), ...gitEnv },
+        processGroup: true,
       });
       expect(run).toMatchObject({ exit: 0, stderr: "" });
       const placed = join(work, "runner", readKernelPin(ROOT).repository);

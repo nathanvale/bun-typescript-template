@@ -6,7 +6,7 @@ import {
   type TrialPassed,
   trialMilliseconds,
 } from "../../scripts/kernel-trial.ts";
-import { readKernelPin } from "../../src/kernel-pin.ts";
+import { kernelPinFile, readKernelPin } from "../../src/kernel-pin.ts";
 import type { KernelSeam } from "../../src/kernel-reader.ts";
 import { ROOT } from "./bootstrap-cli-fixture.ts";
 import { withIsolatedGit } from "./kernel-row-fixture.ts";
@@ -74,7 +74,7 @@ export function pinnedTemplate(
 ): string {
   const pin = readKernelPin(ROOT);
   writeFileSync(
-    join(folder, "kernel-pin.json"),
+    join(folder, kernelPinFile),
     `${JSON.stringify({ ...pin, commit, carryOutIdentity }, null, 2)}\n`,
   );
   return folder;

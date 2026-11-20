@@ -1,5 +1,6 @@
 import { cpSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { kernelPinFile } from "../../src/kernel-pin.ts";
 import { ROOT } from "./bootstrap-cli-fixture.ts";
 import {
   commit,
@@ -19,7 +20,7 @@ const copied = [
   "generated-repository",
   "config",
   "tests/support/test-folder.ts",
-  "kernel-pin.json",
+  kernelPinFile,
 ];
 
 // Interface: a copy, in its own git repository, of the template's files that

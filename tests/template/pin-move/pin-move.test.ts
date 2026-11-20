@@ -1,13 +1,25 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { chmodSync, existsSync, readFileSync, rmSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
-import { readKernelPin } from "../../../src/kernel-pin.ts";
+import { kernelPinFile, readKernelPin } from "../../../src/kernel-pin.ts";
 import type { TrialPassed } from "../../../scripts/kernel-trial.ts";
+import { TrialRefusal } from "../../../scripts/kernel-trial.ts";
 import { movePin, PinRefusal } from "../../../scripts/pin-move.ts";
 import { KERNEL_LOCKFILE } from "../../../src/recipe.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
-import { git, gitOutput } from "../../support/git-fixture.ts";
+import {
+  git,
+  gitEnv,
+  gitOutput,
+  inherited,
+} from "../../support/git-fixture.ts";
 import {
   commitOn,
   kernelClone,
@@ -21,12 +33,13 @@ import {
   trialOf,
   trialTimeout,
 } from "../../support/kernel-trial-fixture.ts";
-import { templateCopy } from "../../support/template-copy.ts";
+import { spawnBounded } from "../../support/process.ts";
+import { callInCopy, templateCopy } from "../../support/template-copy.ts";
 import { testFolder } from "../../support/test-folder.ts";
 
 const { carryOutIdentity } = readKernelPin(ROOT);
 const folder = ownedFolders();
-const pinFile = "kernel-pin.json";
+const pinFile = kernelPinFile;
 let work = "";
 let changed = "";
 let notOnMain = "";
@@ -82,13 +95,46 @@ function refusalOf(trial: TrialPassed, template: string) {
   try {
     movePin(trial, template);
   } catch (error) {
-    if (error instanceof PinRefusal) return error.code;
+    if (error instanceof PinRefusal || error instanceof TrialRefusal)
+      return { code: error.code, message: error.message };
     throw error;
   }
   return "no refusal";
 }
 
 describe("the pin move", () => {
+  test(
+    "refuses a record of a passed trial with a field replaced, and writes the bytes the trial qualified whatever is done to a copy it gave out",
+    async () => {
+      const template = pinnedTemplate(
+        folder("pin-move-"),
+        trialBase,
+        carryOutIdentity,
+      );
+      const trial = await trialAt(changed);
+      const forged = { ...trial, kernel: { repository, commit: notOnMain } };
+      const before = bytesOf(template);
+      expect(refusalOf(forged, template)).toEqual({
+        code: "trial_failed",
+        message:
+          "That record of a passed kernel trial was not made by the kernel trial. Repair: Correct the kernel commit, or the template files the trial copies, until that step passes, then run the kernel trial again. The pin does not move until it passes.",
+      });
+      expect(bytesOf(template)).toEqual(before);
+      trial.lockfile.fill(0);
+      expect(Object.isFrozen(trial) && Object.isFrozen(trial.kernel)).toBe(
+        true,
+      );
+      movePin(trial, template);
+      expect(bytesOf(template).lockfile).toEqual(
+        Buffer.from((await trialAt(changed)).lockfile),
+      );
+      expect(Buffer.from(trial.lockfile).every((byte) => byte === 0)).toBe(
+        false,
+      );
+    },
+    trialTimeout(1),
+  );
+
   test(
     "given a passed trial of the pinned commit, writes its lockfile into a template that has none, and leaves the pin unchanged",
     async () => {
@@ -198,9 +244,10 @@ describe("the pin move", () => {
         carryOutIdentity,
       );
       const before = bytesOf(template);
-      expect(refusalOf(await trialAt(notOnMain), template)).toBe(
-        "kernel_commit_unreachable",
-      );
+      expect(refusalOf(await trialAt(notOnMain), template)).toEqual({
+        code: "kernel_commit_unreachable",
+        message: `Commit ${notOnMain} is not reachable from branch main in the git repository at ${repository}. Repair: Give a commit that branch reaches. If the clone is behind, run git fetch origin main there first.`,
+      });
       expect(bytesOf(template)).toEqual(before);
     },
     trialTimeout(1),
@@ -211,41 +258,60 @@ describe("the pin move", () => {
     async () => {
       const template = pinnedTemplate(folder("pin-move-"), changed, changed);
       const before = bytesOf(template);
-      expect(refusalOf(await trialAt(trialBase), template)).toBe(
-        "kernel_commit_before_carry_out",
-      );
+      expect(refusalOf(await trialAt(trialBase), template)).toEqual({
+        code: "kernel_commit_before_carry_out",
+        message: `Commit ${trialBase} does not have the carry-out commit ${changed} as an ancestor in the git repository at ${repository}. Repair: Give the carry-out commit or a later commit on the pin's branch. A pin never names a commit from before the carry-out.`,
+      });
       expect(bytesOf(template)).toEqual(before);
     },
     trialTimeout(1),
   );
 
   test(
-    "to a kernel commit whose folders were renamed passes, and the template changes only the pin and the lockfile",
+    "to a kernel commit whose folders were renamed passes, and the template changes only the pin, the lockfile and the one place that holds the kernel declaration's path, after which Bootstrap reads the renamed kernel",
     async () => {
       const copy = templateCopy(folder("pin-move-"));
       pinnedTemplate(copy, trialBase, carryOutIdentity);
-      git(
-        copy,
-        "commit",
-        "--quiet",
-        "--all",
-        "--allow-empty",
-        "-m",
-        "pin the trial base",
+      const reader = join(copy, "src/kernel-reader.ts");
+      const held = readFileSync(reader, "utf8");
+      writeFileSync(
+        reader,
+        held.replace(
+          '"kernel/config/kernel/kernel-declaration.json"',
+          JSON.stringify(renamed.declarationPath),
+        ),
       );
-      const { written, report } = movePin(await trialAt(renamed.commit), copy);
-      expect(written).toEqual([KERNEL_LOCKFILE, pinFile]);
+      git(copy, "commit", "--quiet", "--all", "-m", "the renamed path");
+      const before = git(copy, "rev-parse", "HEAD^");
+      const script = `const { kernelTrial } = await import(${JSON.stringify(join(copy, "scripts/kernel-trial.ts"))});
+const { movePin } = await import(${JSON.stringify(join(copy, "scripts/pin-move.ts"))});
+const trial = await kernelTrial({ kernel: { repository: ${JSON.stringify(renaming)}, commit: ${JSON.stringify(renamed.commit)} }, folder: ${JSON.stringify(join(copy, "..", "trial"))}, kernelFrom: "clone" });
+process.stdout.write(JSON.stringify(movePin(trial, ${JSON.stringify(copy)}).written));`;
+      const moved = await spawnBounded([process.execPath, "--eval", script], {
+        cwd: copy,
+        env: { ...inherited(), ...gitEnv },
+        boundMilliseconds: trialTimeout(1) - 20_000,
+        processGroup: true,
+      });
+      expect(moved).toMatchObject({
+        exit: 0,
+        stdout: JSON.stringify([KERNEL_LOCKFILE, pinFile]),
+      });
+      git(copy, "add", "--all");
       expect(
-        gitOutput(copy, "status", "--porcelain", "--untracked-files=all")
+        gitOutput(copy, "diff", "--cached", "--name-only", before)
           .split("\n")
           .filter((line) => line !== "")
-          .map((line) => line.slice(3))
           .sort(),
-      ).toEqual([KERNEL_LOCKFILE, pinFile].sort());
-      expect(report.added).toContain(renamed.declarationPath);
-      expect(report.removed).toContain(
-        "kernel/config/kernel/kernel-declaration.json",
-      );
+      ).toEqual([KERNEL_LOCKFILE, pinFile, "src/kernel-reader.ts"].sort());
+      expect(
+        await callInCopy(copy, "src/bootstrap.ts", "bootstrapWithKernel", {
+          destination: join(copy, "..", "made"),
+          sourcePacket: "/abs/packets/demo",
+          kernel: { repository: renaming, commit: renamed.commit },
+          lockfile: "committed",
+        }),
+      ).toMatchObject({ returned: { status: "created" } });
     },
     trialTimeout(1),
   );

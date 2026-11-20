@@ -1,9 +1,10 @@
 import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { KernelSeam } from "./kernel-reader.ts";
 
 const file = "kernel-pin.json";
+export const kernelPinFile = file;
 const fullCommit = /^[0-9a-f]{40}$/;
 const abbreviatedCommit = /^[0-9a-f]{1,39}$/;
 const branchName =
@@ -93,6 +94,12 @@ export function readKernelPin(root: string): KernelPin {
       `is missing at ${root}. The template holds no kernel source, so this kernel pin is its only record of the kernel repository. ${restoreRepair}`,
     );
   return parseKernelPin(readFileSync(path, "utf8"));
+}
+
+// Interface: the sibling repository beside the template at `root` that the
+// kernel pin names, where the hosted check places it.
+export function siblingKernelPath(root: string, { repository }: KernelPin) {
+  return join(dirname(root), repository);
 }
 
 // Interface: writes the kernel pin at `root` as the pin move does, and says

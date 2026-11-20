@@ -11,12 +11,43 @@ const passed: unique symbol = Symbol("a passed kernel trial");
 
 // Interface: the record that a kernel trial passed for one kernel commit,
 // with the lockfile it qualified. Only kernelTrial makes one, so a function
-// that takes one cannot be called for a commit no trial passed.
+// that takes one cannot be called for a commit no trial passed. It is
+// frozen, and `lockfile` gives a copy of the bytes each time it is read.
 export type TrialPassed = {
   readonly [passed]: true;
   readonly kernel: KernelSeam;
   readonly lockfile: Uint8Array;
 };
+
+export type Qualified = Pick<TrialPassed, "kernel" | "lockfile">;
+
+const made = new WeakMap<TrialPassed, Qualified>();
+
+// Interface: the commit and lockfile a passed trial qualified, as the trial
+// recorded them. It refuses a record the trial did not make, such as a
+// copy with a field replaced.
+export function qualifiedBy(trial: TrialPassed): Qualified {
+  const found = made.get(trial);
+  if (found === undefined)
+    throw new TrialRefusal(
+      "That record of a passed kernel trial was not made by the kernel trial.",
+    );
+  return { kernel: found.kernel, lockfile: found.lockfile.slice() };
+}
+
+function recordOf(kernel: KernelSeam, bytes: Uint8Array): TrialPassed {
+  const seam = Object.freeze({ ...kernel });
+  const kept = bytes.slice();
+  const record = Object.freeze({
+    [passed]: true as const,
+    kernel: seam,
+    get lockfile() {
+      return kept.slice();
+    },
+  });
+  made.set(record, { kernel: seam, lockfile: kept });
+  return record;
+}
 
 const installMilliseconds = 120_000;
 const checkMilliseconds = 240_000;
@@ -43,7 +74,10 @@ function lastLines(output: string): string {
   return output.trimEnd().split("\n").slice(-20).join("\n");
 }
 
-async function step(
+// Interface: one step of the kernel trial: Bun with `args` in `folder`,
+// stopped with its whole process group once `limitMilliseconds` passes.
+// It refuses a step that exits non-zero or does not finish in time.
+export async function trialStep(
   folder: string,
   name: string,
   args: readonly string[],
@@ -80,7 +114,7 @@ export async function kernelTrial(trial: KernelTrial): Promise<TrialPassed> {
     return destination;
   };
   const first = await render("first", "none");
-  await step(first, "install", ["install"], installMilliseconds);
+  await trialStep(first, "install", ["install"], installMilliseconds);
   const made = join(first, "bun.lock");
   if (!existsSync(made))
     throw new TrialRefusal(
@@ -88,12 +122,12 @@ export async function kernelTrial(trial: KernelTrial): Promise<TrialPassed> {
     );
   const lockfile = new Uint8Array(readFileSync(made));
   const second = await render("second", lockfile);
-  await step(
+  await trialStep(
     second,
     "frozen install",
     ["install", "--frozen-lockfile"],
     installMilliseconds,
   );
-  await step(second, "check command", ["run", "check"], checkMilliseconds);
-  return { [passed]: true, kernel: trial.kernel, lockfile };
+  await trialStep(second, "check command", ["run", "check"], checkMilliseconds);
+  return recordOf(trial.kernel, lockfile);
 }

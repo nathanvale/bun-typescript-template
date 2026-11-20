@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { readKernelPin } from "../../../src/kernel-pin.ts";
+import { kernelPinFile, readKernelPin } from "../../../src/kernel-pin.ts";
+import { argumentsOf } from "../../../scripts/pin-move.ts";
 import { KERNEL_LOCKFILE } from "../../../src/recipe.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
@@ -40,6 +41,19 @@ function pinMove(copy: string, args: readonly string[], bound?: number) {
   );
 }
 
+describe("the pin move command's arguments", () => {
+  test.each([
+    [[], undefined],
+    [["c"], { commit: "c" }],
+    [["c", "--kernel", "/k"], { commit: "c", path: "/k" }],
+    [["c", "--kernel"], undefined],
+    [["c", "--other", "/k"], undefined],
+    [["c", "--kernel", "/k", "more"], undefined],
+  ] as const)("%j reads as %j", (argv, expected) => {
+    expect(argumentsOf(argv)).toEqual(expected);
+  });
+});
+
 describe("the pin move command", () => {
   test(
     "with no commit prints its usage and exits 2",
@@ -75,10 +89,10 @@ describe("the pin move command", () => {
   );
 
   test(
-    "run at the pinned commit on a template with no lockfile, writes the lockfile from a kernel trial that installs from GitHub, leaves the pin unchanged, and prints the pin move report",
+    "run at the pinned commit on a template with no lockfile, writes the lockfile from a kernel trial that installs from GitHub, leaves the pin unchanged, prints the pin move report, and run again writes nothing",
     async () => {
       const copy = copyPinnedAt(trialBase);
-      const pin = readFileSync(join(copy, "kernel-pin.json"), "utf8");
+      const pin = readFileSync(join(copy, kernelPinFile), "utf8");
       const run = await pinMove(
         copy,
         [trialBase, "--kernel", siblingKernel()],
@@ -94,11 +108,23 @@ describe("the pin move command", () => {
       expect(
         gitOutput(copy, "status", "--porcelain", "--untracked-files=all"),
       ).toBe(`?? ${KERNEL_LOCKFILE}\n`);
-      expect(readFileSync(join(copy, "kernel-pin.json"), "utf8")).toBe(pin);
+      expect(readFileSync(join(copy, kernelPinFile), "utf8")).toBe(pin);
       expect(readFileSync(join(copy, KERNEL_LOCKFILE), "utf8")).toContain(
         `"agent-cli-kernel": "github:nathanvale/agent-cli-kernel#${trialBase}"`,
       );
+      const again = await pinMove(
+        copy,
+        [trialBase, "--kernel", siblingKernel()],
+        trialTimeout(1) - 10_000,
+      );
+      expect(again.exit).toBe(0);
+      expect(again.stdout).toStartWith(
+        `Pin move report: ${trialBase} to ${trialBase}\nWritten in the template, kernel lockfile first and pin last (0):\n`,
+      );
+      expect(
+        gitOutput(copy, "status", "--porcelain", "--untracked-files=all"),
+      ).toBe(`?? ${KERNEL_LOCKFILE}\n`);
     },
-    trialTimeout(1),
+    trialTimeout(2),
   );
 });

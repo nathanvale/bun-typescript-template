@@ -20,18 +20,23 @@ export function withoutRepositoryLocation(
 // Platform: `bun run` prepends the caller's node_modules/.bin folders to PATH,
 // and a git hook exports the caller's repository location. Drop both so a
 // child process sees only what its own tree installs, and finds its
-// repository from its own folder.
-const ownTools = {
-  ...withoutRepositoryLocation(process.env),
-  PATH: (process.env.PATH ?? "")
-    .split(delimiter)
-    .filter(
-      (entry) =>
-        basename(entry) !== ".bin" ||
-        basename(dirname(entry)) !== "node_modules",
-    )
-    .join(delimiter),
-};
+// repository from its own folder. It reads the environment when a child
+// starts, so a caller that isolates git first passes that on.
+function ownTools(
+  env: Readonly<Record<string, string | undefined>>,
+): Record<string, string | undefined> {
+  return {
+    ...withoutRepositoryLocation(env),
+    PATH: (env.PATH ?? "")
+      .split(delimiter)
+      .filter(
+        (entry) =>
+          basename(entry) !== ".bin" ||
+          basename(dirname(entry)) !== "node_modules",
+      )
+      .join(delimiter),
+  };
+}
 
 const defaultGraceMilliseconds = 2_000;
 // Platform: The child's group has no live process to signal. ESRCH: every member is
@@ -64,7 +69,7 @@ export function startChild(
   argv: readonly string[],
   {
     cwd,
-    env = ownTools,
+    env = ownTools(process.env),
     ownGroup = true,
     limitMilliseconds,
     graceMilliseconds = defaultGraceMilliseconds,

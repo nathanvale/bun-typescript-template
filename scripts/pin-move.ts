@@ -10,7 +10,9 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import {
   type KernelPin,
+  kernelPinFile,
   readKernelPin,
+  siblingKernelPath,
   writeKernelPin,
 } from "../src/kernel-pin.ts";
 import {
@@ -19,7 +21,12 @@ import {
   type KernelSeam,
   openCommit,
 } from "../src/kernel-reader.ts";
-import { kernelTrial, type TrialPassed, TrialRefusal } from "./kernel-trial.ts";
+import {
+  kernelTrial,
+  qualifiedBy,
+  type TrialPassed,
+  TrialRefusal,
+} from "./kernel-trial.ts";
 import {
   type PinMoveReport,
   pinMoveReport,
@@ -120,29 +127,32 @@ export function verifyPin(
 // carry-out identity is copied from the pin as it was. It commits nothing,
 // and run twice with the same trial it writes nothing the second time.
 export function movePin(trial: TrialPassed, template: string): PinMove {
+  const qualified = qualifiedBy(trial);
   const pin = readKernelPin(template);
-  const repository = verifyPin(trial.kernel, pin);
+  const repository = verifyPin(qualified.kernel, pin);
   openCommit({ repository, commit: pin.commit });
-  const report = pinMoveReport(repository, pin.commit, trial.kernel.commit);
+  const report = pinMoveReport(repository, pin.commit, qualified.kernel.commit);
   const written: string[] = [];
   const lockfile = join(template, KERNEL_LOCKFILE);
   if (
     !existsSync(lockfile) ||
-    Buffer.compare(readFileSync(lockfile), trial.lockfile) !== 0
+    Buffer.compare(readFileSync(lockfile), qualified.lockfile) !== 0
   ) {
     mkdirSync(dirname(lockfile), { recursive: true });
-    writeFileSync(lockfile, trial.lockfile);
+    writeFileSync(lockfile, qualified.lockfile);
     written.push(KERNEL_LOCKFILE);
   }
-  if (writeKernelPin(template, { ...pin, commit: trial.kernel.commit }))
-    written.push("kernel-pin.json");
+  if (writeKernelPin(template, { ...pin, commit: qualified.kernel.commit }))
+    written.push(kernelPinFile);
   return { report, written };
 }
 
 const usage =
   "Usage: bun run pin-move <full kernel commit> [--kernel <path to the kernel repository>]\n";
 
-function argumentsOf(
+// Interface: the pin move command's arguments: one commit, and the kernel
+// repository's path after --kernel. Anything else is no arguments at all.
+export function argumentsOf(
   argv: readonly string[],
 ): { readonly commit: string; readonly path?: string } | undefined {
   const [commit, flag, path, ...rest] = argv;
@@ -176,7 +186,7 @@ export async function main(argv: readonly string[]): Promise<number> {
   }
   const pin = readKernelPin(templateRoot);
   const kernel = {
-    repository: given.path ?? join(dirname(templateRoot), pin.repository),
+    repository: given.path ?? siblingKernelPath(templateRoot, pin),
     commit: given.commit,
   };
   const folder = mkdtempSync(join(tmpdir(), "kernel-trial-"));

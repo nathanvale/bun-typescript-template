@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { readKernelPin } from "../../src/kernel-pin.ts";
+import { readKernelPin, siblingKernelPath } from "../../src/kernel-pin.ts";
 import { ROOT } from "./bootstrap-cli-fixture.ts";
 import { git, gitOutput } from "./git-fixture.ts";
 import { gitWithInput } from "./git-object-fixture.ts";
@@ -18,7 +18,7 @@ export const trialBase = "0b64b0e480a77ae6abbd3e671497354309182b42";
 export function siblingKernel(): string {
   return (
     process.env.KERNEL_REPOSITORY ??
-    join(ROOT, "..", readKernelPin(ROOT).repository)
+    siblingKernelPath(ROOT, readKernelPin(ROOT))
   );
 }
 

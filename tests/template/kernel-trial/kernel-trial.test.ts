@@ -2,11 +2,20 @@ import { describe, expect, test } from "bun:test";
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
-import { kernelTrial, TrialRefusal } from "../../../scripts/kernel-trial.ts";
+import {
+  kernelTrial,
+  TrialRefusal,
+  trialStep,
+} from "../../../scripts/kernel-trial.ts";
 import { KERNEL_LOCKFILE } from "../../../src/recipe.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
-import { git, gitOutput } from "../../support/git-fixture.ts";
+import {
+  git,
+  gitEnv,
+  gitOutput,
+  inherited,
+} from "../../support/git-fixture.ts";
 import {
   bootstrapRow,
   withIsolatedGit,
@@ -21,7 +30,7 @@ import {
   trialOf,
   trialTimeout,
 } from "../../support/kernel-trial-fixture.ts";
-import { spawnBounded } from "../../support/process.ts";
+import { processWatchdog, spawnBounded } from "../../support/process.ts";
 import { callInCopy, templateCopy } from "../../support/template-copy.ts";
 
 const folder = ownedFolders();
@@ -195,6 +204,26 @@ describe("the kernel trial", () => {
   );
 });
 
+describe("a kernel trial step", () => {
+  test(
+    "that outlives its bound is stopped at the bound and refused",
+    async () => {
+      const work = folder("kernel-trial-step-");
+      const started = performance.now();
+      const refusal = await refusalOf(
+        trialStep(work, "slow step", ["-e", "await Bun.sleep(10_000)"], 300),
+      );
+      const elapsed = performance.now() - started;
+      expect(refusal).toEqual({
+        code: "trial_failed",
+        message: `The kernel trial's slow step in ${work} did not finish within 300 ms. Its last lines:\n\n Repair: Correct the kernel commit, or the template files the trial copies, until that step passes, then run the kernel trial again. The pin does not move until it passes.`,
+      });
+      expect(elapsed).toBeLessThan(3_000);
+    },
+    processWatchdog(1),
+  );
+});
+
 describe("a generated repository whose Pin and kernel lockfile name different commits", () => {
   test(
     "is refused by its frozen install, so its installed kernel cannot differ from the commit the kernel lockfile names",
@@ -218,7 +247,12 @@ describe("a generated repository whose Pin and kernel lockfile name different co
       });
       const install = await spawnBounded(
         [process.execPath, "install", "--frozen-lockfile"],
-        { cwd: destination, boundMilliseconds: 60_000 },
+        {
+          cwd: destination,
+          env: { ...inherited(), ...gitEnv },
+          boundMilliseconds: 60_000,
+          processGroup: true,
+        },
       );
       expect({
         exit: install.exit,

@@ -16,25 +16,41 @@ function read(
   repository: string,
   command: "ls-tree" | "log",
   args: readonly string[],
-): string {
+): Buffer {
   const run = git(repository, command, args);
   if (!run.ok)
     throw new Error(
       `git ${command} ${args.join(" ")} failed in ${repository}: ${run.said} Repair: give a kernel repository that holds both commits.`,
     );
-  return run.stdout.toString();
+  return run.stdout;
 }
 
+// Platform: git prints each path as the bytes it stores, which need not be
+// UTF-8 text, so paths are compared as latin1 text, one character per byte,
+// and decoded as UTF-8 only to be shown.
 function filesAt(repository: string, commit: string): Map<string, string> {
-  return new Map(
-    read(repository, "ls-tree", ["-r", "-z", "--full-tree", commit])
-      .split("\0")
-      .filter((record) => record !== "")
-      .map((record): [string, string] => {
-        const tab = record.indexOf("\t");
-        return [record.slice(tab + 1), record.slice(0, tab)];
-      }),
-  );
+  const listing = read(repository, "ls-tree", [
+    "-r",
+    "-z",
+    "--full-tree",
+    commit,
+  ]);
+  const files = new Map<string, string>();
+  for (let start = 0; start < listing.length; ) {
+    const end = listing.indexOf(0, start);
+    const record = listing.subarray(start, end < 0 ? listing.length : end);
+    const tab = record.indexOf(9);
+    files.set(
+      record.subarray(tab + 1).toString("latin1"),
+      record.subarray(0, tab).toString("latin1"),
+    );
+    start = end < 0 ? listing.length : end + 1;
+  }
+  return files;
+}
+
+function shown(path: string): string {
+  return Buffer.from(path, "latin1").toString("utf8");
 }
 
 // Interface: reads both commits from the git objects of the kernel
@@ -50,19 +66,22 @@ export function pinMoveReport(
   return {
     from,
     to,
-    added: paths.filter((path) => !before.has(path)),
-    changed: paths.filter(
-      (path) =>
-        before.has(path) &&
-        after.has(path) &&
-        before.get(path) !== after.get(path),
-    ),
-    removed: paths.filter((path) => !after.has(path)),
+    added: paths.filter((path) => !before.has(path)).map(shown),
+    changed: paths
+      .filter(
+        (path) =>
+          before.has(path) &&
+          after.has(path) &&
+          before.get(path) !== after.get(path),
+      )
+      .map(shown),
+    removed: paths.filter((path) => !after.has(path)).map(shown),
     log: read(repository, "log", [
       "--no-show-signature",
       "--format=%h %s",
       `${from}..${to}`,
     ])
+      .toString()
       .split("\n")
       .filter((line) => line !== ""),
   };
