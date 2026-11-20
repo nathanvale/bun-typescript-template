@@ -2,8 +2,9 @@
 
 This file is the source of truth for the words this repository owns: the
 template and the recipe table that Bootstrap follows, the kernel split, and
-the gates that keep its own code honest. No other glossary defines them. `GLOSSARY-MAP.md`
-names the glossaries that own every other word, Bootstrap among them.
+the gates that keep its own code honest. `GLOSSARY-MAP.md` names the glossaries
+that own every other word. Two sections here follow its transfer rule: the
+entries awaiting kernel acceptance and the shared tool words.
 
 ## Language
 
@@ -26,6 +27,10 @@ the kernel or add-on source.
 **Foundation**:
 The template, kernel repository, composer, checker, exemplar and
 agent-cli-design skill together. It is broader than the kernel.
+
+**Bootstrap**:
+The command, `bun run bootstrap`, that creates a generated repository from the
+recipe that matches what was asked for.
 
 **Recipe**:
 One row of the recipe table. For a repository shape, it says which folders
@@ -74,61 +79,17 @@ removing the old CLI starters.
 For the single step that moves the files, say carry-out.
 _Avoid_: extraction, migration (when the kernel split is meant)
 
-**Kernel repository**:
-The repository that is the canonical owner of the kernel and add-on source and
-of their tests.
-_Avoid_: core repository, kernel package
-
 **Sibling repository**:
 A repository checked out beside another on the same machine and reached by a
 local path.
 _Avoid_: submodule, dependency (unless one is meant)
-
-**Carry-out**:
-The one step of the kernel split that moves the kernel, the add-ons, their
-tests and the files they need, unedited, into the kernel repository. The
-**carry-out commit** is the commit in the kernel repository where they land.
-_Avoid_: the move (it collides with pin move), extraction, split commit
-
-**Prepared parent**:
-The template commit that holds the preparation for the kernel split. It is the
-carry-out commit's only parent in the kernel repository.
-_Avoid_: base commit, parent (unqualified)
-
-**Carry-out identity**:
-The full identity of the carry-out commit on the kernel repository's main
-branch. The pin records it, and no pin may name an earlier commit.
-_Avoid_: floor (unqualified), baseline
 
 **Kernel migration**:
 Moving a repository made with an old CLI starter onto an installed kernel at a
 pin. It is not a Template upgrade.
 _Avoid_: upgrade, migration (unqualified)
 
-**Kernel repository alignment**:
-The kernel repository later adopting the template's tooling, as a repository
-with no CLI starter and no installed kernel.
-_Avoid_: Template upgrade (for alignment)
-
 ### Pins
-
-**Pin**:
-A record of the kernel repository and one full commit in it. The template's
-pin also names the kernel branch that commit must stay reachable from. A
-generated repository's pin is its one kernel dependency line in
-`package.json`, `"agent-cli-kernel": "github:nathanvale/agent-cli-kernel#<full 40-character commit>"`.
-The pinned commit identifies the kernel; a pin has no version number. Say
-kernel pin wherever a toolchain pin could be meant.
-_Avoid_: version, release (for a kernel pin), pointer (say pin; a pointer skill is not a pin), pin record (say pin), lock (for a pin)
-
-**Toolchain pin**:
-The one Bun version this repository runs on, recorded as `packageManager` in
-`package.json`. `bun run doctor` fails when the running Bun is another
-version.
-
-**Pinned commit**:
-The one full commit that a pin names.
-_Avoid_: tag, branch, short hash (for a pinned commit)
 
 **Pin verification**:
 Checking, from git history alone, that a pinned commit is reachable from where
@@ -156,18 +117,73 @@ selected, and running that repository's check command. It must pass before a
 pin move. It may also run on any kernel change as advice only.
 _Avoid_: canary, dry run (for a kernel trial)
 
-### The installed kernel and its add-ons
+### Reading and installing a kernel
+
+**Kernel lockfile**:
+The one lockfile the template keeps for generated repositories, once a pin
+move has written it. Every add-on selection shares it.
+_Avoid_: lockfile (unqualified); package set lockfile (for the kernel lockfile)
+
+**Kernel reader**:
+The Module that reads the kernel's files from git objects at one commit in a
+kernel repository, and never from a working tree.
+_Avoid_: reader (unqualified; Reader is the Contract 3 word for a program that parses an envelope)
+
+**Kernel seam**:
+The Seam at the kernel reader's Interface: a local path to a kernel repository
+and one full commit. Its Adapters are the git object stores it can read: the
+sibling repository, any local clone, and a test stand-in.
+
+### Entries awaiting kernel acceptance
+
+The template owns these words until the kernel's `glossary-ownership.json`
+accepts the transfer that `glossary-ownership.json` here names. After that
+the kernel owns them and these entries are copies.
+
+**Kernel repository**:
+The repository that is the canonical owner of the kernel and add-on source and
+of their tests.
+_Avoid_: core repository, kernel package
+
+**Carry-out**:
+The one step of the kernel split that moves the kernel, the add-ons, their
+tests and the files they need, unedited, into the kernel repository. The
+**carry-out commit** is the commit in the kernel repository where they land.
+_Avoid_: the move (it collides with pin move), extraction, split commit
+
+**Prepared parent**:
+The template commit that holds the preparation for the kernel split. It is the
+carry-out commit's only parent in the kernel repository.
+_Avoid_: base commit, parent (unqualified)
+
+**Carry-out identity**:
+The full identity of the carry-out commit on the kernel repository's main
+branch. The pin records it, and no pin may name an earlier commit.
+_Avoid_: floor (unqualified), baseline
+
+**Kernel repository alignment**:
+The kernel repository later adopting the template's tooling, as a repository
+with no CLI starter and no installed kernel.
+_Avoid_: Template upgrade (for alignment)
+
+**Pin**:
+A record of the kernel repository and one full commit in it. The template's
+pin also names the kernel branch that commit must stay reachable from. A
+generated repository's pin is its one kernel dependency line in
+`package.json`, `"agent-cli-kernel": "github:nathanvale/agent-cli-kernel#<full 40-character commit>"`.
+The pinned commit identifies the kernel; a pin has no version number. Say
+kernel pin wherever a toolchain pin could be meant.
+_Avoid_: version, release (for a kernel pin), pointer (say pin; a pointer skill is not a pin), pin record (say pin), lock (for a pin)
+
+**Pinned commit**:
+The one full commit that a pin names.
+_Avoid_: tag, branch, short hash (for a pinned commit)
 
 **Installed kernel**:
 The kernel as Bun installs it from a generated repository's pin, under
 `node_modules/agent-cli-kernel`. The generated repository imports it by the
 package name and owns none of its source.
 _Avoid_: vendored kernel, kernel copy (for the installed kernel)
-
-**Kernel lockfile**:
-The one lockfile the template keeps for generated repositories, once a pin
-move has written it. Every add-on selection shares it.
-_Avoid_: lockfile (unqualified); package set lockfile (for the kernel lockfile)
 
 **Add-on**:
 An optional capability using the kernel's public interface without importing
@@ -193,17 +209,23 @@ The kernel repository's own statement, read at one commit, of its kernel and
 add-on folders and of the add-ons each add-on requires.
 _Avoid_: manifest (for a kernel declaration), hand-kept list
 
-**Kernel reader**:
-The Module that reads the kernel's files from git objects at one commit in a
-kernel repository, and never from a working tree.
-_Avoid_: reader (unqualified; Reader is the Contract 3 word for a program that parses an envelope)
+**Fault timing**:
+The seconds one planted fault took to replay, kept in its own file beside
+the fault records. Fault replay's shard planner balances its parts by them,
+and counts a fault with no timing as a short one.
 
-**Kernel seam**:
-The Seam at the kernel reader's Interface: a local path to a kernel repository
-and one full commit. Its Adapters are the git object stores it can read: the
-sibling repository, any local clone, and a test stand-in.
+**Recorded origin**:
+The template repository and the template commit the kernel was carried from.
+A label for people. Tools check its shape, a GitHub repository address and a
+full commit, and no gate decides anything else from it.
+_Avoid_: citable origins, cited-commit list (for a recorded origin)
 
-### Checks
+### Shared tool words
+
+**Toolchain pin**:
+The one Bun version this repository runs on, recorded as `packageManager` in
+`package.json`. `bun run doctor` fails when the running Bun is another
+version.
 
 **Check command**:
 The one command a repository runs to show that it is sound. The template, the
@@ -255,11 +277,6 @@ worktree. Its named test must pass without the patch and fail with it. The
 hosted check replays every fault record. Pre-push replays fault records
 affected by the push.
 
-**Fault timing**:
-The seconds one planted fault took to replay, kept in its own file beside
-the fault records. Fault replay's shard planner balances its parts by them,
-and counts a fault with no timing as a short one.
-
 **Anchor**:
 The text one changed region of a planted fault's patch is placed by. A hunk
 can hold several changed regions, runs of lines it removes or adds, with
@@ -273,8 +290,6 @@ A violation that already existed when its gate landed. The record gives
 its reason and lets the gate pass until a commit fixes it. Fix every new
 violation so the list only shrinks after its gate lands.
 _Avoid_: known hit, allowlist, baseline
-
-### Tools and their messages
 
 **Refusal**:
 A tool declining to act before it changes anything. Its message names the
@@ -312,8 +327,6 @@ _Avoid_: rule (unqualified)
 Enforces the glossary's words in every tracked file and folder name. It runs as a test, as a hook when a file is created, and at commit.
 _Avoid_: names gate (for the names check)
 
-### Keeping the rules
-
 **Repo gardener**:
 The role that keeps the rule table and the names true. Its four jobs are Sow,
 Gate, Weed and Stake.
@@ -349,14 +362,6 @@ where, what stays with the reviewer, and which witnesses taught it.
 The repositories, other than a repository itself, whose commits and review
 threads a citation in that repository's standards may name.
 _Avoid_: recorded origin (that is one repository and one commit), allowed hosts
-
-**Recorded origin**:
-The template repository and the template commit the kernel was carried from.
-A label for people. Tools check its shape, a GitHub repository address and a
-full commit, and no gate decides anything else from it.
-_Avoid_: citable origins, cited-commit list (for a recorded origin)
-
-### Plans
 
 **Claim tag**:
 The mark on a claim in a plan that says how sure it is: passed on Linux,

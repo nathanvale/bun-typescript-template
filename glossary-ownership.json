@@ -1,0 +1,21 @@
+{
+  "handoff": "glossary-split-20261120",
+  "kernelEntries": [
+    "Kernel repository",
+    "Carry-out",
+    "Prepared parent",
+    "Carry-out identity",
+    "Kernel repository alignment",
+    "Pin",
+    "Pinned commit",
+    "Installed kernel",
+    "Add-on",
+    "Add-on selection",
+    "Add-on requirement",
+    "Kernel declaration",
+    "Fault timing",
+    "Recorded origin"
+  ],
+  "ownerBeforeAcceptance": "template",
+  "ownerAfterAcceptance": "kernel"
+}

@@ -8,6 +8,8 @@ const notReadAsUse = new Set([
   "GLOSSARY.md",
   "GLOSSARY-MAP.md",
   recordedUnusedTermsFile,
+  "tests/template/naming/shared-tool-words.txt",
+  "glossary-ownership.json",
 ]);
 const avoidLabel = "_Avoid_:";
 
