@@ -105,8 +105,11 @@ test("SW.f a shared tool word that glossary-ownership.json lists is refused", ()
   ]);
 });
 
-test("SW.g a glossary-ownership.json with no kernelEntries array is refused", () => {
-  expect(() => ownershipProblems(glossaryOf([], []), "{}")).toThrow(
-    'glossary-ownership.json needs a "kernelEntries" array of strings. Repair: list each entry the kernel is to own.',
-  );
+test("SW.g a glossary-ownership.json whose kernelEntries is not an array of strings is refused", () => {
+  const refusal =
+    'glossary-ownership.json needs a "kernelEntries" array of strings. Repair: list each entry the kernel is to own.';
+  expect(() => ownershipProblems(glossaryOf([], []), "{}")).toThrow(refusal);
+  expect(() =>
+    ownershipProblems(glossaryOf([], []), '{"kernelEntries":[1]}'),
+  ).toThrow(refusal);
 });
