@@ -452,7 +452,7 @@ export async function main(argv: string[]): Promise<number> {
     process.stdout.write(
       options.json
         ? `${JSON.stringify(result)}\n`
-        : `Created a repository with the kernel at the template's Pin at ${result.destination}\n`,
+        : `Created a repository at ${result.destination}, with the kernel at the template's Pin\n`,
     );
     return 0;
   } catch (error) {
