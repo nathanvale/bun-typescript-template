@@ -87,9 +87,30 @@ function nameProblems(owner: string, owners: Set<string>): string[] {
     : [];
 }
 
+function targetProblems(
+  owner: string,
+  path: string,
+  ownsWords: boolean,
+  root: string,
+): string[] {
+  if (!/(?:^|\/)GLOSSARY\.md$/.test(path))
+    return ownsWords
+      ? [
+          `${mapFile} makes "${owner}" the owner of ${path}, which is not a GLOSSARY.md file. Repair: point the row at the glossary that defines its words, or begin its Owns cell with "No word".`,
+        ]
+      : [];
+  return isFile(root, path) &&
+    !termLine.test(readFileSync(join(root, path), "utf8"))
+    ? [
+        `${mapFile} makes "${owner}" the owner of ${path}, which defines no term. Repair: point the row at the glossary that defines its words.`,
+      ]
+    : [];
+}
+
 function fileProblems(
   owner: string,
   path: string,
+  ownsWords: boolean,
   files: Map<string, string>,
   root: string,
 ): string[] {
@@ -101,26 +122,20 @@ function fileProblems(
           `${mapFile} gives ${path} to both "${held}" and "${owner}". Repair: keep the row of the one that owns it.`,
         ]
       : [];
-  const termless =
-    /(?:^|\/)GLOSSARY\.md$/.test(path) &&
-    isFile(root, path) &&
-    !termLine.test(readFileSync(join(root, path), "utf8"))
-      ? [
-          `${mapFile} makes "${owner}" the owner of ${path}, which defines no term. Repair: point the row at the glossary that defines its words.`,
-        ]
-      : [];
-  return [...shared, ...termless];
+  return [...shared, ...targetProblems(owner, path, ownsWords, root)];
 }
 
 function ownerProblems(map: string, root: string): string[] {
   const owners = new Set<string>();
   const files = new Map<string, string>();
-  return ownerRowsBelowHeader(map).flatMap(([owner = "", ...rest]) => [
-    ...nameProblems(owner, owners),
-    ...localLinks(rest.join(" ")).flatMap(({ path }) =>
-      fileProblems(owner, path, files, root),
-    ),
-  ]);
+  return ownerRowsBelowHeader(map).flatMap(
+    ([owner = "", owns = "", ...rest]) => [
+      ...nameProblems(owner, owners),
+      ...localLinks([owns, ...rest].join(" ")).flatMap(({ path }) =>
+        fileProblems(owner, path, !/^no word\b/i.test(owns), files, root),
+      ),
+    ],
+  );
 }
 
 export function mapProblems(map: string, root: string): string[] {

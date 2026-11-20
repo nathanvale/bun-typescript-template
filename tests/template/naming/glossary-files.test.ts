@@ -99,6 +99,23 @@ test("GM.j an owner whose glossary file defines no term fails", () => {
   ]);
 });
 
+test("GM.k a glossary row whose target is not a GLOSSARY.md file fails, unless it owns no word", () => {
+  expect(
+    mapProblems(
+      ownedMap(["| Kernel | Kernel words | [here](package.json) |"]),
+      root,
+    ),
+  ).toEqual([
+    'GLOSSARY-MAP.md makes "Kernel" the owner of package.json, which is not a GLOSSARY.md file. Repair: point the row at the glossary that defines its words, or begin its Owns cell with "No word".',
+  ]);
+  expect(
+    mapProblems(
+      ownedMap(["| Kernel | No word. A copy | [here](package.json) |"]),
+      root,
+    ),
+  ).toEqual([]);
+});
+
 test("GM.b a map that points to no file fails", () => {
   expect(
     mapProblems("Only [a web page](https://example.test/x).", root),
