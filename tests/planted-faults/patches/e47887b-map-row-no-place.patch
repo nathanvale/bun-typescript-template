@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-map.ts b/scripts/glossary-map.ts
+index 6ca45fa..bcd79bb 100644
+--- a/scripts/glossary-map.ts
++++ b/scripts/glossary-map.ts
+@@ -128,7 +128,7 @@ function fileProblems(
+ const placeholder = /^[\s\-\u2013\u2014.]*(?:none|n\/a|tbd)?[\s.]*$/i;
+ 
+ function unlinkedProblems(owner: string, where: string, linked: boolean) {
+-  return !linked && placeholder.test(where)
++  return !linked && !placeholder.test(where)
+     ? [
+         `${mapFile} makes "${owner}" the owner of words but gives them no place: its Where cell links nothing and names nothing. Repair: link the GLOSSARY.md that defines them, or say where they live.`,
+       ]

@@ -1818,5 +1818,12 @@
     "testFile": "tests/template/naming/glossary-files.test.ts",
     "title": "^GM.l a map that links no GLOSSARY.md of this repository fails",
     "source": "f6aaef7 fix(glossary): refuse a map that links no GLOSSARY.md of its own repository"
+  },
+  {
+    "id": "e47887b-map-row-no-place",
+    "patch": "tests/planted-faults/patches/e47887b-map-row-no-place.patch",
+    "testFile": "tests/template/naming/glossary-files.test.ts",
+    "title": "^GM.m a row that owns words but gives them no place fails",
+    "source": "e47887b fix(glossary): refuse a map row that owns words and gives them no place"
   }
 ]
