@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
 import { readKernel } from "../../../src/kernel-reader.ts";
 import {
+  fetchBranchCommit,
   PinRefusal,
   pinBranchCommit,
   verifyPin,
@@ -77,6 +78,12 @@ function branchTip(repository: string): string {
   return remote.exitCode === 0
     ? remote.stdout.toString().trim()
     : git(repository, "rev-parse", `refs/heads/${pin.branch}`);
+}
+
+function holds(repository: string, commit: string): boolean {
+  return (
+    gitResult(repository, "cat-file", "-e", `${commit}^{commit}`).exitCode === 0
+  );
 }
 
 function branchRefusalOf(
@@ -156,6 +163,58 @@ describe("pin verification", () => {
       },
     ]);
   });
+
+  test("fetches the commit the pin's branch points at into a clone made before the branch moved, so a commit on that branch is accepted", () => {
+    const remote = kernelClone(folder("pin-verification-remote-"));
+    const work = folder("pin-verification-");
+    git(work, "clone", "--quiet", "--no-checkout", remote, "clone");
+    const repository = join(work, "clone");
+    const moved = commitOn(remote, [pin.commit], "after the clone");
+    moveBranch(remote, "main", moved);
+    const branchCommit = pinBranchCommit({ remote, branch: pin.branch });
+    expect([branchCommit, holds(repository, moved)]).toEqual([moved, false]);
+    expect(fetchBranchCommit(repository, remote, branchCommit)).toBe(true);
+    expect([
+      holds(repository, moved),
+      refusalOf(repository, pin.commit, branchCommit),
+    ]).toEqual([true, "no refusal"]);
+  });
+
+  test("leaves a commit the remote cannot give missing, so pin verification refuses it as unreadable history", () => {
+    const repository = kernelClone(folder("pin-verification-"));
+    const missing = "e".repeat(40);
+    const remote = join(folder("pin-verification-"), "no-repository-here");
+    expect(fetchBranchCommit(repository, remote, missing)).toBe(false);
+    expect(refusalOf(repository, pin.commit, missing)).toMatchObject({
+      code: "kernel_history_unreadable",
+    });
+  });
+
+  test("gives up a fetch that does not finish within its bound", () => {
+    const silent = Bun.listen({
+      hostname: "127.0.0.1",
+      port: 0,
+      socket: { data: () => undefined },
+    });
+    try {
+      const repository = kernelClone(folder("pin-verification-"));
+      const started = performance.now();
+      const fetched = fetchBranchCommit(
+        repository,
+        `http://127.0.0.1:${silent.port}/kernel.git`,
+        "e".repeat(40),
+        500,
+      );
+      const elapsed = performance.now() - started;
+      expect([fetched, elapsed >= 500, elapsed < 2_000]).toEqual([
+        false,
+        true,
+        true,
+      ]);
+    } finally {
+      silent.stop(true);
+    }
+  }, 30_000);
 
   test("refuses a branch the pin's remote does not have", () => {
     const remote = kernelClone(folder("pin-verification-remote-"));

@@ -3,6 +3,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -117,6 +118,53 @@ export function pinBranchCommit(
   if (!/^[0-9a-f]{40}$/.test(commit))
     throw unreadable("the remote has no such branch.");
   return commit;
+}
+
+// Interface: makes sure the clone at `repository` holds `commit`, the
+// commit the pin's branch points at on `remote`: a clone made before the
+// branch moved lacks it. When it is missing, it fetches that one commit from
+// `remote`, within `limitMilliseconds`, and says whether the clone holds it
+// afterwards. A fetch that fails or runs out of time changes nothing, and
+// pin verification then refuses the commit as unreadable history.
+export function fetchBranchCommit(
+  repository: string,
+  remote: string,
+  commit: string,
+  limitMilliseconds = remoteMilliseconds,
+): boolean {
+  if (!existsSync(repository)) return false;
+  const local = realpathSync(repository);
+  const held = () =>
+    git(local, "cat-file", ["-e", `${commit}^{commit}`]).code === 0;
+  if (held()) return true;
+  Bun.spawnSync(
+    [
+      "git",
+      "-C",
+      local,
+      "fetch",
+      "--quiet",
+      "--no-tags",
+      "--no-write-fetch-head",
+      "--",
+      remote,
+      commit,
+    ],
+    {
+      env: {
+        PATH: process.env.PATH ?? "",
+        GIT_TERMINAL_PROMPT: "0",
+        GIT_CONFIG_NOSYSTEM: "1",
+        GIT_CONFIG_GLOBAL: "/dev/null",
+      },
+      stdin: "ignore",
+      stdout: "ignore",
+      stderr: "ignore",
+      timeout: limitMilliseconds,
+      killSignal: "SIGKILL",
+    },
+  );
+  return held();
 }
 
 // Platform: git merge-base --is-ancestor exits 0 for yes and 1 for no. Any
@@ -250,7 +298,8 @@ export async function withStopSignals<Result>(
 
 // Interface: the pin move command. The kernel repository defaults to the
 // sibling beside the template. It reads the pin's branch from the pin's
-// remote and verifies the commit before the trial, so a refused commit costs
+// remote, fetches that commit into the clone if the clone lacks it, and
+// verifies the commit before the trial, so a refused commit costs
 // no install, and keeps the trial's folder only for the
 // run. SIGINT, SIGTERM or SIGHUP stops the trial's running step with its
 // process group; the command then writes nothing, removes the trial's
@@ -271,6 +320,7 @@ export async function main(argv: readonly string[]): Promise<number> {
   try {
     return await withStopSignals(active, async () => {
       const branchCommit = pinBranchCommit(pin);
+      fetchBranchCommit(kernel.repository, pin.remote, branchCommit);
       verifyPin(kernel, pin, branchCommit);
       const { report, written } = movePin(
         await kernelTrial({ kernel, folder, active }),
