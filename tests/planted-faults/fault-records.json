@@ -1573,5 +1573,26 @@
     "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
     "title": "fails when the pointer names a full skill outside the installed kernel: a path that climbs out of it$",
     "source": "64d3900 fix(bootstrap): refuse a pointer skill whose Full skill lies outside the installed kernel"
+  },
+  {
+    "id": "47e2ec3-pointer-skills-file",
+    "patch": "tests/planted-faults/patches/47e2ec3-pointer-skills-file.patch",
+    "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
+    "title": "is a folder in the installed kernel, not a file$",
+    "source": "47e2ec3 fix(bootstrap): settle Sol's standards review of \"Bootstrap offers the kernel\" (T4)"
+  },
+  {
+    "id": "47e2ec3-pointer-skills-pin",
+    "patch": "tests/planted-faults/patches/47e2ec3-pointer-skills-pin.patch",
+    "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
+    "title": "fails naming package.json when its kernel dependency pins no full commit$",
+    "source": "47e2ec3 fix(bootstrap): settle Sol's standards review of \"Bootstrap offers the kernel\" (T4)"
+  },
+  {
+    "id": "47e2ec3-kernel-pin-git",
+    "patch": "tests/planted-faults/patches/47e2ec3-kernel-pin-git.patch",
+    "testFile": "tests/template/kernel-trial/kernel-sibling.test.ts",
+    "title": "refuses, naming git's words, a checkout git cannot read$",
+    "source": "47e2ec3 fix(bootstrap): settle Sol's standards review of \"Bootstrap offers the kernel\" (T4)"
   }
 ]

@@ -1,0 +1,14 @@
+diff --git a/generated-repository/application/tests/pointer-skills.test.ts b/generated-repository/application/tests/pointer-skills.test.ts
+index c41f1f7..f488c0d 100644
+--- a/generated-repository/application/tests/pointer-skills.test.ts
++++ b/generated-repository/application/tests/pointer-skills.test.ts
+@@ -93,8 +93,7 @@ test("the installed kernel holds the full skill each pointer skill names", () =>
+     pointerSkills()
+       .filter(
+         ({ fullSkill }) =>
+-          !existsSync(join(root, fullSkill)) ||
+-          !lstatSync(join(root, fullSkill)).isFile(),
++          !existsSync(join(root, fullSkill)),
+       )
+       .map(
+         ({ name, fullSkill }) =>

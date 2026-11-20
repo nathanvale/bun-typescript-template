@@ -1,0 +1,13 @@
+diff --git a/src/kernel-pin.ts b/src/kernel-pin.ts
+index 2d63cf8..d5f86f2 100644
+--- a/src/kernel-pin.ts
++++ b/src/kernel-pin.ts
+@@ -119,7 +119,7 @@ export function findSiblingKernel(
+     "--path-format=absolute",
+     "--git-common-dir",
+   ]);
+-  if (!shared.ok)
++  if (shared.ok && !shared.ok)
+     throw new CliError(
+       "template_git_unreadable",
+       `git cannot say where the checkout at ${root} keeps its objects: git says "${shared.said}".`,
