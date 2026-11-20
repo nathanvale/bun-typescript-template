@@ -11,7 +11,8 @@ import {
 } from "../../../scripts/pin-verification.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
-import { gitEnv, inherited } from "../../support/git-fixture.ts";
+import { git, gitEnv, inherited } from "../../support/git-fixture.ts";
+import { gitReadingRemoteAs, withToolsFirst } from "../../support/hung-git.ts";
 import {
   absentCommit,
   commitOn,
@@ -99,6 +100,28 @@ describe("pin verification of the template's kernel pin", () => {
       const branchCommit = pinBranchCommit(pin);
       expect(await refusalOf(ROOT, siblingKernel())).toBe(
         `Pin verified: ${pin.commit} is reachable from ${branchCommit}, where branch ${pin.branch} points on ${pin.remote}, and has the carry-out commit ${pin.carryOutIdentity} as an ancestor.\n`,
+      );
+    },
+    processWatchdog(1),
+  );
+
+  test(
+    "fetches the commit the pin's branch points at into a kernel clone made before the branch moved, so the pin is verified",
+    async () => {
+      const remote = kernelClone(folder("pin-verification-remote-"));
+      const work = folder("pin-verification-");
+      git(work, "clone", "--quiet", "--no-checkout", remote, "clone");
+      const kernel = join(work, "clone");
+      const moved = commitOn(remote, [pin.commit], "after the clone");
+      moveBranch(remote, "main", moved);
+      const bin = join(work, "bin");
+      mkdirSync(bin);
+      gitReadingRemoteAs(bin, pin.remote, remote);
+      const verified = await withToolsFirst(bin, () =>
+        refusalOf(pinnedAt(pin.commit), kernel),
+      );
+      expect(verified).toBe(
+        `Pin verified: ${pin.commit} is reachable from ${moved}, where branch ${pin.branch} points on ${pin.remote}, and has the carry-out commit ${pin.carryOutIdentity} as an ancestor.\n`,
       );
     },
     processWatchdog(1),

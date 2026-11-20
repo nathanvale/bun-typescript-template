@@ -124,7 +124,9 @@ export function pinBranchCommit(
 // commit the pin's branch points at on `remote`: a clone made before the
 // branch moved lacks it. When it is missing, it fetches that one commit from
 // `remote`, within `limitMilliseconds`, and says whether the clone holds it
-// afterwards. A fetch that fails or runs out of time changes nothing, and
+// afterwards. It runs no automatic maintenance, which git starts in the
+// background after a fetch and which then writes into the clone after this
+// returns. A fetch that fails or runs out of time changes nothing, and
 // pin verification then refuses the commit as unreadable history. Before
 // any fetch it refuses, as the kernel reader does, a path that is not the
 // top of a git repository, so it never writes into an enclosing one.
@@ -143,6 +145,10 @@ export function fetchBranchCommit(
       "git",
       "-C",
       local,
+      "-c",
+      "maintenance.auto=false",
+      "-c",
+      "gc.auto=0",
       "fetch",
       "--quiet",
       "--no-tags",
@@ -166,6 +172,20 @@ export function fetchBranchCommit(
     },
   );
   return held();
+}
+
+// Interface: the commit that the pin's branch points at on the pin's remote
+// (see pinBranchCommit), with the clone at `repository` holding it (see
+// fetchBranchCommit), so a clone made before the branch moved can be judged
+// against it. Every command that verifies against a kernel clone reads the
+// branch commit through it. It refuses as pinBranchCommit does.
+export function branchCommitHeldBy(
+  pin: Pick<KernelPin, "remote" | "branch">,
+  repository: string,
+): string {
+  const branchCommit = pinBranchCommit(pin);
+  fetchBranchCommit(repository, pin.remote, branchCommit);
+  return branchCommit;
 }
 
 // Platform: git merge-base --is-ancestor exits 0 for yes and 1 for no. Any
@@ -320,8 +340,7 @@ export async function main(argv: readonly string[]): Promise<number> {
   const active: TrialActive = {};
   try {
     return await withStopSignals(active, async () => {
-      const branchCommit = pinBranchCommit(pin);
-      fetchBranchCommit(kernel.repository, pin.remote, branchCommit);
+      const branchCommit = branchCommitHeldBy(pin, kernel.repository);
       verifyPin(kernel, pin, branchCommit);
       const { report, written } = movePin(
         await kernelTrial({ kernel, folder, active }),

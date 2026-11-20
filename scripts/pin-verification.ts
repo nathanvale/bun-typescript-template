@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { readKernelPin, siblingKernelPath } from "../src/kernel-pin.ts";
 import { KernelRefusal } from "../src/kernel-reader.ts";
-import { PinRefusal, pinBranchCommit, verifyPin } from "./pin-move.ts";
+import { branchCommitHeldBy, PinRefusal, verifyPin } from "./pin-move.ts";
 
 const templateRoot = resolve(import.meta.dir, "..");
 
@@ -22,12 +22,13 @@ export function argumentsOf(
 
 // Interface: pin verification of the kernel pin at `root`, against the
 // kernel repository at `kernel`. It reads where the pin's branch points on
-// the pin's own remote, then verifies the pinned commit with verifyPin, and
-// returns the line the command prints. It refuses as verifyPin and
-// pinBranchCommit do.
+// the pin's own remote, fetches that commit into the kernel repository if it
+// lacks it (a clone made before the branch moved does), then verifies the
+// pinned commit with verifyPin, and returns the line the command prints. It
+// refuses as verifyPin and pinBranchCommit do.
 export function verifyKernelPin(root: string, kernel: string): string {
   const pin = readKernelPin(root);
-  const branchCommit = pinBranchCommit(pin);
+  const branchCommit = branchCommitHeldBy(pin, kernel);
   verifyPin({ repository: kernel, commit: pin.commit }, pin, branchCommit);
   return `Pin verified: ${pin.commit} is reachable from ${branchCommit}, where branch ${pin.branch} points on ${pin.remote}, and has the carry-out commit ${pin.carryOutIdentity} as an ancestor.\n`;
 }

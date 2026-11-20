@@ -36,3 +36,28 @@ export async function timed<T>(
   const value = await run();
   return { value, milliseconds: performance.now() - started };
 }
+
+// Interface: writes into `bin` a git stub that reads the remote `named` as
+// `instead`, then runs the real git, so a test can move a branch the code
+// reads from a remote it names without a push.
+export function gitReadingRemoteAs(
+  bin: string,
+  named: string,
+  instead: string,
+): void {
+  writeFileSync(
+    join(bin, "git"),
+    `#!/bin/sh\nfor argument; do\n  shift\n  if [ "$argument" = ${JSON.stringify(named)} ]; then argument=${JSON.stringify(instead)}; fi\n  set -- "$@" "$argument"\ndone\nexec ${JSON.stringify(Bun.which("git"))} "$@"\n`,
+    { mode: 0o755 },
+  );
+}
+
+// Interface: writes into `bin` a git stub that records, in git's trace2
+// event format at `trace`, each git command it runs, children included.
+export function gitTracingTo(bin: string, trace: string): void {
+  writeFileSync(
+    join(bin, "git"),
+    `#!/bin/sh\nGIT_TRACE2_EVENT=${JSON.stringify(trace)} exec ${JSON.stringify(Bun.which("git"))} "$@"\n`,
+    { mode: 0o755 },
+  );
+}
