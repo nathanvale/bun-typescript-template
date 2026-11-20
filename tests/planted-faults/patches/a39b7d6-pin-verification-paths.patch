@@ -1,0 +1,13 @@
+diff --git a/.github/workflows/pin-verification.yml b/.github/workflows/pin-verification.yml
+index fb2296d..302476b 100644
+--- a/.github/workflows/pin-verification.yml
++++ b/.github/workflows/pin-verification.yml
+@@ -7,6 +7,8 @@ name: Pin verification
+ # does not.
+ on:
+   pull_request:
++    paths:
++      - kernel-pin.json
+   push:
+     branches: [main]
+   schedule:

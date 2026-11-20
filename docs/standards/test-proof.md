@@ -13,7 +13,7 @@ repository broke it.
   an independent parser call), [#90-inventory] (exit 1 also covered other
   errors), [#116-refusal] (exit 1 also covered git's general refusal),
   [a639dc0] (pin move refusal tests compared only a code that two refusals
-  share).
+  share), [73cfcf4].
 - Assert the route's response when a test says a command remains available.
   Exit zero with empty output can pass without a response. Witnessed:
   [#90-routes].
@@ -83,7 +83,7 @@ repository broke it.
   then `bun run fault-replay <id>` until it prints `KILLED`. Witnessed:
   [9050fec], [b8664cf] (each recorded faults for refusals that had landed
   with no record), [a639dc0] (the kernel trial's step bound and the pin
-  move's missing-branch and argument refusals landed with none).
+  move's missing-branch and argument refusals landed with none), [bfddd05].
 - Replay affected fault records when you edit or move a test that catches
   a planted fault, or change the source its patch targets. Keep the patch
   and test selector current in the same commit and require `KILLED`.
@@ -216,3 +216,5 @@ repository broke it.
 [f815bb0]: https://github.com/nathanvale/bun-typescript-template/commit/f815bb0d66a1be6710829e4eaa550d6dca0f47f5
 [16c6e4d]: https://github.com/nathanvale/bun-typescript-template/commit/16c6e4d565cd37f750ccc56b48438ae2818a2f24
 [5d136f6]: https://github.com/nathanvale/bun-typescript-template/commit/5d136f66c27eb2f209252625b7e8da884a4d77f9
+[73cfcf4]: https://github.com/nathanvale/bun-typescript-template/commit/73cfcf430e43456684ad90d6057eff2473f99bc3
+[bfddd05]: https://github.com/nathanvale/bun-typescript-template/commit/bfddd05c0b8ff6effb91a569fb356f542bf5f459

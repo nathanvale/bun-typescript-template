@@ -1,0 +1,10 @@
+diff --git a/.github/workflows/pin-verification.yml b/.github/workflows/pin-verification.yml
+index fb2296d..ca98750 100644
+--- a/.github/workflows/pin-verification.yml
++++ b/.github/workflows/pin-verification.yml
+@@ -30,5 +30,4 @@ jobs:
+         with:
+           bun-version: 1.4.4
+       - run: bun install --frozen-lockfile
+-      - uses: ./.github/actions/kernel-sibling
+       - run: bun run pin-verification

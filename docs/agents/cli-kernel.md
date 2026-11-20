@@ -25,6 +25,19 @@ These sources define the command contract the CLI kernel implements.
 - From anywhere else, clone the kernel repository and name its path in
   `KERNEL_REPOSITORY`.
 
+## Pin verification
+
+- For a red `pin-verification` job, run `bun run pin-verification` with the
+  kernel repository beside the template. Its refusal names its code and its
+  repair.
+
+## The kernel trial on any commit
+
+- To try a kernel commit without moving the pin, run
+  `bun run kernel-trial <full kernel commit>`. The kernel repository's hosted
+  check runs it on the head commit of each kernel pull request, as advice
+  only.
+
 ## Coordination context
 
 These private planning records live outside this repository. Your task brief
