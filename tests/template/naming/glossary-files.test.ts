@@ -130,6 +130,27 @@ test("GM.l a map that links no GLOSSARY.md of this repository fails, as the audi
   ]);
 });
 
+test("GM.m a row that owns words but gives them no place fails, and a row that names its place passes", () => {
+  for (const where of ["\u2014", "-", "none", ""])
+    expect(
+      mapProblems(
+        ownedMap([own, `| Kernel | Kernel words | ${where} |`]),
+        root,
+      ),
+    ).toEqual([
+      'GLOSSARY-MAP.md makes "Kernel" the owner of words but gives them no place: its Where cell links nothing and names nothing. Repair: link the GLOSSARY.md that defines them, or say where they live.',
+    ]);
+  expect(
+    mapProblems(
+      ownedMap([own, "| Agent ecosystem | Shared words | In Linear |"]),
+      root,
+    ),
+  ).toEqual([]);
+  expect(
+    mapProblems(ownedMap([own, "| Kernel | No word. A copy | \u2014 |"]), root),
+  ).toEqual([]);
+});
+
 test("GM.b a map that points to no file fails", () => {
   expect(
     mapProblems("Only [a web page](https://example.test/x).", root),

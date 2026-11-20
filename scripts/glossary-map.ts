@@ -125,16 +125,33 @@ function fileProblems(
   return [...shared, ...targetProblems(owner, path, ownsWords, root)];
 }
 
+const placeholder = /^[\s\-\u2013\u2014.]*(?:none|n\/a|tbd)?[\s.]*$/i;
+
+function unlinkedProblems(owner: string, where: string, linked: boolean) {
+  return !linked && placeholder.test(where)
+    ? [
+        `${mapFile} makes "${owner}" the owner of words but gives them no place: its Where cell links nothing and names nothing. Repair: link the GLOSSARY.md that defines them, or say where they live.`,
+      ]
+    : [];
+}
+
 function ownerProblems(map: string, root: string): string[] {
   const owners = new Set<string>();
   const files = new Map<string, string>();
   return ownerRowsBelowHeader(map).flatMap(
-    ([owner = "", owns = "", ...rest]) => [
-      ...nameProblems(owner, owners),
-      ...localLinks([owns, ...rest].join(" ")).flatMap(({ path }) =>
-        fileProblems(owner, path, !/^no word\b/i.test(owns), files, root),
-      ),
-    ],
+    ([owner = "", owns = "", ...rest]) => {
+      const ownsWords = !/^no word\b/i.test(owns);
+      const links = localLinks([owns, ...rest].join(" "));
+      return [
+        ...nameProblems(owner, owners),
+        ...(ownsWords
+          ? unlinkedProblems(owner, rest.at(-1) ?? "", links.length > 0)
+          : []),
+        ...links.flatMap(({ path }) =>
+          fileProblems(owner, path, ownsWords, files, root),
+        ),
+      ];
+    },
   );
 }
 
