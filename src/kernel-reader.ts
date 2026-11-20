@@ -114,16 +114,17 @@ const linkKinds = new Map([
   ["160000", "a submodule"],
 ]);
 
-// Platform: git reads objects only through rev-parse, ls-tree and cat-file
-// here, none of which reads the working tree or the network. The environment
+// Platform: git reads objects only through rev-parse, ls-tree, cat-file,
+// merge-base and log here, none of which reads the working tree or the
+// network. The environment
 // holds nothing of the caller's but PATH: a replace ref cannot swap an object,
 // no prompt can open, no configuration file outside the repository applies,
 // and git looks for the repository in the given folder alone. A partial clone
 // cannot fetch an object: an empty GIT_ALLOW_PROTOCOL allows no transport,
 // not a local path and not a remote helper found on PATH.
-function git(
+export function git(
   repository: string,
-  command: "rev-parse" | "ls-tree" | "cat-file",
+  command: "rev-parse" | "ls-tree" | "cat-file" | "merge-base" | "log",
   args: readonly string[],
   stdin?: Uint8Array,
 ) {
@@ -521,6 +522,20 @@ function utf8TextOf(bytes: Uint8Array | undefined): string {
   return text;
 }
 
+// Interface: the kernel reader's first refusals, for a caller that reads
+// history, not files. Returns the repository's real path.
+export function openCommit(seam: KernelSeam): string {
+  const { commit } = seam;
+  if (!fullIdentity.test(commit))
+    throw new KernelRefusal(
+      "kernel_commit_abbreviated",
+      `"${commit}" is not a full commit identity, which is 40 lowercase hexadecimal characters.`,
+    );
+  const repository = repositoryAt(seam.repository);
+  requireCommit(repository, seam);
+  return repository;
+}
+
 // Interface: reads the kernel at one full commit from the git objects of the
 // repository at a local path, and never from its working tree, so the
 // repository may sit on another commit with edits in progress. It reads the
@@ -536,13 +551,7 @@ export function readKernel(
   declarationPath: string = kernelDeclarationPath,
 ): Kernel {
   const { commit } = seam;
-  if (!fullIdentity.test(commit))
-    throw new KernelRefusal(
-      "kernel_commit_abbreviated",
-      `"${commit}" is not a full commit identity, which is 40 lowercase hexadecimal characters.`,
-    );
-  const repository = repositoryAt(seam.repository);
-  requireCommit(repository, seam);
+  const repository = openCommit(seam);
   const entries = entriesAt(repository, seam);
   const held = entries.find(
     ({ path, utf8 }) => utf8 && path === declarationPath,

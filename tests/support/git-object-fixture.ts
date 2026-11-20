@@ -70,7 +70,7 @@ export function treeOf(root: string, commit: string, folder: string): string {
   );
 }
 
-function gitWithInput(
+export function gitWithInput(
   root: string,
   input: string | Uint8Array,
   ...args: string[]

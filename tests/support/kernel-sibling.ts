@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { readKernelPin } from "../../src/kernel-pin.ts";
 import { ROOT } from "./bootstrap-cli-fixture.ts";
 import { git } from "./git-fixture.ts";
+import { gitWithInput } from "./git-object-fixture.ts";
 
 const pinnedCommit = readKernelPin(ROOT).commit;
 
@@ -14,7 +15,7 @@ export const trialBase = "0b64b0e480a77ae6abbd3e671497354309182b42";
 // Interface: the real kernel repository the tests read. The hosted check
 // places it beside the template; a checkout elsewhere, such as a worktree,
 // names it in KERNEL_REPOSITORY.
-function siblingKernel(): string {
+export function siblingKernel(): string {
   return (
     process.env.KERNEL_REPOSITORY ??
     join(ROOT, "..", readKernelPin(ROOT).repository)
@@ -31,4 +32,55 @@ export function kernelClone(folder: string, mainAt = pinnedCommit): string {
   git(root, "update-ref", "refs/heads/main", mainAt);
   git(root, "symbolic-ref", "HEAD", "refs/heads/main");
   return root;
+}
+
+export type TopLevelEdit = {
+  readonly files?: Readonly<Record<string, string>>;
+  readonly rename?: readonly [from: string, to: string];
+};
+
+// Interface: a new commit whose tree is the first parent's with top-level
+// entries replaced or renamed, made with git's plumbing so the clone needs
+// no working tree. It moves no branch.
+export function commitOn(
+  root: string,
+  parents: readonly [string, ...string[]],
+  subject: string,
+  { files = {}, rename }: TopLevelEdit = {},
+): string {
+  const entries = new Map(
+    git(root, "ls-tree", parents[0])
+      .split("\n")
+      .map((line) => {
+        const tab = line.indexOf("\t");
+        return [line.slice(tab + 1), line.slice(0, tab)] as const;
+      }),
+  );
+  if (rename !== undefined) {
+    const [from, to] = rename;
+    entries.set(to, entries.get(from) ?? "");
+    entries.delete(from);
+  }
+  for (const [name, text] of Object.entries(files))
+    entries.set(
+      name,
+      `100644 blob ${gitWithInput(root, text, "hash-object", "-w", "--stdin")}`,
+    );
+  const tree = gitWithInput(
+    root,
+    [...entries].map(([name, facts]) => `${facts}\t${name}\n`).join(""),
+    "mktree",
+  );
+  return git(
+    root,
+    "commit-tree",
+    tree,
+    ...parents.flatMap((parent) => ["-p", parent]),
+    "-m",
+    subject,
+  );
+}
+
+export function moveBranch(root: string, branch: string, commit: string) {
+  git(root, "update-ref", `refs/heads/${branch}`, commit);
 }
