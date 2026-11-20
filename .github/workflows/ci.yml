@@ -44,6 +44,7 @@ jobs:
         with:
           bun-version: 1.4.4
       - run: bun install --frozen-lockfile
+      - uses: ./.github/actions/kernel-sibling
       - name: Test
         run: bun run test --shard=${{ matrix.shard }}/3 --timings=tests/test-timings.json --update-timings
       - name: Upload shard timings
@@ -69,9 +70,12 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      KERNEL_REPOSITORY: ${{ github.workspace }}/../agent-cli-kernel
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.4
+      - uses: ./.github/actions/kernel-sibling
       - run: bun run fault-replay
