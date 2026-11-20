@@ -1,16 +1,14 @@
 # Pull Requests
 
-- Open a draft so hosted checks can run first. The repository configures
-  automatic review to skip drafts. The author's Copilot settings can
-  also affect when a review is requested.
-- Mark the pull request ready once its hosted checks pass. Check the
-  timeline to see which Copilot and CodeRabbit reviews arrived for that head. Both
-  reviews are optional for GitHub's merge gate.
-- After each review request, push nothing until every requested review for
-  that head has arrived. A CodeRabbit check that reads "Review rate limited"
-  counts as CodeRabbit's review. A push during a review
-  cancels it or leaves it reviewing an old commit. If a requested review has
-  not arrived after 30 minutes, request it once more, then ask the operator.
+- Run the `code-review` skill on the branch before opening the pull
+  request, with the review done by a different model from the one that wrote
+  the code (a Monash Sol 6.1 worker). Fix what it finds.
+- Open the pull request ready for review, never as a draft. Write its body
+  with the `pr` skill.
+- Drive the open pull request with pstack's Babysit playbook. Merge `main`
+  into the branch to bring it up to date. Never rebase or force-push.
+- Do not rely on CodeRabbit or Copilot. Either may review, and neither is
+  required by GitHub's merge gate.
 - Only the pull request's author pushes to its branch. Leave the review
   bots' fix buttons, such as CodeRabbit's "Fix comments", unticked.
 - Answer every review thread. Commit each fix, then run the
@@ -18,9 +16,10 @@
   a clean tree for each finding about code, tests, check commands, or
   gates. Commit what Sow writes. Route instruction wording to the
   document's owner. Push the fixes as one batch.
-- Stop requesting reviews after the third round. Ask Copilot again only
-  after the first and second batches. CodeRabbit pauses after one
-  reviewed commit, so post `@coderabbitai review` with those same two
-  batches. After round three, address comments that identify real faults.
-- Merge with a merge commit on the operator's word. GitHub protects
-  `main` from direct pushes.
+- Only the coordinator merges, with a merge commit, when all of these hold:
+  every required hosted check is green at the current head; no review
+  thread is open; an agent that did not write the pull request has checked
+  it against its acceptance and passed it; and it changes no README design,
+  layout, structure or length, no version, tag, release or publication, and
+  needs no admin bypass. Any other pull request waits for the operator.
+  GitHub protects `main` from direct pushes.
