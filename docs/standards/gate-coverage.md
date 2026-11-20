@@ -164,7 +164,9 @@ file extensions in those directories.
 - Fault `bbfce9a-template-rules` admits a `SAFETY:` block anywhere; the lint
   test that refuses one above a statement with no cast kills it.
 - In review, verify what a `Platform:` or `Interface:` comment claims and
-  whether it names something outside this repository.
+  whether it names something outside this repository. Witnessed: [47e2ec3]
+  (a `Platform:` claim said token substitution refuses every entry that is
+  not a regular file; it walks folders).
 - In review, verify each accepted decision citation. Require a Command
   Contract 3 question number, an ID such as `N4a`, or the ruling date.
   Consult the [CLI kernel authority](../agents/cli-kernel.md).
@@ -191,6 +193,8 @@ file extensions in those directories.
   missing. A patch also fails replay when it creates or deletes a whole
   file, or when a changed region's anchor is in no file replay searches, or
   is at more than one place and its context lines do not choose one.
+  Witnessed: [50dbf8e] (a new line took the semicolon a fault's anchor
+  held, and replay reported the fault STALE).
 - Replay places each changed region of a hunk by its anchor: the lines it
   removes, or, for a region that only inserts, the context lines next to
   it. A region lands wherever its anchor occurs once, even if its other
@@ -220,3 +224,5 @@ file extensions in those directories.
   kernel repository owns them.
 
 [r4625491126]: https://github.com/nathanvale/bun-typescript-template/pull/114#discussion_r4625491126
+[47e2ec3]: https://github.com/nathanvale/bun-typescript-template/commit/47e2ec3c245279421f11ab054db621c97e213333
+[50dbf8e]: https://github.com/nathanvale/bun-typescript-template/commit/50dbf8ea8f54524939c2a76d992fa9c7ded90c02
