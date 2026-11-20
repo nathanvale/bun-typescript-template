@@ -136,9 +136,9 @@ The level of a rule row that has no gate, so the reviewer applies its guide.
 The level of a rule row whose gates cover only part of it, so the reviewer
 applies the guide to the rest.
 
-**Planned (parked)**:
+**Parked gate**:
 A gate agreed for a rule row that does not exist yet and has no slot to be
-built in.
+built in. The rule table lists it under Planned (parked).
 
 **Single witness**:
 A lesson seen once, held until a second distinct witness lets it become a rule
