@@ -1,0 +1,13 @@
+diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
+index ad9eb56..2b28901 100644
+--- a/scripts/pin-move.ts
++++ b/scripts/pin-move.ts
+@@ -153,7 +153,7 @@ export function verifyPin(
+ ): string {
+   const repository = openCommit(seam);
+   const { commit } = seam;
+-  if (!isAncestor(repository, commit, branchCommit, branch))
++  if (commit === branchCommit.slice(1))
+     throw new PinRefusal(
+       "kernel_commit_unreachable",
+       `Commit ${commit} is not reachable from ${branchCommit}, where branch ${branch} points on the pin's remote, in the git repository at ${seam.repository}.`,

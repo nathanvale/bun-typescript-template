@@ -1,11 +1,12 @@
 import { expect, test } from "bun:test";
-import { rmSync } from "node:fs";
+import { readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import {
   generatedPin,
   parseKernelPin,
   readKernelPin,
 } from "../../../src/kernel-pin.ts";
+import { KERNEL_LOCKFILE } from "../../../src/recipe.ts";
 import { testFolder } from "../../support/test-folder.ts";
 
 const root = join(import.meta.dir, "../../..");
@@ -34,11 +35,22 @@ function refusalFor(source: string): string {
   }
 }
 
-test("the template's kernel pin parses, with a full pinned commit that equals its carry-out identity", () => {
+test("the template's kernel pin parses, with a full pinned commit and a full carry-out identity", () => {
   const pin = readKernelPin(root);
   expect(Object.keys(pin).join(", ")).toBe(keys);
-  expect(pin.commit).toMatch(/^[0-9a-f]{40}$/);
-  expect(pin.commit).toBe(pin.carryOutIdentity);
+  expect(
+    [pin.commit, pin.carryOutIdentity].map((commit) =>
+      /^[0-9a-f]{40}$/.test(commit),
+    ),
+  ).toEqual([true, true]);
+});
+
+test("the template's kernel lockfile names the kernel by the Pin at the pinned commit, in full", () => {
+  const pin = readKernelPin(root);
+  const lockfile = readFileSync(join(root, KERNEL_LOCKFILE), "utf8");
+  expect(lockfile.match(/^ {8}"agent-cli-kernel": "([^"]+)",$/m)?.[1]).toBe(
+    generatedPin(pin, pin.commit),
+  );
 });
 
 test("a kernel pin with its five fields is read as written, and frozen", () => {

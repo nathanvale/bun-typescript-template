@@ -1,0 +1,13 @@
+diff --git a/src/bootstrap.ts b/src/bootstrap.ts
+index 11820cc..b55ee6a 100644
+--- a/src/bootstrap.ts
++++ b/src/bootstrap.ts
+@@ -661,7 +661,7 @@ export type KernelBootstrap = {
+ 
+ async function lockfileFor(lockfile: KernelBootstrap["lockfile"]) {
+   if (lockfile !== "committed")
+-    return lockfile === "none" ? undefined : lockfile.slice();
++    return lockfile === "none" ? undefined : lockfile;
+   const path = join(TEMPLATE_ROOT, KERNEL_LOCKFILE);
+   if ((await lstatIfPresent(path))?.isFile() !== true)
+     throw new CliError(

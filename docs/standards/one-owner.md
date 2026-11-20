@@ -5,7 +5,8 @@ This repository also drifted on constants and helpers, so the rule covers them
 here.
 
 - Import a cause code, route token, or built-in identity from its owner
-  module. Witnessed: [56aee86], [e7c771c].
+  module. Witnessed: [56aee86], [e7c771c], [a639dc0] (the kernel pin's file
+  name and the sibling kernel path were each written in several places).
 - Run a format or shape rule through its one helper. A second copy of a
   constructor's shape rule gave admission a different refusal text.
   Witnessed: [892a700], [f2270b3], [#113-path] (the kernel reader returned a
@@ -21,7 +22,9 @@ here.
   in-process subject that runs git. The standards fixture used to inherit
   runtime configuration. Witnessed: [#85-env], [#92-git], [d29b755] (the in-process kernel row tests
   ran Bootstrap, which reads the template's commit with git, under the
-  caller's configuration). The shared environment
+  caller's configuration), [a639dc0] (the process runner took its default
+  environment when it loaded, so the isolation set around an in-process
+  kernel trial never reached the trial's children). The shared environment
   disables the global and system files and clears runtime configuration (`GIT_CONFIG_COUNT`, its `KEY_n` and
   `VALUE_n` pairs, and `GIT_CONFIG_PARAMETERS`). A user's `diff.orderFile`
   changed what the staged readers listed. Witnessed: [f929eb7], [7a62deb],
@@ -56,3 +59,4 @@ here.
 [#113-path]: https://github.com/nathanvale/bun-typescript-template/pull/113#pullrequestreview-5971206975
 [#113-lazy]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4626555126
 [d29b755]: https://github.com/nathanvale/bun-typescript-template/commit/d29b7552547144c165d0402a54c3e22fb8e7487e
+[a639dc0]: https://github.com/nathanvale/bun-typescript-template/commit/a639dc0cb92d859552ca1eec75ee1a66d3cc0ced

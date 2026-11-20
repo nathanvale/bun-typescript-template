@@ -1,0 +1,13 @@
+diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
+index 6f7049a..c2d5418 100644
+--- a/scripts/pin-move.ts
++++ b/scripts/pin-move.ts
+@@ -156,7 +156,7 @@ export function argumentsOf(
+   argv: readonly string[],
+ ): { readonly commit: string; readonly path?: string } | undefined {
+   const [commit, flag, path, ...rest] = argv;
+-  if (commit === undefined || rest.length > 0) return undefined;
++  if (commit === undefined || rest.length > 1) return undefined;
+   if (flag === undefined) return { commit };
+   return flag === "--kernel" && path !== undefined
+     ? { commit, path }

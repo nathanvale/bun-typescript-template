@@ -26,4 +26,5 @@ jobs:
         with:
           bun-version: 1.4.4
       - run: bun install --frozen-lockfile
+      - uses: ./.github/actions/kernel-sibling
       - run: bun run check

@@ -1,0 +1,9 @@
+diff --git a/.github/actions/kernel-sibling/action.yml b/.github/actions/kernel-sibling/action.yml
+index f15a392..7096fc3 100644
+--- a/.github/actions/kernel-sibling/action.yml
++++ b/.github/actions/kernel-sibling/action.yml
+@@ -15,4 +15,3 @@ runs:
+         commit=$(jq -r .commit kernel-pin.json)
+         repository=$(jq -r .repository kernel-pin.json)
+         git clone --quiet "$remote" "../$repository"
+-        git -C "../$repository" checkout --quiet --detach "$commit"

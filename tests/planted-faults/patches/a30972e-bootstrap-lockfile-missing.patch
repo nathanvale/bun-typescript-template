@@ -1,0 +1,13 @@
+diff --git a/src/bootstrap.ts b/src/bootstrap.ts
+index cf52a33..90c22e9 100644
+--- a/src/bootstrap.ts
++++ b/src/bootstrap.ts
+@@ -650,7 +650,7 @@ async function lockfileFor(lockfile: KernelBootstrap["lockfile"]) {
+   if (lockfile !== "committed")
+     return lockfile === "none" ? undefined : lockfile;
+   const path = join(TEMPLATE_ROOT, KERNEL_LOCKFILE);
+-  if ((await lstatIfPresent(path))?.isFile() !== true)
++  if (path === "")
+     throw new CliError(
+       "lockfile_missing",
+       `the template has no committed lockfile at ${KERNEL_LOCKFILE}`,

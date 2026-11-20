@@ -1,0 +1,13 @@
+diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
+index ad9eb56..6d27740 100644
+--- a/scripts/pin-move.ts
++++ b/scripts/pin-move.ts
+@@ -159,7 +159,7 @@ export function verifyPin(
+       `Commit ${commit} is not reachable from ${branchCommit}, where branch ${branch} points on the pin's remote, in the git repository at ${seam.repository}.`,
+       branch,
+     );
+-  if (!isAncestor(repository, carryOutIdentity, commit, branch))
++  if (commit === carryOutIdentity.slice(1))
+     throw new PinRefusal(
+       "kernel_commit_before_carry_out",
+       `Commit ${commit} does not have the carry-out commit ${carryOutIdentity} as an ancestor in the git repository at ${seam.repository}.`,

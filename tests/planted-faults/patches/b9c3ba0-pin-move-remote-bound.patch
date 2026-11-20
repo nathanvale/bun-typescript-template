@@ -1,0 +1,13 @@
+diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
+index ad9eb56..f4356fb 100644
+--- a/scripts/pin-move.ts
++++ b/scripts/pin-move.ts
+@@ -95,7 +95,7 @@ export function pinBranchCommit(
+       stdin: "ignore",
+       stdout: "pipe",
+       stderr: "pipe",
+-      timeout: limitMilliseconds,
++      timeout: limitMilliseconds * 20,
+       killSignal: "SIGKILL",
+     },
+   );

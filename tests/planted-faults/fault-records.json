@@ -1300,5 +1300,208 @@
     "testFile": "tests/template/bootstrap/template-revision.test.ts",
     "title": "refuses within its bound when git does not answer, naming the git command and its repair, and publishes nothing$",
     "source": "bd97f06 test(bootstrap): assert the exact refusal when git does not answer"
+  },
+  {
+    "id": "43faef5-pin-move-unreachable",
+    "patch": "tests/planted-faults/patches/43faef5-pin-move-unreachable.patch",
+    "testFile": "tests/template/pin-move/pin-verification.test.ts",
+    "title": "refuses a commit after the carry-out that the pin's branch does not reach$",
+    "source": "43faef5 feat(pin-move): the kernel trial, the pin move and the pin move report"
+  },
+  {
+    "id": "43faef5-pin-move-remote-branch",
+    "patch": "tests/planted-faults/patches/43faef5-pin-move-remote-branch.patch",
+    "testFile": "tests/template/pin-move/pin-move-command.test.ts",
+    "title": "refuses a commit that only a local clone's own branch reaches",
+    "source": "43faef5 feat(pin-move): the kernel trial, the pin move and the pin move report"
+  },
+  {
+    "id": "43faef5-pin-move-carry-out",
+    "patch": "tests/planted-faults/patches/43faef5-pin-move-carry-out.patch",
+    "testFile": "tests/template/pin-move/pin-verification.test.ts",
+    "title": "refuses the template commit that holds slice S5",
+    "source": "43faef5 feat(pin-move): the kernel trial, the pin move and the pin move report"
+  },
+  {
+    "id": "43faef5-pin-move-order",
+    "patch": "tests/planted-faults/patches/43faef5-pin-move-order.patch",
+    "testFile": "tests/template/pin-move/pin-move.test.ts",
+    "title": "writes the changed kernel lockfile first and the pin last$",
+    "source": "43faef5 feat(pin-move): the kernel trial, the pin move and the pin move report"
+  },
+  {
+    "id": "43faef5-pin-move-unchanged-lockfile",
+    "patch": "tests/planted-faults/patches/43faef5-pin-move-unchanged-lockfile.patch",
+    "testFile": "tests/template/pin-move/pin-move.test.ts",
+    "title": "run twice with the same target, changes nothing the second time$",
+    "source": "43faef5 feat(pin-move): the kernel trial, the pin move and the pin move report"
+  },
+  {
+    "id": "43faef5-pin-move-carry-out-kept",
+    "patch": "tests/planted-faults/patches/43faef5-pin-move-carry-out-kept.patch",
+    "testFile": "tests/template/pin-move/pin-move.test.ts",
+    "title": "never changes the carry-out identity$",
+    "source": "43faef5 feat(pin-move): the kernel trial, the pin move and the pin move report"
+  },
+  {
+    "id": "43faef5-pin-move-trial-passed",
+    "patch": "tests/planted-faults/patches/43faef5-pin-move-trial-passed.patch",
+    "testFile": "tests/template/pin-move/pin-move-compile.test.ts",
+    "title": "does not compile when given a plain object",
+    "source": "43faef5 feat(pin-move): the kernel trial, the pin move and the pin move report"
+  },
+  {
+    "id": "43faef5-kernel-trial-check",
+    "patch": "tests/planted-faults/patches/43faef5-kernel-trial-check.patch",
+    "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
+    "title": "is refused at the check command for a kernel commit that exports nothing",
+    "source": "43faef5 feat(pin-move): the kernel trial, the pin move and the pin move report"
+  },
+  {
+    "id": "43faef5-kernel-trial-lockfile-made",
+    "patch": "tests/planted-faults/patches/43faef5-kernel-trial-lockfile-made.patch",
+    "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
+    "title": "is refused when its install makes no lockfile$",
+    "source": "43faef5 feat(pin-move): the kernel trial, the pin move and the pin move report"
+  },
+  {
+    "id": "a30972e-bootstrap-lockfile-missing",
+    "patch": "tests/planted-faults/patches/a30972e-bootstrap-lockfile-missing.patch",
+    "testFile": "tests/template/bootstrap/kernel-row-lockfile.test.ts",
+    "title": "a kernel lockfile asked of a template that holds none is refused before any staging folder exists$",
+    "source": "a30972e feat(bootstrap): the kernel row takes its lockfile as an input"
+  },
+  {
+    "id": "a639dc0-kernel-trial-record",
+    "patch": "tests/planted-faults/patches/a639dc0-kernel-trial-record.patch",
+    "testFile": "tests/template/pin-move/pin-move.test.ts",
+    "title": "refuses a record of a passed trial with a field replaced",
+    "source": "a639dc0 fix(pin-move): settle the Sol standards and spec reviews of T3"
+  },
+  {
+    "id": "a639dc0-kernel-trial-step-bound",
+    "patch": "tests/planted-faults/patches/a639dc0-kernel-trial-step-bound.patch",
+    "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
+    "title": "that outlives its bound is stopped at the bound and refused$",
+    "source": "a639dc0 fix(pin-move): settle the Sol standards and spec reviews of T3"
+  },
+  {
+    "id": "a639dc0-pin-move-missing-branch",
+    "patch": "tests/planted-faults/patches/a639dc0-pin-move-missing-branch.patch",
+    "testFile": "tests/template/pin-move/pin-verification.test.ts",
+    "title": "refuses a branch the pin's remote does not have$",
+    "source": "a639dc0 fix(pin-move): settle the Sol standards and spec reviews of T3"
+  },
+  {
+    "id": "a639dc0-pin-move-arguments",
+    "patch": "tests/planted-faults/patches/a639dc0-pin-move-arguments.patch",
+    "testFile": "tests/template/pin-move/pin-move-command.test.ts",
+    "title": "reads as",
+    "source": "a639dc0 fix(pin-move): settle the Sol standards and spec reviews of T3"
+  },
+  {
+    "id": "a639dc0-pin-move-report-bytes",
+    "patch": "tests/planted-faults/patches/a639dc0-pin-move-report-bytes.patch",
+    "testFile": "tests/template/pin-move/pin-move-report.test.ts",
+    "title": "tells apart two file names",
+    "source": "a639dc0 fix(pin-move): settle the Sol standards and spec reviews of T3"
+  },
+  {
+    "id": "a639dc0-process-runner-live-env",
+    "patch": "tests/planted-faults/patches/a639dc0-process-runner-live-env.patch",
+    "testFile": "tests/template/process-runner/process-runner.test.ts",
+    "title": "sees a variable the caller set after the runner loaded$",
+    "source": "a639dc0 fix(pin-move): settle the Sol standards and spec reviews of T3"
+  },
+  {
+    "id": "2a68a20-bootstrap-lockfile-copy",
+    "patch": "tests/planted-faults/patches/2a68a20-bootstrap-lockfile-copy.patch",
+    "testFile": "tests/template/bootstrap/kernel-row-lockfile.test.ts",
+    "title": "supplied bytes the caller changes after the call reach the generated repository as they were given$",
+    "source": "2a68a20 fix(pin-move): read the trial and kernel row requests once, before their first wait"
+  },
+  {
+    "id": "2a68a20-bootstrap-seam",
+    "patch": "tests/planted-faults/patches/2a68a20-bootstrap-seam.patch",
+    "testFile": "tests/template/bootstrap/kernel-row-lockfile.test.ts",
+    "title": "a kernel seam the caller changes after the call leaves the Pin at the commit the kernel reader checked$",
+    "source": "2a68a20 fix(pin-move): read the trial and kernel row requests once, before their first wait"
+  },
+  {
+    "id": "2a68a20-kernel-trial-seam",
+    "patch": "tests/planted-faults/patches/2a68a20-kernel-trial-seam.patch",
+    "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
+    "title": "records the commit it tried, and qualifies that commit's lockfile$",
+    "source": "2a68a20 fix(pin-move): read the trial and kernel row requests once, before their first wait"
+  },
+  {
+    "id": "f815bb0-pin-move-signals",
+    "patch": "tests/planted-faults/patches/f815bb0-pin-move-signals.patch",
+    "testFile": "tests/template/pin-move/pin-move-command.test.ts",
+    "title": "stops its running trial step when SIGTERM reaches it, and refuses as stopped$",
+    "source": "f815bb0 fix(pin-move): stop the trial's running step on SIGINT, SIGTERM or SIGHUP"
+  },
+  {
+    "id": "f815bb0-kernel-trial-stopped",
+    "patch": "tests/planted-faults/patches/f815bb0-kernel-trial-stopped.patch",
+    "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
+    "title": "that its caller stops is stopped with its process, and refused as stopped$",
+    "source": "f815bb0 fix(pin-move): stop the trial's running step on SIGINT, SIGTERM or SIGHUP"
+  },
+  {
+    "id": "f815bb0-kernel-trial-stopped-before",
+    "patch": "tests/planted-faults/patches/f815bb0-kernel-trial-stopped-before.patch",
+    "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
+    "title": "after a stop, starts no further step$",
+    "source": "f815bb0 fix(pin-move): stop the trial's running step on SIGINT, SIGTERM or SIGHUP"
+  },
+  {
+    "id": "b9c3ba0-pin-move-history-unreadable",
+    "patch": "tests/planted-faults/patches/b9c3ba0-pin-move-history-unreadable.patch",
+    "testFile": "tests/template/pin-move/pin-verification.test.ts",
+    "title": "refuses, as unreadable history, a clone too shallow to hold the carry-out commit$",
+    "source": "b9c3ba0 fix(pin-move): verify against the pin's own remote branch, and refuse unreadable history"
+  },
+  {
+    "id": "b9c3ba0-pin-move-remote-failed",
+    "patch": "tests/planted-faults/patches/b9c3ba0-pin-move-remote-failed.patch",
+    "testFile": "tests/template/pin-move/pin-verification.test.ts",
+    "title": "refuses a remote git cannot read, naming git's exit$",
+    "source": "b9c3ba0 fix(pin-move): verify against the pin's own remote branch, and refuse unreadable history"
+  },
+  {
+    "id": "b9c3ba0-pin-move-remote-bound",
+    "patch": "tests/planted-faults/patches/b9c3ba0-pin-move-remote-bound.patch",
+    "testFile": "tests/template/pin-move/pin-verification.test.ts",
+    "title": "refuses a remote that does not answer within its bound$",
+    "source": "b9c3ba0 fix(pin-move): verify against the pin's own remote branch, and refuse unreadable history"
+  },
+  {
+    "id": "60bf97c-kernel-trial-stop-repair",
+    "patch": "tests/planted-faults/patches/60bf97c-kernel-trial-stop-repair.patch",
+    "testFile": "tests/template/kernel-trial/kernel-trial.test.ts",
+    "title": "that its caller stops is stopped with its process, and refused as stopped$",
+    "source": "60bf97c fix(kernel-trial): a trial stopped by a signal says so, with its own repair"
+  },
+  {
+    "id": "0352f0d-kernel-sibling-shared",
+    "patch": "tests/planted-faults/patches/0352f0d-kernel-sibling-shared.patch",
+    "testFile": "tests/template/kernel-trial/kernel-sibling.test.ts",
+    "title": "from a worktree elsewhere, beside the checkout git shares its objects with$",
+    "source": "0352f0d test(kernel-trial): find the kernel repository from a worktree, or refuse naming KERNEL_REPOSITORY"
+  },
+  {
+    "id": "0352f0d-kernel-sibling-refusal",
+    "patch": "tests/planted-faults/patches/0352f0d-kernel-sibling-refusal.patch",
+    "testFile": "tests/template/kernel-trial/kernel-sibling.test.ts",
+    "title": "nowhere, and refuses naming KERNEL_REPOSITORY$",
+    "source": "0352f0d test(kernel-trial): find the kernel repository from a worktree, or refuse naming KERNEL_REPOSITORY"
+  },
+  {
+    "id": "16c6e4d-action-checkout",
+    "patch": "tests/planted-faults/patches/16c6e4d-action-checkout.patch",
+    "testFile": "tests/template/kernel-trial/hosted-check.test.ts",
+    "title": "its step clones the remote the kernel pin names, with its history, into the folder beside the template, at the pinned commit$",
+    "source": "16c6e4d test(pin-move): make four tests hold as the kernel and npm move"
   }
 ]

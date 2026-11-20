@@ -1,0 +1,18 @@
+name: Place the kernel repository beside the template
+description: >-
+  Clones the kernel repository that kernel-pin.json names, with its full
+  history, into the folder beside the template, and checks out the pinned
+  commit. Pin verification, the kernel trial and the pin move tests read it
+  there. The repository is public, so no secret is needed and fork pull
+  requests run.
+runs:
+  using: composite
+  steps:
+    - name: Clone the kernel repository at the pinned commit
+      shell: bash
+      run: |
+        remote=$(jq -r .remote kernel-pin.json)
+        commit=$(jq -r .commit kernel-pin.json)
+        repository=$(jq -r .repository kernel-pin.json)
+        git clone --quiet "$remote" "../$repository"
+        git -C "../$repository" checkout --quiet --detach "$commit"

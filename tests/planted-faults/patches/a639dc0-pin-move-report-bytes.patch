@@ -1,0 +1,13 @@
+diff --git a/scripts/pin-move-report.ts b/scripts/pin-move-report.ts
+index 5d6e206..4121448 100644
+--- a/scripts/pin-move-report.ts
++++ b/scripts/pin-move-report.ts
+@@ -41,7 +41,7 @@ function filesAt(repository: string, commit: string): Map<string, string> {
+     const record = listing.subarray(start, end < 0 ? listing.length : end);
+     const tab = record.indexOf(9);
+     files.set(
+-      record.subarray(tab + 1).toString("latin1"),
++      record.subarray(tab + 1).toString("utf8"),
+       record.subarray(0, tab).toString("latin1"),
+     );
+     start = end < 0 ? listing.length : end + 1;

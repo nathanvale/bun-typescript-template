@@ -26,6 +26,17 @@ function holdsLine(ledger: string, line: string): boolean {
   );
 }
 
+// Interface: whether a process with `pid` still exists, alive or a zombie
+// its parent has not reaped.
+export function processAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function watchLedger(
   ledger: string,
   line: string,

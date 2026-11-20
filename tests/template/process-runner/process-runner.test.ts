@@ -220,3 +220,29 @@ test(
   },
   testTimeout,
 );
+
+test(
+  "a child started with the default environment sees a variable the caller set after the runner loaded",
+  async () => {
+    const name = "PROCESS_RUNNER_LATE_VARIABLE";
+    expect(process.env[name]).toBeUndefined();
+    process.env[name] = "set late";
+    try {
+      const child = startChild(
+        [
+          process.execPath,
+          "-e",
+          `process.stdout.write(process.env.${name} ?? "unset")`,
+        ],
+        { limitMilliseconds: finishBound },
+      );
+      expect(await finishedWithin(child)).toMatchObject({
+        exitCode: 0,
+        stdout: "set late",
+      });
+    } finally {
+      Reflect.deleteProperty(process.env, name);
+    }
+  },
+  testTimeout,
+);

@@ -1,0 +1,13 @@
+diff --git a/tests/support/kernel-sibling.ts b/tests/support/kernel-sibling.ts
+index 82b0ef2..1249486 100644
+--- a/tests/support/kernel-sibling.ts
++++ b/tests/support/kernel-sibling.ts
+@@ -35,7 +35,7 @@ export function findSiblingKernel(
+     siblingKernelPath(dirname(shared), pin),
+   ];
+   const found = places.find((place) => existsSync(place));
+-  if (found !== undefined) return found;
++  if (found !== undefined || places.length > 0) return found ?? root;
+   throw new Error(
+     `No kernel repository is at ${[...new Set(places)].join(" or ")}. Repair: clone ${pin.remote} beside the template, or name its path in KERNEL_REPOSITORY.`,
+   );

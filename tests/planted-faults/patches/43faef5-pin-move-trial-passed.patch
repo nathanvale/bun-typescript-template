@@ -1,0 +1,13 @@
+diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
+index ad9eb56..7225e90 100644
+--- a/scripts/pin-move.ts
++++ b/scripts/pin-move.ts
+@@ -175,7 +175,7 @@ export function verifyPin(
+ // carry-out identity is copied from the pin as it was. It commits nothing,
+ // and run twice with the same trial it writes nothing the second time.
+ export function movePin(
+-  trial: TrialPassed,
++  trial: Pick<TrialPassed, "kernel" | "lockfile">,
+   template: string,
+   branchCommit: string,
+ ): PinMove {

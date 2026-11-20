@@ -1,0 +1,13 @@
+diff --git a/scripts/kernel-trial.ts b/scripts/kernel-trial.ts
+index 402ac26..cad32ba 100644
+--- a/scripts/kernel-trial.ts
++++ b/scripts/kernel-trial.ts
+@@ -98,7 +98,7 @@ export async function trialStep(
+   limitMilliseconds: number,
+   active: TrialActive = {},
+ ): Promise<void> {
+-  if (active.stoppedBy !== undefined)
++  if (active.stoppedBy === "never")
+     throw new TrialRefusal(
+       `The kernel trial was stopped by ${active.stoppedBy} before its ${name} in ${folder}.`,
+     );

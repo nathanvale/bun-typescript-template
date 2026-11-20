@@ -15,6 +15,7 @@
     "check:names": "bun run scripts/check-names.ts",
     "fault-replay": "bun run scripts/planted-faults.ts replay",
     "planted-fault:add": "bun run scripts/planted-faults.ts add",
+    "pin-move": "bun run scripts/pin-move.ts",
     "pretest": "bun run doctor",
     "test": "bun test --parallel=2 --path-ignore-patterns 'starters/**' --path-ignore-patterns 'generated-repository/**'",
     "test:area": "bun run scripts/test-area.ts",

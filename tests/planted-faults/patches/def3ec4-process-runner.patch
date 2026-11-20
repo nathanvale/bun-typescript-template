@@ -1,13 +1,13 @@
 diff --git a/scripts/process-runner.ts b/scripts/process-runner.ts
-index 39780e3..218ae37 100644
+index 6a939aa..7ec36ca 100644
 --- a/scripts/process-runner.ts
 +++ b/scripts/process-runner.ts
-@@ -22,7 +22,7 @@ export function withoutRepositoryLocation(
- // child process sees only what its own tree installs, and finds its
- // repository from its own folder.
- const ownTools = {
--  ...withoutRepositoryLocation(process.env),
-+  ...process.env,
-   PATH: (process.env.PATH ?? "")
-     .split(delimiter)
-     .filter(
+@@ -26,7 +26,7 @@ function ownTools(
+   env: Readonly<Record<string, string | undefined>>,
+ ): Record<string, string | undefined> {
+   return {
+-    ...withoutRepositoryLocation(env),
++    ...env,
+     PATH: (env.PATH ?? "")
+       .split(delimiter)
+       .filter(

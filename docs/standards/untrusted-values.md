@@ -15,7 +15,8 @@ boundary trusts the types.
   same copy. A second read of an accessor, or a read after an `await`, can
   differ. Witnessed: [75b4bc0], [r4580077763], [3088c03], [r4606886521],
   [r4606943307] (the `no-in-operator` repair read a member expression
-  twice).
+  twice), [2a68a20] (the kernel trial and the kernel row read their
+  request's kernel seam and lockfile bytes again after a wait).
 - Validate the same object you pass on. A spread drops non-enumerable
   properties, and a hidden `toJSON` rewrites serialised data. Witnessed:
   [r4580070938], [r4580077749].
@@ -25,7 +26,9 @@ boundary trusts the types.
 - Freeze what a boundary parser returns, so a caller cannot replace a field
   after the parser checked it. Witnessed: [r4624877543] (`parseKernelPin`
   returned a mutable pin, so a caller could swap its validated commit for a
-  short one).
+  short one), [a639dc0] (a passed kernel trial's record could be spread with
+  its commit replaced, or its lockfile bytes changed, before the pin move
+  wrote them).
 - Compare identifiers and keys by code unit. `localeCompare` treats distinct
   keys as equal and follows the runtime collation. Witnessed: [r4580077765],
   [57c8c8b].
@@ -60,7 +63,9 @@ boundary trusts the types.
   decoding, so one outside a source folder whose name holds U+FFFD was refused;
   compare bytes with bytes before decoding), [#113-copilot] (folder entries
   were read as decoded text, so a name that is not UTF-8 read the same as a
-  file name holding U+FFFD; read each name as bytes, then decode it).
+  file name holding U+FFFD; read each name as bytes, then decode it),
+  [a639dc0] (the pin move report keyed kernel file names by their lossy
+  decoding, so two names that were not UTF-8 read as one).
 - Decode a name with `ignoreBOM: true`, so that every character of it is
   kept. A strict decoder still drops a byte-order mark at the start of its
   input. Witnessed: [r4625804683] (a path that starts with U+FEFF lost its
@@ -117,7 +122,9 @@ boundary trusts the types.
   Witnessed: [r4609956011] (a missing patch file read as an empty patch, so
   replay reported that it held no hunk and `--changed-since` skipped its
   fault), [r4625304821] (a folder in a source folder that could not be listed
-  read as empty, so the file comparison passed without reading it).
+  read as empty, so the file comparison passed without reading it),
+  [b9c3ba0] (git's exit 128 from an ancestry check in a shallow clone read as
+  "not an ancestor", so pin verification gave the wrong refusal and repair).
 - Call an entry absent only when its lookup fails because nothing has that
   name: `ENOENT`, or `ENOTDIR` for a name on the way. Report every other
   lookup failure. Witnessed: [r4625594357], [r4625772325] (every failed
@@ -170,3 +177,6 @@ boundary trusts the types.
 [d972ded]: https://github.com/nathanvale/bun-typescript-template/commit/d972ded023d0558d9cf47e4e7e2ee5eb5f37b029
 [3088c03]: https://github.com/nathanvale/bun-typescript-template/commit/3088c032c90df81d9d0e5f93700c0769daac5cff
 [8de7e09]: https://github.com/nathanvale/bun-typescript-template/commit/8de7e09c322e1b40304bad9f9332cb976048102e
+[a639dc0]: https://github.com/nathanvale/bun-typescript-template/commit/a639dc0cb92d859552ca1eec75ee1a66d3cc0ced
+[2a68a20]: https://github.com/nathanvale/bun-typescript-template/commit/2a68a201a1a56a15a41447450070484b96db5b5d
+[b9c3ba0]: https://github.com/nathanvale/bun-typescript-template/commit/b9c3ba00521b068d6ab1aca20453e8e8012d3f52

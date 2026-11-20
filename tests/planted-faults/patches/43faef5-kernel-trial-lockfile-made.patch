@@ -1,0 +1,13 @@
+diff --git a/scripts/kernel-trial.ts b/scripts/kernel-trial.ts
+index c5952b4..ca550f8 100644
+--- a/scripts/kernel-trial.ts
++++ b/scripts/kernel-trial.ts
+@@ -82,7 +82,7 @@ export async function kernelTrial(trial: KernelTrial): Promise<TrialPassed> {
+   const first = await render("first", "none");
+   await step(first, "install", ["install"], installMilliseconds);
+   const made = join(first, "bun.lock");
+-  if (!existsSync(made))
++  if (made === "")
+     throw new TrialRefusal(
+       `The kernel trial's install in ${first} made no lockfile.`,
+     );

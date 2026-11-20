@@ -41,28 +41,42 @@ export function kernelRowFixture() {
         sourcePacket: "/abs/packets/demo",
         kernel: { repository: kernel, commit },
         declarationPath: declarationPathIn(layout),
+        lockfile: "none",
       },
     };
   };
 }
 
-// Interface: Bootstrap through the kernel row in this process, with git
-// isolated from the caller's configuration for the run, because Bootstrap
-// reads the template's commit with git for Template provenance.
-export async function bootstrapRow(
-  request: KernelBootstrap,
-): Promise<BootstrapResult> {
+// Interface: runs `work` in this process with git isolated from the
+// caller's configuration, because Bootstrap reads the template's commit with
+// git for Template provenance.
+function withIsolatedGit<Result>(work: () => Promise<Result>): Promise<Result> {
+  return withEnvironment(gitEnv, work);
+}
+
+// Interface: runs `work` in this process with `variables` set on
+// process.env, and restores each one afterwards.
+export async function withEnvironment<Result>(
+  variables: Readonly<Record<string, string>>,
+  work: () => Promise<Result>,
+): Promise<Result> {
   const before = new Map(
-    Object.keys(gitEnv).map((name) => [name, process.env[name]]),
+    Object.keys(variables).map((name) => [name, process.env[name]]),
   );
-  Object.assign(process.env, gitEnv);
+  Object.assign(process.env, variables);
   try {
-    return await bootstrapWithKernel(request);
+    return await work();
   } finally {
     for (const [name, value] of before)
       if (value === undefined) Reflect.deleteProperty(process.env, name);
       else process.env[name] = value;
   }
+}
+
+export function bootstrapRow(
+  request: KernelBootstrap,
+): Promise<BootstrapResult> {
+  return withIsolatedGit(() => bootstrapWithKernel(request));
 }
 
 export async function bootstrapRefusal(request: KernelBootstrap) {

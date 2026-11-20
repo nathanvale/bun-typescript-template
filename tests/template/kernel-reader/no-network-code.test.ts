@@ -35,7 +35,7 @@ describe("the template's kernel modules hold no network code", () => {
     expect(source).not.toMatch(networkCode);
   });
 
-  test("the kernel reader imports only Node's file and path modules and the git identities module, and starts git for three commands that read objects", () => {
+  test("the kernel reader imports only Node's file and path modules and the git identities module, and starts git for five commands that read objects", () => {
     const source = sourceOf("src/kernel-reader.ts");
     expect(importsOf(source).sort()).toEqual([
       "./git-identities.ts",
@@ -44,7 +44,9 @@ describe("the template's kernel modules hold no network code", () => {
     ]);
     expect(source).not.toMatch(networkCode);
     expect(source.match(/\bBun\s*\.\s*\w+/g)).toEqual(["Bun.spawnSync"]);
-    expect(source).toContain('command: "rev-parse" | "ls-tree" | "cat-file",');
+    expect(source).toContain(
+      'command: "rev-parse" | "ls-tree" | "cat-file" | "merge-base" | "log",',
+    );
     expect(source).toContain('Bun.spawnSync(["git", command, ...args], {');
   });
 });

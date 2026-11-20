@@ -1,0 +1,12 @@
+diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
+index 05b4950..9419de2 100644
+--- a/scripts/pin-move.ts
++++ b/scripts/pin-move.ts
+@@ -240,7 +240,6 @@ export async function withStopSignals<Result>(
+     active.stoppedBy ??= signal;
+     active.stop?.();
+   };
+-  for (const signal of stopSignals) process.on(signal, stop);
+   try {
+     return await work();
+   } finally {

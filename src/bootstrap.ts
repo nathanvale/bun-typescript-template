@@ -5,6 +5,7 @@ import {
   mkdir,
   mkdtemp,
   readdir,
+  readFile,
   rename,
   rm,
   rmdir,
@@ -20,10 +21,11 @@ import {
 } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CliError } from "./cli-error.ts";
-import { generatedPin, readKernelPin } from "./kernel-pin.ts";
+import { clonePin, generatedPin, readKernelPin } from "./kernel-pin.ts";
 import { type KernelSeam, readKernel } from "./kernel-reader.ts";
 import {
   type Copy,
+  KERNEL_LOCKFILE,
   KERNEL_RECIPE,
   type Layout,
   lintsCode,
@@ -47,6 +49,7 @@ interface BootstrapOptions {
   recipe: ProjectRecipe;
   sourcePacket: string;
   kernelPin?: string;
+  lockfile?: Uint8Array | undefined;
 }
 
 interface ParsedFlags {
@@ -627,6 +630,8 @@ async function bootstrap(options: BootstrapOptions): Promise<BootstrapResult> {
     await copyRecipe(recipe, staging);
     await writeRepositoryContext(staging, options);
     const generatedFiles = await substituteTokens(staging, options);
+    if (options.lockfile !== undefined)
+      await writeFile(join(staging, "bun.lock"), options.lockfile);
     await installStaging(staging, options.destination, destinationState);
     return {
       destination: options.destination,
@@ -650,27 +655,53 @@ export type KernelBootstrap = {
   readonly sourcePacket: string;
   readonly kernel: KernelSeam;
   readonly declarationPath?: string;
+  readonly lockfile: "committed" | "none" | Uint8Array;
+  readonly kernelFrom?: "remote" | "clone";
 };
 
-// Interface: Bootstrap through the kernel row, which the command line does
-// not offer yet. It reads the kernel commit from the kernel repository at the
-// given path before any staging folder exists, so a missing repository or
-// commit leaves nothing behind. It copies no kernel source: the generated
-// repository's package.json names the kernel by one dependency line, its
-// Pin, at that commit in full.
+async function lockfileFor(lockfile: KernelBootstrap["lockfile"]) {
+  if (lockfile !== "committed")
+    return lockfile === "none" ? undefined : lockfile.slice();
+  const path = join(TEMPLATE_ROOT, KERNEL_LOCKFILE);
+  if ((await lstatIfPresent(path))?.isFile() !== true)
+    throw new CliError(
+      "kernel_lockfile_missing",
+      `the template has no kernel lockfile at ${KERNEL_LOCKFILE}`,
+      "run bun run pin-move with the pinned commit to write it, then run Bootstrap again",
+      1,
+      false,
+    );
+  return new Uint8Array(await readFile(path));
+}
+
+// Interface: Bootstrap through the kernel row, which reads the kernel commit
+// and the lockfile before any staging folder exists, so a refusal leaves
+// nothing behind. package.json names the kernel
+// by its Pin, one dependency line at that full commit. The lockfile is the
+// kernel lockfile, the bytes supplied, or none; only the trial and tests use
+// the last two. Only tests ask for `kernelFrom: "clone"`. It reads each
+// request field once, before its first wait.
 export async function bootstrapWithKernel(
   request: KernelBootstrap,
 ): Promise<BootstrapResult> {
-  validateSourcePacket(request.sourcePacket);
-  const name = resolveRepositoryName(request.destination, request.name);
-  const { commit } = readKernel(request.kernel, request.declarationPath);
+  const { destination, sourcePacket, declarationPath, kernelFrom } = request;
+  const { kernel: seam, lockfile: given } = request;
+  const kernel = { repository: seam.repository, commit: seam.commit };
+  validateSourcePacket(sourcePacket);
+  const name = resolveRepositoryName(destination, request.name);
+  const { commit } = readKernel(kernel, declarationPath);
+  const lockfile = await lockfileFor(given);
   return bootstrap({
-    destination: resolve(request.destination),
+    destination: resolve(destination),
     json: false,
     name,
     recipe: KERNEL_RECIPE,
-    sourcePacket: request.sourcePacket,
-    kernelPin: generatedPin(readKernelPin(TEMPLATE_ROOT), commit),
+    sourcePacket,
+    kernelPin:
+      kernelFrom === "clone"
+        ? clonePin(kernel)
+        : generatedPin(readKernelPin(TEMPLATE_ROOT), commit),
+    lockfile,
   });
 }
 
