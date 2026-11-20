@@ -1706,5 +1706,12 @@
     "source": "3522db5 fix(pin-verification): stop the command test's whole process group at its bound",
     "testFile": "tests/template/pin-move/pin-verification-command.test.ts",
     "title": "that outlives its bound is stopped with its whole process group, so the git it started does not run on$"
+  },
+  {
+    "id": "44762a3-pointer-skills-resolved",
+    "patch": "tests/planted-faults/patches/44762a3-pointer-skills-resolved.patch",
+    "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
+    "title": "fails when bun.lock resolves the kernel to another commit than package.json pins, which a frozen install would install$",
+    "source": "44762a3 fix(bootstrap): the pointer skill check holds bun.lock's resolved kernel to the Pin"
   }
 ]
