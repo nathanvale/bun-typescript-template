@@ -5,6 +5,10 @@ then `Witnessed:` and its citation. When a second witness arrives, it moves
 to a row in the [rule table](../../CODING_STANDARDS.md#rule-table) and leaves
 this file.
 
+- Stop a command's running child, with its process group, on SIGINT,
+  SIGTERM and SIGHUP, and write nothing after the stop. Witnessed:
+  [f815bb0] (Ctrl-C ended the pin move command while its trial's install
+  ran on in its own process group).
 - Run a control through the same function as the check it controls, so it
   shows that check finding its target. A control that finds the target
   another way stays green when the check finds nothing. Witnessed:
@@ -110,3 +114,4 @@ this file.
 [r4626801130]: https://github.com/nathanvale/bun-typescript-template/pull/113#discussion_r4626801130
 [d29b755]: https://github.com/nathanvale/bun-typescript-template/commit/d29b7552547144c165d0402a54c3e22fb8e7487e
 [#116-addons]: https://github.com/nathanvale/bun-typescript-template/pull/116#discussion_r4638567030
+[f815bb0]: https://github.com/nathanvale/bun-typescript-template/commit/f815bb0d66a1be6710829e4eaa550d6dca0f47f5

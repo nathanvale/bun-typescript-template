@@ -29,7 +29,8 @@ repository broke it.
   kill still passed), [dbd196e] (a timeout message that reads the same
   constant stays green when the timer is changed, so measure the elapsed
   time), [#73-deadline] (a 2 s assertion accepted a missed 300 ms
-  deadline).
+  deadline), [f815bb0] (a 300 ms trial step bound passed under a 3 s
+  ceiling).
 - Require a project's evidence list to exist and contain at least one entry.
   A check against an empty array can accept a missing field. Witnessed:
   [#91-projects].
@@ -54,7 +55,8 @@ repository broke it.
 - Build a process proof's subject through `index.ts`, the production seam
   the shared test-execution rule asks for. A test entry such as `fixture.ts`,
   or a fault-wrapped CLI, proves only the fixture. Witnessed: [e55f94a],
-  [7ea1ee3].
+  [7ea1ee3], [783f5b1] (the generated add-on start-up test built contracts
+  but ran no command, so no add-on attached).
 - Start the entry from the folder a caller starts it in. `bun run <script>`
   moves the child to the package root, so a proof through a package script
   never exercises the entry's own process folder. Witnessed: [c5a554e].
@@ -206,3 +208,5 @@ repository broke it.
 [#116-git]: https://github.com/nathanvale/bun-typescript-template/pull/116#discussion_r4638549429
 [#116-refusal]: https://github.com/nathanvale/bun-typescript-template/pull/116#discussion_r4638686792
 [a639dc0]: https://github.com/nathanvale/bun-typescript-template/commit/a639dc0cb92d859552ca1eec75ee1a66d3cc0ced
+[783f5b1]: https://github.com/nathanvale/bun-typescript-template/commit/783f5b1a263d81c44f2d9136ea3dc250719744d1
+[f815bb0]: https://github.com/nathanvale/bun-typescript-template/commit/f815bb0d66a1be6710829e4eaa550d6dca0f47f5
