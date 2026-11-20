@@ -294,6 +294,47 @@ test(
   generationTimeout,
 );
 
+const SCRIPT_RULES = new Set([
+  "repository/no-in-operator",
+  "repository/no-locale-compare",
+]);
+
+test(
+  "a repository Bootstrap generates refuses no-in-operator and no-locale-compare in a script, with the type information they need, and admits their clean forms",
+  async () => {
+    const root = await generatedRepository();
+    const lint = generatedLint(root);
+    const script = "scripts/probe.ts";
+    mkdirSync(join(root, "scripts"), { recursive: true });
+    const verdicts: Record<string, unknown> = {};
+    for (const { ruleId, refused, admitted } of repositoryGate.filter((item) =>
+      SCRIPT_RULES.has(item.ruleId),
+    )) {
+      const rules = new Set([ruleId]);
+      const lines = async (code: string) => {
+        writeFileSync(join(root, script), code);
+        return (await lint(script, code, rules)).map((hit) => hit.ruleId);
+      };
+      verdicts[ruleId] = {
+        refused: await lines(refused),
+        admitted: await lines(admitted),
+      };
+    }
+    rmSync(join(root, "scripts"), { recursive: true });
+    expect(verdicts).toEqual({
+      "repository/no-in-operator": {
+        refused: ["repository/no-in-operator"],
+        admitted: [],
+      },
+      "repository/no-locale-compare": {
+        refused: ["repository/no-locale-compare"],
+        admitted: [],
+      },
+    });
+  },
+  generationTimeout,
+);
+
 test(
   "a generated AGENTS.md ends with the comment guidance its lint backs",
   async () => {
