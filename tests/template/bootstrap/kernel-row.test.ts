@@ -18,6 +18,7 @@ import { processWatchdog, spawnBounded } from "../../support/process.ts";
 const run = kernelRowFixture();
 const bootstrapModules = [
   "src/bootstrap.ts",
+  "src/bootstrap-arguments.ts",
   "src/recipe.ts",
   "src/token-substitution.ts",
 ];
@@ -205,6 +206,7 @@ describe("the kernel row starts no program of its own", () => {
     );
     expect(started).toEqual({
       "src/bootstrap.ts": ["Bun.spawnSync"],
+      "src/bootstrap-arguments.ts": [],
       "src/recipe.ts": [],
       "src/token-substitution.ts": [],
     });
