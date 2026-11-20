@@ -1,0 +1,13 @@
+diff --git a/scripts/pin-verification.ts b/scripts/pin-verification.ts
+index 2f067c9..2b80fef 100644
+--- a/scripts/pin-verification.ts
++++ b/scripts/pin-verification.ts
+@@ -27,7 +27,7 @@ export function argumentsOf(
+ // pinBranchCommit do.
+ export function verifyKernelPin(root: string, kernel: string): string {
+   const pin = readKernelPin(root);
+-  const branchCommit = pinBranchCommit(pin);
++  const branchCommit = pin.commit;
+   verifyPin({ repository: kernel, commit: pin.commit }, pin, branchCommit);
+   return `Pin verified: ${pin.commit} is reachable from ${branchCommit}, where branch ${pin.branch} points on ${pin.remote}, and has the carry-out commit ${pin.carryOutIdentity} as an ancestor.\n`;
+ }

@@ -1503,5 +1503,61 @@
     "testFile": "tests/template/kernel-trial/hosted-check.test.ts",
     "title": "its step clones the remote the kernel pin names, with its history, into the folder beside the template, at the pinned commit$",
     "source": "16c6e4d test(pin-move): make four tests hold as the kernel and npm move"
+  },
+  {
+    "id": "2c064b8-pin-verification-exit",
+    "patch": "tests/planted-faults/patches/2c064b8-pin-verification-exit.patch",
+    "source": "2c064b8 feat(pin-verification): verify the template's kernel pin as a command",
+    "testFile": "tests/template/pin-move/pin-verification-command.test.ts",
+    "title": "in process, the command exits 1 on a refusal and prints its code, 0 on a pass, and 2 with its usage on arguments it cannot read$"
+  },
+  {
+    "id": "2c064b8-pin-verification-remote",
+    "patch": "tests/planted-faults/patches/2c064b8-pin-verification-remote.patch",
+    "source": "2c064b8 feat(pin-verification): verify the template's kernel pin as a command",
+    "testFile": "tests/template/pin-move/pin-verification-command.test.ts",
+    "title": "fails on a pin that names a commit the pin's branch on its remote cannot reach$"
+  },
+  {
+    "id": "2c064b8-pin-verification-arguments",
+    "patch": "tests/planted-faults/patches/2c064b8-pin-verification-arguments.patch",
+    "source": "2c064b8 feat(pin-verification): verify the template's kernel pin as a command",
+    "testFile": "tests/template/pin-move/pin-verification-command.test.ts",
+    "title": "with an argument it cannot read prints its usage and exits 2$"
+  },
+  {
+    "id": "a39b7d6-pin-verification-pull-request",
+    "patch": "tests/planted-faults/patches/a39b7d6-pin-verification-pull-request.patch",
+    "source": "a39b7d6 ci(pin-verification): verify the template's pin on pull requests, pushes to main and weekly",
+    "testFile": "tests/template/kernel-trial/hosted-check.test.ts",
+    "title": "the pin verification workflow runs on every pull request, on every push to main, by hand, and once a week$"
+  },
+  {
+    "id": "a39b7d6-pin-verification-paths",
+    "patch": "tests/planted-faults/patches/a39b7d6-pin-verification-paths.patch",
+    "source": "a39b7d6 ci(pin-verification): verify the template's pin on pull requests, pushes to main and weekly",
+    "testFile": "tests/template/kernel-trial/hosted-check.test.ts",
+    "title": "no workflow filters its pull requests or pushes by path, because a required check that a path filter skips never reports and blocks merging$"
+  },
+  {
+    "id": "a39b7d6-pin-verification-weekly",
+    "patch": "tests/planted-faults/patches/a39b7d6-pin-verification-weekly.patch",
+    "source": "a39b7d6 ci(pin-verification): verify the template's pin on pull requests, pushes to main and weekly",
+    "testFile": "tests/template/kernel-trial/hosted-check.test.ts",
+    "title": "the pin verification workflow runs on every pull request, on every push to main, by hand, and once a week$"
+  },
+  {
+    "id": "a39b7d6-pin-verification-sibling",
+    "patch": "tests/planted-faults/patches/a39b7d6-pin-verification-sibling.patch",
+    "source": "a39b7d6 ci(pin-verification): verify the template's pin on pull requests, pushes to main and weekly",
+    "testFile": "tests/template/kernel-trial/hosted-check.test.ts",
+    "title": "pin-verification.yml job pin-verification places the kernel repository beside the template after its checkout and before its tests$"
+  },
+  {
+    "id": "736b288-kernel-trial-command-exit",
+    "patch": "tests/planted-faults/patches/736b288-kernel-trial-command-exit.patch",
+    "source": "736b288 feat(kernel-trial): run the kernel trial on any kernel commit as a command",
+    "testFile": "tests/template/kernel-trial/kernel-trial-command.test.ts",
+    "title": "in process, exits 2 with its usage on arguments it cannot read, and 1 with the kernel reader's code on a commit the kernel repository does not hold$"
   }
 ]
