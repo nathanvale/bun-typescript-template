@@ -78,7 +78,7 @@ test("GM.i an owner row with no name, or a second row for one owner, fails", () 
   const rows = ownedMap([
     "|  | Words | [GLOSSARY.md](GLOSSARY.md) |",
     "| Kernel | Words | [here](GLOSSARY.md) |",
-    "| kernel | More words | [there](AGENTS.md) |",
+    "| kernel | No word | [there](AGENTS.md) |",
   ]);
   expect(mapProblems(rows, root)).toEqual([
     "GLOSSARY-MAP.md has a row with no owner name in its first cell. Repair: name the glossary or project that owns those words.",
