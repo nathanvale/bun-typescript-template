@@ -97,6 +97,24 @@ describe("pin verification", () => {
     });
   });
 
+  test("reads the remote's copy of the pin's branch when the clone has one, so a commit only the clone's own branch reaches is refused", () => {
+    const repository = kernelClone(folder("pin-verification-"));
+    const remoteOnly = commitOn(repository, [pin.commit], "on the remote");
+    const localOnly = commitOn(repository, [pin.commit], "not pushed");
+    git(repository, "update-ref", "refs/remotes/origin/main", remoteOnly);
+    moveBranch(repository, "main", localOnly);
+    expect([
+      refusalOf(repository, remoteOnly),
+      refusalOf(repository, localOnly),
+    ]).toEqual([
+      "no refusal",
+      {
+        code: "kernel_commit_unreachable",
+        message: `Commit ${localOnly} is not reachable from branch main in the git repository at ${repository}. Repair: Give a commit that branch reaches. If the clone is behind, run git fetch origin main there first.`,
+      },
+    ]);
+  });
+
   test("refuses every commit when the repository has no branch of the pin's name", () => {
     const repository = kernelClone(folder("pin-verification-"));
     git(repository, "branch", "-m", "main", "trunk");
