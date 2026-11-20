@@ -43,9 +43,12 @@ function installKernel(
     join(destination, installedKernel, ".bun-tag"),
     `nathanvale-agent-cli-kernel-${commit.slice(0, 7)}`,
   );
-  if (!withFullSkill) return;
-  mkdirSync(join(destination, fullSkill, ".."), { recursive: true });
-  writeFileSync(join(destination, fullSkill), "# The full skill\n");
+  for (const name of readdirSync(join(destination, ".agents/skills"))) {
+    if (name === "agent-cli-kernel" && !withFullSkill) continue;
+    const path = join(destination, installedKernel, "skills", name);
+    mkdirSync(path, { recursive: true });
+    writeFileSync(join(path, "SKILL.md"), "# The full skill\n");
+  }
 }
 
 function moveText(path: string, from: string, to: string): void {
@@ -156,7 +159,10 @@ describe("the generated repository's pointer skill check", () => {
       const { destination, commit } = await generated();
       installKernel(destination, commit);
       const other = "c".repeat(40);
-      for (const path of ["package.json", "bun.lock", pointer])
+      const pointers = readdirSync(join(destination, ".agents/skills")).map(
+        (name) => `.agents/skills/${name}/SKILL.md`,
+      );
+      for (const path of ["package.json", "bun.lock", ...pointers])
         moveText(join(destination, path), commit, other);
       const { exit, stderr } = await pointerCheck(destination);
       expect({ exit, stderr }).toMatchObject({ exit: 1 });
@@ -289,9 +295,13 @@ describe("the generated repository's pointer skill check", () => {
     async () => {
       const { destination, commit } = await generated();
       installKernel(destination, commit);
-      editPointer(destination, (text) =>
-        text.replace(/^Full skill: .*\n/m, ""),
-      );
+      for (const name of readdirSync(join(destination, ".agents/skills"))) {
+        const path = join(destination, ".agents/skills", name, "SKILL.md");
+        writeFileSync(
+          path,
+          readFileSync(path, "utf8").replace(/^Full skill: .*\n/m, ""),
+        );
+      }
       const { exit, stderr } = await pointerCheck(destination);
       expect({ exit, stderr }).toMatchObject({ exit: 1 });
       expect(stderr).toContain(
