@@ -7,7 +7,7 @@ import { gitWithInput } from "./git-object-fixture.ts";
 
 const pinnedCommit = readKernelPin(ROOT).commit;
 
-export const trialBase = "c0845947d44cd2b18f2a08685902f3f6efa38115";
+export const trialBase = "426e5dbdb09fada8950f3aaea3b5204f1da40907";
 
 export const templateCommitHoldingS5 =
   "77ebdeafb1f49d0b32307b3ead7273d265ad4918";
