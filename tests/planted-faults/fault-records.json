@@ -1916,5 +1916,19 @@
     "testFile": "tests/template/names-check/symbol-gate.test.ts",
     "title": "^symbol gate judges a destructured parameter by its property key, never its local alias or nested names$",
     "source": "e7d595c fix(names-check): judge a destructured parameter by its property key"
+  },
+  {
+    "id": "d5f51fc-reexports-transitive",
+    "patch": "tests/planted-faults/patches/d5f51fc-reexports-transitive.patch",
+    "testFile": "tests/template/names-check/symbol-gate.test.ts",
+    "title": "^symbol gate follows re-exports from the listed entry files into the files they re-export$",
+    "source": "d5f51fc fix(names-check): follow re-exports from the listed entry files"
+  },
+  {
+    "id": "d5f51fc-reexports-staged",
+    "patch": "tests/planted-faults/patches/d5f51fc-reexports-staged.patch",
+    "testFile": "tests/template/names-check/symbol-gate.test.ts",
+    "title": "^symbol gate follows re-exports from the listed entry files into the files they re-export$",
+    "source": "d5f51fc fix(names-check): follow re-exports from the listed entry files"
   }
 ]
