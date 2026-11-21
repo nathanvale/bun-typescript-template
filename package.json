@@ -4,10 +4,8 @@
   "private": true,
   "packageManager": "bun@1.4.4",
   "scripts": {
-    "biome:check": "bun run format:check",
     "bootstrap": "bun run src/bootstrap.ts",
     "check": "bun run check:file-size && bun run lint && bun run format:check && bun run typecheck && bun run test && bun run --silent quality:fallow",
-    "check:write": "bun run format",
     "quality:fallow": "node_modules/.bin/fallow audit --baseline-mode identity --format json --quiet",
     "doctor": "bun run scripts/doctor.ts",
     "check:commits": "bun run scripts/check-commits.ts",
