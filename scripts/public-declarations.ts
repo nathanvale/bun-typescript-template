@@ -173,12 +173,19 @@ function namedSymbol(context: Context, symbol: ts.Symbol, declaration: string) {
   }
 }
 
-function bindingNames(name: ts.BindingName): ts.Identifier[] {
-  return ts.isIdentifier(name)
-    ? [name]
-    : name.elements.flatMap((element) =>
-        ts.isBindingElement(element) ? bindingNames(element.name) : [],
-      );
+function parameterKeys(
+  name: ts.BindingName,
+): (ts.Identifier | ts.StringLiteral | ts.NumericLiteral)[] {
+  if (ts.isIdentifier(name)) return [name];
+  if (ts.isArrayBindingPattern(name)) return [];
+  return name.elements.flatMap((element) => {
+    const key = element.propertyName ?? element.name;
+    return ts.isIdentifier(key) ||
+      ts.isStringLiteral(key) ||
+      ts.isNumericLiteral(key)
+      ? [key]
+      : [];
+  });
 }
 
 function parameters(
@@ -190,8 +197,8 @@ function parameters(
     .flatMap((parameter) => parameter.declarations ?? [])
     .filter((node) => publicNode(node) && ts.isParameter(node));
   for (const node of nodes)
-    for (const name of bindingNames((node as ts.ParameterDeclaration).name))
-      remember(context, name.text, name, `${declaration}.${name.text}`);
+    for (const key of parameterKeys((node as ts.ParameterDeclaration).name))
+      remember(context, key.text, key, `${declaration}.${key.text}`);
 }
 
 function returnedTypes(context: Context, signature: ts.Signature): ts.Type[] {

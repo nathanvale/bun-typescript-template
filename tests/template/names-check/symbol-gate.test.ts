@@ -110,6 +110,23 @@ export function execute({ proof }: { proof: string }) {
   ]);
 });
 
+test("symbol gate judges a destructured parameter by its property key, never its local alias or nested names", async () => {
+  const root =
+    sourceRepository(`export function first({ proof: testProof }: { proof: string }) {}
+export function second({ testProof: proof }: { testProof: string }) {}
+export function third({ nested: { host } }: { nested: { host: string } }) {}
+export function fourth({ "test/mutations": value }: { "test/mutations": string }) {}
+`);
+  expect(
+    (await publicNameProblems(root, false)).map(
+      (problem) => problem.split(" breaks")[0],
+    ),
+  ).toEqual([
+    'src/public.ts:1 public declaration "proof"',
+    'src/public.ts:4 public declaration "test/mutations"',
+  ]);
+});
+
 test("symbol gate judges immediate properties in explicit and inferred async returns", async () => {
   const root = sourceRepository(
     'export async function execute() { return { proof: "value" }; }\nexport async function finish(): Promise<{ host: string }> { return { host: "value" }; }\n',
