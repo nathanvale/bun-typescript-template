@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
 import { copiesOf, KERNEL_RECIPE } from "../../../src/recipe.ts";
 import { listFiles, ROOT } from "../../support/bootstrap-cli-fixture.ts";
+import { gitResult, initRepository } from "../../support/git-fixture.ts";
 import {
   firstLayout,
   renamedLayout,
@@ -176,6 +177,49 @@ describe("the kernel row", () => {
       check:
         "bun run lint && bun run format:check && bun run typecheck && bun run test && bun run --silent quality:fallow",
       stampScripts: [],
+    });
+  });
+
+  test("ignores .worktrees in the generated repository without a personal Git ignore file", async () => {
+    const { destination, request } = run();
+    await bootstrapRow(request);
+    initRepository(destination);
+    const worktree = gitResult(
+      destination,
+      "-c",
+      "core.excludesFile=/dev/null",
+      "check-ignore",
+      ".worktrees/example/src/cli.ts",
+    );
+    const source = gitResult(
+      destination,
+      "-c",
+      "core.excludesFile=/dev/null",
+      "check-ignore",
+      "src/cli.ts",
+    );
+    expect({
+      worktree: {
+        exitCode: worktree.exitCode,
+        stdout: worktree.stdout.toString(),
+        stderr: worktree.stderr.toString(),
+      },
+      source: {
+        exitCode: source.exitCode,
+        stdout: source.stdout.toString(),
+        stderr: source.stderr.toString(),
+      },
+    }).toEqual({
+      worktree: {
+        exitCode: 0,
+        stdout: ".worktrees/example/src/cli.ts\n",
+        stderr: "",
+      },
+      source: {
+        exitCode: 1,
+        stdout: "",
+        stderr: "",
+      },
     });
   });
 });

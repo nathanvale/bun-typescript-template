@@ -1,0 +1,9 @@
+diff --git a/generated-repository/settings/.gitignore b/generated-repository/settings/.gitignore
+--- a/generated-repository/settings/.gitignore
++++ b/generated-repository/settings/.gitignore
+@@ -7,5 +7,3 @@
+ .env
+ .env.*
+ !.env.example
+-
+-.worktrees/

@@ -1951,5 +1951,12 @@
     "testFile": "tests/template/toolchain/generated-hosted-check.test.ts",
     "title": "^a repository Bootstrap generates holds a Hosted check workflow pinned to the template's actions and Bun version$",
     "source": "61ce3e8 feat(bootstrap): generate a hosted check workflow in every new repository"
+  },
+  {
+    "id": "158042f-generated-gitignore",
+    "patch": "tests/planted-faults/patches/158042f-generated-gitignore.patch",
+    "testFile": "tests/template/bootstrap/kernel-row.test.ts",
+    "title": "ignores \\.worktrees in the generated repository without a personal Git ignore file$",
+    "source": "158042f fix(bootstrap): ignore .worktrees in generated repositories"
   }
 ]
