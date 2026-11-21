@@ -1860,5 +1860,47 @@
     "testFile": "tests/template/kernel-pin/pointer-skills-at-pin.test.ts",
     "title": "^the template holds one pointer skill for each skill the kernel holds at the template's Pin$",
     "source": "a7f7872 feat(bootstrap): give every generated repository a verify-cli pointer skill"
+  },
+  {
+    "id": "927f750-symbol-gate-public-name",
+    "patch": "tests/planted-faults/patches/927f750-symbol-gate-public-name.patch",
+    "testFile": "tests/template/names-check/symbol-gate.test.ts",
+    "title": "^symbol gate refuses an exported name with the exact file, line, rule and repair$",
+    "source": "927f750 feat(names-check): apply the Avoid and Qualify rules to public declaration names"
+  },
+  {
+    "id": "927f750-symbol-gate-surface-patterns",
+    "patch": "tests/planted-faults/patches/927f750-symbol-gate-surface-patterns.patch",
+    "testFile": "tests/template/names-check/symbol-gate.test.ts",
+    "title": "^symbol gate refuses missing surface files and malformed surface records$",
+    "source": "927f750 feat(names-check): apply the Avoid and Qualify rules to public declaration names"
+  },
+  {
+    "id": "927f750-symbol-gate-surface-files",
+    "patch": "tests/planted-faults/patches/927f750-symbol-gate-surface-files.patch",
+    "testFile": "tests/template/names-check/symbol-gate.test.ts",
+    "title": "^symbol gate refuses missing surface files and malformed surface records$",
+    "source": "927f750 feat(names-check): apply the Avoid and Qualify rules to public declaration names"
+  },
+  {
+    "id": "927f750-symbol-gate-recorded-declaration",
+    "patch": "tests/planted-faults/patches/927f750-symbol-gate-recorded-declaration.patch",
+    "testFile": "tests/template/names-check/symbol-gate.test.ts",
+    "title": "^symbol gate refuses an empty declaration identity in a recorded hit$",
+    "source": "927f750 feat(names-check): apply the Avoid and Qualify rules to public declaration names"
+  },
+  {
+    "id": "927f750-symbol-gate-recorded-approval",
+    "patch": "tests/planted-faults/patches/927f750-symbol-gate-recorded-approval.patch",
+    "testFile": "tests/template/names-check/symbol-gate.test.ts",
+    "title": "^symbol gate requires approval for a new declaration record at an already recorded path$",
+    "source": "927f750 feat(names-check): apply the Avoid and Qualify rules to public declaration names"
+  },
+  {
+    "id": "927f750-symbol-gate-async-return",
+    "patch": "tests/planted-faults/patches/927f750-symbol-gate-async-return.patch",
+    "testFile": "tests/template/names-check/symbol-gate.test.ts",
+    "title": "^symbol gate judges immediate properties in explicit and inferred async returns$",
+    "source": "927f750 feat(names-check): apply the Avoid and Qualify rules to public declaration names"
   }
 ]
