@@ -90,7 +90,7 @@ test(
     const admitted = await checkFileSize(tree);
     expect(admitted).toMatchObject({ exit: 0, stderr: "" });
     expect(admitted.stdout).toContain(
-      "check:file-size: scanned 6 tracked UTF-8 text files (limit 5000 tokens).\n",
+      "check:file-size: scanned 7 tracked UTF-8 text files (limit 5000 tokens).\n",
     );
 
     write(tree, note, overLimit);
@@ -375,7 +375,7 @@ test(
         'check:file-size: "docs/fault-records.json": 5001 tokens exceeds the 5000-token limit. Repair: shorten or split the file.\n',
     });
     expect(result.stdout).toContain(
-      "check:file-size: scanned 7 tracked UTF-8 text files (limit 5000 tokens).\n",
+      "check:file-size: scanned 8 tracked UTF-8 text files (limit 5000 tokens).\n",
     );
     expect(result.stdout).toContain(
       `"${glossary}": 5001 tokens (limit 5000), temporary recorded hit.`,
@@ -477,6 +477,7 @@ test(
       "--quiet",
       "GLOSSARY.md",
       "tests/template/names-check/recorded-hits.json",
+      "tests/template/names-check/public-surface.json",
     );
 
     const result = checkInProcess(tree);
