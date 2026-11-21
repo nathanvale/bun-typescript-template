@@ -122,6 +122,25 @@ test("symbol gate judges immediate properties in explicit and inferred async ret
   ]);
 });
 
+test("symbol gate judges the return properties of public methods one level deep", async () => {
+  const root = sourceRepository(`export interface CommandResult {
+  run(): { proof: string; nested: { host: string } };
+}
+export class Runner {
+  async finish() { return { host: "value" }; }
+  private hidden() { return { proof: "value" }; }
+}
+`);
+  expect(
+    (await publicNameProblems(root, false)).map(
+      (problem) => problem.split(" breaks")[0],
+    ),
+  ).toEqual([
+    'src/public.ts:2 public declaration "proof"',
+    'src/public.ts:5 public declaration "host"',
+  ]);
+});
+
 test("symbol gate leaves locals, private and protected members and nested properties outside the public surface", async () => {
   const root = sourceRepository(`const proof = 1;
 export class CommandResult {

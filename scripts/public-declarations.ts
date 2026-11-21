@@ -243,7 +243,7 @@ function members(
         context,
         context.checker.getTypeOfSymbolAtLocation(member, node),
         key,
-        false,
+        true,
       );
   }
 }
