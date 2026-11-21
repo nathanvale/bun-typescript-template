@@ -17,6 +17,7 @@ import {
   oneDependencyChanged,
   kernelTrials,
   trialTimeout,
+  withoutSkills,
 } from "../../support/kernel-trial-fixture.ts";
 import {
   processAlive,
@@ -154,15 +155,13 @@ describe("the kernel trial", () => {
   );
 
   test(
-    "is refused at the check command for a kernel commit without the full skill the pointer skill names, the commit before the author skill landed",
+    "is refused at the check command for a kernel commit without the full skill the pointer skill names",
     async () => {
       const work = folder("kernel-trial-");
-      const commit = "0b64b0e480a77ae6abbd3e671497354309182b42";
+      const repository = kernelClone(work, trialBase);
+      const commit = withoutSkills(repository, trialBase);
       const refusal = await refusalOf(
-        trialOf(join(work, "trial"), {
-          repository: kernelClone(work, trialBase),
-          commit,
-        }),
+        trialOf(join(work, "trial"), { repository, commit }),
       );
       expect(refusal).toMatchObject({ code: "trial_failed" });
       const { message } = refusal as { message: string };

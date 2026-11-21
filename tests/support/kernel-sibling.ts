@@ -44,13 +44,14 @@ export function kernelCheckout(folder: string, commit = pinnedCommit): void {
 export type TopLevelEdit = {
   readonly files?: Readonly<Record<string, string>>;
   readonly rename?: readonly [from: string, to: string];
+  readonly remove?: readonly string[];
 };
 
 export function commitOn(
   root: string,
   parents: readonly [string, ...string[]],
   subject: string,
-  { files = {}, rename }: TopLevelEdit = {},
+  { files = {}, rename, remove = [] }: TopLevelEdit = {},
 ): string {
   const entries = new Map(
     git(root, "ls-tree", parents[0])
@@ -64,6 +65,10 @@ export function commitOn(
     const [from, to] = rename;
     entries.set(to, entries.get(from) ?? "");
     entries.delete(from);
+  }
+  for (const name of remove) {
+    if (!entries.delete(name))
+      throw new Error(`${parents[0]} has no top-level entry ${name}.`);
   }
   for (const [name, text] of Object.entries(files))
     entries.set(
