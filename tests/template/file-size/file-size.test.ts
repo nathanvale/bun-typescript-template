@@ -20,7 +20,7 @@ import {
   removeFixtureTrees,
   repository,
   runInFixture,
-} from "../naming/fixture-tree.ts";
+} from "../names-check/fixture-tree.ts";
 
 const oneTokenOfText = " x";
 const atLimit = oneTokenOfText.repeat(5_000);
@@ -476,7 +476,7 @@ test(
       "rm",
       "--quiet",
       "GLOSSARY.md",
-      "tests/template/naming/recorded-hits.json",
+      "tests/template/names-check/recorded-hits.json",
     );
 
     const result = checkInProcess(tree);

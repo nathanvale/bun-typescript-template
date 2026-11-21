@@ -295,7 +295,7 @@ test(
       ),
     ).toEqual({
       stdout: "",
-      stderr: `names check: ${tree} has no GLOSSARY.md or no tests/template/naming/recorded-hits.json, so it cannot judge the names this call creates. Repair: restore both with git restore GLOSSARY.md tests/template/naming/recorded-hits.json.\n${brokenCheckNotice}\n`,
+      stderr: `names check: ${tree} has no GLOSSARY.md or no tests/template/names-check/recorded-hits.json, so it cannot judge the names this call creates. Repair: restore both with git restore GLOSSARY.md tests/template/names-check/recorded-hits.json.\n${brokenCheckNotice}\n`,
       exit: 2,
     });
     const elsewhere = emptyFolder();

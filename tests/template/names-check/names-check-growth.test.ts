@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { symlinkSync } from "node:fs";
+import { mkdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import {
   nameProblems,
@@ -42,6 +42,48 @@ function widen(root: string, extra: Record<string, unknown> = {}) {
     }),
   );
 }
+
+function earlierAreaRepository(duplicate: boolean = false) {
+  const root = recordedRepository();
+  const folder = "tests/template/recorded-checks";
+  mkdirSync(join(root, folder), { recursive: true });
+  const moved = [recordedHitsFile, recordedUnusedTermsFile].map((file) => ({
+    current: file,
+    earlier: `${folder}/${file.split("/").at(-1)}`,
+  }));
+  for (const { current, earlier } of moved)
+    git(root, "mv", "--", current, earlier);
+  if (duplicate) {
+    const other = "tests/template/other/recorded-hits.json";
+    put(root, other, JSON.stringify({ hits: [hostHit] }));
+    git(root, "add", "--", other);
+  }
+  git(root, "commit", "--quiet", "-m", "earlier test area");
+  for (const { current, earlier } of moved)
+    git(root, "mv", "--", earlier, current);
+  return root;
+}
+
+test("--against follows a moved recorded list and still refuses an unapproved addition", async () => {
+  const root = earlierAreaRepository();
+  expect(await check(root, ["--against", "HEAD"])).toEqual({
+    stderr: "",
+    code: 0,
+  });
+  widen(root);
+  const refused = await check(root, ["--against", "HEAD"]);
+  expect(refused.code).toBe(1);
+  expect(refused.stderr).toStartWith(
+    `${recordedHitsFile} adds a recorded hit for "host" in docs/proof.md`,
+  );
+});
+
+test("--against refuses to guess between two earlier locations for a recorded list", async () => {
+  const root = earlierAreaRepository(true);
+  const refused = await check(root, ["--against", "HEAD"]);
+  expect(refused.code).toBe(2);
+  expect(refused.stderr).toContain(`git has no ${recordedHitsFile} at`);
+});
 
 test("a tracked symlink that points nowhere is a name the full-tree check judges", () => {
   const root = namesRepository();
@@ -113,7 +155,7 @@ test("--against exits 2 when the base revision does not hold a recorded file, an
   const missing = await check(root, ["--against", "HEAD"]);
   expect(missing.code).toBe(2);
   expect(missing.stderr).toContain(
-    "git has no tests/template/naming/recorded-unused-terms.json at",
+    "git has no tests/template/names-check/recorded-unused-terms.json at",
   );
   for (const args of [["--against"], ["--against", "a", "b"]])
     expect(await check(root, args)).toEqual({
