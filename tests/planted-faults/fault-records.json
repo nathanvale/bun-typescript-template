@@ -1902,5 +1902,12 @@
     "testFile": "tests/template/names-check/symbol-gate.test.ts",
     "title": "^symbol gate judges immediate properties in explicit and inferred async returns$",
     "source": "927f750 feat(names-check): apply the Avoid and Qualify rules to public declaration names"
+  },
+  {
+    "id": "da2274f-public-declarations",
+    "patch": "tests/planted-faults/patches/da2274f-public-declarations.patch",
+    "testFile": "tests/template/names-check/symbol-gate.test.ts",
+    "title": "^symbol gate judges the return properties of public methods one level deep$",
+    "source": "da2274f fix(names-check): judge the return properties of public methods"
   }
 ]
