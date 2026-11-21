@@ -89,8 +89,10 @@ row's guide or gate note cites two distinct witnesses.
 - `tests/template/names-check/names.test.ts`, with its shrinking
   `recorded-hits.json`, checks every tracked file and folder name against
   `GLOSSARY.md`. Pre-commit runs the same names check on staged names.
-- Words inside a file are review only. The test that read kernel files for
-  Command Contract 3 terms left with the kernel.
+- The symbol gate (`scripts/public-declarations.ts`) applies those rules to the
+  public surface in `tests/template/names-check/public-surface.json`: exports
+  in Bootstrap's copied code and consumed exports in `src/*.ts`, one level of
+  members and parameters deep. Locals and comments stay review only.
 - Witnessed: [2784de0] (identifiers and comments in kernel files),
   [356cce9] (a kernel file renamed onto the glossary's words), [cacbf2c]
   (a template tool and its commands renamed onto the glossary's words).

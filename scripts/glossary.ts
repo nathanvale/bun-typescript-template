@@ -25,6 +25,7 @@ export type RecordedHit = {
   readonly path: string;
   readonly word: string;
   readonly reason: string;
+  readonly declaration?: string;
 };
 
 export type RecordedUnusedTerm = {
@@ -33,10 +34,11 @@ export type RecordedUnusedTerm = {
   readonly ticket: string;
 };
 
-type NameHit = {
+export type NameHit = {
   readonly path: string;
   readonly word: string;
   readonly problem: string;
+  readonly rule: "Avoid" | "Qualify";
 };
 
 function wordsIn(list: string): string[] {
@@ -125,11 +127,22 @@ function recordedFields(
 }
 
 export function readRecordedHits(text: string): RecordedHit[] {
+  const declarations = recordedEntries(recordedHitsFile, text, "hits").map(
+    (entry) => entry.get("declaration"),
+  );
   return recordedFields(recordedHitsFile, text, "hits", [
     "path",
     "word",
     "reason",
-  ]).map(([path = "", word = "", reason = ""]) => ({ path, word, reason }));
+  ]).map(([path = "", word = "", reason = ""], index) => {
+    const declaration = declarations[index];
+    if (declaration === undefined) return { path, word, reason };
+    if (typeof declaration !== "string" || declaration.trim() === "")
+      throw new Error(
+        `${recordedHitsFile}: declaration needs a non-empty string. Repair: name the public declaration, or omit declaration for a file or folder hit.`,
+      );
+    return { path, word, reason, declaration };
+  });
 }
 
 export function readRecordedUnusedTerms(text: string): RecordedUnusedTerm[] {
@@ -158,8 +171,13 @@ function holdsPhrase(words: readonly string[], phrase: readonly string[]) {
   );
 }
 
-function hitsIn(path: string, glossary: Glossary): NameHit[] {
-  const name = (path.split("/").at(-1) ?? path).replace(/^\.+/, "");
+export function hitsIn(
+  path: string,
+  glossary: Glossary,
+  declarationName?: string,
+): NameHit[] {
+  const name =
+    declarationName ?? (path.split("/").at(-1) ?? path).replace(/^\.+/, "");
   const words = wordsOf(name);
   const base = wordsOf(name.split(".")[0] ?? "");
   const avoided = glossary.terms.flatMap((term) =>
@@ -169,6 +187,7 @@ function hitsIn(path: string, glossary: Glossary): NameHit[] {
             {
               path,
               word,
+              rule: "Avoid" as const,
               problem: `, which GLOSSARY.md lists under Avoid for "${term.name}". Repair: rename it with the glossary word.`,
             },
           ]
@@ -181,6 +200,7 @@ function hitsIn(path: string, glossary: Glossary): NameHit[] {
           {
             path,
             word,
+            rule: "Qualify" as const,
             problem: ` with no qualifier. Repair: add a word that says which ${word} it is.`,
           },
         ]
@@ -194,6 +214,7 @@ function problemsByKind(
   glossary: Glossary,
   recorded: readonly RecordedHit[],
 ): { fresh: string[]; stale: string[] } {
+  recorded = recorded.filter((entry) => entry.declaration === undefined);
   const hits = paths.flatMap((path) => hitsIn(path, glossary));
   const same = (one: NameHit | RecordedHit, other: NameHit | RecordedHit) =>
     one.path === other.path && one.word === other.word;
