@@ -3,7 +3,7 @@
 A generated repository's check command, `bun run check`, runs lint,
 format check, typecheck, tests and Fallow in that order, stops at the first
 step that fails, and names the mistake. It is the only gate a generated
-repository ships: it has no git hooks and no CI.
+repository ships: it has no git hooks and no hosted check.
 
 ## Sub-features
 

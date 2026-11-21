@@ -23,12 +23,17 @@ type Step = {
   readonly with?: Record<string, unknown>;
 };
 type Job = {
+  readonly name?: string;
+  readonly strategy?: {
+    readonly matrix: { readonly shard: readonly number[] };
+  };
   readonly "timeout-minutes"?: number;
   readonly env?: Record<string, string>;
   readonly steps: readonly Step[];
 };
 
 type Workflow = {
+  readonly name: string;
   readonly on: Record<string, unknown>;
   readonly jobs: Record<string, Job>;
 };
@@ -70,6 +75,24 @@ function actionScript(): string {
 }
 
 describe("the hosted check", () => {
+  test("the workflow is named Hosted check and keeps reporting every required job context", () => {
+    const workflow = workflowOf("ci.yml");
+    expect(workflow.name).toBe("Hosted check");
+    expect(Object.keys(workflow.jobs)).toEqual([
+      "check",
+      "test",
+      "commits",
+      "fault-replay",
+    ]);
+    expect(Object.values(workflow.jobs).map(({ name }) => name)).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ]);
+    expect(jobOf("ci.yml", "test").strategy?.matrix.shard).toEqual([1, 2, 3]);
+  });
+
   test.each([
     ["ci.yml", "test", "bun run test"],
     ["ci.yml", "fault-replay", "bun run fault-replay"],

@@ -1,8 +1,8 @@
 # Platform Parity
 
-Hosted Linux CI runs on every pull request; the macOS nightly covers the Mac
-route once it reaches `main`. A case that cannot run on a host is **unproved**
-there, and its title says so.
+The Hosted check workflow runs on Linux on every pull request; the macOS
+nightly covers the Mac route once it reaches `main`. A case that cannot run on
+a host is **unproved** there, and its title says so.
 
 - Register a platform-bound case through `caseTest` or `supportingTest` in
   `tests/kernel/state/harness.ts`. Off its platform it runs the fail-closed
