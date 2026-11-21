@@ -1,0 +1,12 @@
+diff --git a/scripts/public-declarations.ts b/scripts/public-declarations.ts
+index e92fc59..b8626bc 100644
+--- a/scripts/public-declarations.ts
++++ b/scripts/public-declarations.ts
+@@ -333,7 +333,6 @@ export function followReexports(
+       if (followed.has(target)) continue;
+       followed.add(target);
+       if (!texts.has(target)) texts.set(target, textOf(target));
+-      queue.push(target);
+     }
+ }
+ 

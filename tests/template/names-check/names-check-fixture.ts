@@ -17,6 +17,7 @@ import {
   inherited,
 } from "../../support/git-fixture.ts";
 import { testFolder } from "../../support/test-folder.ts";
+import { publicSurfaceFile } from "../../../scripts/public-surface.ts";
 
 export const glossary = `# Fixture glossary
 
@@ -123,7 +124,12 @@ export function namesCheckFixture() {
     const root = emptyRepository();
     put(root, "GLOSSARY.md", glossary);
     put(root, recordedHitsFile, JSON.stringify({ hits: recorded }));
-    git(root, "add", "--", "GLOSSARY.md", recordedHitsFile);
+    put(
+      root,
+      publicSurfaceFile,
+      JSON.stringify({ exports: [], consumedExports: [], importers: [] }),
+    );
+    git(root, "add", "--", "GLOSSARY.md", recordedHitsFile, publicSurfaceFile);
     git(root, "commit", "--quiet", "-m", "rules");
     return root;
   }

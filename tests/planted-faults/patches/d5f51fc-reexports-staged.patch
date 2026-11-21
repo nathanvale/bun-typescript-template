@@ -1,0 +1,13 @@
+diff --git a/scripts/public-surface.ts b/scripts/public-surface.ts
+index 6ccdda5..14f7f8f 100644
+--- a/scripts/public-surface.ts
++++ b/scripts/public-surface.ts
+@@ -67,7 +67,7 @@ export function surfaceTexts(root: string, staged: boolean) {
+         `${publicSurfaceFile}: "${pattern}" matches no file. Repair: restore its source files or update the public surface.`,
+       );
+   const exists = staged
+-    ? (path: string) => indexed.has(path)
++    ? (_path: string) => false
+     : (path: string) =>
+         existsSync(join(root, path)) && statSync(join(root, path)).isFile();
+   return { surface, texts, exists, textOf };

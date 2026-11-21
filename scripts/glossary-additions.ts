@@ -17,9 +17,9 @@ const recordedLists: readonly Recorded[] = [
   {
     file: recordedHitsFile,
     list: "hits",
-    identity: ["path", "word"],
+    identity: ["path", "word", "declaration"],
     describe: (own) =>
-      `a recorded hit for "${String(own.get("word"))}" in ${String(own.get("path"))}`,
+      `a recorded hit for "${String(own.get("word"))}" in ${String(own.get("path"))}${own.get("declaration") === undefined ? "" : ` declaration ${String(own.get("declaration"))}`}`,
   },
   {
     file: recordedUnusedTermsFile,

@@ -1,0 +1,14 @@
+--- a/scripts/public-surface.ts
++++ b/scripts/public-surface.ts
+@@ -69,11 +69,6 @@
+       for (const path of paths) texts.set(path, textOf(path));
+     }
+   }
+-  for (const pattern of patterns)
+-    if (![...texts.keys()].some((path) => matchesSurface(path, [pattern])))
+-      throw new Error(
+-        `${publicSurfaceFile}: "${pattern}" matches no file. Repair: restore its source files or update the public surface.`,
+-      );
+   return { surface, texts };
+ }
+ 

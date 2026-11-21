@@ -1,13 +1,13 @@
 diff --git a/src/recipe.ts b/src/recipe.ts
-index 5c5dab9..c3eb09c 100644
+index f5c1213..b668e41 100644
 --- a/src/recipe.ts
 +++ b/src/recipe.ts
 @@ -18,7 +18,7 @@ export const PIN_SETTINGS = {
- } as const satisfies Copy;
+ } as const satisfies RecipeCopy;
  
  export interface Recipe {
 -  readonly pin: typeof PIN_SETTINGS;
-+  readonly pin: Copy;
-   readonly copies: readonly Copy[];
++  readonly pin: RecipeCopy;
+   readonly copies: readonly RecipeCopy[];
    readonly checkCommand: string;
  }

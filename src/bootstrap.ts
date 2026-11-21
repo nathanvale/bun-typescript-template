@@ -31,7 +31,7 @@ import {
 } from "./kernel-pin.ts";
 import { KernelRefusal, type KernelSeam, readKernel } from "./kernel-reader.ts";
 import {
-  type Copy,
+  type RecipeCopy,
   copiesOf,
   KERNEL_LOCKFILE,
   KERNEL_RECIPE,
@@ -198,7 +198,7 @@ async function requireSourceFile(source: string): Promise<void> {
     );
 }
 
-async function requireCopySource(copy: Copy): Promise<void> {
+async function requireCopySource(copy: RecipeCopy): Promise<void> {
   const folder = join(TEMPLATE_ROOT, copy.from);
   await requireSourceFolder(folder);
   for (const name of copy.only ?? []) {

@@ -1,0 +1,11 @@
+--- a/scripts/glossary-additions.ts
++++ b/scripts/glossary-additions.ts
+@@ -17,7 +17,7 @@
+   {
+     file: recordedHitsFile,
+     list: "hits",
+-    identity: ["path", "word", "declaration"],
++    identity: ["path", "word"],
+     describe: (own) =>
+       `a recorded hit for "${String(own.get("word"))}" in ${String(own.get("path"))}${own.get("declaration") === undefined ? "" : ` declaration ${String(own.get("declaration"))}`}`,
+   },

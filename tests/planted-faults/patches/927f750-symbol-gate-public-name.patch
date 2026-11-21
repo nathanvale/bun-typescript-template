@@ -1,0 +1,11 @@
+--- a/scripts/public-surface.ts
++++ b/scripts/public-surface.ts
+@@ -89,7 +89,7 @@
+   )
+     return [];
+   const { surface, texts } = surfaceTexts(root, staged);
+-  if (texts.size === 0 && !stale) return [];
++  if (texts.size >= 0) return [];
+   const { publicDeclarations, declarationProblems } = await import(
+     "./public-declarations.ts"
+   );

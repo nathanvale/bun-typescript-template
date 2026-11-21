@@ -1,0 +1,15 @@
+--- a/scripts/public-declarations.ts
++++ b/scripts/public-declarations.ts
+@@ -196,11 +196,7 @@ function parameters(
+ 
+ function returnedTypes(context: Context, signature: ts.Signature): ts.Type[] {
+   const result = context.checker.getReturnTypeOfSignature(signature);
+-  const promised =
+-    result.symbol?.getName() === "Promise" && result.flags & ts.TypeFlags.Object
+-      ? context.checker.getTypeArguments(result as ts.TypeReference)[0]
+-      : undefined;
+-  return promised === undefined ? [result] : [result, promised];
++  return [result];
+ }
+ 
+ function signatures(

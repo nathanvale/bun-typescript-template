@@ -1,0 +1,13 @@
+--- a/scripts/glossary.ts
++++ b/scripts/glossary.ts
+@@ -137,10 +137,6 @@
+   ]).map(([path = "", word = "", reason = ""], index) => {
+     const declaration = declarations[index];
+     if (declaration === undefined) return { path, word, reason };
+-    if (typeof declaration !== "string" || declaration.trim() === "")
+-      throw new Error(
+-        `${recordedHitsFile}: declaration needs a non-empty string. Repair: name the public declaration, or omit declaration for a file or folder hit.`,
+-      );
+     return { path, word, reason, declaration };
+   });
+ }

@@ -12,7 +12,7 @@ An `_Avoid_` line lists words not to use for its term. A note in parentheses
 says when: it covers the words before it, back to the previous note or
 semicolon. The writer and the reviewer hold those words, because the names
 check cannot tell what a name means. The names check refuses a word with no note
-after it in every file and folder name. It refuses a word noted
+after it in every file and folder name and public declaration name. It refuses a word noted
 `(unqualified)` as a whole name only when
 [Words that need a qualifier](#words-that-need-a-qualifier) also lists it.
 
@@ -41,6 +41,10 @@ generated repository and which check command that repository runs.
 
 **Recipe table**:
 The module that holds the recipe Bootstrap follows. It holds one row.
+
+**Recipe copy**:
+One source and destination in a recipe, with an optional list of files to copy.
+Its type in the template is `RecipeCopy`.
 
 **Generated repository**:
 A repository created by Bootstrap.
@@ -249,8 +253,23 @@ _Avoid_: rule (unqualified)
 
 **Names check**:
 The check that holds every tracked file and folder name to the glossary's
-words.
+words, and applies the same rules to public declarations through the symbol gate.
 _Avoid_: names gate (for the names check)
+
+**Symbol gate**:
+The part of the names check that applies the glossary's Avoid and Qualify rules
+to public declaration names. Its refusal gives the file, line, name, rule and repair.
+
+**Public surface**:
+The per-repository file selection the symbol gate reads. The template selects
+exports in Bootstrap's copied code and consumed exports in `src/*.ts`.
+The kernel selects its package entry points.
+
+**Public declaration**:
+An exported name on the public surface, including immediate public members,
+parameters and return properties. Private members, locals and nested members
+are outside it. A recorded hit names its file and declaration independently of
+line numbers, for example `CommandResult.proof` in its `declaration` field.
 
 **Repo gardener**:
 The role that keeps the rule table and the names true. Its four jobs are Sow,
@@ -294,7 +313,7 @@ _Avoid_: confidence, status (for a claim tag), proven (for a prototype run)
 ## Words that need a qualifier
 
 Each of these words names different things in different projects. In the name
-of a file, a folder, a test or a commit, pair it with a word that says which
+of a file, a folder, a test, a commit or a public declaration, pair it with a word that says which
 one you mean, as `test-proof` does.
 
 _Qualify_: host, project, starter, profile, proof, manifest, probe, copy, dependency, reader, checker, migration, parent, floor, owner, guard, layout

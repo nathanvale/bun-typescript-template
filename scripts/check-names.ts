@@ -11,6 +11,7 @@ import {
   stagedText,
 } from "./glossary.ts";
 import { holdsTestFile, readRepository, testFilePlaces } from "./repository.ts";
+import { publicNameProblems } from "./public-surface.ts";
 
 const usage =
   "Usage: bun run check:names <path> [path ...] | --staged | --tool-call | --against <revision>";
@@ -55,18 +56,27 @@ function placementProblems(tree: string, names: readonly string[]): string[] {
     );
 }
 
-function problemsIn(tree: string, names: readonly string[]): string[] {
+async function problemsIn(
+  tree: string,
+  names: readonly string[],
+): Promise<string[]> {
   return [
     ...problemsGiven((path) => readFileSync(join(tree, path), "utf8"), names),
     ...placementProblems(tree, names),
+    ...(await publicNameProblems(
+      tree,
+      false,
+      names.filter((path) => existsSync(join(tree, path))),
+    )),
   ];
 }
 
-function stagedProblems(root: string): string[] {
+async function stagedProblems(root: string): Promise<string[]> {
   const names = namesOnPaths(stagedNewPaths(root));
   return [
     ...problemsGiven((path) => stagedText(root, path), names),
     ...placementProblems(root, names),
+    ...(await publicNameProblems(root, true)),
   ];
 }
 
@@ -109,7 +119,7 @@ function sameTree(one: string, other: string): boolean {
   return realpathSync(one) === realpathSync(other);
 }
 
-function problemsCreating(root: string, file: string): string[] {
+async function problemsCreating(root: string, file: string): Promise<string[]> {
   const tree = owningTree(file);
   const own =
     tree === undefined
@@ -167,32 +177,34 @@ function createdPaths(tool: unknown, input: Map<string, unknown>): string[] {
   return reader.created(value);
 }
 
-function toolCallProblems(
+async function toolCallProblems(
   hookInput: string,
   root: string,
   fallbackCwd: string,
-): string[] {
+): Promise<string[]> {
   const call = ownFields(JSON.parse(hookInput));
   const cwd = call.get("cwd");
   const from =
     typeof cwd === "string" ? resolve(fallbackCwd, cwd) : fallbackCwd;
-  return createdPaths(
-    call.get("tool_name"),
-    ownFields(call.get("tool_input")),
-  ).flatMap((path) => problemsCreating(root, resolve(from, path)));
+  const problems = await Promise.all(
+    createdPaths(call.get("tool_name"), ownFields(call.get("tool_input"))).map(
+      (path) => problemsCreating(root, resolve(from, path)),
+    ),
+  );
+  return problems.flat();
 }
 
 type Mode = (environment: Environment) => Promise<string[]>;
 
 const modes = new Map<string, Mode>([
-  ["--staged", ({ root }) => Promise.resolve(stagedProblems(root))],
+  ["--staged", ({ root }) => stagedProblems(root)],
   [
     "--tool-call",
     async ({ root, cwd, stdin }) => toolCallProblems(await stdin(), root, cwd),
   ],
 ]);
 
-function problemsFor(
+async function problemsFor(
   args: readonly string[],
   environment: Environment,
 ): Promise<string[]> {
@@ -203,11 +215,12 @@ function problemsFor(
     const [revision, ...extra] = rest;
     if (revision === undefined || revision.startsWith("--") || extra.length > 0)
       throw new UsageError("--against takes one revision.");
-    return Promise.resolve(
-      recordedAdditionProblems(environment.root, revision, (path) =>
+    return [
+      ...recordedAdditionProblems(environment.root, revision, (path) =>
         readFileSync(join(environment.root, path), "utf8"),
       ),
-    );
+      ...(await publicNameProblems(environment.root, false, undefined, true)),
+    ];
   }
   const mode = modes.get(first);
   if (mode === undefined)

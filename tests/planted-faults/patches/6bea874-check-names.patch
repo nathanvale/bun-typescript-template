@@ -1,16 +1,16 @@
 diff --git a/scripts/check-names.ts b/scripts/check-names.ts
-index 5da6043..a941376 100644
+index f0f2393..5c98d32 100644
 --- a/scripts/check-names.ts
 +++ b/scripts/check-names.ts
-@@ -9,7 +9,6 @@ import {
+@@ -10,7 +10,6 @@ import {
    stagedNewPaths,
    stagedText,
  } from "./glossary.ts";
 -import { holdsTestFile, readRepository, testFilePlaces } from "./repository.ts";
+ import { publicNameProblems } from "./public-surface.ts";
  
  const usage =
-   "Usage: bun run check:names <path> [path ...] | --staged | --tool-call";
-@@ -37,36 +36,13 @@ function problemsGiven(textOf: TextOf, names: readonly string[]): string[] {
+@@ -39,30 +38,12 @@ function problemsGiven(textOf: TextOf, names: readonly string[]): string[] {
    );
  }
  
@@ -31,21 +31,21 @@ index 5da6043..a941376 100644
 -    );
 -}
 -
- function problemsIn(tree: string, names: readonly string[]): string[] {
--  return [
--    ...problemsGiven((path) => readFileSync(join(tree, path), "utf8"), names),
+ async function problemsIn(
+   tree: string,
+   names: readonly string[],
+ ): Promise<string[]> {
+   return [
+     ...problemsGiven((path) => readFileSync(join(tree, path), "utf8"), names),
 -    ...placementProblems(tree, names),
--  ];
-+  return problemsGiven((path) => readFileSync(join(tree, path), "utf8"), names);
- }
- 
- function stagedProblems(root: string): string[] {
+     ...(await publicNameProblems(
+       tree,
+       false,
+@@ -75,7 +56,6 @@ async function stagedProblems(root: string): Promise<string[]> {
    const names = namesOnPaths(stagedNewPaths(root));
--  return [
--    ...problemsGiven((path) => stagedText(root, path), names),
+   return [
+     ...problemsGiven((path) => stagedText(root, path), names),
 -    ...placementProblems(root, names),
--  ];
-+  return problemsGiven((path) => stagedText(root, path), names);
+     ...(await publicNameProblems(root, true)),
+   ];
  }
- 
- function pathWithin(tree: string, absolute: string): string | undefined {

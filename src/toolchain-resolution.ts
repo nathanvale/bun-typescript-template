@@ -40,8 +40,8 @@ function acceptedBackends(
     );
 }
 
-export function resolveToolchain(project: string) {
-  const local = createRequire(join(project, "package.json"));
+export function resolveToolchain(repositoryRoot: string) {
+  const local = createRequire(join(repositoryRoot, "package.json"));
   const eslint = createRequire(local.resolve("typescript-eslint"));
   const companion = createRequire(
     local.resolve("fallow-type-aware/package.json"),
@@ -51,7 +51,7 @@ export function resolveToolchain(project: string) {
   const native: unknown = local("@typescript/native/package.json");
   const semantic: unknown = companion("typescript/package.json");
   const compiler = Bun.spawnSync(
-    [join(project, "node_modules/.bin/tsc"), "--version"],
+    [join(repositoryRoot, "node_modules/.bin/tsc"), "--version"],
     { stdout: "pipe", stderr: "pipe" },
   );
   if (

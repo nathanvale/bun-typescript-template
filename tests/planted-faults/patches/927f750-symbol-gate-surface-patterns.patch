@@ -1,0 +1,13 @@
+--- a/scripts/public-surface.ts
++++ b/scripts/public-surface.ts
+@@ -30,9 +30,7 @@
+         (item: unknown) => typeof item === "string" && item.trim() !== "",
+       )
+     )
+-      throw new Error(
+-        `${publicSurfaceFile} needs a "${key}" array of non-empty glob patterns. Repair: list the public surface's files.`,
+-      );
++      return [];
+     return list as string[];
+   }
+   return {
