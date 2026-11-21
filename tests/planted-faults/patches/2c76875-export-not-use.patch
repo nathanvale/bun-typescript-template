@@ -6,7 +6,7 @@ index 7e40956..fa0bef2 100644
    "GLOSSARY.md",
    "GLOSSARY-MAP.md",
    recordedUnusedTermsFile,
--  "tests/template/naming/shared-tool-words.txt",
+-  "tests/template/names-check/shared-tool-words.txt",
    "glossary-ownership.json",
  ]);
  const avoidLabel = "_Avoid_:";

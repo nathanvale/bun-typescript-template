@@ -100,49 +100,49 @@
   {
     "id": "f86c589-glossary-avoid",
     "patch": "tests/planted-faults/patches/f86c589-glossary-avoid.patch",
-    "testFile": "tests/template/naming/names.test.ts",
+    "testFile": "tests/template/names-check/names.test.ts",
     "title": "^NM\\.a ",
     "source": "f86c589 test(naming): check tracked names and the glossary files"
   },
   {
     "id": "f86c589-glossary-qualify",
     "patch": "tests/planted-faults/patches/f86c589-glossary-qualify.patch",
-    "testFile": "tests/template/naming/names.test.ts",
+    "testFile": "tests/template/names-check/names.test.ts",
     "title": "^NM\\.b ",
     "source": "f86c589 test(naming): check tracked names and the glossary files"
   },
   {
     "id": "f86c589-glossary-stale",
     "patch": "tests/planted-faults/patches/f86c589-glossary-stale.patch",
-    "testFile": "tests/template/naming/names.test.ts",
+    "testFile": "tests/template/names-check/names.test.ts",
     "title": "^NM\\.c ",
     "source": "f86c589 test(naming): check tracked names and the glossary files"
   },
   {
     "id": "f86c589-glossary-reason",
     "patch": "tests/planted-faults/patches/f86c589-glossary-reason.patch",
-    "testFile": "tests/template/naming/names.test.ts",
+    "testFile": "tests/template/names-check/names.test.ts",
     "title": "^a recorded hit without a reason is refused$",
     "source": "f86c589 test(naming): check tracked names and the glossary files"
   },
   {
     "id": "f86c589-glossary-map-pointer",
     "patch": "tests/planted-faults/patches/f86c589-glossary-map-pointer.patch",
-    "testFile": "tests/template/naming/glossary-files.test.ts",
+    "testFile": "tests/template/names-check/glossary-files.test.ts",
     "title": "^GM\\.a ",
     "source": "f86c589 test(naming): check tracked names and the glossary files"
   },
   {
     "id": "f86c589-glossary-map-empty",
     "patch": "tests/planted-faults/patches/f86c589-glossary-map-empty.patch",
-    "testFile": "tests/template/naming/glossary-files.test.ts",
+    "testFile": "tests/template/names-check/glossary-files.test.ts",
     "title": "^GM\\.b ",
     "source": "f86c589 test(naming): check tracked names and the glossary files"
   },
   {
     "id": "f86c589-glossary-unused",
     "patch": "tests/planted-faults/patches/f86c589-glossary-unused.patch",
-    "testFile": "tests/template/naming/glossary-files.test.ts",
+    "testFile": "tests/template/names-check/glossary-files.test.ts",
     "title": "^GM\\.c ",
     "source": "f86c589 test(naming): check tracked names and the glossary files"
   },
@@ -170,210 +170,210 @@
   {
     "id": "d2034aa-pre-commit",
     "patch": "tests/planted-faults/patches/d2034aa-pre-commit.patch",
-    "testFile": "tests/template/naming/pre-commit.test.ts",
+    "testFile": "tests/template/names-check/pre-commit.test.ts",
     "title": "^PC\\.a ",
     "source": "d2034aa feat(hooks): refuse a commit that adds a badly named file"
   },
   {
     "id": "61a758a-hooks",
     "patch": "tests/planted-faults/patches/61a758a-hooks.patch",
-    "testFile": "tests/template/naming/names-check-hook.test.ts",
+    "testFile": "tests/template/names-check/names-check-hook.test.ts",
     "title": "^NG\\.live Codex ",
     "source": "61a758a feat(naming): refuse a badly named new file before Codex applies its patch"
   },
   {
     "id": "6a4c6e0-settings",
     "patch": "tests/planted-faults/patches/6a4c6e0-settings.patch",
-    "testFile": "tests/template/naming/names-check-hook.test.ts",
+    "testFile": "tests/template/names-check/names-check-hook.test.ts",
     "title": "^NG\\.live Claude Code ",
     "source": "6a4c6e0 feat(naming): refuse a badly named new file before Claude Code writes it"
   },
   {
     "id": "c6ccbf5-check-names-refusal",
     "patch": "tests/planted-faults/patches/c6ccbf5-check-names-refusal.patch",
-    "testFile": "tests/template/naming/check-names.test.ts",
+    "testFile": "tests/template/names-check/check-names.test.ts",
     "title": "^CN\\.a ",
     "source": "c6ccbf5 feat(naming): add check:names to judge the names it is given"
   },
   {
     "id": "decbccb-check-names-folders",
     "patch": "tests/planted-faults/patches/decbccb-check-names-folders.patch",
-    "testFile": "tests/template/naming/check-names.test.ts",
+    "testFile": "tests/template/names-check/check-names.test.ts",
     "title": "^CN\\.b ",
     "source": "decbccb feat(naming): judge each folder on a path given to check:names"
   },
   {
     "id": "c0da0e7-glossary-staged",
     "patch": "tests/planted-faults/patches/c0da0e7-glossary-staged.patch",
-    "testFile": "tests/template/naming/check-names.test.ts",
+    "testFile": "tests/template/names-check/check-names.test.ts",
     "title": "^CN\\.c ",
     "source": "c0da0e7 feat(naming): judge the names git has staged as new with --staged"
   },
   {
     "id": "e8e8647-check-names-no-path",
     "patch": "tests/planted-faults/patches/e8e8647-check-names-no-path.patch",
-    "testFile": "tests/template/naming/check-names.test.ts",
+    "testFile": "tests/template/names-check/check-names.test.ts",
     "title": "^CN\\.d no path ",
     "source": "e8e8647 feat(naming): exit 2 when check:names is misused or cannot run"
   },
   {
     "id": "e8e8647-check-names-option",
     "patch": "tests/planted-faults/patches/e8e8647-check-names-option.patch",
-    "testFile": "tests/template/naming/check-names.test.ts",
+    "testFile": "tests/template/names-check/check-names.test.ts",
     "title": "^CN\\.d an option ",
     "source": "e8e8647 feat(naming): exit 2 when check:names is misused or cannot run"
   },
   {
     "id": "e8e8647-check-names-mode-path",
     "patch": "tests/planted-faults/patches/e8e8647-check-names-mode-path.patch",
-    "testFile": "tests/template/naming/check-names.test.ts",
+    "testFile": "tests/template/names-check/check-names.test.ts",
     "title": "^CN\\.d a path beside ",
     "source": "e8e8647 feat(naming): exit 2 when check:names is misused or cannot run"
   },
   {
     "id": "e8e8647-check-names-outside",
     "patch": "tests/planted-faults/patches/e8e8647-check-names-outside.patch",
-    "testFile": "tests/template/naming/check-names.test.ts",
+    "testFile": "tests/template/names-check/check-names.test.ts",
     "title": "^CN\\.d a path outside ",
     "source": "e8e8647 feat(naming): exit 2 when check:names is misused or cannot run"
   },
   {
     "id": "e8e8647-check-names-exit",
     "patch": "tests/planted-faults/patches/e8e8647-check-names-exit.patch",
-    "testFile": "tests/template/naming/check-names.test.ts",
+    "testFile": "tests/template/names-check/check-names.test.ts",
     "title": "^CN\\.e ",
     "source": "e8e8647 feat(naming): exit 2 when check:names is misused or cannot run"
   },
   {
     "id": "6a4c6e0-names-gate-exit",
     "patch": "tests/planted-faults/patches/6a4c6e0-names-gate-exit.patch",
-    "testFile": "tests/template/naming/names-check-hook.test.ts",
+    "testFile": "tests/template/names-check/names-check-hook.test.ts",
     "title": "^NG\\.a ",
     "source": "6a4c6e0 feat(naming): refuse a badly named new file before Claude Code writes it"
   },
   {
     "id": "6a4c6e0-check-names-new-folder",
     "patch": "tests/planted-faults/patches/6a4c6e0-check-names-new-folder.patch",
-    "testFile": "tests/template/naming/names-check-hook.test.ts",
+    "testFile": "tests/template/names-check/names-check-hook.test.ts",
     "title": "^NG\\.b ",
     "source": "6a4c6e0 feat(naming): refuse a badly named new file before Claude Code writes it"
   },
   {
     "id": "6a4c6e0-check-names-call",
     "patch": "tests/planted-faults/patches/6a4c6e0-check-names-call.patch",
-    "testFile": "tests/template/naming/names-check-hook.test.ts",
+    "testFile": "tests/template/names-check/names-check-hook.test.ts",
     "title": "^NG\\.c ",
     "source": "6a4c6e0 feat(naming): refuse a badly named new file before Claude Code writes it"
   },
   {
     "id": "6a4c6e0-names-gate-notice",
     "patch": "tests/planted-faults/patches/6a4c6e0-names-gate-notice.patch",
-    "testFile": "tests/template/naming/names-check-hook.test.ts",
+    "testFile": "tests/template/names-check/names-check-hook.test.ts",
     "title": "^NG\\.c ",
     "source": "6a4c6e0 feat(naming): refuse a badly named new file before Claude Code writes it"
   },
   {
     "id": "61a758a-names-gate-exit",
     "patch": "tests/planted-faults/patches/61a758a-names-gate-exit.patch",
-    "testFile": "tests/template/naming/names-check-hook.test.ts",
+    "testFile": "tests/template/names-check/names-check-hook.test.ts",
     "title": "^NG\\.e ",
     "source": "61a758a feat(naming): refuse a badly named new file before Codex applies its patch"
   },
   {
     "id": "61a758a-check-names-add",
     "patch": "tests/planted-faults/patches/61a758a-check-names-add.patch",
-    "testFile": "tests/template/naming/names-check-hook.test.ts",
+    "testFile": "tests/template/names-check/names-check-hook.test.ts",
     "title": "^NG\\.e ",
     "source": "61a758a feat(naming): refuse a badly named new file before Codex applies its patch"
   },
   {
     "id": "61a758a-check-names-move",
     "patch": "tests/planted-faults/patches/61a758a-check-names-move.patch",
-    "testFile": "tests/template/naming/names-check-hook.test.ts",
+    "testFile": "tests/template/names-check/names-check-hook.test.ts",
     "title": "^NG\\.f ",
     "source": "61a758a feat(naming): refuse a badly named new file before Codex applies its patch"
   },
   {
     "id": "dbd74b7-glossary-note-line",
     "patch": "tests/planted-faults/patches/dbd74b7-glossary-note-line.patch",
-    "testFile": "tests/template/naming/names.test.ts",
+    "testFile": "tests/template/names-check/names.test.ts",
     "title": "^NM\\.d after the last note",
     "source": "dbd74b7 feat(naming): leave an Avoid word that a note covers to the reviewer"
   },
   {
     "id": "dbd74b7-glossary-note-semicolon",
     "patch": "tests/planted-faults/patches/dbd74b7-glossary-note-semicolon.patch",
-    "testFile": "tests/template/naming/names.test.ts",
+    "testFile": "tests/template/names-check/names.test.ts",
     "title": "^NM\\.d before a semicolon",
     "source": "dbd74b7 feat(naming): leave an Avoid word that a note covers to the reviewer"
   },
   {
     "id": "dbd74b7-glossary-note-parenthesis",
     "patch": "tests/planted-faults/patches/dbd74b7-glossary-note-parenthesis.patch",
-    "testFile": "tests/template/naming/names.test.ts",
+    "testFile": "tests/template/names-check/names.test.ts",
     "title": "^NM\\.e ",
     "source": "dbd74b7 feat(naming): leave an Avoid word that a note covers to the reviewer"
   },
   {
     "id": "10099ec-glossary-unused-now-used",
     "patch": "tests/planted-faults/patches/10099ec-glossary-unused-now-used.patch",
-    "testFile": "tests/template/naming/glossary-files.test.ts",
+    "testFile": "tests/template/names-check/glossary-files.test.ts",
     "title": "^GM\\.d ",
     "source": "10099ec feat(naming): record a glossary term that no tracked file uses yet"
   },
   {
     "id": "10099ec-glossary-unused-undefined",
     "patch": "tests/planted-faults/patches/10099ec-glossary-unused-undefined.patch",
-    "testFile": "tests/template/naming/glossary-files.test.ts",
+    "testFile": "tests/template/names-check/glossary-files.test.ts",
     "title": "^GM\\.e ",
     "source": "10099ec feat(naming): record a glossary term that no tracked file uses yet"
   },
   {
     "id": "10099ec-glossary-unused-ticket",
     "patch": "tests/planted-faults/patches/10099ec-glossary-unused-ticket.patch",
-    "testFile": "tests/template/naming/glossary-files.test.ts",
+    "testFile": "tests/template/names-check/glossary-files.test.ts",
     "title": "^GM\\.f a recorded unused term without a ticket",
     "source": "10099ec feat(naming): record a glossary term that no tracked file uses yet"
   },
   {
     "id": "10099ec-glossary-unused-no-list",
     "patch": "tests/planted-faults/patches/10099ec-glossary-unused-no-list.patch",
-    "testFile": "tests/template/naming/glossary-files.test.ts",
+    "testFile": "tests/template/names-check/glossary-files.test.ts",
     "title": "^GM\\.g ",
     "source": "10099ec feat(naming): record a glossary term that no tracked file uses yet"
   },
   {
     "id": "b28ce51-check-names",
     "patch": "tests/planted-faults/patches/b28ce51-check-names.patch",
-    "testFile": "tests/template/naming/pre-commit.test.ts",
+    "testFile": "tests/template/names-check/pre-commit.test.ts",
     "title": "^PC\\.b ",
     "source": "b28ce51 fix(naming): judge --staged names by the glossary and recorded hits git has staged"
   },
   {
     "id": "b28ce51-check-names-staged-hits",
     "patch": "tests/planted-faults/patches/b28ce51-check-names-staged-hits.patch",
-    "testFile": "tests/template/naming/check-names.test.ts",
+    "testFile": "tests/template/names-check/check-names.test.ts",
     "title": "^CN\\.f ",
     "source": "b28ce51 fix(naming): judge --staged names by the glossary and recorded hits git has staged"
   },
   {
     "id": "b28ce51-check-names-staged-glossary",
     "patch": "tests/planted-faults/patches/b28ce51-check-names-staged-glossary.patch",
-    "testFile": "tests/template/naming/check-names.test.ts",
+    "testFile": "tests/template/names-check/check-names.test.ts",
     "title": "^CN\\.g ",
     "source": "b28ce51 fix(naming): judge --staged names by the glossary and recorded hits git has staged"
   },
   {
     "id": "70a3dc5-glossary-staged-absent",
     "patch": "tests/planted-faults/patches/70a3dc5-glossary-staged-absent.patch",
-    "testFile": "tests/template/naming/check-names.test.ts",
+    "testFile": "tests/template/names-check/check-names.test.ts",
     "title": "^CN\\.h ",
     "source": "70a3dc5 fix(naming): name the repair when git has no staged glossary or recorded hits"
   },
   {
     "id": "d5737c7-check-names",
     "patch": "tests/planted-faults/patches/d5737c7-check-names.patch",
-    "testFile": "tests/template/naming/names-check-hook.test.ts",
+    "testFile": "tests/template/names-check/names-check-hook.test.ts",
     "title": "^NG\\.g ",
     "source": "d5737c7 fix(names): name the missing field of a recognised tool call (GREEN)"
   },
@@ -387,21 +387,21 @@
   {
     "id": "7623343-glossary",
     "patch": "tests/planted-faults/patches/7623343-glossary.patch",
-    "testFile": "tests/template/naming/names-check-in-process.test.ts",
+    "testFile": "tests/template/names-check/names-check-in-process.test.ts",
     "title": "^in process: --staged with a git that never answers",
     "source": "7623343 fix(glossary): bound the staged git readers and the fixture's git calls"
   },
   {
     "id": "7623343-git-fixture",
     "patch": "tests/planted-faults/patches/7623343-git-fixture.patch",
-    "testFile": "tests/template/naming/names-check-in-process.test.ts",
+    "testFile": "tests/template/names-check/names-check-in-process.test.ts",
     "title": "^in process: the fixture's git stops",
     "source": "7623343 fix(glossary): bound the staged git readers and the fixture's git calls"
   },
   {
     "id": "244b63a-check-names",
     "patch": "tests/planted-faults/patches/244b63a-check-names.patch",
-    "testFile": "tests/template/naming/names-check-paths.test.ts",
+    "testFile": "tests/template/names-check/names-check-paths.test.ts",
     "title": "^in process: --tool-call resolves a relative folder of the call",
     "source": "244b63a fix(check-names): resolve a tool call's relative folder from the injected folder"
   },
@@ -478,7 +478,7 @@
   {
     "id": "6bea874-check-names",
     "patch": "tests/planted-faults/patches/6bea874-check-names.patch",
-    "testFile": "tests/template/naming/names-check-test-placement.test.ts",
+    "testFile": "tests/template/names-check/names-check-test-placement.test.ts",
     "title": "^in process: a test file at tests/loose.test.ts, outside every test area folder",
     "source": "6bea874 feat(names): refuse a test file outside every family folder"
   },
@@ -513,14 +513,14 @@
   {
     "id": "ea215c9-pre-commit",
     "patch": "tests/planted-faults/patches/ea215c9-pre-commit.patch",
-    "testFile": "tests/template/naming/pre-commit.test.ts",
+    "testFile": "tests/template/names-check/pre-commit.test.ts",
     "title": "^PC[.]c the pre-commit type check uses the staged contents of a partially staged file$",
     "source": "ea215c9 fix(hooks): type-check the staged tree"
   },
   {
     "id": "beed83c-pre-commit",
     "patch": "tests/planted-faults/patches/beed83c-pre-commit.patch",
-    "testFile": "tests/template/naming/pre-commit.test.ts",
+    "testFile": "tests/template/names-check/pre-commit.test.ts",
     "title": "^PC[.][de] ",
     "source": "beed83c fix(hooks): check staged compiler config and deletions"
   },
@@ -1710,119 +1710,119 @@
   {
     "id": "eac0969-link-lstat",
     "patch": "tests/planted-faults/patches/eac0969-link-lstat.patch",
-    "testFile": "tests/template/naming/names-check-growth.test.ts",
+    "testFile": "tests/template/names-check/names-check-growth.test.ts",
     "title": "^a tracked symlink that points nowhere is a name",
     "source": "eac0969 fix(glossary): check a link by its own name, stop a call when this repository's check is broken, refuse list growth, read the map's owners"
   },
   {
     "id": "eac0969-own-check-missing",
     "patch": "tests/planted-faults/patches/eac0969-own-check-missing.patch",
-    "testFile": "tests/template/naming/names-check-growth.test.ts",
+    "testFile": "tests/template/names-check/names-check-growth.test.ts",
     "title": "^--tool-call in this repository with no GLOSSARY.md exits 2",
     "source": "eac0969 fix(glossary): check a link by its own name, stop a call when this repository's check is broken, refuse list growth, read the map's owners"
   },
   {
     "id": "eac0969-hook-broken-check",
     "patch": "tests/planted-faults/patches/eac0969-hook-broken-check.patch",
-    "testFile": "tests/template/naming/names-check-hook.test.ts",
+    "testFile": "tests/template/names-check/names-check-hook.test.ts",
     "title": "^NG.i a malformed tool call payload stops the Write with exit 2",
     "source": "eac0969 fix(glossary): check a link by its own name, stop a call when this repository's check is broken, refuse list growth, read the map's owners"
   },
   {
     "id": "eac0969-recorded-growth",
     "patch": "tests/planted-faults/patches/eac0969-recorded-growth.patch",
-    "testFile": "tests/template/naming/names-check-growth.test.ts",
+    "testFile": "tests/template/names-check/names-check-growth.test.ts",
     "title": "^--against refuses a recorded hit the base revision does not list",
     "source": "eac0969 fix(glossary): check a link by its own name, stop a call when this repository's check is broken, refuse list growth, read the map's owners"
   },
   {
     "id": "eac0969-recorded-approval",
     "patch": "tests/planted-faults/patches/eac0969-recorded-approval.patch",
-    "testFile": "tests/template/naming/names-check-growth.test.ts",
+    "testFile": "tests/template/names-check/names-check-growth.test.ts",
     "title": "^--against admits an addition that carries an approval",
     "source": "eac0969 fix(glossary): check a link by its own name, stop a call when this repository's check is broken, refuse list growth, read the map's owners"
   },
   {
     "id": "eac0969-map-heading",
     "patch": "tests/planted-faults/patches/eac0969-map-heading.patch",
-    "testFile": "tests/template/naming/glossary-files.test.ts",
+    "testFile": "tests/template/names-check/glossary-files.test.ts",
     "title": "^GM.h a link to a heading",
     "source": "eac0969 fix(glossary): check a link by its own name, stop a call when this repository's check is broken, refuse list growth, read the map's owners"
   },
   {
     "id": "eac0969-map-owner-twice",
     "patch": "tests/planted-faults/patches/eac0969-map-owner-twice.patch",
-    "testFile": "tests/template/naming/glossary-files.test.ts",
+    "testFile": "tests/template/names-check/glossary-files.test.ts",
     "title": "^GM.i an owner row with no name",
     "source": "eac0969 fix(glossary): check a link by its own name, stop a call when this repository's check is broken, refuse list growth, read the map's owners"
   },
   {
     "id": "2788181-map-target-glossary",
     "patch": "tests/planted-faults/patches/2788181-map-target-glossary.patch",
-    "testFile": "tests/template/naming/glossary-files.test.ts",
+    "testFile": "tests/template/names-check/glossary-files.test.ts",
     "title": "^GM.k a glossary row whose target is not a GLOSSARY.md file fails",
     "source": "2788181 fix(glossary): refuse a map row that owns words but points at a file that is not a GLOSSARY.md"
   },
   {
     "id": "f6aaef7-map-own-glossary",
     "patch": "tests/planted-faults/patches/f6aaef7-map-own-glossary.patch",
-    "testFile": "tests/template/naming/glossary-files.test.ts",
+    "testFile": "tests/template/names-check/glossary-files.test.ts",
     "title": "^GM.l a map that links no GLOSSARY.md of this repository fails",
     "source": "f6aaef7 fix(glossary): refuse a map that links no GLOSSARY.md of its own repository"
   },
   {
     "id": "e47887b-map-row-no-place",
     "patch": "tests/planted-faults/patches/e47887b-map-row-no-place.patch",
-    "testFile": "tests/template/naming/glossary-files.test.ts",
+    "testFile": "tests/template/names-check/glossary-files.test.ts",
     "title": "^GM.m a row that owns words but gives them no place fails",
     "source": "e47887b fix(glossary): refuse a map row that owns words and gives them no place"
   },
   {
     "id": "2c76875-shared-section-end",
     "patch": "tests/planted-faults/patches/2c76875-shared-section-end.patch",
-    "testFile": "tests/template/naming/shared-tool-words.test.ts",
+    "testFile": "tests/template/names-check/shared-tool-words.test.ts",
     "title": "^SW\\.a ",
     "source": "2c76875 feat(glossary): group the shared tool words, export them, and record the kernel transfer"
   },
   {
     "id": "2c76875-shared-heading-twice",
     "patch": "tests/planted-faults/patches/2c76875-shared-heading-twice.patch",
-    "testFile": "tests/template/naming/shared-tool-words.test.ts",
+    "testFile": "tests/template/names-check/shared-tool-words.test.ts",
     "title": "^SW\\.b ",
     "source": "2c76875 feat(glossary): group the shared tool words, export them, and record the kernel transfer"
   },
   {
     "id": "2c76875-entries-not-array",
     "patch": "tests/planted-faults/patches/2c76875-entries-not-array.patch",
-    "testFile": "tests/template/naming/shared-tool-words.test.ts",
+    "testFile": "tests/template/names-check/shared-tool-words.test.ts",
     "title": "^SW\\.g ",
     "source": "2c76875 feat(glossary): group the shared tool words, export them, and record the kernel transfer"
   },
   {
     "id": "2c76875-export-not-use",
     "patch": "tests/planted-faults/patches/2c76875-export-not-use.patch",
-    "testFile": "tests/template/naming/shared-tool-words.test.ts",
+    "testFile": "tests/template/names-check/shared-tool-words.test.ts",
     "title": "^the export and glossary-ownership\\.json are not read",
     "source": "2c76875 feat(glossary): group the shared tool words, export them, and record the kernel transfer"
   },
   {
     "id": "2c76875-shared-definition-drift",
     "patch": "tests/planted-faults/patches/2c76875-shared-definition-drift.patch",
-    "testFile": "tests/template/naming/shared-tool-words.test.ts",
+    "testFile": "tests/template/names-check/shared-tool-words.test.ts",
     "title": "^the shared tool words in GLOSSARY\\.md are the template's recorded export",
     "source": "2c76875 feat(glossary): group the shared tool words, export them, and record the kernel transfer"
   },
   {
     "id": "43f02d2-kernel-entry-defined",
     "patch": "tests/planted-faults/patches/43f02d2-kernel-entry-defined.patch",
-    "testFile": "tests/template/naming/shared-tool-words.test.ts",
+    "testFile": "tests/template/names-check/shared-tool-words.test.ts",
     "title": "^SW\\.c ",
     "source": "43f02d2 feat(glossary): leave the kernel's words to the kernel"
   },
   {
     "id": "43f02d2-kernel-entry-shared",
     "patch": "tests/planted-faults/patches/43f02d2-kernel-entry-shared.patch",
-    "testFile": "tests/template/naming/shared-tool-words.test.ts",
+    "testFile": "tests/template/names-check/shared-tool-words.test.ts",
     "title": "^SW\\.d ",
     "source": "43f02d2 feat(glossary): leave the kernel's words to the kernel"
   },

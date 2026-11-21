@@ -1,14 +1,14 @@
 import { lstatSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 
-export const recordedHitsFile = "tests/template/naming/recorded-hits.json";
+export const recordedHitsFile = "tests/template/names-check/recorded-hits.json";
 export const recordedUnusedTermsFile =
-  "tests/template/naming/recorded-unused-terms.json";
+  "tests/template/names-check/recorded-unused-terms.json";
 const notReadAsUse = new Set([
   "GLOSSARY.md",
   "GLOSSARY-MAP.md",
   recordedUnusedTermsFile,
-  "tests/template/naming/shared-tool-words.txt",
+  "tests/template/names-check/shared-tool-words.txt",
   "glossary-ownership.json",
 ]);
 const avoidLabel = "_Avoid_:";
@@ -298,7 +298,28 @@ export function mergeBaseOf(root: string, revision: string): string {
 }
 
 export function textAt(root: string, revision: string, path: string): string {
-  const shown = git(root, ["show", `${revision}:${path}`]);
+  let shown = git(root, ["show", `${revision}:${path}`]);
+  if (shown.exitCode !== 0) {
+    const tree = new Set(
+      gitPaths(root, [
+        "ls-tree",
+        "-r",
+        "--name-only",
+        revision,
+        dirname(dirname(path)),
+      ]),
+    );
+    const lists = [recordedHitsFile, recordedUnusedTermsFile];
+    const earlier = [...tree]
+      .filter((file) => basename(file) === basename(path))
+      .filter(
+        (file) =>
+          !lists.includes(path) ||
+          lists.every((list) => tree.has(join(dirname(file), basename(list)))),
+      );
+    if (earlier.length === 1)
+      shown = git(root, ["show", `${revision}:${earlier[0]}`]);
+  }
   if (shown.exitCode !== 0)
     throw new Error(
       `git has no ${path} at ${revision}, so the names check cannot compare it with this branch. Repair: give a revision that holds ${path}.`,

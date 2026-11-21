@@ -42,7 +42,7 @@ here.
   changed what the staged readers listed. Witnessed: [f929eb7], [7a62deb],
   [#84-git] (a local copy left runtime configuration in the replay fixture),
   [#90-git] (the bootstrap fixture inherited a signing requirement),
-  [#101-git] (the naming fixture inherited a setting that disabled its hook),
+  [#101-git] (the names check fixture inherited a setting that disabled its hook),
   [#113-lazy] (a git control inherited `GIT_NO_LAZY_FETCH`, which hid the
   behaviour it was there to show).
 - Start every child and git call a hook can reach from

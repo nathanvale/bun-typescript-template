@@ -7,7 +7,7 @@ index ee4bc7b..cf95356 100644
 +import { existsSync, lstatSync, readFileSync } from "node:fs";
  import { join } from "node:path";
  
- export const recordedHitsFile = "tests/template/naming/recorded-hits.json";
+ export const recordedHitsFile = "tests/template/names-check/recorded-hits.json";
 @@ -263,8 +263,7 @@ function gitPaths(root: string, command: readonly string[]): string[] {
  // target is missing; lstatSync reads the link itself.
  function gitFiles(root: string): string[] {

@@ -25,8 +25,8 @@ each pointer rather than a copy:
 - [GLOSSARY-MAP.md](../../../GLOSSARY-MAP.md): the glossary that owns each
   word. [GLOSSARY.md](../../../GLOSSARY.md) holds this repository's words,
   their Avoid words, how a note on an Avoid line is read, and the words
-  that need a qualifier. `tests/template/naming/recorded-hits.json` holds the names
-  check's recorded hits, and `tests/template/naming/recorded-unused-terms.json` the
+  that need a qualifier. `tests/template/names-check/recorded-hits.json` holds the names
+  check's recorded hits, and `tests/template/names-check/recorded-unused-terms.json` the
   glossary words that no tracked file uses yet.
 
 Take **Sow** when the prompt brings a correction or a review finding.
@@ -54,7 +54,7 @@ Change only `CODING_STANDARDS.md`, `docs/standards/`, the files in
 [Lint owners](#lint-owners), `eslint-suppressions.json`,
 `tests/planted-faults/` and `tests/template/standards/`. Weed may also change
 `AGENTS.md` and `.agents/skills/`. Stake may also change `GLOSSARY.md`,
-`GLOSSARY-MAP.md` and `tests/template/naming/`, and may rename a path the names check
+`GLOSSARY-MAP.md` and `tests/template/names-check/`, and may rename a path the names check
 refuses, with the files that refer to it. Report a change the lesson needs
 anywhere else, with its path, for that path's owner.
 
@@ -190,7 +190,7 @@ Keep file and folder names on the glossary's words. File names and folder
 structure are documentation: they are the first thing a reader of this
 repository meets.
 
-1. Run `bun run test:area naming` to judge every tracked name, or
+1. Run `bun run test:area names-check` to judge every tracked name, or
    `bun run check:names <path>` to judge one. Each problem line gives a
    path, the word it uses, and the glossary entry that refuses the word, or
    names a test file outside the folders `repository.json` gives test files.
@@ -206,7 +206,7 @@ repository meets.
    - No glossary word fits what the path holds: add the word, then rename
      the path with it. A word this repository owns goes in `GLOSSARY.md`, in
      the form its entries use. When no tracked file uses it yet, list it in
-     `tests/template/naming/recorded-unused-terms.json` with its reason and its
+     `tests/template/names-check/recorded-unused-terms.json` with its reason and its
      ticket. Report a word another glossary should own, for the owner
      `GLOSSARY-MAP.md` names.
    - The name is older than the glossary rule that refuses it, and its
@@ -224,7 +224,7 @@ repository meets.
 
 Done when each item holds:
 
-- `bun run test:area naming` passes.
+- `bun run test:area names-check` passes.
 - No tracked file refers to an old path, by its whole path or by a relative
   one. History stays as it is: commit subjects, witnesses and fault `source`
   fields.
