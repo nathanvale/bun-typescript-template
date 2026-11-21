@@ -246,6 +246,32 @@ test("symbol gate checks named re-exports, star re-exports, namespace imports an
   expect(problems).toHaveLength(2);
 });
 
+test("symbol gate follows re-exports from the listed entry files into the files they re-export", async () => {
+  const root = sourceRepository(
+    'export * from "./other.ts";\nexport type { Result } from "./result.ts";\nexport * from "./barrel.ts";\n',
+  );
+  const files = {
+    "src/other.ts": "export const proof = 1;\n",
+    "src/result.ts": "export interface Result { host: string }\n",
+    "src/barrel.ts": 'export { deep } from "./deep.ts";\n',
+    "src/deep.ts": "export const deep = { proof: 1 };\n",
+    "src/unrelated.ts": "export const proof = 1;\n",
+  };
+  for (const [path, text] of Object.entries(files)) put(root, path, text);
+  git(root, "add", "--", ...Object.keys(files));
+  const expected = [
+    'src/deep.ts:1 public declaration "proof"',
+    'src/other.ts:1 public declaration "proof"',
+    'src/result.ts:1 public declaration "host"',
+  ];
+  for (const staged of [false, true])
+    expect(
+      (await publicNameProblems(root, staged)).map(
+        (problem) => problem.split(" breaks")[0],
+      ),
+    ).toEqual(expected);
+});
+
 test("symbol gate reads modified source from the index, including partially staged files", async () => {
   const root = sourceRepository("export const testProof = 1;\n");
   git(root, "commit", "--quiet", "-m", "source");

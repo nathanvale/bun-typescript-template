@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { matchesSurface, type PublicSurface } from "./surface-match.ts";
 import { stagedTexts } from "./staged-texts.ts";
@@ -46,8 +46,12 @@ export function surfaceTexts(root: string, staged: boolean) {
     ...surface.consumedExports,
     ...surface.importers,
   ];
+  const indexed = new Set<string>();
   const texts = staged
-    ? stagedTexts(root, (path) => matchesSurface(path, patterns))
+    ? stagedTexts(root, (path) => {
+        indexed.add(path);
+        return matchesSurface(path, patterns);
+      })
     : new Map<string, string>();
   if (!staged) {
     for (const pattern of patterns) {
@@ -62,7 +66,11 @@ export function surfaceTexts(root: string, staged: boolean) {
       throw new Error(
         `${publicSurfaceFile}: "${pattern}" matches no file. Repair: restore its source files or update the public surface.`,
       );
-  return { surface, texts };
+  const exists = staged
+    ? (path: string) => indexed.has(path)
+    : (path: string) =>
+        existsSync(join(root, path)) && statSync(join(root, path)).isFile();
+  return { surface, texts, exists, textOf };
 }
 
 export async function publicNameProblems(
@@ -76,11 +84,16 @@ export async function publicNameProblems(
     !paths.some((path) => /\.(?:[cm]?ts|tsx|[cm]?js|jsx)$/.test(path))
   )
     return [];
-  const { surface, texts } = surfaceTexts(root, staged);
+  const {
+    surface,
+    texts,
+    exists,
+    textOf: surfaceText,
+  } = surfaceTexts(root, staged);
   if (texts.size === 0 && !stale) return [];
-  const { publicDeclarations, declarationProblems } = await import(
-    "./public-declarations.ts"
-  );
+  const { publicDeclarations, declarationProblems, followReexports } =
+    await import("./public-declarations.ts");
+  followReexports(root, texts, surface, exists, surfaceText);
   const declarations = publicDeclarations(root, texts, surface).filter(
     (declaration) => paths === undefined || paths.includes(declaration.path),
   );

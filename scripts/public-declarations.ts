@@ -1,4 +1,4 @@
-import { resolve, relative, dirname } from "node:path";
+import { resolve, relative, dirname, isAbsolute } from "node:path";
 import ts from "typescript";
 import { matchesSurface, type PublicSurface } from "./surface-match.ts";
 import {
@@ -273,6 +273,68 @@ function exportedSymbol(context: Context, exported: ts.Symbol) {
     members(context, valueType, name, true);
     signatures(context, valueType, name, false);
   }
+}
+
+const resolution: ts.CompilerOptions = {
+  allowJs: true,
+  module: ts.ModuleKind.ESNext,
+  moduleResolution: ts.ModuleResolutionKind.Bundler,
+};
+
+function reexportedPaths(
+  root: string,
+  path: string,
+  text: string,
+  exists: (path: string) => boolean,
+): string[] {
+  const host: ts.ModuleResolutionHost = {
+    fileExists: (file) => exists(relative(root, file)),
+    readFile: () => undefined,
+  };
+  const source = ts.createSourceFile(path, text, ts.ScriptTarget.Latest);
+  return source.statements.flatMap((statement) => {
+    const specifier =
+      ts.isExportDeclaration(statement) && statement.moduleSpecifier
+        ? statement.moduleSpecifier
+        : undefined;
+    if (specifier === undefined || !ts.isStringLiteral(specifier)) return [];
+    if (!specifier.text.startsWith(".")) return [];
+    const found = ts.resolveModuleName(
+      specifier.text,
+      resolve(root, path),
+      resolution,
+      host,
+    ).resolvedModule?.resolvedFileName;
+    const target = found === undefined ? "" : relative(root, found);
+    return target === "" || target.startsWith("..") || isAbsolute(target)
+      ? []
+      : [target];
+  });
+}
+
+export function followReexports(
+  root: string,
+  texts: Map<string, string>,
+  surface: PublicSurface,
+  exists: (path: string) => boolean,
+  textOf: (path: string) => string,
+) {
+  const queue = [...texts.keys()].filter((path) =>
+    matchesSurface(path, surface.exports),
+  );
+  const followed = new Set(queue);
+  for (const path of queue)
+    for (const target of reexportedPaths(
+      root,
+      path,
+      texts.get(path) ?? "",
+      exists,
+    )) {
+      if (followed.has(target)) continue;
+      followed.add(target);
+      if (!texts.has(target)) texts.set(target, textOf(target));
+      queue.push(target);
+    }
 }
 
 function compare(one: string, other: string): number {
