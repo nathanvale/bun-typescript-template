@@ -1,0 +1,13 @@
+diff --git a/kernel-pin.json b/kernel-pin.json
+index 20630a8..9ba188c 100644
+--- a/kernel-pin.json
++++ b/kernel-pin.json
+@@ -1,7 +1,7 @@
+ {
+   "repository": "agent-cli-kernel",
+   "remote": "https://github.com/nathanvale/agent-cli-kernel.git",
+-  "commit": "c0845947d44cd2b18f2a08685902f3f6efa38115",
++  "commit": "9d5d5a81785bfe548a9448348c68ee3b5720cd95",
+   "branch": "main",
+   "carryOutIdentity": "4be9a3772839195ef0ceb152fbeea4901001a2ff"
+ }

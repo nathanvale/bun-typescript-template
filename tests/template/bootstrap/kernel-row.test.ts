@@ -24,7 +24,9 @@ const bootstrapModules = [
 ];
 const ownFiles = [
   ".agents/skills/agent-cli-kernel/SKILL.md",
+  ".agents/skills/verify-cli/SKILL.md",
   ".claude/skills/agent-cli-kernel",
+  ".claude/skills/verify-cli",
   ".cli-design-template.json",
   ".fallowrc.json",
   ".gitignore",

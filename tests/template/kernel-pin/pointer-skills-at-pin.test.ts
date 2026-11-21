@@ -30,6 +30,26 @@ function fullSkillAtPin(name: string) {
 }
 
 test(
+  "the template holds one pointer skill for each skill the kernel holds at the template's Pin",
+  () => {
+    const listed = gitResult(
+      siblingKernel(),
+      "ls-tree",
+      "--name-only",
+      `${pin.commit}:skills`,
+    );
+    expect({
+      exitCode: listed.exitCode,
+      pointers: readdirSync(skills).sort(),
+    }).toEqual({
+      exitCode: 0,
+      pointers: listed.stdout.toString().trim().split("\n").sort(),
+    });
+  },
+  processWatchdog(1),
+);
+
+test(
   "each pointer skill names a full skill in the installed kernel that the kernel holds at the template's Pin",
   () => {
     const names = readdirSync(skills).sort();
