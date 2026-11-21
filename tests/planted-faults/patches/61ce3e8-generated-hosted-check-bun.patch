@@ -1,0 +1,11 @@
+diff --git a/generated-repository/hosted-check/ci.yml b/generated-repository/hosted-check/ci.yml
+--- a/generated-repository/hosted-check/ci.yml
++++ b/generated-repository/hosted-check/ci.yml
+@@ -15,6 +15,6 @@ jobs:
+       - uses: actions/checkout@v4
+       - uses: oven-sh/setup-bun@v2
+         with:
+-          bun-version: 1.4.4
++          bun-version: 1.4.3
+       - run: bun install --frozen-lockfile
+       - run: bun run check
