@@ -12,7 +12,7 @@ import {
   bootstrapRow,
   generatedJson,
   kernelRowFixture,
-} from "../../support/kernel-row-fixture.ts";
+} from "../../support/recipe-fixture.ts";
 import { processWatchdog, spawnBounded } from "../../support/process.ts";
 
 const run = kernelRowFixture();

@@ -12,7 +12,7 @@ import {
   bootstrapRefusal,
   kernelRowFixture,
   leftBehind,
-} from "../../support/kernel-row-fixture.ts";
+} from "../../support/recipe-fixture.ts";
 
 const run = kernelRowFixture();
 

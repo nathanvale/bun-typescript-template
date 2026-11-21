@@ -11,7 +11,7 @@ import { kernelPinFile, readKernelPin } from "../../src/kernel-pin.ts";
 import type { KernelSeam } from "../../src/kernel-reader.ts";
 import { ROOT } from "./bootstrap-cli-fixture.ts";
 import { gitEnv } from "./git-fixture.ts";
-import { withEnvironment } from "./kernel-row-fixture.ts";
+import { withEnvironment } from "./recipe-fixture.ts";
 import { testFolder } from "./test-folder.ts";
 import { commitOn, fileAt, moveBranch } from "./kernel-sibling.ts";
 
