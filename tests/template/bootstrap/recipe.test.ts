@@ -4,6 +4,7 @@ import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import {
   copiesOf,
+  HOSTED_CHECK_FOLDER,
   KERNEL_LOCKFILE,
   KERNEL_RECIPE,
   LINT_RULE_FILES,
@@ -112,6 +113,14 @@ describe("the recipe", () => {
         .filter((file) => file.startsWith("config/"))
         .toSorted(),
     ).toEqual(ruleFiles);
+  });
+
+  test("it copies the Hosted check workflow into .github/workflows", async () => {
+    expect(
+      (await copiedFiles(KERNEL_RECIPE))
+        .filter((file) => file.startsWith(`${HOSTED_CHECK_FOLDER}/`))
+        .toSorted(),
+    ).toEqual([`${HOSTED_CHECK_FOLDER}/ci.yml`]);
   });
 });
 

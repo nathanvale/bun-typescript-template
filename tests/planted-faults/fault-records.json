@@ -1930,5 +1930,26 @@
     "testFile": "tests/template/names-check/symbol-gate.test.ts",
     "title": "^symbol gate follows re-exports from the listed entry files into the files they re-export$",
     "source": "d5f51fc fix(names-check): follow re-exports from the listed entry files"
+  },
+  {
+    "id": "61ce3e8-recipe-hosted-check",
+    "patch": "tests/planted-faults/patches/61ce3e8-recipe-hosted-check.patch",
+    "testFile": "tests/template/toolchain/generated-hosted-check.test.ts",
+    "title": "^a repository Bootstrap generates holds a Hosted check workflow pinned to the template's actions and Bun version$",
+    "source": "61ce3e8 feat(bootstrap): generate a hosted check workflow in every new repository"
+  },
+  {
+    "id": "61ce3e8-generated-hosted-check-pin",
+    "patch": "tests/planted-faults/patches/61ce3e8-generated-hosted-check-pin.patch",
+    "testFile": "tests/template/toolchain/generated-hosted-check.test.ts",
+    "title": "^a repository Bootstrap generates holds a Hosted check workflow pinned to the template's actions and Bun version$",
+    "source": "61ce3e8 feat(bootstrap): generate a hosted check workflow in every new repository"
+  },
+  {
+    "id": "61ce3e8-generated-hosted-check-bun",
+    "patch": "tests/planted-faults/patches/61ce3e8-generated-hosted-check-bun.patch",
+    "testFile": "tests/template/toolchain/generated-hosted-check.test.ts",
+    "title": "^a repository Bootstrap generates holds a Hosted check workflow pinned to the template's actions and Bun version$",
+    "source": "61ce3e8 feat(bootstrap): generate a hosted check workflow in every new repository"
   }
 ]

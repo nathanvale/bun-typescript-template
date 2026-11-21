@@ -1,0 +1,11 @@
+diff --git a/src/recipe.ts b/src/recipe.ts
+--- a/src/recipe.ts
++++ b/src/recipe.ts
+@@ -37,7 +37,6 @@ export const KERNEL_RECIPE: Recipe = {
+   pin: PIN_SETTINGS,
+   copies: [
+     { from: "generated-repository/application", into: "." },
+-    { from: "generated-repository/hosted-check", into: HOSTED_CHECK_FOLDER },
+     { from: "generated-repository/skills", into: SKILL_FOLDER },
+     {
+       from: "tests/support",
