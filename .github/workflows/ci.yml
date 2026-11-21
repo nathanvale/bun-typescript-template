@@ -1,4 +1,4 @@
-name: CI
+name: Hosted check
 
 on:
   pull_request:

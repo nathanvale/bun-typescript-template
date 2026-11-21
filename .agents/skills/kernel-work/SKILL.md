@@ -38,7 +38,7 @@ Done when each item holds at the pushed head:
 - `bun run doctor` exits 0.
 - Every added or changed case has a green focused run.
 - Every new refusal or bound meets the planted-fault guide.
-- Hosted CI is green, or each case it did not run is reported **unproved**.
+- The hosted check is green, or each case it did not run is reported **unproved**.
   An unproved case is never reported as a pass.
 
 ## Review
