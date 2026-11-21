@@ -3,7 +3,7 @@
 `bun run check:commits <base> [head]` checks every commit in `base..head`
 (after the fixed point in `repository.json`) in its own worktree with its own
 install, typecheck and lint. It prints a verdict per commit and refuses the
-branch when any commit is red at its own head. The `commits` CI job runs it on
+branch when any commit is red at its own head. The hosted `commits` job runs it on
 every pull request.
 
 ## Sub-features

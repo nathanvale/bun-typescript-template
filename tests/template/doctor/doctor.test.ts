@@ -160,7 +160,7 @@ describe("doctor", () => {
       "If mise reports bun@0.0.1 missing, run mise install bun@0.0.1 first.",
     ],
     [
-      "the job runs in CI",
+      "the job runs in a hosted check",
       "In a hosted check, set bun-version: 0.0.1 on setup-bun.",
     ],
   ])("the Bun repair covers the case where %s", (_case, route) => {

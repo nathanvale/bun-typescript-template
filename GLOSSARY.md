@@ -162,6 +162,7 @@ _Avoid_: check (unqualified)
 **Hosted check**:
 A repository's check command and gates as its forge runs them on pull requests
 and pushes.
+The template's pull-request workflow is named `Hosted check`.
 _Avoid_: CI (unqualified)
 
 **Gate**:
@@ -226,6 +227,7 @@ repository's check command and gates, and names a repair for each failure.
 **Toolchain**:
 The tools a repository's check command and gates use, at the accepted versions:
 Bun, the linter, the compiler and the dead-code tool.
+Run `format:check` to check formatting without writing, and `format` to write it.
 
 **Lint rule**:
 One rule the linter enforces on code, with a message that names its repair. A
