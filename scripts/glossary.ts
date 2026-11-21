@@ -300,13 +300,23 @@ export function mergeBaseOf(root: string, revision: string): string {
 export function textAt(root: string, revision: string, path: string): string {
   let shown = git(root, ["show", `${revision}:${path}`]);
   if (shown.exitCode !== 0) {
-    const earlier = gitPaths(root, [
-      "ls-tree",
-      "-r",
-      "--name-only",
-      revision,
-      dirname(dirname(path)),
-    ]).filter((file) => basename(file) === basename(path));
+    const tree = new Set(
+      gitPaths(root, [
+        "ls-tree",
+        "-r",
+        "--name-only",
+        revision,
+        dirname(dirname(path)),
+      ]),
+    );
+    const lists = [recordedHitsFile, recordedUnusedTermsFile];
+    const earlier = [...tree]
+      .filter((file) => basename(file) === basename(path))
+      .filter(
+        (file) =>
+          !lists.includes(path) ||
+          lists.every((list) => tree.has(join(dirname(file), basename(list)))),
+      );
     if (earlier.length === 1)
       shown = git(root, ["show", `${revision}:${earlier[0]}`]);
   }

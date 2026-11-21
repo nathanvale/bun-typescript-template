@@ -53,10 +53,15 @@ function earlierAreaRepository(duplicate: boolean = false) {
   }));
   for (const { current, earlier } of moved)
     git(root, "mv", "--", current, earlier);
+  const unrelated = "tests/template/glossary/recorded-hits.json";
+  put(root, unrelated, JSON.stringify({ hits: [{ file: "docs/term.md" }] }));
+  git(root, "add", "--", unrelated);
   if (duplicate) {
     const other = "tests/template/other/recorded-hits.json";
+    const otherTerms = "tests/template/other/recorded-unused-terms.json";
     put(root, other, JSON.stringify({ hits: [hostHit] }));
-    git(root, "add", "--", other);
+    put(root, otherTerms, JSON.stringify({ terms: [unusedTerm] }));
+    git(root, "add", "--", other, otherTerms);
   }
   git(root, "commit", "--quiet", "-m", "earlier test area");
   for (const { current, earlier } of moved)
