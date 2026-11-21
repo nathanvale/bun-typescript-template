@@ -1909,5 +1909,12 @@
     "testFile": "tests/template/names-check/symbol-gate.test.ts",
     "title": "^symbol gate judges the return properties of public methods one level deep$",
     "source": "da2274f fix(names-check): judge the return properties of public methods"
+  },
+  {
+    "id": "e7d595c-public-declarations",
+    "patch": "tests/planted-faults/patches/e7d595c-public-declarations.patch",
+    "testFile": "tests/template/names-check/symbol-gate.test.ts",
+    "title": "^symbol gate judges a destructured parameter by its property key, never its local alias or nested names$",
+    "source": "e7d595c fix(names-check): judge a destructured parameter by its property key"
   }
 ]
