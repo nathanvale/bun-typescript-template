@@ -281,6 +281,17 @@ const resolution: ts.CompilerOptions = {
   moduleResolution: ts.ModuleResolutionKind.Bundler,
 };
 
+function relativeSpecifier(statement: ts.Statement): string | undefined {
+  const specifier = ts.isExportDeclaration(statement)
+    ? statement.moduleSpecifier
+    : undefined;
+  return specifier !== undefined &&
+    ts.isStringLiteral(specifier) &&
+    specifier.text.startsWith(".")
+    ? specifier.text
+    : undefined;
+}
+
 function reexportedPaths(
   root: string,
   path: string,
@@ -292,24 +303,25 @@ function reexportedPaths(
     readFile: () => undefined,
   };
   const source = ts.createSourceFile(path, text, ts.ScriptTarget.Latest);
-  return source.statements.flatMap((statement) => {
-    const specifier =
-      ts.isExportDeclaration(statement) && statement.moduleSpecifier
-        ? statement.moduleSpecifier
-        : undefined;
-    if (specifier === undefined || !ts.isStringLiteral(specifier)) return [];
-    if (!specifier.text.startsWith(".")) return [];
-    const found = ts.resolveModuleName(
-      specifier.text,
-      resolve(root, path),
-      resolution,
-      host,
-    ).resolvedModule?.resolvedFileName;
-    const target = found === undefined ? "" : relative(root, found);
-    return target === "" || target.startsWith("..") || isAbsolute(target)
-      ? []
-      : [target];
-  });
+  const targets = source.statements
+    .map(relativeSpecifier)
+    .flatMap((specifier) =>
+      specifier === undefined
+        ? []
+        : [
+            ts.resolveModuleName(
+              specifier,
+              resolve(root, path),
+              resolution,
+              host,
+            ).resolvedModule?.resolvedFileName,
+          ],
+    )
+    .map((found) => (found === undefined ? "" : relative(root, found)));
+  return targets.filter(
+    (target) =>
+      target !== "" && !target.startsWith("..") && !isAbsolute(target),
+  );
 }
 
 export function followReexports(
