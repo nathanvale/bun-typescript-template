@@ -324,7 +324,7 @@ test(
         ),
       ).toEqual(expected);
   },
-  processWatchdog(3),
+  processWatchdog(6),
 );
 
 test(
@@ -348,7 +348,7 @@ test(
     put(root, "src/public.ts", "export const proof = 1;\n");
     expect(await check(root, ["--staged"])).toEqual({ code: 0, stderr: "" });
   },
-  processWatchdog(3),
+  processWatchdog(11),
 );
 
 test(
@@ -380,7 +380,7 @@ test(
       stderr: refusal,
     });
   },
-  processWatchdog(3),
+  processWatchdog(5),
 );
 
 test(
@@ -469,7 +469,7 @@ test(
       stderr: "",
     });
   },
-  processWatchdog(3),
+  processWatchdog(5),
 );
 
 test("symbol gate refuses an empty declaration identity in a recorded hit", () => {
@@ -506,7 +506,7 @@ test(
       stderr: `${publicSurfaceFile}: "src/missing.ts" matches no file. Repair: restore its source files or update the public surface.\n`,
     });
   },
-  processWatchdog(3),
+  processWatchdog(4),
 );
 
 test(
