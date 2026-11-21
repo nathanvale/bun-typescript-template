@@ -2,8 +2,9 @@
 
 A generated repository's check command, `bun run check`, runs lint,
 format check, typecheck, tests and Fallow in that order, stops at the first
-step that fails, and names the mistake. It is the only gate a generated
-repository ships: it has no git hooks and no hosted check.
+step that fails, and names the mistake. A generated repository has no git
+hooks; its hosted check workflow, `.github/workflows/ci.yml`, runs this same
+command on every pull request and every push to `main`.
 
 ## Sub-features
 

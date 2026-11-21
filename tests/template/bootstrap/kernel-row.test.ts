@@ -29,6 +29,7 @@ const ownFiles = [
   ".claude/skills/verify-cli",
   ".cli-design-template.json",
   ".fallowrc.json",
+  ".github/workflows/ci.yml",
   ".gitignore",
   "AGENTS.md",
   "README.md",
