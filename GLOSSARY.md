@@ -119,6 +119,15 @@ _Avoid_: lockfile (unqualified); package set lockfile (for the kernel lockfile)
 The Module that reads the kernel's files at one commit of a kernel repository.
 _Avoid_: reader (unqualified; Reader is the Contract 3 word for a program that parses an envelope)
 
+**Git file**:
+The git identities module's record of a plain file's path, mode and blob identity.
+Its type is `GitFile`.
+
+**Kernel root**:
+The kernel reader's record of one declared folder at a commit, with its path,
+tree identity and files. Its type is `KernelRoot`, used for the kernel's own
+roots and each add-on's root.
+
 **Kernel seam**:
 The Seam at the kernel reader's Interface, where a kernel repository at one
 commit is supplied. A test can supply a stand-in.

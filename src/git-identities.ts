@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 export type FileMode = "100644" | "100755";
 
-export type StampedFile = {
+export type GitFile = {
   readonly path: string;
   readonly mode: FileMode;
   readonly blob: string;
@@ -75,7 +75,7 @@ export function plainPath(value: unknown, where: string): string {
   return path;
 }
 
-type Tree = Map<string, StampedFile | Tree>;
+type Tree = Map<string, GitFile | Tree>;
 
 const encoder = new TextEncoder();
 
@@ -110,14 +110,14 @@ function identityOfTree(tree: Tree): string {
 }
 
 function folderIn(tree: Tree, name: string, path: string): Tree {
-  const held = tree.get(name) ?? new Map<string, StampedFile | Tree>();
+  const held = tree.get(name) ?? new Map<string, GitFile | Tree>();
   if (!(held instanceof Map))
     throw new Error(`${path} is both a file and a folder.`);
   tree.set(name, held);
   return held;
 }
 
-function place(top: Tree, names: readonly string[], file: StampedFile): void {
+function place(top: Tree, names: readonly string[], file: GitFile): void {
   const leaf = names.at(-1) ?? "";
   const folders = file.path.split("/").slice(0, -names.length);
   let tree = top;
@@ -132,10 +132,7 @@ function place(top: Tree, names: readonly string[], file: StampedFile): void {
   tree.set(leaf, file);
 }
 
-export function treeIdentity(
-  files: readonly StampedFile[],
-  root: string,
-): string {
+export function treeIdentity(files: readonly GitFile[], root: string): string {
   const prefix = root === "" ? "" : `${root}/`;
   const top: Tree = new Map();
   for (const file of files)

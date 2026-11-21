@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   blobIdentity,
   fileModeOf,
-  type StampedFile,
+  type GitFile,
   treeIdentity,
 } from "../../../src/git-identities.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
@@ -50,7 +50,7 @@ function committed(entries: readonly ObjectEntry[]) {
   return { root, commit };
 }
 
-function stamped(root: string, commit: string): StampedFile[] {
+function gitFiles(root: string, commit: string): GitFile[] {
   return listedFiles(root, commit).map(({ path, mode, blob }) => {
     const plain = fileModeOf(mode);
     if (plain === undefined)
@@ -90,7 +90,7 @@ describe("a blob identity computed in process", () => {
 describe("a tree identity computed in process", () => {
   test("equals git's for the whole commit and for each folder, nested folders included", () => {
     const { root, commit } = committed(hardCases);
-    const files = stamped(root, commit);
+    const files = gitFiles(root, commit);
     for (const tree of ["", "lib", "lib/nested", "lib/nested/deeper", "other"])
       expect([tree, treeIdentity(files, tree)]).toEqual([
         tree,
@@ -100,14 +100,14 @@ describe("a tree identity computed in process", () => {
 
   test("equals git's where a folder sorts differently from a file of the same name", () => {
     const { root, commit } = committed(sortsDifferently);
-    expect(treeIdentity(stamped(root, commit), "trap")).toBe(
+    expect(treeIdentity(gitFiles(root, commit), "trap")).toBe(
       treeOf(root, commit, "trap"),
     );
   });
 
   test("equals git's where names sort differently by UTF-8 byte than by UTF-16 code unit", () => {
     const { root, commit } = committed(sortsByBytes);
-    expect(treeIdentity(stamped(root, commit), "bytes")).toBe(
+    expect(treeIdentity(gitFiles(root, commit), "bytes")).toBe(
       treeOf(root, commit, "bytes"),
     );
   });
@@ -121,13 +121,13 @@ describe("a tree identity computed in process", () => {
         mode: "100755",
       },
     ]);
-    const identity = treeIdentity(stamped(root, executable), "lib");
+    const identity = treeIdentity(gitFiles(root, executable), "lib");
     expect(identity).toBe(treeOf(root, executable, "lib"));
     expect(identity).not.toBe(treeOf(root, commit, "lib"));
   });
 
   test("refuses a path listed twice", () => {
-    const file: StampedFile = {
+    const file: GitFile = {
       path: "lib/a.ts",
       mode: "100644",
       blob: blobIdentity(new Uint8Array()),

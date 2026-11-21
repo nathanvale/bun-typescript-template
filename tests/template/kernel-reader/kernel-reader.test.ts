@@ -11,7 +11,7 @@ import {
   type Kernel,
   kernelDeclarationPath,
   readKernel,
-  type StampRoot,
+  type KernelRoot,
 } from "../../../src/kernel-reader.ts";
 import { ownedFolders, write } from "../../support/fixture-files.ts";
 import { git } from "../../support/git-fixture.ts";
@@ -37,7 +37,7 @@ const firstPath = declarationPathIn(firstLayout);
 
 type Summary = readonly (readonly [string, string, string])[];
 
-function summary({ files }: StampRoot): Summary {
+function summary({ files }: KernelRoot): Summary {
   return files.map(({ path, mode, bytes }) => [
     path,
     mode,
@@ -45,7 +45,7 @@ function summary({ files }: StampRoot): Summary {
   ]);
 }
 
-function everyRoot({ roots, addons }: Kernel): StampRoot[] {
+function everyRoot({ roots, addons }: Kernel): KernelRoot[] {
   return [...roots, ...addons.map(({ root }) => root)];
 }
 
@@ -55,20 +55,20 @@ const committedCore: Summary = [
   ["lib/core/run.sh", "100755", sources.run],
 ];
 
-function workingTree(root: string, stampRoot: string): Summary {
-  const top = join(root, firstLayout.sourceRoot, stampRoot);
+function workingTree(root: string, kernelRoot: string): Summary {
+  const top = join(root, firstLayout.sourceRoot, kernelRoot);
   return readdirSync(top, { recursive: true, encoding: "utf8" })
     .filter((name) => statSync(join(top, name)).isFile())
     .sort()
     .map((name) => [
-      `${stampRoot}/${name}`,
+      `${kernelRoot}/${name}`,
       (statSync(join(top, name)).mode & 0o100) === 0 ? "100644" : "100755",
       readFileSync(join(top, name), "utf8"),
     ]);
 }
 
 describe("the kernel reader, given a local path and one full commit", () => {
-  test("returns the kernel's stamp roots and each add-on's, with the paths they will have in a generated repository", () => {
+  test("returns the kernel's roots and each add-on's, with the paths they will have in a generated repository", () => {
     const repository = folder("kernel-reader-");
     const commit = kernelRepository(repository);
     const kernel = readKernel({ repository, commit }, firstPath);
@@ -121,7 +121,7 @@ describe("the kernel reader, given a local path and one full commit", () => {
     ]);
   });
 
-  test("gives each stamp root git's tree identity and each file git's blob identity", () => {
+  test("gives each kernel root git's tree identity and each file git's blob identity", () => {
     const repository = folder("kernel-reader-");
     const commit = kernelRepository(repository);
     const kernel = readKernel({ repository, commit }, firstPath);
@@ -231,7 +231,7 @@ describe("the kernel reader, given a local path and one full commit", () => {
     expect(readKernel({ repository, commit }).sourceRoot).toBe(sourceRoot);
   });
 
-  test("reads a kernel whose stamp roots sit at the top of its repository", () => {
+  test("reads a kernel whose roots sit at the top of its repository", () => {
     const layout: Layout = { ...firstLayout, sourceRoot: "" };
     const repository = folder("kernel-reader-");
     const commit = kernelRepository(repository, kernelEntries(layout));

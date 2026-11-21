@@ -10,4 +10,4 @@ index 9f5f56c..917a760 100644
 +    if (named[index] === "")
        throw new KernelRefusal(
          "kernel_entry_unsupported",
-         `${source}${path} in commit ${seam.commit} holds an entry that is not a file, such as an empty folder, and a stamp root holds plain files only.`,
+         `${source}${path} in commit ${seam.commit} holds an entry that is not a file, such as an empty folder, and a kernel root holds plain files only.`,
