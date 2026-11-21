@@ -55,6 +55,14 @@ export function oneDependencyChanged(root: string, base: string): string {
   return commit;
 }
 
+export function withoutSkills(root: string, base: string): string {
+  const commit = commitOn(root, [base], "drop the kernel skills folder", {
+    remove: ["skills"],
+  });
+  moveBranch(root, "without-skills", commit);
+  return commit;
+}
+
 export function foldersRenamed(root: string, base: string) {
   const manifest = fileAt(root, base, "package.json");
   const commit = commitOn(root, [base], "rename the kernel folder", {
