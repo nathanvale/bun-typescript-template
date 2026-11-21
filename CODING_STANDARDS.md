@@ -86,7 +86,7 @@ row's guide or gate note cites two distinct witnesses.
 
 ### Glossary
 
-- `tests/template/naming/names.test.ts`, with its shrinking
+- `tests/template/names-check/names.test.ts`, with its shrinking
   `recorded-hits.json`, checks every tracked file and folder name against
   `GLOSSARY.md`. Pre-commit runs the same names check on staged names.
 - Words inside a file are review only. The test that read kernel files for

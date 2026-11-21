@@ -23,6 +23,7 @@
 
 ## Checks
 
+- Run the names check area with `bun run test:area names-check`.
 - For a test area, the full suite, timing-sensitive tests, or a failed
   hosted check, use the [test and hosted check guidance](docs/agents/README.md#checks).
 - Review a diff using the [review routine](CODING_STANDARDS.md#review-routine).

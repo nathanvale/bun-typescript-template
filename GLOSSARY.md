@@ -157,6 +157,10 @@ row.
 A case with no passing evidence from the run or host it needs, reported as
 unproved and never as a pass.
 
+**Names check area**:
+The template's test area for the names check and its glossary records, held in
+`tests/template/names-check/` and run with `bun run test:area names-check`.
+
 ### Shared tool words
 
 **Toolchain pin**:
