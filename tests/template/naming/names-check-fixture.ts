@@ -3,7 +3,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
   type Environment,
-  type Outcome,
+  type NamesCheckResult,
   runNamesCheck,
 } from "../../../scripts/check-names.ts";
 import {
@@ -57,7 +57,7 @@ export function check(
   args: readonly string[],
   stdin?: () => Promise<string>,
   cwd?: string,
-): Promise<Outcome> {
+): Promise<NamesCheckResult> {
   return runNamesCheck(args, environmentFor(root, stdin, cwd));
 }
 

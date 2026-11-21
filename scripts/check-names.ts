@@ -23,7 +23,7 @@ export type Environment = {
   readonly stdin: () => Promise<string>;
 };
 
-export type Outcome = {
+export type NamesCheckResult = {
   readonly stderr: string;
   readonly code: number;
 };
@@ -224,7 +224,7 @@ function problemsFor(
 export async function runNamesCheck(
   args: readonly string[],
   environment: Environment,
-): Promise<Outcome> {
+): Promise<NamesCheckResult> {
   try {
     const problems = new Set(await problemsFor(args, environment));
     return {
