@@ -61,7 +61,7 @@ describe("the kernel reader reads names and text as the bytes git stores", () =>
     );
   });
 
-  test("a stamp root that holds an empty folder, which no list of files shows, is refused with its repair line", () => {
+  test("a kernel root that holds an empty folder, which no list of files shows, is refused with its repair line", () => {
     const repository = folder("kernel-reader-bytes-");
     const whole = kernelRepository(repository);
     const hollow = commitEmptyFolder(
@@ -81,7 +81,7 @@ describe("the kernel reader reads names and text as the bytes git stores", () =>
     ).toEqual(
       refused(
         "kernel_entry_unsupported",
-        `engine/lib/extras/beta in commit ${hollow} holds an entry that is not a file, such as an empty folder, and a stamp root holds plain files only.`,
+        `engine/lib/extras/beta in commit ${hollow} holds an entry that is not a file, such as an empty folder, and a kernel root holds plain files only.`,
         repairs.entry,
       ),
     );
@@ -106,8 +106,8 @@ describe("the kernel reader reads names and text as the bytes git stores", () =>
   });
 });
 
-describe("the kernel reader matches a stamp root by the bytes of a path", () => {
-  test("a path that is not UTF-8, outside a stamp root whose own name holds the replacement character, is left out and not refused", () => {
+describe("the kernel reader matches a kernel root by the bytes of a path", () => {
+  test("a path that is not UTF-8, outside a kernel root whose own name holds the replacement character, is left out and not refused", () => {
     const layout: Layout = { ...firstLayout, core: "lib/co\uFFFDe" };
     const repository = folder("kernel-reader-bytes-");
     initRepository(repository);
@@ -180,7 +180,7 @@ describe("the kernel reader keeps a path as git stores it", () => {
     expect(kernel.sourceRoot).toHaveLength("engine".length + 1);
   });
 
-  test("a file name with a backslash, which a stamp record cannot hold, is refused with its repair line", () => {
+  test("a file name with a backslash, which a kernel root cannot hold, is refused with its repair line", () => {
     const repository = folder("kernel-reader-bytes-");
     const commit = kernelRepository(repository, [
       ...kernelEntries(),
@@ -189,7 +189,7 @@ describe("the kernel reader keeps a path as git stores it", () => {
     expect(refusalOf(() => readKernel({ repository, commit }, path))).toEqual(
       refused(
         "kernel_entry_unsupported",
-        `engine/lib/core/a\\b.ts in commit ${commit} has a name a stamp record cannot hold: it has a backslash.`,
+        `engine/lib/core/a\\b.ts in commit ${commit} has a name a kernel root cannot hold: it has a backslash.`,
         repairs.entry,
       ),
     );

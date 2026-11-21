@@ -10,7 +10,7 @@ import {
   nameText,
   plainPath,
   plainPathFault,
-  type StampedFile,
+  type GitFile,
   textOf,
   treeIdentity,
 } from "./git-identities.ts";
@@ -23,9 +23,9 @@ export type KernelSeam = {
   readonly commit: string;
 };
 
-export type KernelFile = StampedFile & { readonly bytes: Uint8Array };
+export type KernelFile = GitFile & { readonly bytes: Uint8Array };
 
-export type StampRoot = {
+export type KernelRoot = {
   readonly path: string;
   readonly tree: string;
   readonly files: readonly KernelFile[];
@@ -39,13 +39,13 @@ export type Requirements = {
 export type Addon = Requirements & {
   readonly name: string;
   readonly requires: readonly string[];
-  readonly root: StampRoot;
+  readonly root: KernelRoot;
 };
 
 export type Kernel = Requirements & {
   readonly commit: string;
   readonly sourceRoot: string;
-  readonly roots: readonly StampRoot[];
+  readonly roots: readonly KernelRoot[];
   readonly addons: readonly Addon[];
 };
 
@@ -94,7 +94,7 @@ type Entry = {
   readonly id: string;
 };
 
-type Listed = { readonly entry: Entry; readonly file: StampedFile };
+type Listed = { readonly entry: Entry; readonly file: GitFile };
 
 type Declaration = Requirements & {
   readonly roots: readonly string[];
@@ -295,20 +295,17 @@ function blobsOf(
   return blobs;
 }
 
-function plainFile(
-  { path, utf8, mode, id }: Entry,
-  commit: string,
-): StampedFile {
+function plainFile({ path, utf8, mode, id }: Entry, commit: string): GitFile {
   if (!utf8)
     throw new KernelRefusal(
       "kernel_entry_unsupported",
-      `${path} in commit ${commit} has a name that is not UTF-8 text, and a stamp root holds files with UTF-8 names only.`,
+      `${path} in commit ${commit} has a name that is not UTF-8 text, and a kernel root holds files with UTF-8 names only.`,
     );
   const plain = fileModeOf(mode);
   if (plain === undefined)
     throw new KernelRefusal(
       "kernel_entry_unsupported",
-      `${path} in commit ${commit} is ${linkKinds.get(mode) ?? `an entry of git mode ${mode}`}, and a stamp root holds plain files only.`,
+      `${path} in commit ${commit} is ${linkKinds.get(mode) ?? `an entry of git mode ${mode}`}, and a kernel root holds plain files only.`,
     );
   return { path, mode: plain, blob: id };
 }
@@ -338,10 +335,12 @@ function requirementsOf(
 function checkRoots(roots: readonly string[]): void {
   for (const [index, root] of roots.entries()) {
     if (roots.indexOf(root) !== index)
-      throw new Error(`stamp root "${root}" is declared twice.`);
+      throw new Error(`kernel root "${root}" is declared twice.`);
     const outer = roots.find((other) => root.startsWith(`${other}/`));
     if (outer !== undefined)
-      throw new Error(`stamp root "${root}" is inside stamp root "${outer}".`);
+      throw new Error(
+        `kernel root "${root}" is inside kernel root "${outer}".`,
+      );
   }
 }
 
@@ -392,7 +391,7 @@ function sourceRootOf(declarationPath: string, roots: readonly string[]) {
   const [holder] = holders;
   if (holder === undefined || holders.length !== 1)
     throw new Error(
-      `the folder it sits in, "${folder}", must end with exactly one of the kernel's own stamp roots (${roots.join(", ")}), and it ends with ${holders.length}.`,
+      `the folder it sits in, "${folder}", must end with exactly one of the kernel's own roots (${roots.join(", ")}), and it ends with ${holders.length}.`,
     );
   return folder.slice(0, -holder.length).replace(/\/$/, "");
 }
@@ -414,13 +413,13 @@ function listedUnder(
       if (fault !== undefined)
         throw new KernelRefusal(
           "kernel_entry_unsupported",
-          `${entry.path} in commit ${commit} has a name a stamp record cannot hold: ${fault}`,
+          `${entry.path} in commit ${commit} has a name a kernel root cannot hold: ${fault}`,
         );
       return { entry, file: { ...file, path } };
     });
   if (listed.length === 0)
     throw new Error(
-      `it declares stamp root "${root}", which holds no file in that commit.`,
+      `it declares kernel root "${root}", which holds no file in that commit.`,
     );
   return listed;
 }
@@ -471,7 +470,7 @@ function requireWholeRoots(
   repository: string,
   seam: KernelSeam,
   sourceRoot: string,
-  roots: readonly StampRoot[],
+  roots: readonly KernelRoot[],
 ): void {
   const source = sourceRoot === "" ? "" : `${sourceRoot}/`;
   const named = git(
@@ -485,16 +484,16 @@ function requireWholeRoots(
     if (named[index] !== tree)
       throw new KernelRefusal(
         "kernel_entry_unsupported",
-        `${source}${path} in commit ${seam.commit} holds an entry that is not a file, such as an empty folder, and a stamp root holds plain files only.`,
+        `${source}${path} in commit ${seam.commit} holds an entry that is not a file, such as an empty folder, and a kernel root holds plain files only.`,
       );
 }
 
-function stampRootsOf(
+function kernelRootsOf(
   repository: string,
   seam: KernelSeam,
   sourceRoot: string,
   listed: ReadonlyMap<string, readonly Listed[]>,
-): Map<string, StampRoot> {
+): Map<string, KernelRoot> {
   const every = [...listed.values()].flat();
   refuseCollisions(every, seam.commit);
   const blobs = blobsOf(
@@ -503,7 +502,7 @@ function stampRootsOf(
     every.map(({ file }) => file.blob),
   );
   const roots = new Map(
-    [...listed].map(([path, files]): [string, StampRoot] => {
+    [...listed].map(([path, files]): [string, KernelRoot] => {
       const held = files.map(({ file }) => ({
         ...file,
         bytes: blobs.get(file.blob) ?? new Uint8Array(),
@@ -566,16 +565,16 @@ export function readKernel(
       return { declaration, sourceRoot, listed };
     },
   );
-  const roots = stampRootsOf(repository, seam, sourceRoot, listed);
-  const stampRoot = (path: string): StampRoot =>
+  const roots = kernelRootsOf(repository, seam, sourceRoot, listed);
+  const kernelRoot = (path: string): KernelRoot =>
     roots.get(path) ?? { path, tree: "", files: [] };
   return {
     commit,
     sourceRoot,
-    roots: declaration.roots.map(stampRoot),
+    roots: declaration.roots.map(kernelRoot),
     addons: declaration.addons.map((addon) => ({
       ...addon,
-      root: stampRoot(addon.root),
+      root: kernelRoot(addon.root),
     })),
     packages: declaration.packages,
     deadCodeEntries: declaration.deadCodeEntries,

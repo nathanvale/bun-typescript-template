@@ -966,8 +966,8 @@
     "source": "0b40120 fix(kernel-pin): freeze the parsed pin, and refuse a branch git cannot use"
   },
   {
-    "id": "12232bd-stamp-check-folder-order",
-    "patch": "tests/planted-faults/patches/12232bd-stamp-check-folder-order.patch",
+    "id": "12232bd-git-identities-folder-order",
+    "patch": "tests/planted-faults/patches/12232bd-git-identities-folder-order.patch",
     "testFile": "tests/template/git-identities/git-identities.test.ts",
     "title": "a folder sorts differently from a file of the same name$",
     "source": "12232bd feat(stamp-check): compute git blob and tree identities in process"
@@ -1109,12 +1109,12 @@
     "id": "bfd2db1-kernel-reader-declaration-roots",
     "patch": "tests/planted-faults/patches/bfd2db1-kernel-reader-declaration-roots.patch",
     "testFile": "tests/template/kernel-reader/kernel-declaration.test.ts",
-    "title": "a stamp root inside another$",
+    "title": "a kernel root inside another$",
     "source": "bfd2db1 feat(kernel-reader): read the kernel from git objects at one commit"
   },
   {
-    "id": "12232bd-stamp-check-listed-twice",
-    "patch": "tests/planted-faults/patches/12232bd-stamp-check-listed-twice.patch",
+    "id": "12232bd-git-identities-listed-twice",
+    "patch": "tests/planted-faults/patches/12232bd-git-identities-listed-twice.patch",
     "testFile": "tests/template/git-identities/git-identities.test.ts",
     "title": "refuses a path listed twice$",
     "source": "12232bd feat(stamp-check): compute git blob and tree identities in process"
@@ -1144,7 +1144,7 @@
     "id": "95100e0-kernel-reader-whole-roots",
     "patch": "tests/planted-faults/patches/95100e0-kernel-reader-whole-roots.patch",
     "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
-    "title": "a stamp root that holds an empty folder, which no list of files shows, is refused with its repair line$",
+    "title": "a kernel root that holds an empty folder, which no list of files shows, is refused with its repair line$",
     "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
   },
   {
@@ -1158,7 +1158,7 @@
     "id": "1bf0634-kernel-reader-path-bytes",
     "patch": "tests/planted-faults/patches/1bf0634-kernel-reader-path-bytes.patch",
     "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
-    "title": "outside a stamp root whose own name holds the replacement character, is left out and not refused$",
+    "title": "outside a kernel root whose own name holds the replacement character, is left out and not refused$",
     "source": "1bf0634 fix(kernel-reader): answer CodeRabbit's replies on the first round of #113"
   },
   {
@@ -1172,7 +1172,7 @@
     "id": "4ea996f-kernel-reader-record-path",
     "patch": "tests/planted-faults/patches/4ea996f-kernel-reader-record-path.patch",
     "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
-    "title": "a file name with a backslash, which a stamp record cannot hold, is refused with its repair line$",
+    "title": "a file name with a backslash, which a kernel root cannot hold, is refused with its repair line$",
     "source": "4ea996f fix(kernel-reader): answer CodeRabbit's second review of #113"
   },
   {
@@ -1190,8 +1190,8 @@
     "source": "016b761 fix(kernel-reader): answer the third review round of #113"
   },
   {
-    "id": "b3637f2-stamp-check-name-bytes",
-    "patch": "tests/planted-faults/patches/b3637f2-stamp-check-name-bytes.patch",
+    "id": "b3637f2-git-identities-name-bytes",
+    "patch": "tests/planted-faults/patches/b3637f2-git-identities-name-bytes.patch",
     "testFile": "tests/template/kernel-reader/kernel-reader-entries.test.ts",
     "title": "a file whose name is not UTF-8 text$",
     "source": "b3637f2 fix(stamp-check): open each stamped file once"
@@ -1204,24 +1204,24 @@
     "source": "dd553d6 fix(test): leave the generated repository's files out of the template's test run"
   },
   {
-    "id": "d2dfe14-stamp-check-plain-path",
-    "patch": "tests/planted-faults/patches/d2dfe14-stamp-check-plain-path.patch",
+    "id": "d2dfe14-git-identities-plain-path",
+    "patch": "tests/planted-faults/patches/d2dfe14-git-identities-plain-path.patch",
     "testFile": "tests/template/kernel-reader/kernel-declaration.test.ts",
-    "title": "a stamp root that climbs out of its folder$",
+    "title": "a kernel root that climbs out of its folder$",
     "source": "d2dfe14 feat(stamp-check): compare a folder with its stamp record"
   },
   {
-    "id": "95100e0-stamp-check-backslash",
-    "patch": "tests/planted-faults/patches/95100e0-stamp-check-backslash.patch",
+    "id": "95100e0-git-identities-backslash",
+    "patch": "tests/planted-faults/patches/95100e0-git-identities-backslash.patch",
     "testFile": "tests/template/kernel-reader/kernel-reader-bytes.test.ts",
-    "title": "a file name with a backslash, which a stamp record cannot hold, is refused with its repair line$",
+    "title": "a file name with a backslash, which a kernel root cannot hold, is refused with its repair line$",
     "source": "95100e0 fix(kernel-reader): answer the first review round of #113"
   },
   {
-    "id": "016b761-stamp-check-nul-path",
-    "patch": "tests/planted-faults/patches/016b761-stamp-check-nul-path.patch",
+    "id": "016b761-git-identities-nul-path",
+    "patch": "tests/planted-faults/patches/016b761-git-identities-nul-path.patch",
     "testFile": "tests/template/kernel-reader/kernel-declaration.test.ts",
-    "title": "a stamp root that holds a NUL byte$",
+    "title": "a kernel root that holds a NUL byte$",
     "source": "016b761 fix(kernel-reader): answer the third review round of #113"
   },
   {

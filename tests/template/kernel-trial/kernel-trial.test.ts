@@ -11,10 +11,7 @@ import { KERNEL_LOCKFILE } from "../../../src/recipe.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import { git, gitEnv, inherited } from "../../support/git-fixture.ts";
-import {
-  bootstrapRow,
-  withEnvironment,
-} from "../../support/kernel-row-fixture.ts";
+import { bootstrapRow, withEnvironment } from "../../support/recipe-fixture.ts";
 import { kernelClone, trialBase } from "../../support/kernel-sibling.ts";
 import {
   oneDependencyChanged,

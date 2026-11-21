@@ -2,7 +2,7 @@ diff --git a/src/kernel-reader.ts b/src/kernel-reader.ts
 index 1495588..01833ad 100644
 --- a/src/kernel-reader.ts
 +++ b/src/kernel-reader.ts
-@@ -517,7 +517,7 @@ function stampRootsOf(
+@@ -517,7 +517,7 @@ function kernelRootsOf(
  }
  
  function utf8TextOf(bytes: Uint8Array | undefined): string {

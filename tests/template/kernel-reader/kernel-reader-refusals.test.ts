@@ -172,7 +172,7 @@ describe("the kernel reader refuses, with its repair line", () => {
   });
 });
 
-describe("the kernel reader refuses a stamp root, with its repair line, that holds", () => {
+describe("the kernel reader refuses a kernel root, with its repair line, that holds", () => {
   test("a symbolic link", () => {
     const { repository, commit } = withEntries({
       path: "engine/lib/core/link.ts",
@@ -182,7 +182,7 @@ describe("the kernel reader refuses a stamp root, with its repair line, that hol
     expect(refusalOf(() => readKernel({ repository, commit }, path))).toEqual(
       refused(
         "kernel_entry_unsupported",
-        `engine/lib/core/link.ts in commit ${commit} is a symbolic link, and a stamp root holds plain files only.`,
+        `engine/lib/core/link.ts in commit ${commit} is a symbolic link, and a kernel root holds plain files only.`,
         repairs.entry,
       ),
     );
@@ -196,7 +196,7 @@ describe("the kernel reader refuses a stamp root, with its repair line, that hol
     expect(refusalOf(() => readKernel({ repository, commit }, path))).toEqual(
       refused(
         "kernel_entry_unsupported",
-        `engine/lib/extras/beta/vendored in commit ${commit} is a submodule, and a stamp root holds plain files only.`,
+        `engine/lib/extras/beta/vendored in commit ${commit} is a submodule, and a kernel root holds plain files only.`,
         repairs.entry,
       ),
     );
@@ -216,7 +216,7 @@ describe("the kernel reader refuses a stamp root, with its repair line, that hol
     );
   });
 
-  test("nothing of the kind when the link, the submodule and the colliding path sit outside every stamp root", () => {
+  test("nothing of the kind when the link, the submodule and the colliding path sit outside every kernel root", () => {
     const { repository, commit } = withEntries(
       { path: "docs/link.md", bytes: "../README.md", mode: "120000" },
       { path: "engine/vendored", submodule: "1".repeat(40) },

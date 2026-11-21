@@ -13,7 +13,7 @@ import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import {
   bootstrapRow,
   kernelRowFixture,
-} from "../../support/kernel-row-fixture.ts";
+} from "../../support/recipe-fixture.ts";
 import { processWatchdog, spawnBounded } from "../../support/process.ts";
 
 const run = kernelRowFixture();

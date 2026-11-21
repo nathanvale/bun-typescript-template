@@ -41,22 +41,22 @@ const cases: readonly (readonly [string, unknown, string])[] = [
     "base must be an object.",
   ],
   [
-    "kernel stamp roots that are not a list",
+    "kernel roots that are not a list",
     changed(({ base }) => withField(base, "roots", "lib/core")),
     "base.roots must be a list.",
   ],
   [
-    "a stamp root that climbs out of its folder",
+    "a kernel root that climbs out of its folder",
     changed(({ base }) => withField(base, "roots", ["lib/../core"])),
     'base.roots[0] is "lib/../core", which is not a plain path: it has an empty, "." or ".." part.',
   ],
   [
-    "a stamp root that holds a NUL byte",
+    "a kernel root that holds a NUL byte",
     changed(({ base }) => withField(base, "roots", ["lib\0core"])),
     'base.roots[0] is "lib\0core", which is not a plain path: it has a NUL byte.',
   ],
   [
-    "an add-on stamp root that is not text",
+    "an add-on kernel root that is not text",
     changed(({ addons }) => withField(addons.alpha, "root", 7)),
     "addons.alpha.root must be a non-empty string.",
   ],
@@ -83,31 +83,31 @@ const cases: readonly (readonly [string, unknown, string])[] = [
     'addons.alpha.requires names "gamma", which is not a declared add-on.',
   ],
   [
-    "one stamp root declared twice",
+    "one kernel root declared twice",
     changed(({ addons }) => withField(addons.alpha, "root", "lib/core")),
-    'stamp root "lib/core" is declared twice.',
+    'kernel root "lib/core" is declared twice.',
   ],
   [
-    "a stamp root inside another",
+    "a kernel root inside another",
     changed(({ addons }) => withField(addons.alpha, "root", "lib/core/deep")),
-    'stamp root "lib/core/deep" is inside stamp root "lib/core".',
+    'kernel root "lib/core/deep" is inside kernel root "lib/core".',
   ],
   [
-    "a kernel declaration that sits in none of the kernel's own stamp roots",
+    "a kernel declaration that sits in none of the kernel's own roots",
     changed(({ base }) => withField(base, "roots", ["lib/core"])),
-    'the folder it sits in, "engine/settings", must end with exactly one of the kernel\'s own stamp roots (lib/core), and it ends with 0.',
+    'the folder it sits in, "engine/settings", must end with exactly one of the kernel\'s own roots (lib/core), and it ends with 0.',
   ],
   [
-    "a kernel declaration that sits in two of the kernel's own stamp roots",
+    "a kernel declaration that sits in two of the kernel's own roots",
     changed(({ base }) =>
       withField(base, "roots", ["lib/core", "settings", "engine/settings"]),
     ),
-    'the folder it sits in, "engine/settings", must end with exactly one of the kernel\'s own stamp roots (lib/core, settings, engine/settings), and it ends with 2.',
+    'the folder it sits in, "engine/settings", must end with exactly one of the kernel\'s own roots (lib/core, settings, engine/settings), and it ends with 2.',
   ],
   [
-    "a stamp root that holds no file at the commit",
+    "a kernel root that holds no file at the commit",
     changed(({ addons }) => withField(addons.alpha, "root", "lib/gone")),
-    'it declares stamp root "lib/gone", which holds no file in that commit.',
+    'it declares kernel root "lib/gone", which holds no file in that commit.',
   ],
 ];
 

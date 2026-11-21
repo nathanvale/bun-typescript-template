@@ -2,7 +2,7 @@ diff --git a/src/git-identities.ts b/src/git-identities.ts
 index d2f8eda..0e60b21 100644
 --- a/src/git-identities.ts
 +++ b/src/git-identities.ts
-@@ -122,7 +122,7 @@ function place(top: Tree, names: readonly string[], file: StampedFile): void {
+@@ -122,7 +122,7 @@ function place(top: Tree, names: readonly string[], file: GitFile): void {
    const held = tree.get(leaf);
    if (held instanceof Map)
      throw new Error(`${file.path} is both a file and a folder.`);

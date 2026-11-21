@@ -9,7 +9,7 @@ import {
   gitOutput,
   inherited,
 } from "../../support/git-fixture.ts";
-import { withEnvironment } from "../../support/kernel-row-fixture.ts";
+import { withEnvironment } from "../../support/recipe-fixture.ts";
 import {
   absentCommit,
   commitOn,

@@ -75,7 +75,7 @@ export function kernelEntries(
   declaration: unknown = declarationFor(layout),
 ): ObjectEntry[] {
   const { core, settings, extras } = layout;
-  const stamped: ObjectEntry[] = [
+  const sourceEntries: ObjectEntry[] = [
     { path: `${core}/index.ts`, bytes: sources.index },
     { path: `${core}/deep/leaf.ts`, bytes: sources.leaf },
     { path: `${core}/run.sh`, bytes: sources.run, mode: "100755" },
@@ -91,11 +91,11 @@ export function kernelEntries(
     { path: `${extras}/beta/index.ts`, bytes: sources.beta },
     {
       path: "notes.md",
-      bytes: "Inside the source folder, in no stamp root.\n",
+      bytes: "Inside the source folder, in no kernel root.\n",
     },
   ];
   return [
-    ...stamped.map((entry) => ({
+    ...sourceEntries.map((entry) => ({
       ...entry,
       path: inSource(layout, entry.path),
     })),

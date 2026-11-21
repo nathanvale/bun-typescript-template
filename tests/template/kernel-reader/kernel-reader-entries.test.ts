@@ -32,7 +32,7 @@ function collision(earlier: string, later: string, commit: string) {
   );
 }
 
-describe("the kernel reader refuses a stamp root, with its repair line, that holds", () => {
+describe("the kernel reader refuses a kernel root, with its repair line, that holds", () => {
   test("two folders that differ only in letter case", () => {
     const { repository, commit } = withEntries({
       path: "engine/lib/core/Deep/other.ts",
@@ -89,14 +89,14 @@ describe("the kernel reader refuses a stamp root, with its repair line, that hol
     expect(refusalOf(() => readKernel({ repository, commit }, path))).toEqual(
       refused(
         "kernel_entry_unsupported",
-        `engine/lib/core/caf�.ts in commit ${commit} has a name that is not UTF-8 text, and a stamp root holds files with UTF-8 names only.`,
+        `engine/lib/core/caf�.ts in commit ${commit} has a name that is not UTF-8 text, and a kernel root holds files with UTF-8 names only.`,
         repairs.entry,
       ),
     );
   });
 });
 
-describe("the kernel reader takes a stamp root's files", () => {
+describe("the kernel reader takes a kernel root's files", () => {
   test("from the kernel's source folder alone, not from a folder whose name is as long", () => {
     const { repository, commit } = withEntries({
       path: "vendor/lib/core/stray.ts",

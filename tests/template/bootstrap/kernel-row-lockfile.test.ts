@@ -10,7 +10,7 @@ import {
   generatedJson,
   kernelRowFixture,
   leftBehind,
-} from "../../support/kernel-row-fixture.ts";
+} from "../../support/recipe-fixture.ts";
 import { processWatchdog } from "../../support/process.ts";
 import { callInCopy, templateCopy } from "../../support/template-copy.ts";
 

@@ -21,7 +21,7 @@ import {
   siblingKernel,
   templateCommitHoldingS5,
 } from "../../support/kernel-sibling.ts";
-import { withEnvironment } from "../../support/kernel-row-fixture.ts";
+import { withEnvironment } from "../../support/recipe-fixture.ts";
 import { pinnedTemplate } from "../../support/kernel-trial-fixture.ts";
 import {
   processAlive,
