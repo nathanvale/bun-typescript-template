@@ -1,6 +1,6 @@
 export const SKILL_FOLDER = ".agents/skills";
 
-export interface Copy {
+export interface RecipeCopy {
   readonly from: string;
   readonly into:
     | "."
@@ -15,11 +15,11 @@ export interface Copy {
 export const PIN_SETTINGS = {
   from: "generated-repository/settings",
   into: ".",
-} as const satisfies Copy;
+} as const satisfies RecipeCopy;
 
 export interface Recipe {
   readonly pin: typeof PIN_SETTINGS;
-  readonly copies: readonly Copy[];
+  readonly copies: readonly RecipeCopy[];
   readonly checkCommand: string;
 }
 
@@ -49,6 +49,6 @@ export const KERNEL_RECIPE: Recipe = {
 
 export const KERNEL_LOCKFILE = "generated-repository/bun.lock";
 
-export function copiesOf(recipe: Recipe): readonly Copy[] {
+export function copiesOf(recipe: Recipe): readonly RecipeCopy[] {
   return [recipe.pin, ...recipe.copies];
 }

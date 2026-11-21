@@ -1,0 +1,14 @@
+{
+  "exports": [
+    "generated-repository/application/**/*.ts",
+    "tests/support/test-folder.ts",
+    "config/anti-slop-bindings.mjs",
+    "config/anti-slop-rules.mjs",
+    "config/anti-slop-type-rules.mjs",
+    "config/payload-rules.mjs",
+    "config/platform-rules.mjs",
+    "config/template-rules.mjs"
+  ],
+  "consumedExports": ["src/*.ts"],
+  "importers": ["src/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts"]
+}
