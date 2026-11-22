@@ -36,7 +36,7 @@ import {
   KERNEL_RECIPE,
   type Recipe,
   SKILL_FOLDER,
-  TEMPLATE_STAMP_FILE,
+  TEMPLATE_JSON_FILE,
 } from "./recipe.ts";
 import { substituteTokens } from "./token-substitution.ts";
 
@@ -300,7 +300,7 @@ async function writeRepositoryContext(
     sourcePacket: options.sourcePacket,
   };
   await writeFile(
-    join(staging, TEMPLATE_STAMP_FILE),
+    join(staging, TEMPLATE_JSON_FILE),
     `${JSON.stringify(metadata, null, 2)}\n`,
   );
   const check = recipe.checkCommand;

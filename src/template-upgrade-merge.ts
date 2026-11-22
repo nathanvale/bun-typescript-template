@@ -11,13 +11,13 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { REPOSITORY_RECIPE_COPIES, TEMPLATE_STAMP_FILE } from "./recipe.ts";
+import { REPOSITORY_RECIPE_COPIES, TEMPLATE_JSON_FILE } from "./recipe.ts";
 import {
   gitDiffFiles,
   gitMergeFile,
   lstatIfPresent,
 } from "./template-upgrade-git.ts";
-import { OLD_TEMPLATE_STAMP_FILE } from "./template-upgrade-inputs.ts";
+import { OLD_TEMPLATE_JSON_FILE } from "./template-upgrade-inputs.ts";
 import { tryMergeJsonText } from "./template-upgrade-json-merge.ts";
 import {
   assertNoSymlinkAncestors,
@@ -82,8 +82,8 @@ function compareCodeUnits(left: string, right: string): number {
 
 function isTemplateStampPath(relativePath: string): boolean {
   return (
-    relativePath === TEMPLATE_STAMP_FILE ||
-    relativePath === OLD_TEMPLATE_STAMP_FILE
+    relativePath === TEMPLATE_JSON_FILE ||
+    relativePath === OLD_TEMPLATE_JSON_FILE
   );
 }
 
@@ -505,7 +505,7 @@ async function mergeSinglePath(options: {
   ]);
 
   if (
-    relativePath === OLD_TEMPLATE_STAMP_FILE &&
+    relativePath === OLD_TEMPLATE_JSON_FILE &&
     newHasCurrentStamp &&
     oursEntry.kind !== "absent"
   ) {
@@ -575,14 +575,14 @@ export async function mergeTemplateUpgradeTrees(
     collectTreePaths(newFolder),
   ]);
   const newHasCurrentStamp =
-    newPaths.includes(TEMPLATE_STAMP_FILE) &&
-    !newPaths.includes(OLD_TEMPLATE_STAMP_FILE);
+    newPaths.includes(TEMPLATE_JSON_FILE) &&
+    !newPaths.includes(OLD_TEMPLATE_JSON_FILE);
   const extraOldStamp =
     newHasCurrentStamp &&
-    !oldPaths.includes(OLD_TEMPLATE_STAMP_FILE) &&
-    (await lstatIfPresent(join(targetFolder, OLD_TEMPLATE_STAMP_FILE))) !==
+    !oldPaths.includes(OLD_TEMPLATE_JSON_FILE) &&
+    (await lstatIfPresent(join(targetFolder, OLD_TEMPLATE_JSON_FILE))) !==
       undefined
-      ? [OLD_TEMPLATE_STAMP_FILE]
+      ? [OLD_TEMPLATE_JSON_FILE]
       : [];
   const allPaths = [
     ...new Set([...oldPaths, ...newPaths, ...extraOldStamp]),

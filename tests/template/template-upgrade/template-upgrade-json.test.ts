@@ -3,11 +3,11 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { CliError } from "../../../src/cli-error.ts";
 import { kernelPinFile, parseKernelPin } from "../../../src/kernel-pin.ts";
-import { TEMPLATE_STAMP_FILE } from "../../../src/recipe.ts";
+import { TEMPLATE_JSON_FILE } from "../../../src/recipe.ts";
 import { withTemplateUpgradeTrees } from "../../../src/template-upgrade-bootstrap.ts";
 import { TEMPLATE_UPGRADE_FLOOR } from "../../../src/template-upgrade-git.ts";
 import {
-  OLD_TEMPLATE_STAMP_FILE,
+  OLD_TEMPLATE_JSON_FILE,
   resolveTemplateUpgradeInputs,
 } from "../../../src/template-upgrade-inputs.ts";
 import { mergeTemplateUpgradeTrees } from "../../../src/template-upgrade-merge.ts";
@@ -89,7 +89,7 @@ test("reads .template.json when present and reads .cli-design-template.json when
   )}\n`;
 
   const currentRepo = makeStampedRepository(
-    { [TEMPLATE_STAMP_FILE]: stamp },
+    { [TEMPLATE_JSON_FILE]: stamp },
     "stamped-app",
   );
   expect(
@@ -121,7 +121,7 @@ test("reads .template.json when present and reads .cli-design-template.json when
     2,
   )}\n`;
   const oldRepo = makeStampedRepository(
-    { [OLD_TEMPLATE_STAMP_FILE]: oldStamp },
+    { [OLD_TEMPLATE_JSON_FILE]: oldStamp },
     "stamped-app",
   );
   expect(
@@ -151,8 +151,8 @@ test("refuses when both .template.json and .cli-design-template.json are committ
     2,
   )}\n`;
   const repository = makeStampedRepository({
-    [TEMPLATE_STAMP_FILE]: stamp,
-    [OLD_TEMPLATE_STAMP_FILE]: stamp,
+    [TEMPLATE_JSON_FILE]: stamp,
+    [OLD_TEMPLATE_JSON_FILE]: stamp,
   });
 
   const refusal = captureCliError(() =>
@@ -164,9 +164,9 @@ test("refuses when both .template.json and .cli-design-template.json are committ
     }),
   );
   expect(refusal.code).toBe("stamp_duplicate");
-  expect(refusal.message).toContain(TEMPLATE_STAMP_FILE);
-  expect(refusal.message).toContain(OLD_TEMPLATE_STAMP_FILE);
-  expect(refusal.repair).toContain(`delete ${OLD_TEMPLATE_STAMP_FILE}`);
+  expect(refusal.message).toContain(TEMPLATE_JSON_FILE);
+  expect(refusal.message).toContain(OLD_TEMPLATE_JSON_FILE);
+  expect(refusal.repair).toContain(`delete ${OLD_TEMPLATE_JSON_FILE}`);
 });
 
 test("withTemplateUpgradeTrees refuses when regeneration writes both stamp files", async () => {
@@ -191,7 +191,7 @@ test("withTemplateUpgradeTrees refuses when regeneration writes both stamp files
     "README.md": "next\n",
   });
   const repository = makeStampedRepository({
-    [TEMPLATE_STAMP_FILE]: `${JSON.stringify({ name: "demo", templateRevision: first.sha, templateDirty: false, sourcePacket: "/abs/packet" }, null, 2)}\n`,
+    [TEMPLATE_JSON_FILE]: `${JSON.stringify({ name: "demo", templateRevision: first.sha, templateDirty: false, sourcePacket: "/abs/packet" }, null, 2)}\n`,
   });
   const repositoryHead = git(repository, "rev-parse", "HEAD");
   const refusal = await captureAsyncCliError(() =>
@@ -212,20 +212,20 @@ test("withTemplateUpgradeTrees refuses when regeneration writes both stamp files
     ),
   );
   expect(refusal.code).toBe("regeneration_stamp_duplicate");
-  expect(refusal.message).toContain(TEMPLATE_STAMP_FILE);
-  expect(refusal.message).toContain(OLD_TEMPLATE_STAMP_FILE);
-  expect(refusal.repair).toContain(TEMPLATE_STAMP_FILE);
+  expect(refusal.message).toContain(TEMPLATE_JSON_FILE);
+  expect(refusal.message).toContain(OLD_TEMPLATE_JSON_FILE);
+  expect(refusal.repair).toContain(TEMPLATE_JSON_FILE);
 });
 
 test("moves a repository's old .cli-design-template.json stamp to .template.json during tree merge", async () => {
   const renameOld = folder("stamp-rename-old-");
   const renameNew = folder("stamp-rename-new-");
   const renameOurs = folder("stamp-rename-ours-");
-  write(renameOld, OLD_TEMPLATE_STAMP_FILE, '{"templateRevision":"old"}\n');
-  write(renameNew, TEMPLATE_STAMP_FILE, '{"templateRevision":"new"}\n');
+  write(renameOld, OLD_TEMPLATE_JSON_FILE, '{"templateRevision":"old"}\n');
+  write(renameNew, TEMPLATE_JSON_FILE, '{"templateRevision":"new"}\n');
   write(
     renameOurs,
-    OLD_TEMPLATE_STAMP_FILE,
+    OLD_TEMPLATE_JSON_FILE,
     '{"templateRevision":"hand-edited"}\n',
   );
 
@@ -236,23 +236,23 @@ test("moves a repository's old .cli-design-template.json stamp to .template.json
   );
   expect(renameRows).toEqual([
     {
-      path: OLD_TEMPLATE_STAMP_FILE,
+      path: OLD_TEMPLATE_JSON_FILE,
       ownerLabel: "generated",
       outcome: "delete",
     },
-    { path: TEMPLATE_STAMP_FILE, ownerLabel: "generated", outcome: "take" },
+    { path: TEMPLATE_JSON_FILE, ownerLabel: "generated", outcome: "take" },
   ]);
-  expect(existsSync(join(renameOurs, OLD_TEMPLATE_STAMP_FILE))).toBe(false);
-  expect(readFileSync(join(renameOurs, TEMPLATE_STAMP_FILE), "utf8")).toBe(
+  expect(existsSync(join(renameOurs, OLD_TEMPLATE_JSON_FILE))).toBe(false);
+  expect(readFileSync(join(renameOurs, TEMPLATE_JSON_FILE), "utf8")).toBe(
     '{"templateRevision":"new"}\n',
   );
 
   const residualOld = folder("stamp-residual-old-");
   const residualNew = folder("stamp-residual-new-");
   const residualOurs = folder("stamp-residual-ours-");
-  write(residualOld, TEMPLATE_STAMP_FILE, '{"templateRevision":"old"}\n');
-  write(residualNew, TEMPLATE_STAMP_FILE, '{"templateRevision":"new"}\n');
-  write(residualOurs, OLD_TEMPLATE_STAMP_FILE, '{"templateRevision":"old"}\n');
+  write(residualOld, TEMPLATE_JSON_FILE, '{"templateRevision":"old"}\n');
+  write(residualNew, TEMPLATE_JSON_FILE, '{"templateRevision":"new"}\n');
+  write(residualOurs, OLD_TEMPLATE_JSON_FILE, '{"templateRevision":"old"}\n');
 
   const residualRows = await mergeTemplateUpgradeTrees(
     residualOld,
@@ -261,14 +261,14 @@ test("moves a repository's old .cli-design-template.json stamp to .template.json
   );
   expect(residualRows).toEqual([
     {
-      path: OLD_TEMPLATE_STAMP_FILE,
+      path: OLD_TEMPLATE_JSON_FILE,
       ownerLabel: "generated",
       outcome: "delete",
     },
-    { path: TEMPLATE_STAMP_FILE, ownerLabel: "generated", outcome: "take" },
+    { path: TEMPLATE_JSON_FILE, ownerLabel: "generated", outcome: "take" },
   ]);
-  expect(existsSync(join(residualOurs, OLD_TEMPLATE_STAMP_FILE))).toBe(false);
-  expect(readFileSync(join(residualOurs, TEMPLATE_STAMP_FILE), "utf8")).toBe(
+  expect(existsSync(join(residualOurs, OLD_TEMPLATE_JSON_FILE))).toBe(false);
+  expect(readFileSync(join(residualOurs, TEMPLATE_JSON_FILE), "utf8")).toBe(
     '{"templateRevision":"new"}\n',
   );
 });
@@ -292,7 +292,7 @@ test(
         ].join("\n"),
       )
       .replace(
-        "join(staging, TEMPLATE_STAMP_FILE)",
+        "join(staging, TEMPLATE_JSON_FILE)",
         'join(staging, ".cli-design-template.json")',
       );
     expect(oldBootstrapSource).toContain('specRevision: "4"');
@@ -310,10 +310,10 @@ test(
       oldStampCommit,
       "old-stamp-app",
     );
-    expect(existsSync(join(repo, OLD_TEMPLATE_STAMP_FILE))).toBe(true);
-    expect(existsSync(join(repo, TEMPLATE_STAMP_FILE))).toBe(false);
+    expect(existsSync(join(repo, OLD_TEMPLATE_JSON_FILE))).toBe(true);
+    expect(existsSync(join(repo, TEMPLATE_JSON_FILE))).toBe(false);
     const oldStamp = JSON.parse(
-      readFileSync(join(repo, OLD_TEMPLATE_STAMP_FILE), "utf8"),
+      readFileSync(join(repo, OLD_TEMPLATE_JSON_FILE), "utf8"),
     ) as Record<string, unknown>;
     expect(Object.keys(oldStamp).toSorted()).toEqual([
       "commandOwner",
@@ -352,23 +352,23 @@ test(
     expect(applied.status).toBe("applied");
     expect(applied.branch).toBe(branch);
     const rowByPath = new Map(applied.rows.map((row) => [row.path, row]));
-    expect(rowByPath.get(OLD_TEMPLATE_STAMP_FILE)).toEqual({
-      path: OLD_TEMPLATE_STAMP_FILE,
+    expect(rowByPath.get(OLD_TEMPLATE_JSON_FILE)).toEqual({
+      path: OLD_TEMPLATE_JSON_FILE,
       ownerLabel: "generated",
       outcome: "delete",
     });
-    expect(rowByPath.get(TEMPLATE_STAMP_FILE)).toEqual({
-      path: TEMPLATE_STAMP_FILE,
+    expect(rowByPath.get(TEMPLATE_JSON_FILE)).toEqual({
+      path: TEMPLATE_JSON_FILE,
       ownerLabel: "generated",
       outcome: "take",
     });
     const branchFiles = git(repo, "ls-tree", "-r", "--name-only", branch).split(
       "\n",
     );
-    expect(branchFiles).toContain(TEMPLATE_STAMP_FILE);
-    expect(branchFiles).not.toContain(OLD_TEMPLATE_STAMP_FILE);
+    expect(branchFiles).toContain(TEMPLATE_JSON_FILE);
+    expect(branchFiles).not.toContain(OLD_TEMPLATE_JSON_FILE);
     const upgradedStamp = JSON.parse(
-      gitOutput(repo, "show", `${branch}:${TEMPLATE_STAMP_FILE}`),
+      gitOutput(repo, "show", `${branch}:${TEMPLATE_JSON_FILE}`),
     ) as Record<string, unknown>;
     expect(upgradedStamp).toEqual({
       name: "old-stamp-app",

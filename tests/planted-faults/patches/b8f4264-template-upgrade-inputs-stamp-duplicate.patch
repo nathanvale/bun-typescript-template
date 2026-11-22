@@ -3,17 +3,17 @@ diff --git a/src/template-upgrade-inputs.ts b/src/template-upgrade-inputs.ts
 +++ b/src/template-upgrade-inputs.ts
 @@ -71,15 +71,6 @@ function readStampFields(
  ): CommittedStamp {
-   const currentBytes = readCommittedBytes(repository, TEMPLATE_STAMP_FILE, env);
-   const oldBytes = readCommittedBytes(repository, OLD_TEMPLATE_STAMP_FILE, env);
+   const currentBytes = readCommittedBytes(repository, TEMPLATE_JSON_FILE, env);
+   const oldBytes = readCommittedBytes(repository, OLD_TEMPLATE_JSON_FILE, env);
 -  if (currentBytes !== undefined && oldBytes !== undefined) {
 -    throw new CliError(
 -      "stamp_duplicate",
--      `${repository} has both committed ${TEMPLATE_STAMP_FILE} and ${OLD_TEMPLATE_STAMP_FILE} at HEAD`,
--      `delete ${OLD_TEMPLATE_STAMP_FILE} in ${repository} and commit the removal so only ${TEMPLATE_STAMP_FILE} remains`,
+-      `${repository} has both committed ${TEMPLATE_JSON_FILE} and ${OLD_TEMPLATE_JSON_FILE} at HEAD`,
+-      `delete ${OLD_TEMPLATE_JSON_FILE} in ${repository} and commit the removal so only ${TEMPLATE_JSON_FILE} remains`,
 -      2,
 -      true,
 -    );
 -  }
    const stampFile =
-     currentBytes !== undefined ? TEMPLATE_STAMP_FILE : OLD_TEMPLATE_STAMP_FILE;
+     currentBytes !== undefined ? TEMPLATE_JSON_FILE : OLD_TEMPLATE_JSON_FILE;
    const bytes = currentBytes ?? oldBytes;

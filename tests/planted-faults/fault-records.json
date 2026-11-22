@@ -2109,14 +2109,14 @@
   {
     "id": "b8f4264-template-upgrade-inputs-stamp-duplicate",
     "patch": "tests/planted-faults/patches/b8f4264-template-upgrade-inputs-stamp-duplicate.patch",
-    "testFile": "tests/template/template-upgrade/template-upgrade-stamp.test.ts",
+    "testFile": "tests/template/template-upgrade/template-upgrade-json.test.ts",
     "title": "^refuses when both \\.template\\.json and \\.cli-design-template\\.json are committed at HEAD, naming which file to delete$",
     "source": "b8f4264 feat(template-stamp): refuse duplicate template stamps"
   },
   {
     "id": "b8f4264-template-upgrade-bootstrap-stamp-duplicate",
     "patch": "tests/planted-faults/patches/b8f4264-template-upgrade-bootstrap-stamp-duplicate.patch",
-    "testFile": "tests/template/template-upgrade/template-upgrade-stamp.test.ts",
+    "testFile": "tests/template/template-upgrade/template-upgrade-json.test.ts",
     "title": "^withTemplateUpgradeTrees refuses when regeneration writes both stamp files$",
     "source": "b8f4264 feat(template-stamp): refuse duplicate regenerated template stamps"
   }

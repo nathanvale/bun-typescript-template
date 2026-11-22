@@ -9,7 +9,7 @@ import {
   readKernelPin,
   writeKernelPin,
 } from "./kernel-pin.ts";
-import { TEMPLATE_STAMP_FILE } from "./recipe.ts";
+import { TEMPLATE_JSON_FILE } from "./recipe.ts";
 import {
   decodeUtf8Strict,
   gitCommitIdentityArgs,
@@ -18,7 +18,7 @@ import {
   withoutGitLocation,
 } from "./template-upgrade-git.ts";
 import {
-  OLD_TEMPLATE_STAMP_FILE,
+  OLD_TEMPLATE_JSON_FILE,
   type TemplateUpgradeInputs,
 } from "./template-upgrade-inputs.ts";
 
@@ -73,28 +73,28 @@ async function resolveBootstrappedStampFile(
   label: "old" | "new",
 ): Promise<string> {
   const [currentStats, oldStats] = await Promise.all([
-    lstatIfPresent(join(destination, TEMPLATE_STAMP_FILE)),
-    lstatIfPresent(join(destination, OLD_TEMPLATE_STAMP_FILE)),
+    lstatIfPresent(join(destination, TEMPLATE_JSON_FILE)),
+    lstatIfPresent(join(destination, OLD_TEMPLATE_JSON_FILE)),
   ]);
   if (currentStats !== undefined && oldStats !== undefined) {
     throw new CliError(
       "regeneration_stamp_duplicate",
-      `${label} regeneration wrote both ${TEMPLATE_STAMP_FILE} and ${OLD_TEMPLATE_STAMP_FILE}`,
-      `inspect bootstrap at that template commit and keep only ${TEMPLATE_STAMP_FILE}`,
+      `${label} regeneration wrote both ${TEMPLATE_JSON_FILE} and ${OLD_TEMPLATE_JSON_FILE}`,
+      `inspect bootstrap at that template commit and keep only ${TEMPLATE_JSON_FILE}`,
       1,
       false,
     );
   }
   if (currentStats !== undefined) {
-    return TEMPLATE_STAMP_FILE;
+    return TEMPLATE_JSON_FILE;
   }
   if (oldStats !== undefined) {
-    return OLD_TEMPLATE_STAMP_FILE;
+    return OLD_TEMPLATE_JSON_FILE;
   }
   throw new CliError(
     "regeneration_stamp_missing",
-    `${label} regeneration did not write ${TEMPLATE_STAMP_FILE}`,
-    `verify the template commit's bootstrap writes ${TEMPLATE_STAMP_FILE}`,
+    `${label} regeneration did not write ${TEMPLATE_JSON_FILE}`,
+    `verify the template commit's bootstrap writes ${TEMPLATE_JSON_FILE}`,
     1,
     false,
   );

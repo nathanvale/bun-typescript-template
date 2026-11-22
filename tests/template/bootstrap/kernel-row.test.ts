@@ -5,7 +5,7 @@ import { readKernelPin } from "../../../src/kernel-pin.ts";
 import {
   copiesOf,
   KERNEL_RECIPE,
-  TEMPLATE_STAMP_FILE,
+  TEMPLATE_JSON_FILE,
 } from "../../../src/recipe.ts";
 import { listFiles, ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { gitResult, initRepository } from "../../support/git-fixture.ts";
@@ -84,11 +84,11 @@ describe("the kernel row", () => {
     }
     const { destination, request } = run();
     await bootstrapRow(request);
-    expect(existsSync(join(destination, TEMPLATE_STAMP_FILE))).toBe(true);
+    expect(existsSync(join(destination, TEMPLATE_JSON_FILE))).toBe(true);
     expect(existsSync(join(destination, ".cli-design-template.json"))).toBe(
       false,
     );
-    const provenance = generatedJson(destination, TEMPLATE_STAMP_FILE);
+    const provenance = generatedJson(destination, TEMPLATE_JSON_FILE);
     expect(provenance).toMatchObject({
       name: "demo-app",
       sourcePacket: "/abs/packets/demo",
