@@ -103,4 +103,14 @@ export default defineConfig(
       "anti-slop/no-reduce-accumulator-copy": "error",
     },
   },
+  {
+    files: ["**/*.{ts,mts,cts}"],
+    plugins: { "@typescript-eslint": tseslint.plugin },
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { args: "all", argsIgnorePattern: "^_" },
+      ],
+    },
+  },
 );

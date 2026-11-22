@@ -1,0 +1,12 @@
+diff --git a/generated-repository/settings/tsconfig.base.json b/generated-repository/settings/tsconfig.base.json
+index 148de27..eefc014 100644
+--- a/generated-repository/settings/tsconfig.base.json
++++ b/generated-repository/settings/tsconfig.base.json
+@@ -11,7 +11,6 @@
+     "strict": true,
+     "exactOptionalPropertyTypes": true,
+     "noImplicitReturns": true,
+-    "allowUnreachableCode": false,
+     "skipLibCheck": true,
+     "noFallthroughCasesInSwitch": true,
+     "noUncheckedIndexedAccess": true,

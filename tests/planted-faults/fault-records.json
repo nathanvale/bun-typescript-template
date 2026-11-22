@@ -2238,5 +2238,33 @@
     "testFile": "tests/template/bootstrap/generated-source-layout-gate.test.ts",
     "title": "^bootstrapped eslint\\.config\\.mjs refuses loose src files when subject folders exist$",
     "source": "c808d75 feat(generated-repository): ship the source layout gate from day one"
+  },
+  {
+    "id": "135edef-template-allow-unreachable-code",
+    "patch": "tests/planted-faults/patches/135edef-template-allow-unreachable-code.patch",
+    "testFile": "tests/template/bootstrap/generated-strict-checks.test.ts",
+    "title": "^template eslint\\.config\\.mjs and tsconfig\\.base\\.json enforce strict checks with single ownership$",
+    "source": "135edef feat(generated-repository): enforce allowUnreachableCode and underscore-prefixed unused parameters"
+  },
+  {
+    "id": "135edef-template-unused-parameters-underscore",
+    "patch": "tests/planted-faults/patches/135edef-template-unused-parameters-underscore.patch",
+    "testFile": "tests/template/bootstrap/generated-strict-checks.test.ts",
+    "title": "^template eslint\\.config\\.mjs and tsconfig\\.base\\.json enforce strict checks with single ownership$",
+    "source": "135edef feat(generated-repository): enforce allowUnreachableCode and underscore-prefixed unused parameters"
+  },
+  {
+    "id": "135edef-generated-allow-unreachable-code",
+    "patch": "tests/planted-faults/patches/135edef-generated-allow-unreachable-code.patch",
+    "testFile": "tests/template/bootstrap/generated-strict-checks.test.ts",
+    "title": "^bootstrapped tsconfig\\.base\\.json refuses unreachable code after return without duplicating lint$",
+    "source": "135edef feat(generated-repository): enforce allowUnreachableCode and underscore-prefixed unused parameters"
+  },
+  {
+    "id": "135edef-generated-unused-parameters-underscore",
+    "patch": "tests/planted-faults/patches/135edef-generated-unused-parameters-underscore.patch",
+    "testFile": "tests/template/bootstrap/generated-strict-checks.test.ts",
+    "title": "^bootstrapped eslint\\.config\\.mjs refuses plain unused parameters and accepts underscore-prefixed ones$",
+    "source": "135edef feat(generated-repository): enforce allowUnreachableCode and underscore-prefixed unused parameters"
   }
 ]
