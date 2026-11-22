@@ -13,7 +13,6 @@ import { spawnBounded } from "./process.ts";
 
 const copied = [
   "src",
-  "scripts/change-notes.ts",
   "scripts/process-runner.ts",
   "scripts/kernel-trial.ts",
   "scripts/kernel-trial-command.ts",

@@ -6,6 +6,7 @@ import {
   readCommittedBytes,
   readCommittedBytesAt,
   resolveTemplateCommit,
+  runGitCommand,
   verifyGitRepository,
   verifyTemplateAncestry,
 } from "./template-upgrade-git.ts";
@@ -15,6 +16,7 @@ const PACKAGE_FILE = "package.json";
 const KERNEL_PACKAGE_NAME = "agent-cli-kernel";
 const FULL_COMMIT_PATTERN = /^[0-9a-f]{40}$/;
 const KERNEL_PIN_SPECIFIER_PATTERN = /^[^#]+#([0-9a-f]{40})$/;
+const DECIMAL_COUNT_PATTERN = /^\d+$/;
 
 export interface TemplateUpgradeInputs {
   readonly templateRoot: string;
@@ -26,6 +28,7 @@ export interface TemplateUpgradeInputs {
   readonly sourcePacket: string;
   readonly repositoryPinnedCommit: string;
   readonly templatePinnedCommit: string;
+  readonly templateHeadNotice?: string;
 }
 
 export interface TemplateUpgradeInputRequest {
@@ -240,6 +243,43 @@ function readCommittedPackageFields(
   );
 }
 
+function readTemplateHeadNotice(
+  templateRoot: string,
+  targetCommit: string,
+  env: Readonly<Record<string, string | undefined>>,
+): string | undefined {
+  const headRun = runGitCommand(
+    templateRoot,
+    ["rev-parse", "--quiet", "--verify", "HEAD^{commit}"],
+    { env },
+  );
+  if (headRun.timedOut || headRun.exitCode !== 0) {
+    return undefined;
+  }
+  const headCommit = new TextDecoder("utf-8").decode(headRun.stdout).trim();
+  if (headCommit !== targetCommit) {
+    return undefined;
+  }
+  const behindRun = runGitCommand(
+    templateRoot,
+    ["rev-list", "--count", "HEAD..origin/main"],
+    { env },
+  );
+  if (behindRun.timedOut || behindRun.exitCode !== 0) {
+    return undefined;
+  }
+  const countText = new TextDecoder("utf-8").decode(behindRun.stdout).trim();
+  if (!DECIMAL_COUNT_PATTERN.test(countText)) {
+    return undefined;
+  }
+  const count = Number.parseInt(countText, 10);
+  if (count <= 0) {
+    return undefined;
+  }
+  const noun = count === 1 ? "commit" : "commits";
+  return `Warning: template checkout HEAD is ${count} ${noun} behind origin/main. Repair: run git pull in the template, or pass --to origin/main.`;
+}
+
 export function resolveTemplateUpgradeInputs(
   request: TemplateUpgradeInputRequest,
 ): TemplateUpgradeInputs {
@@ -301,6 +341,11 @@ export function resolveTemplateUpgradeInputs(
     targetCommit,
     env,
   );
+  const templateHeadNotice = readTemplateHeadNotice(
+    templateRoot,
+    targetCommit,
+    env,
+  );
 
   return Object.freeze({
     templateRoot,
@@ -312,5 +357,6 @@ export function resolveTemplateUpgradeInputs(
     sourcePacket,
     repositoryPinnedCommit,
     templatePinnedCommit,
+    ...(templateHeadNotice === undefined ? {} : { templateHeadNotice }),
   });
 }

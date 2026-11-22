@@ -1,9 +1,8 @@
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { type ChangeNoteEntry, formatChangeNoteLines } from "./change-notes.ts";
 import { writeCliError } from "./cli-error.ts";
 import {
-  type TemplateUpgradeApplyResult,
-  type TemplateUpgradePlanResult,
   templateUpgradeApply,
   templateUpgradePlan,
 } from "./template-upgrade-apply.ts";
@@ -17,6 +16,11 @@ import type {
   TemplateUpgradeCopyChange,
   TemplateUpgradeRow,
 } from "./template-upgrade-merge.ts";
+import type {
+  TemplateUpgradeApplyResult,
+  TemplateUpgradeApplyStep,
+  TemplateUpgradePlanResult,
+} from "./template-upgrade-report.ts";
 
 const TEMPLATE_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
@@ -40,6 +44,50 @@ function formatRows(rows: readonly TemplateUpgradeRow[]): string[] {
       return `${row.path.padEnd(width)}  ${row.ownerLabel.padEnd(10)}  ${outcomeText}`;
     }),
   ];
+}
+
+function formatTargetCommitLines(
+  targetCommit: string,
+  templateHeadNotice: string | undefined,
+): string[] {
+  return [
+    `Target commit: ${targetCommit}`,
+    ...(templateHeadNotice === undefined ? [] : [templateHeadNotice]),
+  ];
+}
+
+function formatChangeNotesSection(
+  changeNotes: readonly ChangeNoteEntry[],
+): string[] {
+  if (changeNotes.length === 0) {
+    return [];
+  }
+  return [
+    "",
+    `Change notes (${changeNotes.length}):`,
+    ...formatChangeNoteLines(changeNotes).map((line) => `  ${line}`),
+  ];
+}
+
+function formatSharedMerges(sharedMerges: readonly string[]): string[] {
+  if (sharedMerges.length === 0) {
+    return [];
+  }
+  return [
+    "",
+    "Shared files edited by this repository (will be merged):",
+    ...sharedMerges.map((path) => `  ${path}`),
+  ];
+}
+
+function formatApplySteps(
+  steps: readonly TemplateUpgradeApplyStep[],
+): string[] {
+  return steps.map((step) =>
+    step.reason === undefined
+      ? `${step.command}: ${step.outcome}`
+      : `${step.command}: ${step.outcome} (${step.reason})`,
+  );
 }
 
 function formatDependencyChanges(
@@ -94,12 +142,20 @@ function formatPinMoveNoticeLines(pinMoveNotice: string | undefined): string[] {
 function formatPlan(result: TemplateUpgradePlanResult): string {
   const base7 = result.baseCommit.slice(0, 7);
   const target7 = result.targetCommit.slice(0, 7);
+  const targetLines = formatTargetCommitLines(
+    result.targetCommit,
+    result.templateHeadNotice,
+  );
   if (result.status === "up-to-date") {
-    return `${[`Template upgrade plan: up-to-date at ${target7}`, ...formatPinMoveNoticeLines(result.pinMoveNotice)].join("\n")}\n`;
+    return `${[`Template upgrade plan: up-to-date at ${target7}`, ...targetLines, ...formatPinMoveNoticeLines(result.pinMoveNotice)].join("\n")}\n`;
   }
   const lines = [
     `Template upgrade plan: ${base7} -> ${target7}`,
+    ...targetLines,
+    ...formatChangeNotesSection(result.changeNotes),
+    ...(result.changeNotes.length > 0 ? [""] : []),
     ...formatRows(result.rows),
+    ...formatSharedMerges(result.sharedMerges),
     ...formatDependencyChanges(result.dependencyChanges),
     ...formatTemplateCopyDiffs(result.templateCopyChanges),
   ];
@@ -117,6 +173,7 @@ function formatPlan(result: TemplateUpgradePlanResult): string {
 
 function formatConflictApply(
   result: TemplateUpgradeApplyResult,
+  headerDetails: readonly string[],
   notices: readonly string[],
 ): string {
   const worktree = result.worktree ?? "";
@@ -129,6 +186,7 @@ function formatConflictApply(
     : "Resolve the conflicts in that worktree, then rerun the same upgrade apply command.";
   const lines = [
     header,
+    ...headerDetails,
     ...result.conflicts.map((path) => `  ${path}`),
     ...notices,
     instruction,
@@ -138,10 +196,12 @@ function formatConflictApply(
 
 function formatCheckCommandFailureApply(
   result: TemplateUpgradeApplyResult,
+  headerDetails: readonly string[],
   notices: readonly string[],
 ): string {
   const lines = [
     `Template upgrade: ${result.failedStep ?? "check"} failed in ${result.worktree ?? ""}`,
+    ...headerDetails,
   ];
   if (
     result.checkCommandOutput !== undefined &&
@@ -159,12 +219,20 @@ function formatCheckCommandFailureApply(
 function formatApply(result: TemplateUpgradeApplyResult): string {
   const base7 = result.baseCommit.slice(0, 7);
   const target7 = result.targetCommit.slice(0, 7);
+  const targetLines = formatTargetCommitLines(
+    result.targetCommit,
+    result.templateHeadNotice,
+  );
+  const stepLines = formatApplySteps(result.steps);
+  const changeNoteLines = formatChangeNotesSection(result.changeNotes);
   const pinNotice = formatPinMoveNoticeLines(result.pinMoveNotice);
+  const headerDetails = [...targetLines, ...stepLines, ...changeNoteLines];
   if (result.status === "up-to-date") {
-    return `${[`Template upgrade: up-to-date at ${target7}`, ...pinNotice].join("\n")}\n`;
+    return `${[`Template upgrade: up-to-date at ${target7}`, ...targetLines, ...stepLines, ...pinNotice].join("\n")}\n`;
   }
   if (result.status === "already-done") {
     const extraLines = [
+      ...headerDetails,
       ...pinNotice,
       ...(result.leftoverWorktreeNotice === undefined
         ? []
@@ -180,15 +248,15 @@ function formatApply(result: TemplateUpgradeApplyResult): string {
     ),
   ];
   if (result.status === "applied") {
-    return `${[`Template upgrade: created branch ${result.branch} (${base7} -> ${target7})`, ...notices].join("\n")}\n`;
+    return `${[`Template upgrade: created branch ${result.branch} (${base7} -> ${target7})`, ...headerDetails, ...notices].join("\n")}\n`;
   }
   if (
     result.status === "conflicts" ||
     result.status === "resolution-in-progress"
   ) {
-    return formatConflictApply(result, notices);
+    return formatConflictApply(result, headerDetails, notices);
   }
-  return formatCheckCommandFailureApply(result, notices);
+  return formatCheckCommandFailureApply(result, headerDetails, notices);
 }
 
 export async function main(
