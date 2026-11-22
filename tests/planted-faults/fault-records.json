@@ -2140,5 +2140,19 @@
     "testFile": "tests/template/bootstrap/kernel-row.test.ts",
     "title": "gives a check command with no stamp check step, combined Fallow quality check with recorded hits, and a recording script$",
     "source": "98fc663 feat(generated-repository): check dead code, duplication and complexity with Fallow"
+  },
+  {
+    "id": "7b430d4-generated-fallow-dead-code-recorded-hits",
+    "patch": "tests/planted-faults/patches/7b430d4-generated-fallow-dead-code-recorded-hits.patch",
+    "testFile": "tests/template/bootstrap/kernel-row.test.ts",
+    "title": "gives a check command with no stamp check step, combined Fallow quality check with recorded hits, and a recording script$",
+    "source": "7b430d4 feat(generated-repository): record existing complexity findings so an upgrade fails only on new ones"
+  },
+  {
+    "id": "7b430d4-generated-fallow-duplicates-recorded-hits",
+    "patch": "tests/planted-faults/patches/7b430d4-generated-fallow-duplicates-recorded-hits.patch",
+    "testFile": "tests/template/bootstrap/kernel-row.test.ts",
+    "title": "gives a check command with no stamp check step, combined Fallow quality check with recorded hits, and a recording script$",
+    "source": "7b430d4 feat(generated-repository): record existing complexity findings so an upgrade fails only on new ones"
   }
 ]

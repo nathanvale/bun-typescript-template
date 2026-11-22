@@ -23,11 +23,24 @@ interface CombinedFallowReport {
   kind: string;
   gate_outcomes: Record<string, GateOutcome>;
   check?: { unused_exports?: Array<{ export_name: string }> };
-  dupes?: { clone_groups?: unknown[] };
+  dupes?: {
+    clone_groups?: Array<{ instances?: Array<{ file: string }> }>;
+  };
   health?: { findings?: Array<{ name: string; exceeded: string }> };
 }
 
-interface RecordedHitsFile {
+interface DeadCodeRecordedHitsFile {
+  kind?: string;
+  unused_exports?: string[];
+}
+
+interface DuplicatesRecordedHitsFile {
+  kind?: string;
+  clone_groups?: string[];
+  clone_fingerprints?: string[];
+}
+
+interface HealthRecordedHitsFile {
   kind?: string;
   identity_finding_counts?: Record<string, unknown>;
 }
@@ -67,6 +80,31 @@ function duplicateModuleSource(name: string): string {
     }
   }
   return total + bonus;
+}
+`;
+}
+
+function secondDuplicateModuleSource(name: string): string {
+  return `export function ${name}(values: readonly string[], limit: number): number {
+  let hits = 0;
+  let weight = 1;
+  for (const value of values) {
+    if (value.length > limit) {
+      hits += 4;
+      weight += 2;
+    } else if (value.length > 8) {
+      hits += 3;
+      weight += 1;
+    } else if (value.length > 4) {
+      hits += 2;
+    } else if (value.length > 1) {
+      hits += 1;
+    } else {
+      hits -= 1;
+      weight -= 1;
+    }
+  }
+  return hits * weight;
 }
 `;
 }
@@ -151,6 +189,308 @@ function secondComplexModuleSource(name: string): string {
 `;
 }
 
+function gateStatuses(report: CombinedFallowReport) {
+  return {
+    deadCode: report.gate_outcomes["error-severity-findings"]?.status,
+    duplication: report.gate_outcomes["duplication-findings"]?.status,
+    health: report.gate_outcomes["health-findings"]?.status,
+  };
+}
+
+async function assertMissingRecordedHits(
+  destination: string,
+  cases: readonly { path: string; expectedMessage: string }[],
+  restoreRecordedHits: () => Promise<void>,
+): Promise<void> {
+  try {
+    for (const entry of cases) {
+      await rm(entry.path);
+      const missing = await runIn(destination, ["run", "quality:fallow"], {});
+      expect(missing.exitCode).toBe(2);
+      expect(missing.stdout).toContain(entry.expectedMessage);
+      await restoreRecordedHits();
+    }
+  } finally {
+    await restoreRecordedHits();
+  }
+}
+
+async function assertDeadCodeRecording(
+  destination: string,
+  commandsPath: string,
+  original: string,
+  deadCodeHitsPath: string,
+  restoreRecordedHits: () => Promise<void>,
+): Promise<void> {
+  try {
+    await writeFile(
+      commandsPath,
+      `${original}\nexport const unusedValue = 1;\n`,
+    );
+    const unused = await runIn(destination, ["run", "check"], {});
+    expect(unused.exitCode).toBe(1);
+    const unusedReport = parseCombinedFallow(unused.stdout, unused.stderr);
+    expect(unusedReport.gate_outcomes["error-severity-findings"]?.status).toBe(
+      "fail",
+    );
+    expect(
+      unusedReport.check?.unused_exports?.map((entry) => entry.export_name),
+    ).toContain("unusedValue");
+
+    const recorded = await runIn(
+      destination,
+      ["run", "quality:fallow:record-hits"],
+      {},
+    );
+    requireSuccess(recorded, "record Fallow dead-code hits");
+    const recordedHits = JSON.parse(
+      await readFile(deadCodeHitsPath, "utf8"),
+    ) as DeadCodeRecordedHitsFile;
+    expect({
+      kind: recordedHits.kind,
+      unusedExports: recordedHits.unused_exports,
+    }).toEqual({
+      kind: "dead-code",
+      unusedExports: ["unused-export:src/commands.ts:unusedValue"],
+    });
+
+    const withRecorded = await runIn(destination, ["run", "check"], {});
+    requireSuccess(withRecorded, "check command with recorded dead-code hits");
+    expect(
+      gateStatuses(
+        parseCombinedFallow(withRecorded.stdout, withRecorded.stderr),
+      ),
+    ).toEqual({
+      deadCode: "pass",
+      duplication: "pass",
+      health: "pass",
+    });
+
+    await writeFile(
+      commandsPath,
+      `${original}\nexport const unusedValue = 1;\nexport const secondUnusedValue = 2;\n`,
+    );
+    const secondUnused = await runIn(destination, ["run", "check"], {});
+    expect(secondUnused.exitCode).toBe(1);
+    const secondUnusedReport = parseCombinedFallow(
+      secondUnused.stdout,
+      secondUnused.stderr,
+    );
+    expect({
+      ...gateStatuses(secondUnusedReport),
+      unusedExports: secondUnusedReport.check?.unused_exports?.map(
+        (entry) => entry.export_name,
+      ),
+    }).toEqual({
+      deadCode: "fail",
+      duplication: "pass",
+      health: "pass",
+      unusedExports: ["secondUnusedValue"],
+    });
+  } finally {
+    await writeFile(commandsPath, original);
+    await restoreRecordedHits();
+  }
+}
+
+async function assertDuplicatesRecording(
+  destination: string,
+  commandsPath: string,
+  original: string,
+  duplicatesHitsPath: string,
+  restoreRecordedHits: () => Promise<void>,
+): Promise<void> {
+  const firstDup = join(destination, "src/duplicate-first.ts");
+  const secondDup = join(destination, "src/duplicate-second.ts");
+  const thirdDup = join(destination, "src/duplicate-third.ts");
+  const fourthDup = join(destination, "src/duplicate-fourth.ts");
+  try {
+    await writeFile(firstDup, duplicateModuleSource("scoreA"));
+    await writeFile(secondDup, duplicateModuleSource("scoreB"));
+    await writeFile(
+      commandsPath,
+      `import { scoreA } from "./duplicate-first.ts";\nimport { scoreB } from "./duplicate-second.ts";\n${original.replace("ready: true", "ready: scoreA([1], 2) + scoreB([1], 2) >= 0")}`,
+    );
+    const duplicate = await runIn(destination, ["run", "check"], {});
+    expect(duplicate.exitCode).toBe(1);
+    const duplicateReport = parseCombinedFallow(
+      duplicate.stdout,
+      duplicate.stderr,
+    );
+    expect({
+      ...gateStatuses(duplicateReport),
+      cloneGroups: (duplicateReport.dupes?.clone_groups ?? []).length > 0,
+    }).toEqual({
+      deadCode: "pass",
+      duplication: "fail",
+      health: "pass",
+      cloneGroups: true,
+    });
+
+    const recorded = await runIn(
+      destination,
+      ["run", "quality:fallow:record-hits"],
+      {},
+    );
+    requireSuccess(recorded, "record Fallow duplication hits");
+    const recordedHits = JSON.parse(
+      await readFile(duplicatesHitsPath, "utf8"),
+    ) as DuplicatesRecordedHitsFile;
+    expect({
+      kind: recordedHits.kind,
+      cloneGroupCount: (recordedHits.clone_groups ?? []).length,
+      fingerprintCount: (recordedHits.clone_fingerprints ?? []).length,
+    }).toEqual({
+      kind: "dupes",
+      cloneGroupCount: 1,
+      fingerprintCount: 1,
+    });
+
+    const withRecorded = await runIn(destination, ["run", "check"], {});
+    requireSuccess(
+      withRecorded,
+      "check command with recorded duplication hits",
+    );
+    expect(
+      gateStatuses(
+        parseCombinedFallow(withRecorded.stdout, withRecorded.stderr),
+      ),
+    ).toEqual({
+      deadCode: "pass",
+      duplication: "pass",
+      health: "pass",
+    });
+
+    await writeFile(thirdDup, secondDuplicateModuleSource("tallyA"));
+    await writeFile(fourthDup, secondDuplicateModuleSource("tallyB"));
+    await writeFile(
+      commandsPath,
+      `import { scoreA } from "./duplicate-first.ts";\nimport { scoreB } from "./duplicate-second.ts";\nimport { tallyA } from "./duplicate-third.ts";\nimport { tallyB } from "./duplicate-fourth.ts";\n${original.replace("        data: { ready: true },", '        data: {\n          ready:\n            scoreA([1], 2) + scoreB([1], 2) >= 0 &&\n            tallyA(["a"], 1) + tallyB(["b"], 1) >= 0,\n        },')}`,
+    );
+    const secondDuplicate = await runIn(destination, ["run", "check"], {});
+    expect(secondDuplicate.exitCode).toBe(1);
+    const secondDuplicateReport = parseCombinedFallow(
+      secondDuplicate.stdout,
+      secondDuplicate.stderr,
+    );
+    expect({
+      ...gateStatuses(secondDuplicateReport),
+      cloneFiles: (secondDuplicateReport.dupes?.clone_groups ?? [])
+        .flatMap((group) =>
+          (group.instances ?? []).map((instance) => instance.file),
+        )
+        .toSorted(),
+    }).toEqual({
+      deadCode: "pass",
+      duplication: "fail",
+      health: "pass",
+      cloneFiles: ["src/duplicate-fourth.ts", "src/duplicate-third.ts"],
+    });
+  } finally {
+    await rm(firstDup, { force: true });
+    await rm(secondDup, { force: true });
+    await rm(thirdDup, { force: true });
+    await rm(fourthDup, { force: true });
+    await writeFile(commandsPath, original);
+    await restoreRecordedHits();
+  }
+}
+
+async function assertComplexityRecording(
+  destination: string,
+  commandsPath: string,
+  original: string,
+  healthHitsPath: string,
+  restoreRecordedHits: () => Promise<void>,
+): Promise<void> {
+  const complexPath = join(destination, "src/complex-branching.ts");
+  const secondComplexPath = join(
+    destination,
+    "src/second-complex-branching.ts",
+  );
+  try {
+    await writeFile(complexPath, complexModuleSource("decideBranch"));
+    await writeFile(
+      commandsPath,
+      `import { decideBranch } from "./complex-branching.ts";\n${original.replace("ready: true", "ready: decideBranch(1) === 1")}`,
+    );
+    const complex = await runIn(destination, ["run", "check"], {});
+    expect(complex.exitCode).toBe(1);
+    const complexReport = parseCombinedFallow(complex.stdout, complex.stderr);
+    expect({
+      ...gateStatuses(complexReport),
+      findings: complexReport.health?.findings?.map((entry) => entry.name),
+    }).toEqual({
+      deadCode: "pass",
+      duplication: "pass",
+      health: "fail",
+      findings: ["decideBranch"],
+    });
+
+    const recorded = await runIn(
+      destination,
+      ["run", "quality:fallow:record-hits"],
+      {},
+    );
+    requireSuccess(recorded, "record Fallow complexity hits");
+    const recordedHits = JSON.parse(
+      await readFile(healthHitsPath, "utf8"),
+    ) as HealthRecordedHitsFile;
+    expect({
+      kind: recordedHits.kind,
+      recordedFunctions: Object.keys(
+        recordedHits.identity_finding_counts ?? {},
+      ),
+    }).toEqual({
+      kind: "health",
+      recordedFunctions: ["src/complex-branching.ts\u0000decideBranch"],
+    });
+
+    const withRecorded = await runIn(destination, ["run", "check"], {});
+    requireSuccess(withRecorded, "check command with recorded complexity hits");
+    expect(
+      gateStatuses(
+        parseCombinedFallow(withRecorded.stdout, withRecorded.stderr),
+      ),
+    ).toEqual({
+      deadCode: "pass",
+      duplication: "pass",
+      health: "pass",
+    });
+
+    await writeFile(
+      secondComplexPath,
+      secondComplexModuleSource("classifyCode"),
+    );
+    await writeFile(
+      commandsPath,
+      `import { decideBranch } from "./complex-branching.ts";\nimport { classifyCode } from "./second-complex-branching.ts";\n${original.replace("ready: true", 'ready: decideBranch(1) === 1 && classifyCode("a") === "alpha"')}`,
+    );
+    const secondComplex = await runIn(destination, ["run", "check"], {});
+    expect(secondComplex.exitCode).toBe(1);
+    const secondComplexReport = parseCombinedFallow(
+      secondComplex.stdout,
+      secondComplex.stderr,
+    );
+    expect({
+      ...gateStatuses(secondComplexReport),
+      findings: secondComplexReport.health?.findings?.map(
+        (entry) => entry.name,
+      ),
+    }).toEqual({
+      deadCode: "pass",
+      duplication: "pass",
+      health: "fail",
+      findings: ["classifyCode"],
+    });
+  } finally {
+    await rm(complexPath, { force: true });
+    await rm(secondComplexPath, { force: true });
+    await writeFile(commandsPath, original);
+    await restoreRecordedHits();
+  }
+}
+
 async function assertFallowGates(
   destination: string,
   commandsPath: string,
@@ -184,165 +524,60 @@ async function assertFallowGates(
     typeAware: { status: "pass", enforced: true },
   });
 
-  await writeFile(commandsPath, `${original}\nexport const unusedValue = 1;\n`);
-  const unused = await runIn(destination, ["run", "check"], {});
-  expect(unused.exitCode).toBe(1);
-  const unusedReport = parseCombinedFallow(unused.stdout, unused.stderr);
-  expect(unusedReport.gate_outcomes["error-severity-findings"]?.status).toBe(
-    "fail",
-  );
-  expect(
-    unusedReport.check?.unused_exports?.map((entry) => entry.export_name),
-  ).toContain("unusedValue");
-
-  const firstDup = join(destination, "src/duplicate-first.ts");
-  const secondDup = join(destination, "src/duplicate-second.ts");
-  try {
-    await writeFile(firstDup, duplicateModuleSource("scoreA"));
-    await writeFile(secondDup, duplicateModuleSource("scoreB"));
-    await writeFile(
-      commandsPath,
-      `import { scoreA } from "./duplicate-first.ts";\nimport { scoreB } from "./duplicate-second.ts";\n${original.replace("ready: true", "ready: scoreA([1], 2) + scoreB([1], 2) >= 0")}`,
-    );
-    const duplicate = await runIn(destination, ["run", "check"], {});
-    expect(duplicate.exitCode).toBe(1);
-    const duplicateReport = parseCombinedFallow(
-      duplicate.stdout,
-      duplicate.stderr,
-    );
-    expect({
-      deadCode:
-        duplicateReport.gate_outcomes["error-severity-findings"]?.status,
-      duplication:
-        duplicateReport.gate_outcomes["duplication-findings"]?.status,
-      health: duplicateReport.gate_outcomes["health-findings"]?.status,
-      cloneGroups: (duplicateReport.dupes?.clone_groups ?? []).length > 0,
-    }).toEqual({
-      deadCode: "pass",
-      duplication: "fail",
-      health: "pass",
-      cloneGroups: true,
-    });
-  } finally {
-    await rm(firstDup, { force: true });
-    await rm(secondDup, { force: true });
-  }
-
-  const complexPath = join(destination, "src/complex-branching.ts");
-  const secondComplexPath = join(
+  const deadCodeHitsPath = join(
     destination,
-    "src/second-complex-branching.ts",
+    "fallow-dead-code-recorded-hits.json",
   );
-  const recordedHitsPath = join(
+  const duplicatesHitsPath = join(
     destination,
-    "fallow-health-recorded-hits.json",
+    "fallow-duplicates-recorded-hits.json",
   );
-  const originalRecordedHits = await readFile(recordedHitsPath, "utf8");
-  try {
-    await rm(recordedHitsPath);
-    const missingRecordedHits = await runIn(
-      destination,
-      ["run", "quality:fallow"],
-      {},
-    );
-    expect(missingRecordedHits.exitCode).toBe(2);
-    expect(missingRecordedHits.stdout).toContain(
-      "failed to read health baseline",
-    );
-    await writeFile(recordedHitsPath, originalRecordedHits);
+  const healthHitsPath = join(destination, "fallow-health-recorded-hits.json");
+  const originalDeadCodeHits = await readFile(deadCodeHitsPath, "utf8");
+  const originalDuplicatesHits = await readFile(duplicatesHitsPath, "utf8");
+  const originalHealthHits = await readFile(healthHitsPath, "utf8");
+  const restoreRecordedHits = async () => {
+    await writeFile(deadCodeHitsPath, originalDeadCodeHits);
+    await writeFile(duplicatesHitsPath, originalDuplicatesHits);
+    await writeFile(healthHitsPath, originalHealthHits);
+  };
 
-    await writeFile(complexPath, complexModuleSource("decideBranch"));
-    await writeFile(
-      commandsPath,
-      `import { decideBranch } from "./complex-branching.ts";\n${original.replace("ready: true", "ready: decideBranch(1) === 1")}`,
-    );
-    const complex = await runIn(destination, ["run", "check"], {});
-    expect(complex.exitCode).toBe(1);
-    const complexReport = parseCombinedFallow(complex.stdout, complex.stderr);
-    expect({
-      deadCode: complexReport.gate_outcomes["error-severity-findings"]?.status,
-      duplication: complexReport.gate_outcomes["duplication-findings"]?.status,
-      health: complexReport.gate_outcomes["health-findings"]?.status,
-      findings: complexReport.health?.findings?.map((entry) => entry.name),
-    }).toEqual({
-      deadCode: "pass",
-      duplication: "pass",
-      health: "fail",
-      findings: ["decideBranch"],
-    });
-
-    const recorded = await runIn(
-      destination,
-      ["run", "quality:fallow:record-hits"],
-      {},
-    );
-    requireSuccess(recorded, "record Fallow complexity hits");
-    const recordedHits = JSON.parse(
-      await readFile(recordedHitsPath, "utf8"),
-    ) as RecordedHitsFile;
-    expect({
-      kind: recordedHits.kind,
-      recordedFunctions: Object.keys(
-        recordedHits.identity_finding_counts ?? {},
-      ),
-    }).toEqual({
-      kind: "health",
-      recordedFunctions: ["src/complex-branching.ts\u0000decideBranch"],
-    });
-
-    const withRecorded = await runIn(destination, ["run", "check"], {});
-    requireSuccess(withRecorded, "check command with recorded complexity hits");
-    const withRecordedReport = parseCombinedFallow(
-      withRecorded.stdout,
-      withRecorded.stderr,
-    );
-    expect({
-      deadCode:
-        withRecordedReport.gate_outcomes["error-severity-findings"]?.status,
-      duplication:
-        withRecordedReport.gate_outcomes["duplication-findings"]?.status,
-      health: withRecordedReport.gate_outcomes["health-findings"]?.status,
-    }).toEqual({
-      deadCode: "pass",
-      duplication: "pass",
-      health: "pass",
-    });
-
-    await writeFile(
-      secondComplexPath,
-      secondComplexModuleSource("classifyCode"),
-    );
-    await writeFile(
-      commandsPath,
-      `import { decideBranch } from "./complex-branching.ts";\nimport { classifyCode } from "./second-complex-branching.ts";\n${original.replace("ready: true", 'ready: decideBranch(1) === 1 && classifyCode("a") === "alpha"')}`,
-    );
-    const secondComplex = await runIn(destination, ["run", "check"], {});
-    expect(secondComplex.exitCode).toBe(1);
-    const secondComplexReport = parseCombinedFallow(
-      secondComplex.stdout,
-      secondComplex.stderr,
-    );
-    expect({
-      deadCode:
-        secondComplexReport.gate_outcomes["error-severity-findings"]?.status,
-      duplication:
-        secondComplexReport.gate_outcomes["duplication-findings"]?.status,
-      health: secondComplexReport.gate_outcomes["health-findings"]?.status,
-      findings: secondComplexReport.health?.findings?.map(
-        (entry) => entry.name,
-      ),
-    }).toEqual({
-      deadCode: "pass",
-      duplication: "pass",
-      health: "fail",
-      findings: ["classifyCode"],
-    });
-  } finally {
-    await rm(complexPath, { force: true });
-    await rm(secondComplexPath, { force: true });
-    await writeFile(commandsPath, original);
-    await writeFile(recordedHitsPath, originalRecordedHits);
-  }
+  await assertMissingRecordedHits(
+    destination,
+    [
+      { path: deadCodeHitsPath, expectedMessage: "failed to read baseline" },
+      {
+        path: duplicatesHitsPath,
+        expectedMessage: "failed to read duplication baseline",
+      },
+      {
+        path: healthHitsPath,
+        expectedMessage: "failed to read health baseline",
+      },
+    ],
+    restoreRecordedHits,
+  );
+  await assertDeadCodeRecording(
+    destination,
+    commandsPath,
+    original,
+    deadCodeHitsPath,
+    restoreRecordedHits,
+  );
+  await assertDuplicatesRecording(
+    destination,
+    commandsPath,
+    original,
+    duplicatesHitsPath,
+    restoreRecordedHits,
+  );
+  await assertComplexityRecording(
+    destination,
+    commandsPath,
+    original,
+    healthHitsPath,
+    restoreRecordedHits,
+  );
 }
 
 test(

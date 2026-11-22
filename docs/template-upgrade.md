@@ -126,6 +126,6 @@ Add `--force` to `git worktree remove` if the worktree contains uncommitted chan
 4. Rerunning `apply` after completion reports `already-done` and exits `0`.
 5. If a run is interrupted at any step before completion, rerunning the same `apply` command converges to the same branch and tree. If `.worktrees/template-upgrade-<target7>` is left over from an older `HEAD`, `apply` refuses and leaves it untouched so your edits are never lost.
 
-### Recording existing complexity findings
+### Recording existing Fallow findings
 
-After a Template upgrade that turns on Fallow complexity rules, run `bun run quality:fallow:record-hits` once to record existing complexity findings in `fallow-health-recorded-hits.json`. Thereafter, `bun run check` passes on the recorded findings and fails on new complexity findings; a recorded function that gets more complex is not caught, because the recorded file counts findings per function rather than their complexity score.
+After a Template upgrade that enables or changes Fallow checks, run `bun run quality:fallow:record-hits` once to record existing dead-code, duplication, and complexity findings in `fallow-dead-code-recorded-hits.json`, `fallow-duplicates-recorded-hits.json`, and `fallow-health-recorded-hits.json`. Thereafter, `bun run check` passes on the recorded findings and fails on new dead-code, duplication, or complexity findings; a recorded complex function that gets more complex is not caught, because the health recorded-hits file counts findings per function rather than their complexity score, and changing `tsconfig.json` after recording requires re-running `bun run quality:fallow:record-hits` so Fallow refreshes the dead-code file's `project_config_hash`.
