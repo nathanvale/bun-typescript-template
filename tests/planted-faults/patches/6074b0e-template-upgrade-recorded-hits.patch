@@ -1,0 +1,11 @@
+diff --git a/src/template-upgrade-recorded-hits.ts b/src/template-upgrade-recorded-hits.ts
+--- a/src/template-upgrade-recorded-hits.ts
++++ b/src/template-upgrade-recorded-hits.ts
+@@ -136,7 +136,6 @@ function newRecordedHitsPresent(options: RecordedHitsRequest): boolean {
+       undefined,
+   );
+   if (!missingInRepositoryHead) return false;
+-  if (recordingDone(options)) return false;
+   return RECORDED_HITS_FILES.every((file) =>
+     matchesTemplateRecordedHits(options, file),
+   );
