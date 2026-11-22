@@ -11,19 +11,19 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { REPOSITORY_RECIPE_COPIES } from "./recipe.ts";
+import { REPOSITORY_RECIPE_COPIES, TEMPLATE_JSON_FILE } from "./recipe.ts";
 import {
   gitDiffFiles,
   gitMergeFile,
   lstatIfPresent,
 } from "./template-upgrade-git.ts";
+import { OLD_TEMPLATE_JSON_FILE } from "./template-upgrade-inputs.ts";
 import { tryMergeJsonText } from "./template-upgrade-json-merge.ts";
 import {
   assertNoSymlinkAncestors,
   readPlainFileBytes,
 } from "./template-upgrade-worktree.ts";
 
-const STAMP_FILE = ".cli-design-template.json";
 const LOCK_FILE = "bun.lock";
 const PACKAGE_FILE = "package.json";
 const REPOSITORY_COPIES = new Set(REPOSITORY_RECIPE_COPIES);
@@ -80,11 +80,18 @@ function compareCodeUnits(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
+function isTemplateStampPath(relativePath: string): boolean {
+  return (
+    relativePath === TEMPLATE_JSON_FILE ||
+    relativePath === OLD_TEMPLATE_JSON_FILE
+  );
+}
+
 export function classifyTemplateUpgradeFileOwner(
   relativePath: string,
 ): TemplateUpgradeFileOwner {
   if (
-    relativePath === STAMP_FILE ||
+    isTemplateStampPath(relativePath) ||
     relativePath === LOCK_FILE ||
     relativePath.startsWith(".claude/skills/")
   ) {
@@ -478,10 +485,18 @@ async function mergeSinglePath(options: {
   readonly oldFolder: string;
   readonly newFolder: string;
   readonly targetFolder: string;
+  readonly newHasCurrentStamp: boolean;
   readonly env: Readonly<Record<string, string | undefined>>;
 }): Promise<PathMergeResult> {
-  const { relativePath, ownerLabel, oldFolder, newFolder, targetFolder, env } =
-    options;
+  const {
+    relativePath,
+    ownerLabel,
+    oldFolder,
+    newFolder,
+    targetFolder,
+    newHasCurrentStamp,
+    env,
+  } = options;
 
   const [oldEntry, newEntry, oursEntry] = await Promise.all([
     inspectTreeEntry(oldFolder, relativePath),
@@ -489,6 +504,14 @@ async function mergeSinglePath(options: {
     inspectTreeEntry(targetFolder, relativePath),
   ]);
 
+  if (
+    relativePath === OLD_TEMPLATE_JSON_FILE &&
+    newHasCurrentStamp &&
+    oursEntry.kind !== "absent"
+  ) {
+    await deleteTreeEntry(targetFolder, relativePath);
+    return { outcome: "delete" };
+  }
   if (entriesEqual(oldEntry, newEntry)) {
     return { outcome: "untouched" };
   }
@@ -498,7 +521,7 @@ async function mergeSinglePath(options: {
   if (entriesEqual(oursEntry, newEntry)) {
     return { outcome: "already-applied" };
   }
-  if (relativePath === STAMP_FILE) {
+  if (isTemplateStampPath(relativePath)) {
     return {
       outcome: await applyUnchangedPathUpdate(
         targetFolder,
@@ -551,9 +574,19 @@ export async function mergeTemplateUpgradeTrees(
     collectTreePaths(oldFolder),
     collectTreePaths(newFolder),
   ]);
-  const allPaths = [...new Set([...oldPaths, ...newPaths])].sort(
-    compareCodeUnits,
-  );
+  const newHasCurrentStamp =
+    newPaths.includes(TEMPLATE_JSON_FILE) &&
+    !newPaths.includes(OLD_TEMPLATE_JSON_FILE);
+  const extraOldStamp =
+    newHasCurrentStamp &&
+    !oldPaths.includes(OLD_TEMPLATE_JSON_FILE) &&
+    (await lstatIfPresent(join(targetFolder, OLD_TEMPLATE_JSON_FILE))) !==
+      undefined
+      ? [OLD_TEMPLATE_JSON_FILE]
+      : [];
+  const allPaths = [
+    ...new Set([...oldPaths, ...newPaths, ...extraOldStamp]),
+  ].sort(compareCodeUnits);
   await assertAllPathAncestorsSafe(
     allPaths,
     oldFolder,
@@ -572,6 +605,7 @@ export async function mergeTemplateUpgradeTrees(
       oldFolder,
       newFolder,
       targetFolder,
+      newHasCurrentStamp,
       env,
     });
     rowByPath.set(

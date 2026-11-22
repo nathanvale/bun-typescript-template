@@ -134,8 +134,8 @@ function assertPlanRows(planJson: PlanJson): void {
     ownerLabel: "template",
     outcome: "conflict",
   });
-  expect(rowByPath.get(".cli-design-template.json")).toEqual({
-    path: ".cli-design-template.json",
+  expect(rowByPath.get(".template.json")).toEqual({
+    path: ".template.json",
     ownerLabel: "generated",
     outcome: "take",
   });
@@ -158,7 +158,7 @@ function assertUpgradedBranchContents(
     ],
   ).toBe("2.6.8");
   expect(
-    JSON.parse(git(repo, "show", `${branch}:.cli-design-template.json`)),
+    JSON.parse(git(repo, "show", `${branch}:.template.json`)),
   ).toMatchObject({ templateRevision: targetCommit });
   expect(git(repo, "show", `${branch}:eslint.config.mjs`)).toContain(
     "./config/host-platform-rules.mjs",
