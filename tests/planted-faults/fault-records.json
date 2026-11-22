@@ -2175,5 +2175,19 @@
     "testFile": "tests/template/bootstrap/kernel-row.test.ts",
     "title": "leaves Markdown with front matter and plain Markdown byte-identical when formatting a generated repository, while still checking TypeScript$",
     "source": "4da63bc fix(generated-repository): stop Biome rewriting Markdown and its front matter"
+  },
+  {
+    "id": "6af3b16-template-git-fixture-count",
+    "patch": "tests/planted-faults/patches/6af3b16-template-git-fixture-count.patch",
+    "testFile": "tests/template/test-helpers/git-fixture.test.ts",
+    "title": "^the template git fixture commits with maintenance\\.auto false and gc\\.auto 0$",
+    "source": "6af3b16 feat(git-fixture): disable automatic git maintenance and ship gitFixture helper"
+  },
+  {
+    "id": "6af3b16-generated-git-fixture-count",
+    "patch": "tests/planted-faults/patches/6af3b16-generated-git-fixture-count.patch",
+    "testFile": "tests/template/test-helpers/git-fixture.test.ts",
+    "title": "^the shipped git fixture test passes in a bootstrapped generated repository$",
+    "source": "6af3b16 feat(git-fixture): disable automatic git maintenance and ship gitFixture helper"
   }
 ]
