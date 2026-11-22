@@ -1,4 +1,5 @@
 import {
+  chmodSync,
   copyFileSync,
   lstatSync,
   mkdirSync,
@@ -6,11 +7,11 @@ import {
   readlinkSync,
   renameSync,
   rmSync,
-  type Stats,
   symlinkSync,
+  type Stats,
   writeFileSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 import { main } from "../../src/template-upgrade.ts";
 import { ROOT } from "./bootstrap-cli-fixture.ts";
 import { git, gitEnv, gitOutput, initRepository } from "./git-fixture.ts";
@@ -315,4 +316,54 @@ export async function bootstrapGeneratedRepository(
   git(destination, "add", "--", ...files);
   git(destination, "commit", "--quiet", "-m", "initial bootstrap");
   return destination;
+}
+
+export function writeScriptedBun(
+  folder: (prefix: string) => string,
+  prefix: string,
+  script: string,
+) {
+  const binFolder = folder(prefix);
+  const ledger = join(binFolder, "calls.log");
+  const bunPath = join(binFolder, "bun");
+  writeFileSync(bunPath, script.replace("__LEDGER__", JSON.stringify(ledger)));
+  chmodSync(bunPath, 0o755);
+  return {
+    binFolder,
+    ledger,
+    env: {
+      ...process.env,
+      ...gitEnv,
+      KERNEL_REPOSITORY: siblingKernel(),
+      PATH: `${binFolder}${delimiter}${process.env.PATH ?? ""}`,
+    },
+  };
+}
+
+export function commitTemplateLintChange(templateClone: string): string {
+  const eslintPath = join(
+    templateClone,
+    "generated-repository/settings/eslint.config.mjs",
+  );
+  writeFileSync(eslintPath, `${readFileSync(eslintPath, "utf8")}\n`);
+  const templateRulesPath = join(templateClone, "config/template-rules.mjs");
+  writeFileSync(
+    templateRulesPath,
+    `${readFileSync(templateRulesPath, "utf8")}\n`,
+  );
+  git(
+    templateClone,
+    "add",
+    "--",
+    "generated-repository/settings/eslint.config.mjs",
+    "config/template-rules.mjs",
+  );
+  git(
+    templateClone,
+    "commit",
+    "--quiet",
+    "-m",
+    "template change without package.json change",
+  );
+  return git(templateClone, "rev-parse", "HEAD");
 }

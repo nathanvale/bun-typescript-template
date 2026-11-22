@@ -1,5 +1,4 @@
 ---
-
 name: repo-gardener
 description: Keep the rule table in `CODING_STANDARDS.md` in step with its witnesses and gates, and file and folder names on the glossary's words. Name the job, Sow, Gate, Weed or Stake, and pass the correction, review finding, rule row or name in the prompt.
 tools: Read, Grep, Glob, Edit, Write, Bash

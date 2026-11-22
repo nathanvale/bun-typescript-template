@@ -1,0 +1,15 @@
+diff --git a/generated-repository/settings/biome.json b/generated-repository/settings/biome.json
+--- a/generated-repository/settings/biome.json
++++ b/generated-repository/settings/biome.json
+@@ -16,11 +16,6 @@
+     "indentStyle": "space",
+     "indentWidth": 2
+   },
+-  "markdown": {
+-    "formatter": {
+-      "enabled": false
+-    }
+-  },
+   "linter": {
+     "enabled": false
+   },

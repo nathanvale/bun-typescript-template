@@ -1,0 +1,11 @@
+diff --git a/generated-repository/settings/fallow-dead-code-recorded-hits.json b/generated-repository/settings/fallow-dead-code-recorded-hits.json
+--- a/generated-repository/settings/fallow-dead-code-recorded-hits.json
++++ b/generated-repository/settings/fallow-dead-code-recorded-hits.json
+@@ -4,7 +4,6 @@
+     "mode": "type-aware",
+     "semantic_schema_version": 3,
+     "capabilities": ["symbol-use", "type-coupling"],
+-    "project_config_hash": "deferred:no-semantic-queries",
+     "backend_family": "typescript-go",
+     "completeness": "complete",
+     "node_modules": "present"

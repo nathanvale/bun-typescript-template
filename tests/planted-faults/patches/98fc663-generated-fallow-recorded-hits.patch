@@ -1,0 +1,11 @@
+diff --git a/generated-repository/settings/fallow-health-recorded-hits.json b/generated-repository/settings/fallow-health-recorded-hits.json
+--- a/generated-repository/settings/fallow-health-recorded-hits.json
++++ b/generated-repository/settings/fallow-health-recorded-hits.json
+@@ -1,7 +1,6 @@
+ {
+   "kind": "health",
+   "finding_counts": {},
+-  "identity_finding_counts": {},
+   "runtime_coverage_findings": [],
+   "target_keys": []
+ }
