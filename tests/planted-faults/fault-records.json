@@ -2126,5 +2126,12 @@
     "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
     "title": "refuses a skill whose description holds byte 0xFF, naming the skill path and repair, and publishes nothing$",
     "source": "9063630 feat(bootstrap): the generated AGENTS.md says where the kernel's skills are and when to read them"
+  },
+  {
+    "id": "0039ef3-generated-biome",
+    "patch": "tests/planted-faults/patches/0039ef3-generated-biome.patch",
+    "testFile": "tests/template/bootstrap/kernel-row.test.ts",
+    "title": "leaves Markdown with front matter and plain Markdown byte-identical when formatting a generated repository, while still checking TypeScript$",
+    "source": "0039ef3 fix(bootstrap): disable Biome Markdown formatting in generated repositories"
   }
 ]
