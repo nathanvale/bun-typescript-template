@@ -1,6 +1,6 @@
-diff --git a/scripts/change-notes.ts b/scripts/change-notes.ts
---- a/scripts/change-notes.ts
-+++ b/scripts/change-notes.ts
+diff --git a/src/change-notes.ts b/src/change-notes.ts
+--- a/src/change-notes.ts
++++ b/src/change-notes.ts
 @@ -77,11 +77,6 @@
    const objectResult = parseJsonObject(file, raw);
    if (!objectResult.ok) return objectResult;

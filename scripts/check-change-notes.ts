@@ -4,9 +4,9 @@ import { kernelPinFile } from "../src/kernel-pin.ts";
 import { copiesOf, KERNEL_LOCKFILE, KERNEL_RECIPE } from "../src/recipe.ts";
 import {
   CHANGE_NOTES_FOLDER,
-  isValidChangeNoteFile,
+  isChangeNoteFile,
   parseChangeNote,
-} from "./change-notes.ts";
+} from "../src/change-notes.ts";
 import { withoutRepositoryLocation } from "./process-runner.ts";
 
 export type ChangeNoteCheckResult = {
@@ -163,7 +163,7 @@ function noteProblem(root: string, entry: DiffEntry): string | undefined {
   if (entry.path === undefined)
     return `${CHANGE_NOTES_FOLDER}/ (raw path bytes ${entry.rawPath.toString("hex")}): filename is not valid UTF-8 text. Repair: rename the note to a valid UTF-8 ${CHANGE_NOTES_FOLDER}/YYYY-MM-DD-<kebab-slug>.json filename.`;
   const file = entry.path.slice(CHANGE_NOTES_FOLDER.length + 1);
-  if (file.includes("/") || !isValidChangeNoteFile(file))
+  if (file.includes("/") || !isChangeNoteFile(file))
     return `${entry.path}: filename must match ${CHANGE_NOTES_FOLDER}/YYYY-MM-DD-<kebab-slug>.json with a valid date. Repair: rename the note to start with a valid ISO date and lowercase kebab-case slug.`;
   if (fileModeOf(entry.mode) === undefined)
     return `${entry.path}: must be a plain file in HEAD (git mode ${entry.mode}). Repair: replace ${entry.path} with a regular UTF-8 JSON file.`;

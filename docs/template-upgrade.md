@@ -21,7 +21,7 @@ bun run upgrade apply --repository PATH [--to REF] [--no-check] [--json]
 ### Options
 
 - `--repository PATH`: Path to the generated repository root.
-- `--to REF`: Target template commit, branch, or tag (default: `HEAD` of this template checkout). The target must descend from the repository's recorded `templateRevision`; downgrades are refused.
+- `--to REF`: Target template commit, branch, or tag (default: `HEAD` of this template checkout). The target must descend from the repository's recorded `templateRevision`; downgrades are refused. Both `plan` and `apply` always print the resolved target commit (`Target commit: <sha>`). When targeting the template checkout's `HEAD` while it is behind `origin/main` (checked locally with `git rev-list --count HEAD..origin/main`, without fetching), both commands print one warning line (and include `templateHeadNotice` in `--json` output) naming how many commits behind it is and the repair (`git pull` in the template, or pass `--to origin/main`).
 - `--no-check`: Available with `apply`. Skips `bun install` and `bun run check` in the upgrade worktree before committing.
 - `--json`: Prints a single JSON result envelope (`stdout` on completion or conflict/check status, `stderr` on refusal).
 
@@ -80,7 +80,9 @@ Every file or symbolic link present in the regenerated old or new tree receives 
 | `conflict-delete`       | Deleted on one side and modified on the other for a text file; conflict markers are written with an empty side noting who deleted it (`>>>>>>> new (deleted by template)` or `<<<<<<< ours (deleted by owner)`). Files that cannot hold text conflict markers (such as files containing a NUL byte) keep the repository's state as `template-copy-changed` with a reason instead.                                                       |
 | `conflict-link`         | A symbolic link disagreed across old, new, and the repository; the repository's entry was kept.                                                                                                                                                                                                                                                                                                                                         |
 
-`plan` prints the per-file rows, any `package.json` dependency version changes, and the `git diff` between the old and new regenerated copies for every `template-copy-changed` path. It removes its temporary worktree and exits `0` even when conflicts are present.
+`plan` prints the target commit, every change note under `change-notes/` present in the target commit and absent from the base commit (breaking notes first, each with its summary and action; also returned as `changeNotes` in `--json`), the per-file rows, any repository-edited `shared` files that will be merged (`sharedMerges` in `--json`), any `package.json` dependency version changes, and the `git diff` between the old and new regenerated copies for every `template-copy-changed` path. It removes its temporary worktree and exits `0` even when conflicts are present.
+
+`apply` prints the target commit, one line each for `bun install` and `bun run check` stating whether each ran and its outcome (`steps` in `--json`), and the same breaking-first change notes (`changeNotes` in `--json`). When `apply` creates the upgrade commit, the commit message body lists those change notes (breaking first) with their summaries and actions.
 
 ## Applying, resolving conflicts, and rerunning
 

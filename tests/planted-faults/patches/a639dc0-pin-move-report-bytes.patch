@@ -1,13 +1,13 @@
-diff --git a/scripts/pin-move-report.ts b/scripts/pin-move-report.ts
-index 5d6e206..4121448 100644
---- a/scripts/pin-move-report.ts
-+++ b/scripts/pin-move-report.ts
-@@ -41,7 +41,7 @@ function filesAt(repository: string, commit: string): Map<string, string> {
-     const record = listing.subarray(start, end < 0 ? listing.length : end);
+diff --git a/src/git-identities.ts b/src/git-identities.ts
+index 7b5c2d1..9aa3472 100644
+--- a/src/git-identities.ts
++++ b/src/git-identities.ts
+@@ -153,7 +153,7 @@ export function parseGitTreeEntries(listing: Buffer): Map<string, string> {
      const tab = record.indexOf(9);
-     files.set(
--      record.subarray(tab + 1).toString("latin1"),
-+      record.subarray(tab + 1).toString("utf8"),
-       record.subarray(0, tab).toString("latin1"),
-     );
-     start = end < 0 ? listing.length : end + 1;
+     if (tab > 0) {
+       files.set(
+-        record.subarray(tab + 1).toString("latin1"),
++        record.subarray(tab + 1).toString("utf8"),
+         record.subarray(0, tab).toString("latin1"),
+       );
+     }

@@ -480,11 +480,14 @@ test(
     );
     expect(textRun.exitCode).toBe(0);
     const textLines = textRun.stdout.trimEnd().split("\n");
-    expect(textLines).toHaveLength(2);
+    expect(textLines).toHaveLength(5);
     expect(textLines[0]).toBe(
       `Template upgrade: already-done on branch ${setup.branch}`,
     );
-    expect(textLines[1]).toContain(setup.targetWorktree);
+    expect(textLines[1]).toBe(`Target commit: ${setup.targetCommit}`);
+    expect(textLines[2]).toBe("bun install: skipped (already-done)");
+    expect(textLines[3]).toBe("bun run check: skipped (already-done)");
+    expect(textLines[4]).toContain(setup.targetWorktree);
     expect(readFileSync(ownerFile, "utf8")).toBe("do not delete\n");
   },
   processWatchdog(4),
