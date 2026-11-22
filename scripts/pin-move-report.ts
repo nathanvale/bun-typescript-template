@@ -1,3 +1,4 @@
+import { fileModeOf, nameText } from "../src/git-identities.ts";
 import { git } from "../src/kernel-reader.ts";
 import {
   CHANGE_NOTES_FOLDER,
@@ -61,7 +62,17 @@ function shown(path: string): string {
 }
 
 const notePrefix = `${CHANGE_NOTES_FOLDER}/`;
-const plainBlobModes = new Set(["100644", "100755"]);
+
+function decodeNoteFilename(rawFile: string): string {
+  const rawBytes = Buffer.from(rawFile, "latin1");
+  const file = nameText(rawBytes);
+  if (file === undefined) {
+    throw new Error(
+      `${notePrefix} (raw filename bytes ${rawBytes.toString("hex")}): kernel change note filename is not valid UTF-8 text. Repair: rename the change note to a valid UTF-8 filename in the kernel repository.`,
+    );
+  }
+  return file;
+}
 
 function addedChangeNotes(
   repository: string,
@@ -81,14 +92,14 @@ function addedChangeNotes(
     ) {
       continue;
     }
-    addedFiles.push({ file: shown(rawFile), meta });
+    addedFiles.push({ file: decodeNoteFilename(rawFile), meta });
   }
   if (!hasFolder) return undefined;
   addedFiles.sort((left, right) => compareText(left.file, right.file));
   return addedFiles.map(({ file, meta }) => {
     const path = `${notePrefix}${file}`;
     const [mode = "", type = "", blobId = ""] = meta.split(" ");
-    if (!plainBlobModes.has(mode) || type !== "blob" || blobId === "") {
+    if (fileModeOf(mode) === undefined || type !== "blob" || blobId === "") {
       throw new Error(
         `${path}: kernel change note is not a plain file (git entry "${meta}"). Repair: replace ${path} with a regular UTF-8 JSON file in the kernel repository.`,
       );

@@ -15,11 +15,30 @@ import {
   templateChangeNoteAffects,
 } from "../../../scripts/check-change-notes.ts";
 import { ownedFolders, write } from "../../support/fixture-files.ts";
-import { commit, git, initRepository } from "../../support/git-fixture.ts";
+import {
+  commit,
+  git,
+  gitEnv,
+  inherited,
+  initRepository,
+} from "../../support/git-fixture.ts";
 import { processWatchdog, spawnBounded } from "../../support/process.ts";
+import { withEnvironment } from "../../support/recipe-fixture.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 const folder = ownedFolders();
+
+function checkIsolated(root: string, base: string) {
+  return withEnvironment(gitEnv, () =>
+    Promise.resolve(checkChangeNotes(root, base)),
+  );
+}
+
+function runIsolated(args: readonly string[], defaultRoot: string) {
+  return withEnvironment(gitEnv, () =>
+    Promise.resolve(runChangeNoteCheck(args, defaultRoot)),
+  );
+}
 
 function makeTemplateRepository(): string {
   const repo = join(folder("change-notes-gate-"), "repo");
@@ -260,25 +279,25 @@ describe("shipped template paths and check:change-notes gate", () => {
     expect(isShippedTemplatePath("tests/support/git-fixture.ts")).toBe(false);
   });
 
-  test("passes when only non-shipped files change", () => {
+  test("passes when only non-shipped files change", async () => {
     const repo = makeTemplateRepository();
     git(repo, "checkout", "-b", "docs-only");
     commit(repo, "docs change", { "docs/guide.md": "# Updated\n" });
 
-    const result = checkChangeNotes(repo, "main");
+    const result = await checkIsolated(repo, "main");
     expect(result.code).toBe(0);
     expect(result.stderr).toBe("");
     expect(result.stdout).toContain("none on the shipped template surface");
   });
 
-  test("fails when a shipped file changes without adding a change note, and passes with a note or kind none", () => {
+  test("fails when a shipped file changes without adding a change note, and passes with a note or kind none", async () => {
     const repo = makeTemplateRepository();
     git(repo, "checkout", "-b", "shipped");
     commit(repo, "shipped change", {
       "generated-repository/settings/package.json": '{"private":true}\n',
     });
 
-    const red = checkChangeNotes(repo, "main");
+    const red = await checkIsolated(repo, "main");
     expect(red.code).toBe(1);
     expect(red.stderr).toContain(
       "changes 1 shipped file(s) (first: generated-repository/settings/package.json) without adding a change note",
@@ -294,20 +313,20 @@ describe("shipped template paths and check:change-notes gate", () => {
       }),
     });
 
-    const green = checkChangeNotes(repo, "main");
+    const green = await checkIsolated(repo, "main");
     expect(green.code).toBe(0);
     expect(green.stderr).toBe("");
     expect(green.stdout).toContain("2026-11-22-internal.json");
   });
 
-  test("refuses invalid filenames, nested notes, symlinks, and non-UTF-8 notes", () => {
+  test("refuses invalid filenames, nested notes, symlinks, and non-UTF-8 notes", async () => {
     const repo = makeTemplateRepository();
     git(repo, "checkout", "-b", "bad-notes");
     commit(repo, "bad filename and nested note", {
       [`${CHANGE_NOTES_FOLDER}/not-dated.json`]: "{}",
       [`${CHANGE_NOTES_FOLDER}/sub/2026-11-22-nested.json`]: "{}",
     });
-    const badNames = checkChangeNotes(repo, "main");
+    const badNames = await checkIsolated(repo, "main");
     expect(badNames.code).toBe(1);
     expect(badNames.stderr).toContain(
       "change-notes/not-dated.json: filename must match",
@@ -326,7 +345,7 @@ describe("shipped template paths and check:change-notes gate", () => {
     writeFileSync(notePath, new Uint8Array([0xff, 0xfe]));
     git(bytesRepo, "add", `${CHANGE_NOTES_FOLDER}/2026-11-22-bytes.json`);
     git(bytesRepo, "commit", "--quiet", "-m", "bad bytes");
-    const badBytes = checkChangeNotes(bytesRepo, "main");
+    const badBytes = await checkIsolated(bytesRepo, "main");
     expect(badBytes.code).toBe(1);
     expect(badBytes.stderr).toContain("is not valid UTF-8 text");
 
@@ -354,25 +373,90 @@ describe("shipped template paths and check:change-notes gate", () => {
       `${CHANGE_NOTES_FOLDER}/2026-11-22-linked.json`,
     );
     git(linkRepo, "commit", "--quiet", "-m", "linked note");
-    const badLink = checkChangeNotes(linkRepo, "main");
+    const badLink = await checkIsolated(linkRepo, "main");
     expect(badLink.code).toBe(1);
     expect(badLink.stderr).toContain(
-      "change-notes/2026-11-22-linked.json: could not read plain file",
+      "change-notes/2026-11-22-linked.json: must be a plain file in HEAD",
     );
   });
 
-  test("exits 2 on invalid arguments or an unknown base revision", () => {
+  test("validates the change note committed at HEAD, ignoring uncommitted working-tree edits", async () => {
     const repo = makeTemplateRepository();
-    expect(runChangeNoteCheck(["--unknown"], repo)).toEqual({
+    git(repo, "checkout", "-b", "head-vs-worktree");
+    const noteRel = `${CHANGE_NOTES_FOLDER}/2026-11-22-head-check.json`;
+    const validNote = JSON.stringify({
+      kind: "fixed",
+      breaking: false,
+      affects: ["bootstrap"],
+      summary: "Fixed committed note.",
+      action: null,
+    });
+    commit(repo, "commit broken note with shipped change", {
+      "src/recipe.ts": "export const r = 2;\n",
+      [noteRel]: "{broken",
+    });
+    write(repo, noteRel, validNote);
+
+    const brokenHead = await checkIsolated(repo, "main");
+    expect(brokenHead.code).toBe(1);
+    expect(brokenHead.stderr).toContain(`${noteRel}: invalid JSON`);
+
+    commit(repo, "fix note in HEAD", { [noteRel]: validNote });
+    write(repo, noteRel, "{uncommitted-broken");
+
+    const cleanHead = await checkIsolated(repo, "main");
+    expect(cleanHead.code).toBe(0);
+    expect(cleanHead.stderr).toBe("");
+  });
+
+  test(
+    "isolates in-process and CLI checks from a caller's broken diff.orderFile configuration",
+    async () => {
+      const repo = makeTemplateRepository();
+      git(repo, "checkout", "-b", "isolated-config");
+      commit(repo, "docs change", { "docs/guide.md": "# Isolated\n" });
+      const poisoned = {
+        GIT_CONFIG_COUNT: "1",
+        GIT_CONFIG_KEY_0: "diff.orderFile",
+        GIT_CONFIG_VALUE_0: join(repo, "no-such-order-file"),
+      };
+
+      await withEnvironment(poisoned, async () => {
+        expect(() => checkChangeNotes(repo, "main")).toThrow(
+          "failed to read orderfile",
+        );
+        const isolated = await checkIsolated(repo, "main");
+        expect(isolated.code).toBe(0);
+        const cli = await spawnBounded(
+          [
+            process.execPath,
+            "run",
+            join(ROOT, "scripts/check-change-notes.ts"),
+            "--base",
+            "main",
+            "--root",
+            repo,
+          ],
+          { cwd: ROOT, env: { ...inherited(), ...gitEnv }, processGroup: true },
+        );
+        expect(cli.exit).toBe(0);
+      });
+    },
+    processWatchdog(1),
+  );
+
+  test("exits 2 on invalid arguments or an unknown base revision", async () => {
+    const repo = makeTemplateRepository();
+    expect(await runIsolated(["--unknown"], repo)).toEqual({
       stdout: "",
       stderr:
         "Usage: bun run check:change-notes [--base <revision>] [--root <folder>]\n",
       code: 2,
     });
-    expect(runChangeNoteCheck(["--base"], repo).code).toBe(2);
-    expect(runChangeNoteCheck(["--base", "-bad"], repo).code).toBe(2);
+    expect((await runIsolated(["--base"], repo)).code).toBe(2);
+    expect((await runIsolated(["--base", "-bad"], repo)).code).toBe(2);
 
-    const unknownBase = runChangeNoteCheck(
+    const unknownBase = await runIsolated(
       ["--base", "no-such-revision", "--root", repo],
       repo,
     );
@@ -401,7 +485,7 @@ describe("shipped template paths and check:change-notes gate", () => {
           "--root",
           repo,
         ],
-        { cwd: ROOT, processGroup: true },
+        { cwd: ROOT, env: { ...inherited(), ...gitEnv }, processGroup: true },
       );
       expect(run.exit).toBe(1);
       expect(run.stderr).toContain(

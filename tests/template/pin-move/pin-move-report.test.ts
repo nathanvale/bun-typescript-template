@@ -194,4 +194,46 @@ describe("the pin move report", () => {
       "change-notes/2026-11-22-bytes.json: kernel change note is not valid UTF-8 text.",
     );
   });
+
+  test("refuses a kernel change note whose filename is not valid UTF-8 and preserves a leading BOM in a valid filename", () => {
+    const root = join(folder("pin-move-report-bad-name-"), "kernel");
+    initRepository(root);
+    const from = commitObjects(root, "first", [
+      { path: "change-notes/README.md", bytes: "# Change notes\n" },
+    ]);
+    const validJson = JSON.stringify({
+      kind: "fixed",
+      breaking: false,
+      affects: ["kernel"],
+      summary: "Valid note body.",
+      action: null,
+    });
+    const badNameBytes = Buffer.concat([
+      Buffer.from("change-notes/2026-11-22-"),
+      Buffer.from([0xff]),
+      Buffer.from(".json"),
+    ]);
+    stageRawPath(root, badNameBytes, validJson);
+    const toBad = commitObjects(root, "bad-name", []);
+    expect(() => pinMoveReport(root, from, toBad)).toThrow(
+      "kernel change note filename is not valid UTF-8 text",
+    );
+    expect(() => pinMoveReport(root, from, toBad)).toThrow("ff2e6a736f6e");
+
+    git(root, "rm", "--cached", "--quiet", "-r", "change-notes");
+    commitObjects(root, "restore-readme", [
+      { path: "change-notes/README.md", bytes: "# Change notes\n" },
+    ]);
+    const bomNameBytes = Buffer.concat([
+      Buffer.from("change-notes/"),
+      Buffer.from([0xef, 0xbb, 0xbf]),
+      Buffer.from("2026-11-22-bom.json"),
+    ]);
+    stageRawPath(root, bomNameBytes, validJson);
+    const toBom = commitObjects(root, "bom-name", []);
+    const bomReport = pinMoveReport(root, from, toBom);
+    expect(bomReport.changeNotes?.map((entry) => entry.file)).toEqual([
+      "\uFEFF2026-11-22-bom.json",
+    ]);
+  });
 });

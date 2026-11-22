@@ -1,11 +1,5 @@
-import {
-  closeSync,
-  constants,
-  fstatSync,
-  openSync,
-  readFileSync,
-} from "node:fs";
 import { join } from "node:path";
+import { fileModeOf, nameText } from "../src/git-identities.ts";
 import { kernelPinFile } from "../src/kernel-pin.ts";
 import { copiesOf, KERNEL_LOCKFILE, KERNEL_RECIPE } from "../src/recipe.ts";
 import {
@@ -64,78 +58,123 @@ const strictUtf8 = new TextDecoder("utf-8", { fatal: true });
 const knownFlags = new Set(["--base", "--root"]);
 const usage =
   "Usage: bun run check:change-notes [--base <revision>] [--root <folder>]\n";
+const notePrefixBytes = Buffer.from(`${CHANGE_NOTES_FOLDER}/`);
+const noteReadmeBytes = Buffer.from(`${CHANGE_NOTES_FOLDER}/README.md`);
+const shippedPrefixBytes = shippedPrefixes.map((prefix) => Buffer.from(prefix));
 
-function gitDiffPaths(root: string, args: readonly string[]): string[] {
-  const result = Bun.spawnSync(
-    ["git", "diff", "--name-only", "-z", "--no-renames", ...args],
-    {
-      cwd: root,
-      env: {
-        ...withoutRepositoryLocation(process.env),
-        GIT_OPTIONAL_LOCKS: "0",
-        GIT_NO_LAZY_FETCH: "1",
-        GIT_TERMINAL_PROMPT: "0",
-      },
-      stdout: "pipe",
-      stderr: "pipe",
-      timeout: gitMilliseconds,
-      killSignal: "SIGKILL",
+type DiffEntry = {
+  readonly mode: string;
+  readonly blob: string;
+  readonly status: string;
+  readonly rawPath: Buffer;
+  readonly path: string | undefined;
+};
+
+function runGit(root: string, args: readonly string[]): Buffer {
+  const result = Bun.spawnSync(["git", ...args], {
+    cwd: root,
+    env: {
+      ...withoutRepositoryLocation(process.env),
+      GIT_OPTIONAL_LOCKS: "0",
+      GIT_NO_LAZY_FETCH: "1",
+      GIT_TERMINAL_PROMPT: "0",
+      GIT_NO_REPLACE_OBJECTS: "1",
     },
-  );
+    stdout: "pipe",
+    stderr: "pipe",
+    timeout: gitMilliseconds,
+    killSignal: "SIGKILL",
+  });
   if (result.exitedDueToTimeout)
     throw new Error(
-      `git diff ${args.join(" ")} did not finish within ${gitMilliseconds} ms in ${root}.`,
+      `git ${args.join(" ")} did not finish within ${gitMilliseconds} ms in ${root}.`,
     );
   if (result.exitCode !== 0)
     throw new Error(
-      `git diff ${args.join(" ")} failed in ${root}: ${result.stderr.toString().trim()}`,
+      `git ${args.join(" ")} failed in ${root}: ${result.stderr.toString().trim()}`,
     );
-  return result.stdout
-    .toString()
-    .split("\0")
-    .filter((entry) => entry !== "");
+  return result.stdout;
 }
 
-function readPlainUtf8(fullPath: string, displayPath: string): string {
-  const fd = openSync(
-    fullPath,
-    constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
-  );
-  try {
-    if (!fstatSync(fd).isFile())
-      throw new Error(
-        `${displayPath}: must be a plain file. Repair: replace it with a regular JSON file.`,
-      );
-    try {
-      return strictUtf8.decode(readFileSync(fd));
-    } catch {
-      throw new Error(
-        `${displayPath}: is not valid UTF-8 text. Repair: save ${displayPath} as UTF-8 JSON.`,
-      );
-    }
-  } finally {
-    closeSync(fd);
+function nulFields(output: Buffer): Buffer[] {
+  const fields: Buffer[] = [];
+  let offset = 0;
+  for (let end = output.indexOf(0); end >= 0; end = output.indexOf(0, offset)) {
+    fields.push(output.subarray(offset, end));
+    offset = end + 1;
   }
+  return fields;
 }
 
-const isNotePath = (path: string) =>
-  path.startsWith(`${CHANGE_NOTES_FOLDER}/`) &&
-  path !== `${CHANGE_NOTES_FOLDER}/README.md`;
+function diffEntries(root: string, range: string): readonly DiffEntry[] {
+  const fields = nulFields(
+    runGit(root, [
+      "diff",
+      "--raw",
+      "--no-abbrev",
+      "--no-renames",
+      "--no-ext-diff",
+      "--no-textconv",
+      "--no-relative",
+      "-z",
+      range,
+    ]),
+  );
+  if (fields.length % 2 !== 0)
+    throw new Error(`git diff ${range} returned an incomplete record.`);
+  const entries: DiffEntry[] = [];
+  for (let index = 0; index < fields.length; index += 2) {
+    const header = fields[index]?.toString("ascii") ?? "";
+    const rawPath = fields[index + 1];
+    const [, mode = "", , blob = "", status = ""] = header.split(" ");
+    if (rawPath === undefined || mode === "" || blob === "" || status === "")
+      throw new Error(`git diff ${range} returned an incomplete record.`);
+    entries.push({
+      mode,
+      blob,
+      status,
+      rawPath,
+      path: nameText(rawPath),
+    });
+  }
+  return entries;
+}
 
-function noteProblem(root: string, path: string): string | undefined {
-  const file = path.slice(CHANGE_NOTES_FOLDER.length + 1);
+function isNoteEntry(entry: DiffEntry): boolean {
+  return (
+    entry.rawPath.subarray(0, notePrefixBytes.length).equals(notePrefixBytes) &&
+    !entry.rawPath.equals(noteReadmeBytes)
+  );
+}
+
+function isShippedEntry(entry: DiffEntry): boolean {
+  return entry.path !== undefined
+    ? isShippedTemplatePath(entry.path)
+    : shippedPrefixBytes.some((prefix) =>
+        entry.rawPath.subarray(0, prefix.length).equals(prefix),
+      );
+}
+
+function entryLabel(entry: DiffEntry): string {
+  return entry.path ?? entry.rawPath.toString("hex");
+}
+
+function noteProblem(root: string, entry: DiffEntry): string | undefined {
+  if (entry.path === undefined)
+    return `${CHANGE_NOTES_FOLDER}/ (raw path bytes ${entry.rawPath.toString("hex")}): filename is not valid UTF-8 text. Repair: rename the note to a valid UTF-8 ${CHANGE_NOTES_FOLDER}/YYYY-MM-DD-<kebab-slug>.json filename.`;
+  const file = entry.path.slice(CHANGE_NOTES_FOLDER.length + 1);
   if (file.includes("/") || !isValidChangeNoteFile(file))
-    return `${path}: filename must match ${CHANGE_NOTES_FOLDER}/YYYY-MM-DD-<kebab-slug>.json with a valid date. Repair: rename the note to start with a valid ISO date and lowercase kebab-case slug.`;
+    return `${entry.path}: filename must match ${CHANGE_NOTES_FOLDER}/YYYY-MM-DD-<kebab-slug>.json with a valid date. Repair: rename the note to start with a valid ISO date and lowercase kebab-case slug.`;
+  if (fileModeOf(entry.mode) === undefined)
+    return `${entry.path}: must be a plain file in HEAD (git mode ${entry.mode}). Repair: replace ${entry.path} with a regular UTF-8 JSON file.`;
+  const bytes = runGit(root, ["cat-file", "blob", entry.blob]);
   let raw: string;
   try {
-    raw = readPlainUtf8(join(root, path), path);
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    return reason.startsWith(`${path}:`)
-      ? reason
-      : `${path}: could not read plain file (${reason}). Repair: make ${path} a readable regular UTF-8 JSON file.`;
+    raw = strictUtf8.decode(bytes);
+  } catch {
+    return `${entry.path}: is not valid UTF-8 text. Repair: save ${entry.path} as UTF-8 JSON.`;
   }
-  const parsed = parseChangeNote(path, raw, templateChangeNoteAffects);
+  const parsed = parseChangeNote(entry.path, raw, templateChangeNoteAffects);
   return parsed.ok ? undefined : parsed.problem;
 }
 
@@ -143,21 +182,22 @@ export function checkChangeNotes(
   root: string,
   base: string,
 ): ChangeNoteCheckResult {
-  const range = `${base}...HEAD`;
-  const changed = gitDiffPaths(root, [range]);
-  const addedNotes = gitDiffPaths(root, ["--diff-filter=A", range]).filter(
-    isNotePath,
+  const entries = diffEntries(root, `${base}...HEAD`);
+  const addedNotes = entries.filter(
+    (entry) => entry.status === "A" && isNoteEntry(entry),
   );
-  const problems = gitDiffPaths(root, ["--diff-filter=d", range])
-    .filter(isNotePath)
-    .map((path) => noteProblem(root, path))
+  const problems = entries
+    .filter((entry) => entry.status !== "D" && isNoteEntry(entry))
+    .map((entry) => noteProblem(root, entry))
     .filter((problem): problem is string => problem !== undefined);
 
-  const shippedChanged = changed.filter(isShippedTemplatePath);
-  if (shippedChanged.length > 0 && addedNotes.length === 0)
+  const shippedChanged = entries.filter(isShippedEntry);
+  if (shippedChanged.length > 0 && addedNotes.length === 0) {
+    const first = shippedChanged[0];
     problems.push(
-      `This branch changes ${shippedChanged.length} shipped file(s) (first: ${shippedChanged[0] ?? ""}) without adding a change note under ${CHANGE_NOTES_FOLDER}/. Repair: add ${CHANGE_NOTES_FOLDER}/YYYY-MM-DD-<slug>.json (use "kind": "none" if there is no consumer effect).`,
+      `This branch changes ${shippedChanged.length} shipped file(s) (first: ${first === undefined ? "" : entryLabel(first)}) without adding a change note under ${CHANGE_NOTES_FOLDER}/. Repair: add ${CHANGE_NOTES_FOLDER}/YYYY-MM-DD-<slug>.json (use "kind": "none" if there is no consumer effect).`,
     );
+  }
   if (problems.length > 0)
     return {
       stdout: "",
@@ -166,8 +206,8 @@ export function checkChangeNotes(
     };
   const detail =
     shippedChanged.length === 0
-      ? `${changed.length} changed file(s), none on the shipped template surface`
-      : `${shippedChanged.length} shipped file(s) covered by ${addedNotes.join(", ")}`;
+      ? `${entries.length} changed file(s), none on the shipped template surface`
+      : `${shippedChanged.length} shipped file(s) covered by ${addedNotes.map(entryLabel).join(", ")}`;
   return {
     stdout: `check:change-notes: OK (${detail}).\n`,
     stderr: "",
