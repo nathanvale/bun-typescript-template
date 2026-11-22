@@ -1,0 +1,11 @@
+diff --git a/scripts/plain-words.ts b/scripts/plain-words.ts
+--- a/scripts/plain-words.ts
++++ b/scripts/plain-words.ts
+@@ -52,8 +52,6 @@ function isCalendarDate(year: number, month: number, day: number): boolean {
+ function stripDatePrefix(segment: string): string {
+   const match = leadingDatePrefix.exec(segment);
+   if (match === null) return segment;
+-  if (!isCalendarDate(Number(match[1]), Number(match[2]), Number(match[3])))
+-    return segment;
+   return segment.slice(match[0].length);
+ }

@@ -1,0 +1,14 @@
+diff --git a/scripts/plain-words.ts b/scripts/plain-words.ts
+--- a/scripts/plain-words.ts
++++ b/scripts/plain-words.ts
+@@ -274,9 +274,7 @@ export function unknownPathProblems(
+   items: readonly PathItem[],
+ ): string[] {
+   return items.flatMap(({ path, isFile }) =>
+-    isPlantedFaultPatch(path, isFile)
+-      ? []
+-      : unknownWordsOf(
++    unknownWordsOf(
+         words,
+         coveredByGlossaryRule(path, glossary),
+         segmentWords(path, isFile),

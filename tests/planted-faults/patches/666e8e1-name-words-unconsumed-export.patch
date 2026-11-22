@@ -1,0 +1,14 @@
+diff --git a/scripts/name-words.ts b/scripts/name-words.ts
+--- a/scripts/name-words.ts
++++ b/scripts/name-words.ts
+@@ -184,9 +184,9 @@
+ function allExportSurface(surface: PublicSurface): PublicSurface {
+   return {
+-    exports: [...surface.exports, ...surface.consumedExports],
+-    consumedExports: [],
+-    importers: [],
++    exports: surface.exports,
++    consumedExports: surface.consumedExports,
++    importers: surface.importers,
+   };
+ }

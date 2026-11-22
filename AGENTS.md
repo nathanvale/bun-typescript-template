@@ -13,8 +13,8 @@
 ## Authority
 
 - For CLI kernel behaviour, read the [CLI kernel authority](docs/agents/cli-kernel.md).
-- Before naming a file, folder, test, or commit, read the
-  [glossary map](GLOSSARY-MAP.md).
+- Before naming a file, folder, symbol, test, or commit, look in the glossary
+  first ([glossary map](GLOSSARY-MAP.md)); if it has a word for this, use it.
 
 ## Coordination context
 

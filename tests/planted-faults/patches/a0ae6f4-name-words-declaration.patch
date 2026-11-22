@@ -1,0 +1,17 @@
+diff --git a/scripts/plain-words.ts b/scripts/plain-words.ts
+--- a/scripts/plain-words.ts
++++ b/scripts/plain-words.ts
+@@ -295,12 +295,8 @@ export function unknownDeclarationProblems(
+   return declarations
+     .filter(isExportedDeclaration)
+     .flatMap(({ path, line, name }) =>
+-      unknownWordsOf(
+-        words,
+-        coveredByGlossaryRule(path, glossary, name),
+-        splitWords(name),
+-      ).map(
++      [].map(
+         (word) =>
+           `${path}:${line} public declaration "${name}" uses "${word}", ${unknownReason(words, word)}. ${unknownWordRepair(path)}`,
+       ),
+     );
