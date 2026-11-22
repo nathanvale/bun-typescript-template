@@ -80,6 +80,8 @@ jobs:
       KERNEL_REPOSITORY: ${{ github.workspace }}/../agent-cli-kernel
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.4

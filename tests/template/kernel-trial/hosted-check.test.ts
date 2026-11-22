@@ -119,10 +119,15 @@ describe("the hosted check", () => {
     },
   );
 
-  test("the fault replay job names the kernel repository in KERNEL_REPOSITORY, because it runs each test in a temporary worktree that has no sibling", () => {
-    expect(jobOf("ci.yml", "fault-replay").env).toEqual({
-      KERNEL_REPOSITORY: "${{ github.workspace }}/../agent-cli-kernel",
-    });
+  test("the fault replay job fetches full history and names the kernel repository in KERNEL_REPOSITORY, because it runs each test in a temporary worktree that has no sibling", () => {
+    const job = jobOf("ci.yml", "fault-replay");
+    const checkout = job.steps.find(
+      ({ uses }) => uses === "actions/checkout@v4",
+    );
+    expect([job.env, checkout?.with]).toEqual([
+      { KERNEL_REPOSITORY: "${{ github.workspace }}/../agent-cli-kernel" },
+      { "fetch-depth": 0 },
+    ]);
   });
 
   test("the upgrade gate job runs on pull requests on ubuntu-latest with full history, pinned Bun, frozen install, KERNEL_REPOSITORY, and a ten-minute bound", () => {
