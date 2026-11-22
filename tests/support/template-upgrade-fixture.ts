@@ -1,16 +1,19 @@
 import {
   copyFileSync,
-  existsSync,
+  lstatSync,
   mkdirSync,
   readFileSync,
+  readlinkSync,
   renameSync,
   rmSync,
+  type Stats,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { main } from "../../src/template-upgrade.ts";
 import { ROOT } from "./bootstrap-cli-fixture.ts";
-import { git, gitEnv, initRepository } from "./git-fixture.ts";
+import { git, gitEnv, gitOutput, initRepository } from "./git-fixture.ts";
 import { siblingKernel } from "./kernel-sibling.ts";
 import { spawnBounded } from "./process.ts";
 
@@ -67,52 +70,100 @@ const OVERLAY_PATHS = [
   "kernel-pin.json",
 ] as const;
 
-function applyWorkingTreeOverlay(templateClone: string): void {
-  const modified = git(
-    ROOT,
+function gitNulPaths(root: string, ...args: string[]): string[] {
+  const output = gitOutput(root, ...args);
+  return output === ""
+    ? []
+    : output.split("\0").filter((entry) => entry !== "");
+}
+
+function statEntry(path: string): Stats | undefined {
+  try {
+    return lstatSync(path);
+  } catch (error) {
+    const code: unknown = Reflect.get(Object(error), "code");
+    if (code === "ENOENT" || code === "ENOTDIR") {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
+function applyWorkingTreeOverlay(
+  templateRoot: string,
+  templateClone: string,
+): void {
+  const trackedChanges = gitNulPaths(
+    templateRoot,
     "diff",
     "--name-only",
     "--no-renames",
+    "-z",
     "HEAD",
     "--",
     ...OVERLAY_PATHS,
-  )
-    .split("\n")
-    .filter((entry) => entry !== "");
-  if (modified.length === 0) {
+  );
+  const untrackedFiles = gitNulPaths(
+    templateRoot,
+    "ls-files",
+    "--others",
+    "--exclude-standard",
+    "-z",
+    "--",
+    ...OVERLAY_PATHS,
+  );
+  const changed = [...new Set([...trackedChanges, ...untrackedFiles])];
+  if (changed.length === 0) {
     return;
   }
-  const present: string[] = [];
+  const present: { readonly path: string; readonly entry: Stats }[] = [];
   const removed: string[] = [];
-  for (const relativePath of modified) {
-    const sourcePath = join(ROOT, relativePath);
-    const targetPath = join(templateClone, relativePath);
-    if (existsSync(sourcePath)) {
-      mkdirSync(dirname(targetPath), { recursive: true });
-      copyFileSync(sourcePath, targetPath);
-      present.push(relativePath);
-    } else {
-      rmSync(targetPath, { force: true });
+  for (const relativePath of changed) {
+    const entry = statEntry(join(templateRoot, relativePath));
+    if (entry === undefined) {
       removed.push(relativePath);
+    } else {
+      present.push({ path: relativePath, entry });
     }
   }
-  if (present.length > 0) {
-    git(templateClone, "add", "--", ...present);
+  for (const relativePath of removed) {
+    rmSync(join(templateClone, relativePath), { force: true, recursive: true });
   }
   if (removed.length > 0) {
     git(templateClone, "rm", "--quiet", "--ignore-unmatch", "--", ...removed);
   }
+  for (const { path: relativePath, entry } of present) {
+    const sourcePath = join(templateRoot, relativePath);
+    const targetPath = join(templateClone, relativePath);
+    mkdirSync(dirname(targetPath), { recursive: true });
+    rmSync(targetPath, { force: true, recursive: true });
+    if (entry.isSymbolicLink()) {
+      symlinkSync(readlinkSync(sourcePath), targetPath);
+    } else if (entry.isFile()) {
+      copyFileSync(sourcePath, targetPath);
+    } else {
+      throw new Error(
+        `Unsupported working tree overlay entry at ${relativePath}.`,
+      );
+    }
+  }
+  if (present.length > 0) {
+    git(templateClone, "add", "--", ...present.map((item) => item.path));
+  }
   git(templateClone, "commit", "--quiet", "-m", "apply working tree overlay");
 }
 
-export function cloneTemplateAtHead(folder: (prefix: string) => string): {
+export function cloneTemplateAtHead(
+  folder: (prefix: string) => string,
+  templateRoot = ROOT,
+): {
   readonly templateClone: string;
   readonly baseCommit: string;
 } {
   const scratch = folder("e2e-template-");
   const templateClone = join(scratch, "template");
-  git(scratch, "clone", "--quiet", "--shared", ROOT, templateClone);
-  applyWorkingTreeOverlay(templateClone);
+  git(scratch, "clone", "--quiet", "--shared", templateRoot, templateClone);
+  applyWorkingTreeOverlay(templateRoot, templateClone);
   const baseCommit = git(templateClone, "rev-parse", "HEAD");
   return { templateClone, baseCommit };
 }
@@ -254,9 +305,13 @@ export async function bootstrapGeneratedRepository(
     throw new Error(`bootstrap failed: ${result.stderr}\n${result.stdout}`);
   }
   initRepository(destination);
-  const files = git(destination, "ls-files", "--others", "--exclude-standard")
-    .split("\n")
-    .filter((entry) => entry !== "");
+  const files = gitNulPaths(
+    destination,
+    "ls-files",
+    "--others",
+    "--exclude-standard",
+    "-z",
+  );
   git(destination, "add", "--", ...files);
   git(destination, "commit", "--quiet", "-m", "initial bootstrap");
   return destination;
