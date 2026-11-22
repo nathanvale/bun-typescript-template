@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { CliError } from "../../../src/cli-error.ts";
+import { kernelPinFile, parseKernelPin } from "../../../src/kernel-pin.ts";
 import { TEMPLATE_STAMP_FILE } from "../../../src/recipe.ts";
 import { withTemplateUpgradeTrees } from "../../../src/template-upgrade-bootstrap.ts";
 import { TEMPLATE_UPGRADE_FLOOR } from "../../../src/template-upgrade-git.ts";
@@ -19,7 +20,7 @@ import {
   gitOutput,
   initRepository,
 } from "../../support/git-fixture.ts";
-import { siblingKernel, trialBase } from "../../support/kernel-sibling.ts";
+import { trialBase } from "../../support/kernel-sibling.ts";
 import { processWatchdog } from "../../support/process.ts";
 import { streamWrites } from "../../support/stream-writes.ts";
 import {
@@ -169,7 +170,10 @@ test("refuses when both .template.json and .cli-design-template.json are committ
 });
 
 test("withTemplateUpgradeTrees refuses when regeneration writes both stamp files", async () => {
-  const { templateClone } = cloneTemplateAtHead(folder);
+  const templateRoot = folder("stamp-template-");
+  initRepository(templateRoot);
+  const pinText = readFileSync(join(ROOT, kernelPinFile), "utf8");
+  const pinnedCommit = parseKernelPin(pinText).commit;
   const duplicateStampBootstrap = [
     'import { mkdirSync, writeFileSync } from "node:fs";',
     'import { join } from "node:path";',
@@ -179,25 +183,31 @@ test("withTemplateUpgradeTrees refuses when regeneration writes both stamp files
     'writeFileSync(join(dest, ".template.json"), stamp);',
     'writeFileSync(join(dest, ".cli-design-template.json"), stamp);',
   ].join("\n");
-  const first = commitIn(templateClone, "duplicate stamp base", {
+  const first = commitIn(templateRoot, "duplicate stamp base", {
+    [kernelPinFile]: pinText,
     "src/bootstrap.ts": `${duplicateStampBootstrap}\n`,
   });
-  const second = commitIn(templateClone, "duplicate stamp target", {
+  const second = commitIn(templateRoot, "duplicate stamp target", {
     "README.md": "next\n",
   });
   const repository = makeStampedRepository({
     [TEMPLATE_STAMP_FILE]: `${JSON.stringify({ name: "demo", templateRevision: first.sha, templateDirty: false, sourcePacket: "/abs/packet" }, null, 2)}\n`,
   });
-  const inputs = resolveTemplateUpgradeInputs({
-    templateRoot: templateClone,
-    repository,
-    targetRef: second.sha,
-    env: gitEnv,
-  });
+  const repositoryHead = git(repository, "rev-parse", "HEAD");
   const refusal = await captureAsyncCliError(() =>
     withTemplateUpgradeTrees(
-      inputs,
-      { ...gitEnv, KERNEL_REPOSITORY: siblingKernel() },
+      {
+        templateRoot,
+        repository,
+        repositoryHead,
+        baseCommit: first.sha,
+        targetCommit: second.sha,
+        repositoryName: "demo",
+        sourcePacket: "/abs/packet",
+        repositoryPinnedCommit: pinnedCommit,
+        templatePinnedCommit: pinnedCommit,
+      },
+      { ...gitEnv, KERNEL_REPOSITORY: folder("stamp-kernel-") },
       () => Promise.resolve("unreachable"),
     ),
   );
