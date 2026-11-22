@@ -54,6 +54,7 @@ export const KERNEL_RECIPE: Recipe = {
 };
 
 export const KERNEL_LOCKFILE = "generated-repository/bun.lock";
+export const TEMPLATE_STAMP_FILE = ".template.json";
 
 export const REPOSITORY_RECIPE_COPIES: readonly string[] = [
   "README.md",

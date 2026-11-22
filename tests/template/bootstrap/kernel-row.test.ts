@@ -2,7 +2,11 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
-import { copiesOf, KERNEL_RECIPE } from "../../../src/recipe.ts";
+import {
+  copiesOf,
+  KERNEL_RECIPE,
+  TEMPLATE_STAMP_FILE,
+} from "../../../src/recipe.ts";
 import { listFiles, ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { gitResult, initRepository } from "../../support/git-fixture.ts";
 import {
@@ -28,10 +32,10 @@ const ownFiles = [
   ".agents/skills/verify-cli/SKILL.md",
   ".claude/skills/agent-cli-kernel",
   ".claude/skills/verify-cli",
-  ".cli-design-template.json",
   ".fallowrc.json",
   ".github/workflows/ci.yml",
   ".gitignore",
+  ".template.json",
   "AGENTS.md",
   "README.md",
   "biome.json",
@@ -80,20 +84,18 @@ describe("the kernel row", () => {
     }
     const { destination, request } = run();
     await bootstrapRow(request);
-    const provenance = generatedJson(destination, ".cli-design-template.json");
+    expect(existsSync(join(destination, TEMPLATE_STAMP_FILE))).toBe(true);
+    expect(existsSync(join(destination, ".cli-design-template.json"))).toBe(
+      false,
+    );
+    const provenance = generatedJson(destination, TEMPLATE_STAMP_FILE);
     expect(provenance).toMatchObject({
       name: "demo-app",
       sourcePacket: "/abs/packets/demo",
-      entryPoint: "src/cli.ts",
-      commandOwner: "src/commands.ts",
     });
     expect(Object.keys(provenance as object).toSorted()).toEqual([
-      "commandOwner",
-      "entryPoint",
       "name",
-      "registrationVersion",
       "sourcePacket",
-      "specRevision",
       "templateDirty",
       "templateRevision",
     ]);

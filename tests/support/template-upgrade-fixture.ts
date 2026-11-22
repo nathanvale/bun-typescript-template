@@ -1,5 +1,13 @@
-import { readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, join } from "node:path";
 import { main } from "../../src/template-upgrade.ts";
 import { ROOT } from "./bootstrap-cli-fixture.ts";
 import { git, gitEnv, initRepository } from "./git-fixture.ts";
@@ -52,6 +60,51 @@ export async function invokeTemplateUpgradeMain(
   };
 }
 
+const OVERLAY_PATHS = [
+  "src",
+  "generated-repository",
+  "config",
+  "kernel-pin.json",
+] as const;
+
+function applyWorkingTreeOverlay(templateClone: string): void {
+  const modified = git(
+    ROOT,
+    "diff",
+    "--name-only",
+    "--no-renames",
+    "HEAD",
+    "--",
+    ...OVERLAY_PATHS,
+  )
+    .split("\n")
+    .filter((entry) => entry !== "");
+  if (modified.length === 0) {
+    return;
+  }
+  const present: string[] = [];
+  const removed: string[] = [];
+  for (const relativePath of modified) {
+    const sourcePath = join(ROOT, relativePath);
+    const targetPath = join(templateClone, relativePath);
+    if (existsSync(sourcePath)) {
+      mkdirSync(dirname(targetPath), { recursive: true });
+      copyFileSync(sourcePath, targetPath);
+      present.push(relativePath);
+    } else {
+      rmSync(targetPath, { force: true });
+      removed.push(relativePath);
+    }
+  }
+  if (present.length > 0) {
+    git(templateClone, "add", "--", ...present);
+  }
+  if (removed.length > 0) {
+    git(templateClone, "rm", "--quiet", "--ignore-unmatch", "--", ...removed);
+  }
+  git(templateClone, "commit", "--quiet", "-m", "apply working tree overlay");
+}
+
 export function cloneTemplateAtHead(folder: (prefix: string) => string): {
   readonly templateClone: string;
   readonly baseCommit: string;
@@ -59,6 +112,7 @@ export function cloneTemplateAtHead(folder: (prefix: string) => string): {
   const scratch = folder("e2e-template-");
   const templateClone = join(scratch, "template");
   git(scratch, "clone", "--quiet", "--shared", ROOT, templateClone);
+  applyWorkingTreeOverlay(templateClone);
   const baseCommit = git(templateClone, "rev-parse", "HEAD");
   return { templateClone, baseCommit };
 }

@@ -1,0 +1,19 @@
+diff --git a/src/template-upgrade-bootstrap.ts b/src/template-upgrade-bootstrap.ts
+--- a/src/template-upgrade-bootstrap.ts
++++ b/src/template-upgrade-bootstrap.ts
+@@ -75,15 +75,6 @@ async function resolveBootstrappedStampFile(
+     lstatIfPresent(join(destination, TEMPLATE_STAMP_FILE)),
+     lstatIfPresent(join(destination, OLD_TEMPLATE_STAMP_FILE)),
+   ]);
+-  if (currentStats !== undefined && oldStats !== undefined) {
+-    throw new CliError(
+-      "regeneration_stamp_duplicate",
+-      `${label} regeneration wrote both ${TEMPLATE_STAMP_FILE} and ${OLD_TEMPLATE_STAMP_FILE}`,
+-      `inspect bootstrap at that template commit and keep only ${TEMPLATE_STAMP_FILE}`,
+-      1,
+-      false,
+-    );
+-  }
+   if (currentStats !== undefined) {
+     return TEMPLATE_STAMP_FILE;
+   }

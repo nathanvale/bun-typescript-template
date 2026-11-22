@@ -1,0 +1,19 @@
+diff --git a/src/template-upgrade-inputs.ts b/src/template-upgrade-inputs.ts
+--- a/src/template-upgrade-inputs.ts
++++ b/src/template-upgrade-inputs.ts
+@@ -71,15 +71,6 @@ function readStampFields(
+ ): CommittedStamp {
+   const currentBytes = readCommittedBytes(repository, TEMPLATE_STAMP_FILE, env);
+   const oldBytes = readCommittedBytes(repository, OLD_TEMPLATE_STAMP_FILE, env);
+-  if (currentBytes !== undefined && oldBytes !== undefined) {
+-    throw new CliError(
+-      "stamp_duplicate",
+-      `${repository} has both committed ${TEMPLATE_STAMP_FILE} and ${OLD_TEMPLATE_STAMP_FILE} at HEAD`,
+-      `delete ${OLD_TEMPLATE_STAMP_FILE} in ${repository} and commit the removal so only ${TEMPLATE_STAMP_FILE} remains`,
+-      2,
+-      true,
+-    );
+-  }
+   const stampFile =
+     currentBytes !== undefined ? TEMPLATE_STAMP_FILE : OLD_TEMPLATE_STAMP_FILE;
+   const bytes = currentBytes ?? oldBytes;

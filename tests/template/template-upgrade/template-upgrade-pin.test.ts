@@ -178,9 +178,7 @@ test(
       );
     }
     expect(
-      JSON.parse(
-        gitOutput(repo, "show", `${branch}:.cli-design-template.json`),
-      ),
+      JSON.parse(gitOutput(repo, "show", `${branch}:.template.json`)),
     ).toMatchObject({
       templateRevision: targetCommit,
       templateDirty: false,
