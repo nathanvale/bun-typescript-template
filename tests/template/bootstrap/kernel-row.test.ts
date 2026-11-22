@@ -165,21 +165,39 @@ describe("the kernel row", () => {
     expect(settings.match(/addons: [^,\n]*,/g)).toEqual(["addons: [],"]);
   });
 
-  test("gives a check command with no stamp check step", async () => {
+  test("gives a check command with no stamp check step and a combined Fallow quality check", async () => {
     const { destination, request } = run();
     await bootstrapRow(request);
     const { scripts } = generatedJson(destination, "package.json") as {
       scripts: Record<string, string>;
     };
+    const { rules } = generatedJson(destination, ".fallowrc.json") as {
+      rules: Record<string, string>;
+    };
     expect({
       check: scripts.check,
+      qualityFallow: scripts["quality:fallow"],
       stampScripts: Object.keys(scripts).filter((name) =>
         name.includes("stamp"),
       ),
+      complexityRules: {
+        cyclomatic: rules["complexity-cyclomatic"],
+        cognitive: rules["complexity-cognitive"],
+        crap: rules["complexity-crap"],
+        fileLines: rules["complexity-file-lines"],
+      },
     }).toEqual({
       check:
         "bun run lint && bun run format:check && bun run typecheck && bun run test && bun run --silent quality:fallow",
+      qualityFallow:
+        "node_modules/.bin/fallow --format json --quiet --type-aware --type-aware-require complete --fail-on-issues",
       stampScripts: [],
+      complexityRules: {
+        cyclomatic: "error",
+        cognitive: "error",
+        crap: "off",
+        fileLines: "error",
+      },
     });
   });
 

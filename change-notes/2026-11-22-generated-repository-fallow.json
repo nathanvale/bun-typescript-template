@@ -1,0 +1,7 @@
+{
+  "kind": "changed",
+  "breaking": true,
+  "affects": ["generated-repository"],
+  "summary": "Changed generated repositories' quality:fallow script from dead-code only to combined dead-code, duplication, and health analysis, and enabled complexity-cyclomatic, complexity-cognitive, and complexity-file-lines error rules in .fallowrc.json.",
+  "action": "Update package.json quality:fallow to run node_modules/.bin/fallow --format json --quiet --type-aware --type-aware-require complete --fail-on-issues, set complexity-cyclomatic, complexity-cognitive, and complexity-file-lines to \"error\" in .fallowrc.json, and fix any duplication or complexity findings."
+}

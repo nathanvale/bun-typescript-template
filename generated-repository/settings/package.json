@@ -9,7 +9,7 @@
     "check": "bun run lint && bun run format:check && bun run typecheck && bun run test && bun run --silent quality:fallow",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "bun test",
-    "quality:fallow": "node_modules/.bin/fallow dead-code --format json --quiet --type-aware --type-aware-require complete --fail-on-issues",
+    "quality:fallow": "node_modules/.bin/fallow --format json --quiet --type-aware --type-aware-require complete --fail-on-issues",
     "lint": "eslint . --max-warnings 0",
     "format:check": "biome format .",
     "format": "biome format --write ."
