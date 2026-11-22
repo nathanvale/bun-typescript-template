@@ -1,0 +1,18 @@
+diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
+--- a/scripts/pin-move-repository.ts
++++ b/scripts/pin-move-repository.ts
+@@ -163,8 +163,11 @@ function readManifestSpecifier(
+     ownPropertyValue(parsed, "dependencies"),
+     packageName,
+   );
+-  if (typeof specifier !== "string")
+-    throw missing(`dependencies["${packageName}"] is missing.`);
++  if (typeof specifier !== "string")
++    throw new RepositoryPinRefusal(
++      "repository_invalid",
++      `dependencies["${packageName}"] is missing.`,
++      "restore package.json",
++    );
+   return { packageText, specifier };
+ }
+ 

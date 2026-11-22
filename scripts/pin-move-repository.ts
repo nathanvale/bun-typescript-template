@@ -228,7 +228,10 @@ function writeRepositoryPackagePin(
     );
   writeFileSync(
     manifestPath,
-    record.packageText.replace(pattern, `$1${quotedNew}`),
+    record.packageText.replace(
+      pattern,
+      (_match, prefix: string) => `${prefix}${quotedNew}`,
+    ),
   );
   return "package.json";
 }
@@ -245,7 +248,10 @@ function replaceFrontmatterLine(
   value: string,
 ): string {
   return text.replace(/^---\r?\n([\s\S]*?)\r?\n---(?=\r?\n|$)/, (block) =>
-    block.replace(new RegExp(`^${label}: .*$`, "m"), `${label}: ${value}`),
+    block.replace(
+      new RegExp(`^${label}: .*$`, "m"),
+      () => `${label}: ${value}`,
+    ),
   );
 }
 

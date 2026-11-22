@@ -1,0 +1,11 @@
+diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
+--- a/scripts/pin-move-repository.ts
++++ b/scripts/pin-move-repository.ts
+@@ -317,7 +317,6 @@ async function runRepositoryCheckSteps(
+       ["install", "--frozen-lockfile"],
+       repositoryInstallMilliseconds,
+     ],
+-    ["check command", ["run", "check"], repositoryCheckMilliseconds],
+   ];
+   for (const [name, args, limit] of steps) {
+     try {

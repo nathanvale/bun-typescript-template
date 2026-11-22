@@ -2119,5 +2119,54 @@
     "testFile": "tests/template/template-upgrade/template-upgrade-json.test.ts",
     "title": "^withTemplateUpgradeTrees refuses when regeneration writes both stamp files$",
     "source": "b8f4264 feat(template-stamp): refuse duplicate regenerated template stamps"
+  },
+  {
+    "id": "4701022-pin-move-repository-dirty",
+    "patch": "tests/planted-faults/patches/4701022-pin-move-repository-dirty.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses when the generated repository working tree is dirty and creates no branch$",
+    "source": "4701022 feat(pin-move): move a generated repository kernel Pin onto a new branch"
+  },
+  {
+    "id": "4701022-pin-move-repository-kernel-commit",
+    "patch": "tests/planted-faults/patches/4701022-pin-move-repository-kernel-commit.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses when the target commit is not a kernel commit$",
+    "source": "4701022 feat(pin-move): move a generated repository kernel Pin onto a new branch"
+  },
+  {
+    "id": "4701022-pin-move-repository-pin-verify",
+    "patch": "tests/planted-faults/patches/4701022-pin-move-repository-pin-verify.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses when kernel Pin verification fails for an unpushed commit or a commit before carry-out$",
+    "source": "4701022 feat(pin-move): move a generated repository kernel Pin onto a new branch"
+  },
+  {
+    "id": "4701022-pin-move-repository-check-failed",
+    "patch": "tests/planted-faults/patches/4701022-pin-move-repository-check-failed.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses when the generated repository check fails after the move, leaves the pin-move branch checked out for inspection, and leaves main untouched$",
+    "source": "4701022 feat(pin-move): move a generated repository kernel Pin onto a new branch"
+  },
+  {
+    "id": "4701022-pin-move-repository-unchanged",
+    "patch": "tests/planted-faults/patches/4701022-pin-move-repository-unchanged.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses when the generated repository Pin is missing, already at the target commit, or the target branch already exists$",
+    "source": "4701022 feat(pin-move): move a generated repository kernel Pin onto a new branch"
+  },
+  {
+    "id": "4701022-pin-move-repository-branch-exists",
+    "patch": "tests/planted-faults/patches/4701022-pin-move-repository-branch-exists.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses when the generated repository Pin is missing, already at the target commit, or the target branch already exists$",
+    "source": "4701022 feat(pin-move): move a generated repository kernel Pin onto a new branch"
+  },
+  {
+    "id": "4701022-pin-move-repository-pin-missing",
+    "patch": "tests/planted-faults/patches/4701022-pin-move-repository-pin-missing.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses when the generated repository Pin is missing, already at the target commit, or the target branch already exists$",
+    "source": "4701022 feat(pin-move): move a generated repository kernel Pin onto a new branch"
   }
 ]

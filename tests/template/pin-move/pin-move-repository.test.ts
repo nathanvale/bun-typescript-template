@@ -195,20 +195,10 @@ beforeAll(async () => {
   writeFileSync(manifestPath, manifest);
   rmSync(join(baseGenerated, "bun.lock"), { force: true });
 
-  const install = await spawnBounded([process.execPath, "install"], {
-    cwd: baseGenerated,
-    env: { ...inherited(), ...gitEnv, BUN_INSTALL_CACHE_DIR: bunCache },
-    boundMilliseconds: 120_000,
-  });
-  if (install.exit !== 0)
-    throw new Error(
-      `initial fixture install failed (${install.exit}): ${install.stderr}`,
-    );
-
   initRepository(baseGenerated);
   git(baseGenerated, "add", "--all");
   commitIn(baseGenerated, "initial generated repository", {});
-}, 180_000);
+}, 60_000);
 
 afterAll(() => {
   if (work !== "") rmSync(work, { recursive: true, force: true });
