@@ -34,7 +34,7 @@ _Avoid_: known hit, allowlist
 _Qualify_: host, proof
 `;
 export const hostRefusal =
-  'docs/host.md uses "host" with no qualifier. Repair: add a word that says which host it is.\n';
+  'docs/host.md uses "host" with no qualifier. Repair: Look in the glossary first; add a word that says which host it is.\n';
 
 export const hostHit: RecordedHit = {
   path: "docs/host.md",
@@ -93,7 +93,7 @@ export function avoidPathLine(
   word: string,
   term: string,
 ): string {
-  return `${path} uses "${word}", which GLOSSARY.md lists under Avoid for "${term}". Repair: ${unknownWordRepairText} Done when bun run check:names ${path} passes.`;
+  return `${path} uses "${word}", which GLOSSARY.md lists under Avoid for "${term}". Repair: Look in the glossary first; rename it with "${term}". Done when bun run check:names ${path} passes.`;
 }
 
 export function unknownDeclarationLine(

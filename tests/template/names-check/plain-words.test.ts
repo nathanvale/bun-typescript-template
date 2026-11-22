@@ -7,7 +7,9 @@ import {
   segmentWords,
   unknownPathProblems,
 } from "../../../scripts/plain-words.ts";
+import { publicSurfaceFile } from "../../../scripts/public-surface.ts";
 import { git } from "../../support/git-fixture.ts";
+import { processWatchdog } from "../../support/process.ts";
 import { repository } from "./fixture-tree.ts";
 import {
   avoidPathLine,
@@ -193,8 +195,10 @@ test("NW.f parameters, object fields, type members and local names with a new wo
   });
 });
 
-test("NW.g base-branch words pass in new names while Avoid and Qualify words never leak from base", async () => {
-  const leakGlossary = `${glossary}
+test(
+  "NW.g base-branch words pass in new names while Avoid and Qualify words never leak from base",
+  async () => {
+    const leakGlossary = `${glossary}
 **Template**:
 The repository owner.
 
@@ -206,91 +210,208 @@ _Avoid_: CI (unqualified)
 A validation check.
 _Avoid_: proof, admission, guard (for a gate), check (unqualified)
 `;
+    const root = plainWordsRepository(samplePlainWords, {
+      "GLOSSARY.md": leakGlossary,
+      ".github/workflows/ci.yml": "name: Hosted check\n",
+      "docs/standards/test-proof.md": "# Test proof\n",
+      "tests/planted-faults/patches/927f750-symbol-gate-recorded-approval.patch":
+        "diff --git a/a b/a\n",
+      "tests/planted-faults/patches/016b761-kernel-reader-none-helper.patch":
+        "diff --git a/a b/a\n",
+      "src/apply.ts": "export const applyToken = 1;\n",
+    });
+
+    expect(await check(root, ["src/recorded-approval.ts"])).toEqual({
+      code: 0,
+      stderr: "",
+    });
+    expect(await check(root, ["src/template-helper.ts"])).toEqual({
+      code: 0,
+      stderr: "",
+    });
+    expect(await check(root, ["src/template-token.ts"])).toEqual({
+      code: 0,
+      stderr: "",
+    });
+    expect(await check(root, ["src/ci.ts"])).toEqual({
+      code: 1,
+      stderr: `${avoidPathLine("src/ci.ts", "ci", "Hosted check")}\n`,
+    });
+    expect(await check(root, ["src/gate-proof.ts"])).toEqual({
+      code: 1,
+      stderr: `${avoidPathLine("src/gate-proof.ts", "proof", "Gate")}\n`,
+    });
+    expect(await check(root, ["src/proof.ts"])).toEqual({
+      code: 1,
+      stderr:
+        'src/proof.ts uses "proof" with no qualifier. Repair: Look in the glossary first; use "Gate" or add a word that says which proof it is.\n',
+    });
+
+    put(root, "src/recorded-approval.ts", "export const apply = 1;\n");
+    put(root, "src/template-helper.ts", "export const apply = 1;\n");
+    git(
+      root,
+      "add",
+      "--",
+      "src/recorded-approval.ts",
+      "src/template-helper.ts",
+    );
+    expect(await check(root, ["--staged"])).toEqual({ code: 0, stderr: "" });
+    expect(await check(root, ["--against", "HEAD"])).toEqual({
+      code: 0,
+      stderr: "",
+    });
+
+    put(root, "src/ci.ts", "export const apply = 1;\n");
+    put(root, "src/gate-proof.ts", "export const apply = 1;\n");
+    git(root, "add", "--", "src/ci.ts", "src/gate-proof.ts");
+    const expectedLeaks = [
+      avoidPathLine("src/ci.ts", "ci", "Hosted check"),
+      avoidPathLine("src/gate-proof.ts", "proof", "Gate"),
+      "",
+    ].join("\n");
+    expect(await check(root, ["--staged"])).toEqual({
+      code: 1,
+      stderr: expectedLeaks,
+    });
+    expect(await check(root, ["--against", "HEAD"])).toEqual({
+      code: 1,
+      stderr: expectedLeaks,
+    });
+
+    expect(await check(repository, ["src/recorded-approval.ts"])).toEqual({
+      code: 0,
+      stderr: "",
+    });
+    expect(await check(repository, ["src/template-helper.ts"])).toEqual({
+      code: 0,
+      stderr: "",
+    });
+    expect(await check(repository, ["src/ci.ts"])).toEqual({
+      code: 1,
+      stderr: `${avoidPathLine("src/ci.ts", "ci", "Hosted check")}\n`,
+    });
+    expect(await check(repository, ["src/gate-proof.ts"])).toEqual({
+      code: 1,
+      stderr: `${avoidPathLine("src/gate-proof.ts", "proof", "Gate")}\n`,
+    });
+    expect(await check(repository, ["src/gizmo-tools/gizmo.ts"])).toEqual({
+      code: 1,
+      stderr: [
+        unknownPathLine("src/gizmo-tools", "gizmo"),
+        unknownPathLine("src/gizmo-tools/gizmo.ts", "gizmo"),
+        "",
+      ].join("\n"),
+    });
+  },
+  processWatchdog(1),
+);
+
+test("NW.h an unimported new export in a consumed-exports source file is refused while non-exported locals and existing exports are not judged", async () => {
+  const existingRecipe = [
+    "export const plantedFault = 1;",
+    "export const legacyExport = 2;",
+    "",
+  ].join("\n");
   const root = plainWordsRepository(samplePlainWords, {
-    "GLOSSARY.md": leakGlossary,
-    ".github/workflows/ci.yml": "name: Hosted check\n",
-    "docs/standards/test-proof.md": "# Test proof\n",
-    "tests/planted-faults/patches/927f750-symbol-gate-recorded-approval.patch":
-      "diff --git a/a b/a\n",
-    "tests/planted-faults/patches/016b761-kernel-reader-none-helper.patch":
-      "diff --git a/a b/a\n",
-    "src/apply.ts": "export const applyToken = 1;\n",
+    [publicSurfaceFile]: JSON.stringify({
+      exports: ["src/planted-fault.ts"],
+      consumedExports: ["src/*.ts"],
+      importers: ["tests/*.ts"],
+    }),
+    "src/recipe.ts": existingRecipe,
+    "tests/consumer.ts": 'import { plantedFault } from "../src/recipe.ts";\n',
   });
 
-  expect(await check(root, ["src/recorded-approval.ts"])).toEqual({
-    code: 0,
-    stderr: "",
-  });
-  expect(await check(root, ["src/template-helper.ts"])).toEqual({
-    code: 0,
-    stderr: "",
-  });
-  expect(await check(root, ["src/template-token.ts"])).toEqual({
-    code: 0,
-    stderr: "",
-  });
-  expect(await check(root, ["src/ci.ts"])).toEqual({
-    code: 1,
-    stderr: `${avoidPathLine("src/ci.ts", "ci", "Hosted check")}\n`,
-  });
-  expect(await check(root, ["src/gate-proof.ts"])).toEqual({
-    code: 1,
-    stderr: `${avoidPathLine("src/gate-proof.ts", "proof", "Gate")}\n`,
-  });
-  expect(await check(root, ["src/proof.ts"])).toEqual({
-    code: 1,
-    stderr:
-      'src/proof.ts uses "proof" with no qualifier. Repair: add a word that says which proof it is.\n',
-  });
-
-  put(root, "src/recorded-approval.ts", "export const apply = 1;\n");
-  put(root, "src/template-helper.ts", "export const apply = 1;\n");
-  git(root, "add", "--", "src/recorded-approval.ts", "src/template-helper.ts");
+  const withLocal = [
+    existingRecipe.trimEnd(),
+    "const gizmoLocal = 1;",
+    "export type PatternSeam = { readonly gizmoMember: string };",
+    "export const applySeam = { gizmoField: gizmoLocal };",
+    "export function applyPattern(gizmoParam: string) { return gizmoParam; }",
+    "",
+  ].join("\n");
+  put(root, "src/recipe.ts", withLocal);
+  expect(await check(root, ["src/recipe.ts"])).toEqual({ code: 0, stderr: "" });
+  git(root, "add", "--", "src/recipe.ts");
   expect(await check(root, ["--staged"])).toEqual({ code: 0, stderr: "" });
   expect(await check(root, ["--against", "HEAD"])).toEqual({
     code: 0,
     stderr: "",
   });
 
-  put(root, "src/ci.ts", "export const apply = 1;\n");
-  put(root, "src/gate-proof.ts", "export const apply = 1;\n");
-  git(root, "add", "--", "src/ci.ts", "src/gate-proof.ts");
-  const expectedLeaks = [
-    avoidPathLine("src/ci.ts", "ci", "Hosted check"),
-    avoidPathLine("src/gate-proof.ts", "proof", "Gate"),
+  put(root, "src/recipe.ts", `${withLocal}export const gizmoThing = 1;\n`);
+  const expected = [
+    unknownDeclarationLine("src/recipe.ts", 7, "gizmoThing", "gizmo"),
+    unknownDeclarationLine("src/recipe.ts", 7, "gizmoThing", "thing"),
     "",
   ].join("\n");
+  expect(await check(root, ["src/recipe.ts"])).toEqual({
+    code: 1,
+    stderr: expected,
+  });
+  git(root, "add", "--", "src/recipe.ts");
   expect(await check(root, ["--staged"])).toEqual({
     code: 1,
-    stderr: expectedLeaks,
+    stderr: expected,
   });
   expect(await check(root, ["--against", "HEAD"])).toEqual({
     code: 1,
-    stderr: expectedLeaks,
+    stderr: expected,
   });
 
-  expect(await check(repository, ["src/recorded-approval.ts"])).toEqual({
-    code: 0,
-    stderr: "",
+  put(
+    root,
+    "src/recipe.ts",
+    `${withLocal}export const allowlist = 1;\nexport const proof = 2;\n`,
+  );
+  expect(await check(root, ["src/recipe.ts"])).toEqual({
+    code: 1,
+    stderr: [
+      'src/recipe.ts:7 public declaration "allowlist" breaks Avoid: uses "allowlist", which GLOSSARY.md lists under Avoid for "Recorded hit". Repair: Look in the glossary first; rename it with "Recorded hit".',
+      'src/recipe.ts:8 public declaration "proof" breaks Qualify: uses "proof" with no qualifier. Repair: Look in the glossary first; add a word that says which proof it is.',
+      "",
+    ].join("\n"),
   });
-  expect(await check(repository, ["src/template-helper.ts"])).toEqual({
-    code: 0,
-    stderr: "",
+});
+
+test("NW.i unknown-word, Avoid and Qualify refusals start their repair line with Look in the glossary first and name the glossary term", async () => {
+  expect(await check(repository, ["src/gizmo.ts"])).toEqual({
+    code: 1,
+    stderr: `${unknownPathLine("src/gizmo.ts", "gizmo")}\n`,
   });
+  expect(await check(repository, ["src/mutant.ts"])).toEqual({
+    code: 1,
+    stderr:
+      'src/mutant.ts uses "mutant", which GLOSSARY.md lists under Avoid for "Planted fault". Repair: Look in the glossary first; rename it with "Planted fault".\n',
+  });
+  const allowlist = await check(repository, ["src/allowlist.ts"]);
+  expect(allowlist.code).toBe(1);
+  expect(allowlist.stderr).toContain(
+    'src/allowlist.ts uses "allowlist", which GLOSSARY.md lists under Avoid for "Recorded hit". Repair: Look in the glossary first; rename it with "Recorded hit".',
+  );
   expect(await check(repository, ["src/ci.ts"])).toEqual({
     code: 1,
     stderr: `${avoidPathLine("src/ci.ts", "ci", "Hosted check")}\n`,
   });
-  expect(await check(repository, ["src/gate-proof.ts"])).toEqual({
+  expect(await check(repository, ["src/proof.ts"])).toEqual({
     code: 1,
-    stderr: `${avoidPathLine("src/gate-proof.ts", "proof", "Gate")}\n`,
+    stderr:
+      'src/proof.ts uses "proof" with no qualifier. Repair: Look in the glossary first; use "Gate" or add a word that says which proof it is.\n',
   });
-  expect(await check(repository, ["src/gizmo-tools/gizmo.ts"])).toEqual({
+  expect(await check(repository, ["src/host.ts"])).toEqual({
     code: 1,
-    stderr: [
-      unknownPathLine("src/gizmo-tools", "gizmo"),
-      unknownPathLine("src/gizmo-tools/gizmo.ts", "gizmo"),
-      "",
-    ].join("\n"),
+    stderr:
+      'src/host.ts uses "host" with no qualifier. Repair: Look in the glossary first; use "Generated repository" or add a word that says which host it is.\n',
+  });
+  expect(await check(repository, ["src/starter.ts"])).toEqual({
+    code: 1,
+    stderr:
+      'src/starter.ts uses "starter" with no qualifier. Repair: Look in the glossary first; add a word that says which starter it is.\n',
+  });
+  expect(await check(repository, ["--stagd"])).toEqual({
+    code: 2,
+    stderr:
+      'Usage: bun run check:names <path> [path ...] | --staged | --tool-call | --against <revision>. Unknown option "--stagd".\n',
   });
 });

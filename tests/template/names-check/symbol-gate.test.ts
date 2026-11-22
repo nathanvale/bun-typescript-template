@@ -39,7 +39,7 @@ const surface: PublicSurface = {
   importers: [],
 };
 const refusal =
-  'src/public.ts:1 public declaration "proof" breaks Qualify: uses "proof" with no qualifier. Repair: add a word that says which proof it is.\n';
+  'src/public.ts:1 public declaration "proof" breaks Qualify: uses "proof" with no qualifier. Repair: Look in the glossary first; add a word that says which proof it is.\n';
 
 function sourceRepository(text: string, scope: PublicSurface = surface) {
   const root = namesRepository();
@@ -73,7 +73,7 @@ test(
     expect(await check(root, ["src/public.ts"])).toEqual({
       code: 1,
       stderr:
-        'src/public.ts:1 public declaration "layoutMutations" breaks Avoid: uses "mutation", which GLOSSARY.md lists under Avoid for "Planted fault". Repair: rename it with the glossary word.\n',
+        'src/public.ts:1 public declaration "layoutMutations" breaks Avoid: uses "mutation", which GLOSSARY.md lists under Avoid for "Planted fault". Repair: Look in the glossary first; rename it with "Planted fault".\n',
     });
   },
   processWatchdog(1),
@@ -264,7 +264,7 @@ test(
       'import { host as testHost } from "../src/public.ts";\n',
     );
     expect(await publicNameProblems(root, false)).toEqual([
-      'src/public.ts:2 public declaration "host" breaks Qualify: uses "host" with no qualifier. Repair: add a word that says which host it is.',
+      'src/public.ts:2 public declaration "host" breaks Qualify: uses "host" with no qualifier. Repair: Look in the glossary first; add a word that says which host it is.',
     ]);
   },
   processWatchdog(1),

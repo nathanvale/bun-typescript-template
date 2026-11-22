@@ -20,6 +20,7 @@ export type Glossary = {
     readonly avoid: readonly string[];
   }[];
   readonly qualify: readonly string[];
+  readonly qualifyTerms: ReadonlyMap<string, readonly string[]>;
 };
 
 export type RecordedHit = {
@@ -71,17 +72,75 @@ function enforcedAvoidWords(line: string, term: string): string[] {
   });
 }
 
+function allAvoidWords(line: string): string[] {
+  if (!line.startsWith(avoidLabel)) return [];
+  return line
+    .slice(avoidLabel.length)
+    .replace(note, "")
+    .split(/[;,]/)
+    .flatMap((part) => {
+      const words = wordsOf(part);
+      return words.length === 1 && words[0] !== undefined ? [words[0]] : [];
+    });
+}
+
+function addQualifyTerm(
+  byWord: Map<string, string[]>,
+  word: string,
+  termName: string,
+): void {
+  const existing = byWord.get(word) ?? [];
+  if (!existing.includes(termName)) existing.push(termName);
+  byWord.set(word, existing);
+}
+
+function addQualifyWords(
+  byWord: Map<string, string[]>,
+  words: readonly string[],
+  termName: string,
+): void {
+  for (const word of words) addQualifyTerm(byWord, word, termName);
+}
+
+function readGlossaryLine(
+  line: string,
+  terms: { name: string; avoid: string[] }[],
+  qualify: string[],
+  termsByWord: Map<string, string[]>,
+): void {
+  const heading = /^\*\*(.+)\*\*:$/.exec(line)?.[1];
+  if (heading !== undefined) {
+    terms.push({ name: heading, avoid: [] });
+    addQualifyWords(termsByWord, wordsOf(heading), heading);
+  }
+  const term = terms.at(-1);
+  if (term !== undefined) {
+    term.avoid.push(...enforcedAvoidWords(line, term.name));
+    addQualifyWords(termsByWord, allAvoidWords(line), term.name);
+  }
+  qualify.push(...(listAfter("_Qualify_:", line) ?? []));
+}
+
+function qualifyTermsOf(
+  qualify: readonly string[],
+  termsByWord: ReadonlyMap<string, readonly string[]>,
+): Map<string, readonly string[]> {
+  const qualifyTerms = new Map<string, readonly string[]>();
+  for (const word of qualify) {
+    const matches = termsByWord.get(word);
+    if (matches !== undefined && matches.length > 0)
+      qualifyTerms.set(word, matches);
+  }
+  return qualifyTerms;
+}
+
 export function readGlossary(text: string): Glossary {
   const terms: { name: string; avoid: string[] }[] = [];
   const qualify: string[] = [];
-  for (const line of text.split("\n")) {
-    const heading = /^\*\*(.+)\*\*:$/.exec(line)?.[1];
-    if (heading !== undefined) terms.push({ name: heading, avoid: [] });
-    const term = terms.at(-1);
-    term?.avoid.push(...enforcedAvoidWords(line, term.name));
-    qualify.push(...(listAfter("_Qualify_:", line) ?? []));
-  }
-  return { terms, qualify };
+  const termsByWord = new Map<string, string[]>();
+  for (const line of text.split("\n"))
+    readGlossaryLine(line, terms, qualify, termsByWord);
+  return { terms, qualify, qualifyTerms: qualifyTermsOf(qualify, termsByWord) };
 }
 
 export function recordedEntries(
@@ -172,6 +231,12 @@ function holdsPhrase(words: readonly string[], phrase: readonly string[]) {
   );
 }
 
+function qualifyRepair(word: string, terms: readonly string[]): string {
+  if (terms.length > 0)
+    return `Repair: Look in the glossary first; use ${terms.map((term) => `"${term}"`).join(", ")} or add a word that says which ${word} it is.`;
+  return `Repair: Look in the glossary first; add a word that says which ${word} it is.`;
+}
+
 export function hitsIn(
   path: string,
   glossary: Glossary,
@@ -189,7 +254,7 @@ export function hitsIn(
               path,
               word,
               rule: "Avoid" as const,
-              problem: `, which GLOSSARY.md lists under Avoid for "${term.name}". Repair: rename it with the glossary word.`,
+              problem: `, which GLOSSARY.md lists under Avoid for "${term.name}". Repair: Look in the glossary first; rename it with "${term.name}".`,
             },
           ]
         : [],
@@ -202,7 +267,7 @@ export function hitsIn(
             path,
             word,
             rule: "Qualify" as const,
-            problem: ` with no qualifier. Repair: add a word that says which ${word} it is.`,
+            problem: ` with no qualifier. ${qualifyRepair(word, glossary.qualifyTerms.get(word) ?? [])}`,
           },
         ]
       : [],

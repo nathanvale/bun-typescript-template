@@ -266,7 +266,14 @@ function unknownReason(words: NameWords, word: string): string {
   return "which no glossary term uses";
 }
 
-function unknownWordRepair(target: string): string {
+function unknownWordRepair(
+  words: NameWords,
+  word: string,
+  target: string,
+): string {
+  const terms = avoidTermsFor(words.avoidTerms, word);
+  if (terms.length > 0)
+    return `Repair: Look in the glossary first; rename it with ${terms.map((term) => `"${term}"`).join(", ")}. Done when bun run check:names ${target} passes.`;
   return `Repair: Look in the glossary first; if it has a word for this, use it. Otherwise propose the word for the names table in your pull request (the plain-words list or a new glossary entry), for Nathan's decision. Done when bun run check:names ${target} passes.`;
 }
 
@@ -302,7 +309,7 @@ export function unknownPathProblems(
           segmentWords(path, isFile),
         ).map(
           (word) =>
-            `${path} uses "${word}", ${unknownReason(words, word)}. ${unknownWordRepair(path)}`,
+            `${path} uses "${word}", ${unknownReason(words, word)}. ${unknownWordRepair(words, word, path)}`,
         ),
   );
 }
@@ -321,7 +328,7 @@ export function unknownDeclarationProblems(
         splitWords(name),
       ).map(
         (word) =>
-          `${path}:${line} public declaration "${name}" uses "${word}", ${unknownReason(words, word)}. ${unknownWordRepair(path)}`,
+          `${path}:${line} public declaration "${name}" uses "${word}", ${unknownReason(words, word)}. ${unknownWordRepair(words, word, path)}`,
       ),
     );
 }

@@ -15,6 +15,7 @@ import {
   mergeBaseOf,
   namesOnPaths,
   newNameProblems,
+  type RecordedHit,
   readGlossary,
   readRecordedHits,
   recordedHitsFile,
@@ -46,7 +47,7 @@ import {
   surfaceTexts,
 } from "./public-surface.ts";
 import { treeTexts } from "./staged-texts.ts";
-import { matchesSurface } from "./surface-match.ts";
+import { matchesSurface, type PublicSurface } from "./surface-match.ts";
 
 const codeFile = /\.(?:[cm]?ts|tsx|[cm]?js|jsx)$/;
 
@@ -179,6 +180,14 @@ function declarationKey(
   return `${path}\0${declaration}\0${name}`;
 }
 
+function allExportSurface(surface: PublicSurface): PublicSurface {
+  return {
+    exports: [...surface.exports, ...surface.consumedExports],
+    consumedExports: [],
+    importers: [],
+  };
+}
+
 async function revisionDeclarations(
   root: string,
   revision: string,
@@ -187,10 +196,11 @@ async function revisionDeclarations(
   const surface = readPublicSurface(
     gitOrThrow(root, ["show", `${revision}:${publicSurfaceFile}`]),
   );
+  const exportSurface = allExportSurface(surface);
   const patterns = [
-    ...surface.exports,
-    ...surface.consumedExports,
-    ...surface.importers,
+    ...exportSurface.exports,
+    ...exportSurface.consumedExports,
+    ...exportSurface.importers,
   ];
   const present = new Set<string>();
   const texts = treeTexts(root, revision, (path) => {
@@ -204,11 +214,11 @@ async function revisionDeclarations(
   followReexports(
     root,
     texts,
-    surface,
+    exportSurface,
     (path) => present.has(path),
     (path) => gitOrThrow(root, ["show", `${revision}:${path}`]),
   );
-  return publicDeclarations(root, texts, surface);
+  return publicDeclarations(root, texts, exportSurface);
 }
 
 async function baseDeclarations(
@@ -239,6 +249,65 @@ function withBaseWords(
   };
 }
 
+async function surfaceDeclarations(
+  root: string,
+  staged: boolean,
+  paths: readonly string[] | undefined,
+): Promise<PublicDeclaration[]> {
+  const hasSurface = staged
+    ? stagedFileExists(root, publicSurfaceFile)
+    : existsSync(join(root, publicSurfaceFile));
+  if (!hasSurface) return [];
+  const { surface, texts, exists, textOf } = surfaceTexts(root, staged);
+  if (texts.size === 0) return [];
+  const exportSurface = allExportSurface(surface);
+  const patterns = [
+    ...exportSurface.exports,
+    ...exportSurface.consumedExports,
+    ...exportSurface.importers,
+  ];
+  const exportTexts = new Map(
+    [...texts].filter(([path]) => matchesSurface(path, patterns)),
+  );
+  if (exportTexts.size === 0) return [];
+  const { publicDeclarations, followReexports } = await import(
+    "./public-declarations.ts"
+  );
+  followReexports(root, exportTexts, exportSurface, exists, textOf);
+  return publicDeclarations(root, exportTexts, exportSurface).filter(
+    (declaration) => paths === undefined || paths.includes(declaration.path),
+  );
+}
+
+function renamesByPath(renames: readonly RenamePair[]): Map<string, string[]> {
+  const renamedFrom = new Map<string, string[]>();
+  for (const { from, to } of renames) {
+    const list = renamedFrom.get(to);
+    if (list === undefined) renamedFrom.set(to, [from]);
+    else list.push(from);
+  }
+  return renamedFrom;
+}
+
+function addedDeclarations(
+  current: readonly PublicDeclaration[],
+  loadedBase: readonly PublicDeclaration[],
+  renames: readonly RenamePair[],
+): PublicDeclaration[] {
+  const earlier = new Set(
+    loadedBase.map(({ path, declaration, name }) =>
+      declarationKey(path, declaration, name),
+    ),
+  );
+  const renamedFrom = renamesByPath(renames);
+  return current.filter(({ path, declaration, name }) => {
+    if (earlier.has(declarationKey(path, declaration, name))) return false;
+    return !(renamedFrom.get(path) ?? []).some((from) =>
+      earlier.has(declarationKey(from, declaration, name)),
+    );
+  });
+}
+
 async function newDeclarationsSince(
   root: string,
   base: string | readonly string[],
@@ -251,41 +320,13 @@ async function newDeclarationsSince(
 ): Promise<PublicDeclaration[]> {
   if (paths !== undefined && !paths.some((path) => codeFile.test(path)))
     return [];
-  const hasSurface = staged
-    ? stagedFileExists(root, publicSurfaceFile)
-    : existsSync(join(root, publicSurfaceFile));
-  if (!hasSurface) return [];
-  const { surface, texts, exists, textOf } = surfaceTexts(root, staged);
-  if (texts.size === 0) return [];
-  const { publicDeclarations, followReexports } = await import(
-    "./public-declarations.ts"
-  );
-  followReexports(root, texts, surface, exists, textOf);
-  const current = publicDeclarations(root, texts, surface).filter(
-    (declaration) => paths === undefined || paths.includes(declaration.path),
-  );
+  const current = await surfaceDeclarations(root, staged, paths);
   if (current.length === 0) return [];
   const loadedBase =
     typeof baseDecls === "function"
       ? await baseDecls()
       : (baseDecls ?? (await baseDeclarations(root, base)));
-  const earlier = new Set(
-    loadedBase.map(({ path, declaration, name }) =>
-      declarationKey(path, declaration, name),
-    ),
-  );
-  const renamedFrom = new Map<string, string[]>();
-  for (const { from, to } of renames) {
-    const list = renamedFrom.get(to);
-    if (list === undefined) renamedFrom.set(to, [from]);
-    else list.push(from);
-  }
-  return current.filter(({ path, declaration, name }) => {
-    if (earlier.has(declarationKey(path, declaration, name))) return false;
-    return !(renamedFrom.get(path) ?? []).some((from) =>
-      earlier.has(declarationKey(from, declaration, name)),
-    );
-  });
+  return addedDeclarations(current, loadedBase, renames);
 }
 
 function plainWordFile(
@@ -322,18 +363,41 @@ function plainWordFile(
   }
 }
 
-function readWorkingNameWords(
-  root: string,
-): { words: NameWords; glossary: Glossary; blocked: Set<string> } | undefined {
+async function newDeclarationGlossaryProblems(
+  declarations: readonly PublicDeclaration[],
+  glossary: Glossary,
+  recorded: readonly RecordedHit[],
+): Promise<string[]> {
+  const exported = declarations.filter(
+    ({ declaration }) => !declaration.includes("."),
+  );
+  if (exported.length === 0) return [];
+  const { declarationProblems } = await import("./public-declarations.ts");
+  return declarationProblems(exported, glossary, recorded);
+}
+
+function readWorkingNameWords(root: string):
+  | {
+      words: NameWords;
+      glossary: Glossary;
+      blocked: Set<string>;
+      recorded: RecordedHit[];
+    }
+  | undefined {
   const plainText = plainWordFile(join(root, plainWordsFile), plainWordsFile);
   if (plainText === undefined) return undefined;
   const glossaryText = readFileSync(join(root, "GLOSSARY.md"), "utf8");
   const ownershipText = plainWordFile(join(root, ownershipFile), ownershipFile);
+  const recordedText = plainWordFile(
+    join(root, recordedHitsFile),
+    recordedHitsFile,
+  );
   const words = readNameWords(glossaryText, plainText, ownershipText);
   return {
     words,
     glossary: readGlossary(glossaryText),
     blocked: blockedBaseWords(words.avoidTerms, glossaryText),
+    recorded: recordedText === undefined ? [] : readRecordedHits(recordedText),
   };
 }
 
@@ -434,17 +498,24 @@ export async function givenNameWordProblems(
   const declarationProblems =
     declarations.length === 0
       ? []
-      : unknownDeclarationProblems(
-          withBaseWords(
-            loaded.words,
-            tree,
-            parents,
-            await loadEarlierDecls(),
-            loaded.blocked,
+      : [
+          ...(await newDeclarationGlossaryProblems(
+            declarations,
+            loaded.glossary,
+            loaded.recorded,
+          )),
+          ...unknownDeclarationProblems(
+            withBaseWords(
+              loaded.words,
+              tree,
+              parents,
+              await loadEarlierDecls(),
+              loaded.blocked,
+            ),
+            loaded.glossary,
+            declarations,
           ),
-          loaded.glossary,
-          declarations,
-        );
+        ];
   return [...pathProblems, ...declarationProblems];
 }
 
@@ -503,8 +574,12 @@ export async function stagedNameWordProblems(root: string): Promise<string[]> {
     renames,
     earlierDecls,
   );
+  const recorded = stagedFileExists(root, recordedHitsFile)
+    ? readRecordedHits(stagedText(root, recordedHitsFile))
+    : [];
   return [
     ...unknownPathProblems(words, glossary, unkeptNew),
+    ...(await newDeclarationGlossaryProblems(declarations, glossary, recorded)),
     ...unknownDeclarationProblems(words, glossary, declarations),
   ];
 }
@@ -566,6 +641,11 @@ export async function againstNameWordProblems(
       recorded,
     ),
     ...unknownPathProblems(words, loaded.glossary, unkeptNew),
+    ...(await newDeclarationGlossaryProblems(
+      declarations,
+      loaded.glossary,
+      recorded,
+    )),
     ...unknownDeclarationProblems(words, loaded.glossary, declarations),
   ];
 }

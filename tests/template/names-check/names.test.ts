@@ -64,7 +64,7 @@ test.each([
   "NM.a %s named with an Avoid word is a new hit",
   (_kind, path, word, term) => {
     expect(nameProblems([path], fixture, [])).toEqual([
-      `${path} uses "${word}", which GLOSSARY.md lists under Avoid for "${term}". Repair: rename it with the glossary word.`,
+      `${path} uses "${word}", which GLOSSARY.md lists under Avoid for "${term}". Repair: Look in the glossary first; rename it with "${term}".`,
     ]);
   },
 );
@@ -76,7 +76,7 @@ test.each([
 ])("NM.b %s that uses a qualify word alone is a new hit", (_kind, path) => {
   const word = path.toLowerCase().includes("host") ? "host" : "proof";
   expect(nameProblems([path], fixture, [])).toEqual([
-    `${path} uses "${word}" with no qualifier. Repair: add a word that says which ${word} it is.`,
+    `${path} uses "${word}" with no qualifier. Repair: Look in the glossary first; add a word that says which ${word} it is.`,
   ]);
 });
 
@@ -110,7 +110,7 @@ test.each([
   "NM.d %s, an Avoid word with no note after it is a new hit",
   (_place, path, word) => {
     expect(nameProblems([path], withNotes, [])).toEqual([
-      `${path} uses "${word}", which GLOSSARY.md lists under Avoid for "Layout". Repair: rename it with the glossary word.`,
+      `${path} uses "${word}", which GLOSSARY.md lists under Avoid for "Layout". Repair: Look in the glossary first; rename it with "Layout".`,
     ]);
   },
 );
@@ -131,7 +131,7 @@ test("a recorded hit admits its name and no other", () => {
   const recorded = [{ path: "hosts", word: "host", reason: "fixture" }];
   expect(nameProblems(["hosts"], fixture, recorded)).toEqual([]);
   expect(nameProblems(["hosts", "src/hosts"], fixture, recorded)).toEqual([
-    'src/hosts uses "host" with no qualifier. Repair: add a word that says which host it is.',
+    'src/hosts uses "host" with no qualifier. Repair: Look in the glossary first; add a word that says which host it is.',
   ]);
 });
 
@@ -152,7 +152,7 @@ test("new name problems leave a stale recorded hit to the tracked names check", 
     { path: "src/test-hosts", word: "host", reason: "fixture" },
   ];
   expect(newNameProblems(["src", "hosts"], fixture, recorded)).toEqual([
-    'hosts uses "host" with no qualifier. Repair: add a word that says which host it is.',
+    'hosts uses "host" with no qualifier. Repair: Look in the glossary first; add a word that says which host it is.',
   ]);
 });
 

@@ -19,9 +19,9 @@ const usage =
   "Usage: bun run check:names <path> [path ...] | --staged | --tool-call | --against <revision>";
 
 const allowlistRefusal =
-  'src/allowlist uses "allowlist", which GLOSSARY.md lists under Avoid for "Recorded hit". Repair: rename it with the glossary word.\n';
+  'src/allowlist uses "allowlist", which GLOSSARY.md lists under Avoid for "Recorded hit". Repair: Look in the glossary first; rename it with "Recorded hit".\n';
 const proofRefusal =
-  'src/allowlist/proof uses "proof" with no qualifier. Repair: add a word that says which proof it is.\n';
+  'src/allowlist/proof uses "proof" with no qualifier. Repair: Look in the glossary first; add a word that says which proof it is.\n';
 
 function hook(call: unknown): () => Promise<string> {
   return () => Promise.resolve(JSON.stringify(call));
@@ -57,7 +57,7 @@ test.each([
   [
     "an Avoid word",
     "docs/mutation-notes.md",
-    'docs/mutation-notes.md uses "mutation", which GLOSSARY.md lists under Avoid for "Planted fault". Repair: rename it with the glossary word.\n',
+    'docs/mutation-notes.md uses "mutation", which GLOSSARY.md lists under Avoid for "Planted fault". Repair: Look in the glossary first; rename it with "Planted fault".\n',
   ],
   ["a qualify word alone", "docs/host.md", hostRefusal],
 ])(
@@ -336,7 +336,7 @@ test("in process: --tool-call reads each file an apply_patch adds or moves to, a
   ).toEqual({
     stderr: [
       hostRefusal,
-      'docs/allowlist-moved.md uses "allowlist", which GLOSSARY.md lists under Avoid for "Recorded hit". Repair: rename it with the glossary word.\n',
+      'docs/allowlist-moved.md uses "allowlist", which GLOSSARY.md lists under Avoid for "Recorded hit". Repair: Look in the glossary first; rename it with "Recorded hit".\n',
     ].join(""),
     code: 1,
   });

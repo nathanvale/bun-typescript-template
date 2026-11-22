@@ -2098,5 +2098,12 @@
     "testFile": "tests/template/names-check/plain-words.test.ts",
     "title": "^NW\\.e leading calendar date prefixes on filenames are not judged while the slug and non-prefix dates are$",
     "source": "a77a6fa feat(names-check): lighter new-names scope with base words and Avoid/Qualify blocks"
+  },
+  {
+    "id": "666e8e1-name-words-unconsumed-export",
+    "patch": "tests/planted-faults/patches/666e8e1-name-words-unconsumed-export.patch",
+    "testFile": "tests/template/names-check/plain-words.test.ts",
+    "title": "^NW\\.h an unimported new export in a consumed-exports source file is refused while non-exported locals and existing exports are not judged$",
+    "source": "666e8e1 fix(names-check): judge every new exported symbol in a judged source file"
   }
 ]
