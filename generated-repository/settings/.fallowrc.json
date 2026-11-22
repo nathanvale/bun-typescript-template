@@ -26,7 +26,7 @@
     "maxFileLines": 500
   },
   "rules": {
-    "boundary-violation": "off",
+    "boundary-violation": "error",
     "circular-dependencies": "error",
     "coverage-gaps": "off",
     "css-broken-reference": "off",
@@ -89,5 +89,28 @@
     "test-only-branch": "off",
     "diverged-clone-sibling": "off",
     "added-dependency": "off"
+  },
+  "boundaries": {
+    "zones": [
+      { "name": "entry", "patterns": ["src/cli.ts", "src/commands.ts"] },
+      { "name": "rules", "patterns": ["src/**/rules.ts"] },
+      { "name": "shared", "patterns": ["src/shared/**"] },
+      { "name": "subject", "patterns": ["src/*/**"], "autoDiscover": ["src"] },
+      { "name": "flat", "patterns": ["src/**"] }
+    ],
+    "rules": [
+      {
+        "from": "entry",
+        "allow": ["entry", "rules", "shared", "subject", "flat"]
+      },
+      { "from": "flat", "allow": ["flat", "rules"] },
+      { "from": "rules", "allow": ["rules"] },
+      { "from": "shared", "allow": ["rules"] },
+      { "from": "subject", "allow": ["rules", "shared"] }
+    ],
+    "coverage": {
+      "requireAllFiles": true,
+      "allowUnmatched": ["tests/**", "config/**", "eslint.config.mjs"]
+    }
   }
 }

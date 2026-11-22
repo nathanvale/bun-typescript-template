@@ -1,0 +1,12 @@
+diff --git a/generated-repository/settings/eslint.config.mjs b/generated-repository/settings/eslint.config.mjs
+--- a/generated-repository/settings/eslint.config.mjs
++++ b/generated-repository/settings/eslint.config.mjs
+@@ -100,7 +100,7 @@
+     files: ["src/*.{ts,mts,cts,tsx,js,mjs,cjs,jsx}"],
+     plugins: { repository },
+     rules: {
+-      "repository/no-loose-source-with-subjects": "error",
++      "repository/no-loose-source-with-subjects": "off",
+     },
+   },
+   {
