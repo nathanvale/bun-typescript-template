@@ -1,0 +1,12 @@
+diff --git a/src/template-upgrade-worktree-lock.ts b/src/template-upgrade-worktree-lock.ts
+--- a/src/template-upgrade-worktree-lock.ts
++++ b/src/template-upgrade-worktree-lock.ts
+@@ -469,7 +469,7 @@ export async function assertTargetWorktreeMatchesHead(
+   const worktreeHead = stats.isDirectory()
+     ? await readWorktreeOwnHead(targetWorktree, env)
+     : undefined;
+-  if (worktreeHead === repositoryHead) {
++  if (worktreeHead !== undefined) {
+     return;
+   }
+   const headDetail =

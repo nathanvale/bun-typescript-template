@@ -6,6 +6,7 @@
   "scripts": {
     "bootstrap": "bun run src/bootstrap.ts",
     "upgrade": "bun run src/template-upgrade.ts",
+    "upgrade-gate": "bun run scripts/template-upgrade-gate.ts",
     "check": "bun run check:file-size && bun run lint && bun run format:check && bun run typecheck && bun run test && bun run --silent quality:fallow",
     "quality:fallow": "node_modules/.bin/fallow audit --baseline-mode identity --format json --quiet",
     "doctor": "bun run scripts/doctor.ts",
