@@ -1,7 +1,7 @@
 # Glossary map
 
-Each word has one owner. Find the glossary that owns the word you need, and
-use its word.
+Each word has one owner. Look in the glossary first; if it has a word for this,
+use it.
 
 This repository's `GLOSSARY.md` is the source of truth for the template's
 words. The kernel's glossary owns the kernel's words. A word that only the

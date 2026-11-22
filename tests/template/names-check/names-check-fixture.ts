@@ -11,7 +11,7 @@ import {
   recordedHitsFile,
   recordedUnusedTermsFile,
 } from "../../../scripts/glossary.ts";
-import { plainWordsFile } from "../../../scripts/name-words.ts";
+import { plainWordsFile } from "../../../scripts/plain-words.ts";
 import {
   git,
   gitEnv,
@@ -81,8 +81,19 @@ export const samplePlainWords = JSON.stringify({
   ],
 });
 
+const unknownWordRepairText =
+  "Look in the glossary first; if it has a word for this, use it. Otherwise propose the word for the names table in your pull request (the plain-words list or a new glossary entry), for Nathan's decision.";
+
 export function unknownPathLine(path: string, word: string): string {
-  return `${path} uses "${word}", which no glossary term uses. Repair: use the glossary's word for what it names; if none fits, add a glossary entry (term, one sentence, Avoid list) or a ${plainWordsFile} entry first, for Nathan's decision. Done when bun run check:names ${path} passes.`;
+  return `${path} uses "${word}", which no glossary term uses. Repair: ${unknownWordRepairText} Done when bun run check:names ${path} passes.`;
+}
+
+export function avoidPathLine(
+  path: string,
+  word: string,
+  term: string,
+): string {
+  return `${path} uses "${word}", which GLOSSARY.md lists under Avoid for "${term}". Repair: ${unknownWordRepairText} Done when bun run check:names ${path} passes.`;
 }
 
 export function unknownDeclarationLine(
@@ -91,7 +102,7 @@ export function unknownDeclarationLine(
   name: string,
   word: string,
 ): string {
-  return `${path}:${line} public declaration "${name}" uses "${word}", which no glossary term uses. Repair: use the glossary's word for what it names; if none fits, add a glossary entry (term, one sentence, Avoid list) or a ${plainWordsFile} entry first, for Nathan's decision. Done when bun run check:names ${path} passes.`;
+  return `${path}:${line} public declaration "${name}" uses "${word}", which no glossary term uses. Repair: ${unknownWordRepairText} Done when bun run check:names ${path} passes.`;
 }
 
 export function namesCheckFixture() {

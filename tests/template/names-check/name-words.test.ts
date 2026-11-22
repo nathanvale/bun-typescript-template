@@ -3,17 +3,19 @@ import { mkdirSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import {
   againstNameWordProblems,
-  designWords,
   givenNameWordProblems,
+  stagedNameWordProblems,
+} from "../../../scripts/name-words.ts";
+import {
+  designWords,
   knownGlossaryWords,
   plainWordsFile,
   readNameWords,
   readPlainWords,
   splitWords,
-  stagedNameWordProblems,
   unknownDeclarationProblems,
   unknownPathProblems,
-} from "../../../scripts/name-words.ts";
+} from "../../../scripts/plain-words.ts";
 import {
   gitInNamesCheck,
   gitNames,
@@ -431,7 +433,7 @@ test("--against exits 2 when names-plain-words.json existed at the base and is m
   });
 });
 
-test("planted fault patch filenames strip their leading commit SHA while still judging the descriptive words", () => {
+test("NW.d planted-fault patch filenames under tests/planted-faults/patches/ are exempt while other paths are judged", () => {
   const parsed = readGlossary(glossary);
   const words = readNameWords(glossary, samplePlainWords);
   expect(
@@ -440,20 +442,27 @@ test("planted fault patch filenames strip their leading commit SHA while still j
         path: "tests/planted-faults/patches/a0ae6f4-planted-fault-apply.patch",
         isFile: true,
       },
-    ]),
-  ).toEqual([]);
-  expect(
-    unknownPathProblems(words, parsed, [
       {
         path: "tests/planted-faults/patches/a0ae6f4-gizmo.patch",
         isFile: true,
       },
     ]),
+  ).toEqual([]);
+  expect(
+    unknownPathProblems(words, parsed, [
+      {
+        path: "src/a0ae6f4-gizmo.patch",
+        isFile: true,
+      },
+      {
+        path: "tests/planted-faults/patches/gizmo.txt",
+        isFile: true,
+      },
+    ]),
   ).toEqual([
-    unknownPathLine(
-      "tests/planted-faults/patches/a0ae6f4-gizmo.patch",
-      "gizmo",
-    ),
+    unknownPathLine("src/a0ae6f4-gizmo.patch", "a0ae6f4"),
+    unknownPathLine("src/a0ae6f4-gizmo.patch", "gizmo"),
+    unknownPathLine("tests/planted-faults/patches/gizmo.txt", "gizmo"),
   ]);
   expect(
     unknownDeclarationProblems(words, parsed, [
@@ -467,6 +476,15 @@ test("planted fault patch filenames strip their leading commit SHA while still j
   ).toEqual([
     unknownDeclarationLine("src/planted-fault.ts", 3, "gizmo", "gizmo"),
   ]);
+});
+
+test("unknown-word refusals start their repair line with Look in the glossary first", async () => {
+  const root = plainWordsRepository();
+  const outcome = await check(root, ["src/gizmo.ts"]);
+  expect(outcome.code).toBe(1);
+  expect(outcome.stderr).toContain(
+    "Repair: Look in the glossary first; if it has a word for this, use it. Otherwise propose the word for the names table in your pull request (the plain-words list or a new glossary entry), for Nathan's decision.",
+  );
 });
 
 test("in-process exports and treeTexts work directly", async () => {

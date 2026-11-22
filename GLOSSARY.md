@@ -15,10 +15,12 @@ check cannot tell what a name means. The names check refuses a word with no note
 after it in every file and folder name and public declaration name. It refuses a word noted
 `(unqualified)` as a whole name only when
 [Words that need a qualifier](#words-that-need-a-qualifier) also lists it.
-For added paths and new public declarations against the base, every word must
-come from a term heading here or in `glossary-ownership.json`, the design words,
-or `names-plain-words.json`; propose a new plain word by adding a sorted entry
-with its reason to `names-plain-words.json` for Nathan's decision.
+For new file names, folder names and exported symbols against the base, look in
+the glossary first; if it has a word for this, use it. Every word must come
+from a term heading here or in `glossary-ownership.json`, the design words, a
+tracked path or public declaration name on the base branch (excluding Avoid and
+Qualify words), or `names-plain-words.json`; otherwise propose it for the names
+table in your pull request for Nathan's decision.
 
 ### Creating a repository
 

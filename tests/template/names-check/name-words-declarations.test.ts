@@ -27,13 +27,13 @@ test("replacing an existing default export with a newly named default export is 
   ].join("\n");
   const root = plainWordsRepository(samplePlainWords, {
     "src/apply-pattern.ts": `${sharedBody}\nexport default {};\n`,
-    "src/seam.ts": `${sharedBody}\nexport default function gizmoWidget() {\n  return 1;\n}\n`,
+    "src/seam.ts": `${sharedBody}\nexport default function existingLegacy() {\n  return 1;\n}\n`,
   });
 
   put(
     root,
     "src/seam.ts",
-    `\n${sharedBody}\nexport default function gizmoWidget() {\n  return 2;\n}\n`,
+    `\n${sharedBody}\nexport default function existingLegacy() {\n  return 2;\n}\n`,
   );
   expect(await check(root, ["src/seam.ts"])).toEqual({ code: 0, stderr: "" });
   git(root, "add", "--", "src/seam.ts");
@@ -126,7 +126,7 @@ test("a renamed path keeping its last segment is not judged again, while a renam
     "export const gizmoWidget = 1;\nexport const plantedFault = 2;\nexport const record = 'long enough for git rename detection';\n";
   const root = plainWordsRepository(samplePlainWords, {
     "src/old-folder/gizmo.ts": body,
-    "src/removed-folder/kept.ts": "export const a = 1;\n",
+    "src/proof-folder/kept.ts": "export const a = 1;\n",
   });
   mkdirSync(join(root, "src/seam"), { recursive: true });
   git(root, "mv", "src/old-folder/gizmo.ts", "src/seam/gizmo.ts");
@@ -143,16 +143,12 @@ test("a renamed path keeping its last segment is not judged again, while a renam
   });
 
   git(root, "mv", "src/seam/widget.ts", "src/seam/gizmo.ts");
-  git(root, "rm", "--quiet", "--", "src/removed-folder/kept.ts");
-  put(root, "src/seam/removed-folder/apply.ts", "export const apply = 1;\n");
-  git(root, "add", "--", "src/seam/removed-folder/apply.ts");
+  git(root, "rm", "--quiet", "--", "src/proof-folder/kept.ts");
+  put(root, "src/seam/proof-folder/apply.ts", "export const apply = 1;\n");
+  git(root, "add", "--", "src/seam/proof-folder/apply.ts");
   expect(await check(root, ["--staged"])).toEqual({
     code: 1,
-    stderr: [
-      unknownPathLine("src/seam/removed-folder", "removed"),
-      unknownPathLine("src/seam/removed-folder", "folder"),
-      "",
-    ].join("\n"),
+    stderr: `${unknownPathLine("src/seam/proof-folder", "proof")}\n`,
   });
 });
 
@@ -190,7 +186,7 @@ test("apply_patch Move to keeping its basename passes while moving to an unknown
 
   const renamePatch = keepPatch.replace(
     "src/seam/gizmo.ts",
-    "src/seam/widget.ts",
+    "src/seam/sprocket.ts",
   );
   expect(
     await check(root, ["--tool-call"], () =>
@@ -203,7 +199,7 @@ test("apply_patch Move to keeping its basename passes while moving to an unknown
     ),
   ).toEqual({
     code: 1,
-    stderr: `${unknownPathLine("src/seam/widget.ts", "widget")}\n`,
+    stderr: `${unknownPathLine("src/seam/sprocket.ts", "sprocket")}\n`,
   });
 });
 
@@ -293,10 +289,10 @@ test("explicit-path checks apply git rename exemptions to moved files, moved fol
     stderr: "",
   });
 
-  put(root, "src/seam/gizmo.ts", `${body}export const widget = 3;\n`);
+  put(root, "src/seam/gizmo.ts", `${body}export const sprocket = 3;\n`);
   expect(await check(root, ["src/seam/gizmo.ts"])).toEqual({
     code: 1,
-    stderr: `${unknownDeclarationLine("src/seam/gizmo.ts", 4, "widget", "widget")}\n`,
+    stderr: `${unknownDeclarationLine("src/seam/gizmo.ts", 4, "sprocket", "sprocket")}\n`,
   });
 });
 

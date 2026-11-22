@@ -188,8 +188,8 @@ Done when each item holds:
 
 ## Stake
 
-Keep file and folder names on the glossary's words. File names and folder
-structure are documentation: they are the first thing a reader of this
+Look in the glossary first; if it has a word for this, use it. File names and
+folder structure are documentation: they are the first thing a reader of this
 repository meets.
 
 1. Run `bun run test:area names-check` to judge every tracked name, or
@@ -210,11 +210,11 @@ repository meets.
      the form its entries use. When no tracked file uses it yet, list it in
      `tests/template/names-check/recorded-unused-terms.json` with its reason and its
      ticket. Report a word another glossary should own, for the owner
-     `GLOSSARY-MAP.md` names. If a new path or public declaration needs a plain
-     word that no glossary term holds, propose it by adding a sorted
-     `{ "word", "reason" }` entry to `names-plain-words.json` and listing it
-     under its own heading in the pull request description for Nathan's
-     decision.
+     `GLOSSARY-MAP.md` names. If a new path or exported symbol needs a plain
+     word that no glossary term holds, propose it for the names table by adding
+     a sorted `{ "word", "reason" }` entry to `names-plain-words.json` and
+     listing it under its own heading in the pull request description for
+     Nathan's decision.
    - The name is older than the glossary rule that refuses it, and its
      rename belongs to a larger change: add a recorded hit with its reason
      and the change that will remove it. A name newer than its rule takes

@@ -65,6 +65,7 @@ const sources = [
   "scripts/glossary-ownership.ts",
   "scripts/name-moves.ts",
   "scripts/name-words.ts",
+  "scripts/plain-words.ts",
   "scripts/process-runner.ts",
   "scripts/repository.ts",
   ".claude/settings.json",

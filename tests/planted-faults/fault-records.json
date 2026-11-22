@@ -1979,5 +1979,40 @@
     "testFile": "tests/template/names-check/name-words.test.ts",
     "title": "^NW\\.c readPlainWords refuses entry without reason$",
     "source": "a0ae6f4 feat(names-check): enforce glossary words on new names"
+  },
+  {
+    "id": "a77a6fa-name-words-avoid-base",
+    "patch": "tests/planted-faults/patches/a77a6fa-name-words-avoid-base.patch",
+    "testFile": "tests/template/names-check/plain-words.test.ts",
+    "title": "^NW\\.g base-branch words pass in new names while Avoid and Qualify words never leak from base$",
+    "source": "a77a6fa feat(names-check): lighter new-names scope with base words and Avoid/Qualify blocks"
+  },
+  {
+    "id": "a77a6fa-plain-words-avoid-term",
+    "patch": "tests/planted-faults/patches/a77a6fa-plain-words-avoid-term.patch",
+    "testFile": "tests/template/names-check/plain-words.test.ts",
+    "title": "^NW\\.g base-branch words pass in new names while Avoid and Qualify words never leak from base$",
+    "source": "a77a6fa feat(names-check): lighter new-names scope with base words and Avoid/Qualify blocks"
+  },
+  {
+    "id": "a77a6fa-plain-words-exported-only",
+    "patch": "tests/planted-faults/patches/a77a6fa-plain-words-exported-only.patch",
+    "testFile": "tests/template/names-check/plain-words.test.ts",
+    "title": "^NW\\.f parameters, object fields, type members and local names with a new word are not judged while a new exported symbol with the same word is$",
+    "source": "a77a6fa feat(names-check): lighter new-names scope with base words and Avoid/Qualify blocks"
+  },
+  {
+    "id": "a77a6fa-plain-words-patch-exempt",
+    "patch": "tests/planted-faults/patches/a77a6fa-plain-words-patch-exempt.patch",
+    "testFile": "tests/template/names-check/name-words.test.ts",
+    "title": "^NW\\.d planted-fault patch filenames under tests/planted-faults/patches/ are exempt",
+    "source": "a77a6fa feat(names-check): lighter new-names scope with base words and Avoid/Qualify blocks"
+  },
+  {
+    "id": "a77a6fa-plain-words-date-prefix",
+    "patch": "tests/planted-faults/patches/a77a6fa-plain-words-date-prefix.patch",
+    "testFile": "tests/template/names-check/plain-words.test.ts",
+    "title": "^NW\\.e leading calendar date prefixes on filenames are not judged while the slug and non-prefix dates are$",
+    "source": "a77a6fa feat(names-check): lighter new-names scope with base words and Avoid/Qualify blocks"
   }
 ]

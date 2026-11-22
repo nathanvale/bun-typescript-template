@@ -12,7 +12,6 @@ import {
   type Glossary,
   gitInNamesCheck,
   gitNames,
-  hitsIn,
   mergeBaseOf,
   namesOnPaths,
   newNameProblems,
@@ -21,7 +20,7 @@ import {
   recordedHitsFile,
   stagedText,
 } from "./glossary.ts";
-import { listedEntries, ownershipFile } from "./glossary-ownership.ts";
+import { ownershipFile } from "./glossary-ownership.ts";
 import {
   keptByRenames,
   newPathItems,
@@ -29,6 +28,17 @@ import {
   type PathItem,
   type RenamePair,
 } from "./name-moves.ts";
+import {
+  blockedBaseWords,
+  matchesWord,
+  type NameWords,
+  plainWordsFile,
+  readNameWords,
+  segmentWords,
+  splitWords,
+  unknownDeclarationProblems,
+  unknownPathProblems,
+} from "./plain-words.ts";
 import type { PublicDeclaration } from "./public-declarations.ts";
 import {
   publicSurfaceFile,
@@ -38,219 +48,7 @@ import {
 import { treeTexts } from "./staged-texts.ts";
 import { matchesSurface } from "./surface-match.ts";
 
-export const plainWordsFile = "names-plain-words.json";
-
-export const designWords: readonly string[] = [
-  "module",
-  "interface",
-  "seam",
-  "adapter",
-  "implementation",
-  "depth",
-  "leverage",
-  "locality",
-];
-
-export type NameWords = {
-  readonly known: ReadonlySet<string>;
-  readonly plain: ReadonlyMap<string, string>;
-};
-
 const codeFile = /\.(?:[cm]?ts|tsx|[cm]?js|jsx)$/;
-const patchPrefix = "tests/planted-faults/patches/";
-
-export function splitWords(text: string): string[] {
-  return text
-    .normalize("NFC")
-    .replace(/([\p{Ll}\p{N}])(\p{Lu})/gu, "$1 $2")
-    .replace(/(\p{Lu})(\p{Lu}\p{Ll})/gu, "$1 $2")
-    .toLowerCase()
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter((word) => word !== "");
-}
-
-function segmentWords(path: string, isFile: boolean): string[] {
-  let segment = path.slice(path.lastIndexOf("/") + 1);
-  if (isFile && path.startsWith(patchPrefix) && segment.endsWith(".patch"))
-    segment = segment.replace(/^[0-9a-f]{7,40}-/, "");
-  const trimmed = segment.replace(/^\.+/, "");
-  if (!isFile) return splitWords(trimmed);
-  const dot = trimmed.lastIndexOf(".");
-  return splitWords(dot > 0 ? trimmed.slice(0, dot) : trimmed);
-}
-
-function matchesWord(words: ReadonlySet<string>, word: string): boolean {
-  return (
-    words.has(word) ||
-    words.has(`${word}s`) ||
-    (word.endsWith("s") && word.length > 1 && words.has(word.slice(0, -1)))
-  );
-}
-
-function coveredWord(covered: ReadonlySet<string>, word: string): boolean {
-  return (
-    matchesWord(covered, word) ||
-    (word.endsWith("es") && word.length > 2 && covered.has(word.slice(0, -2)))
-  );
-}
-
-function allowed({ known, plain }: NameWords, word: string): boolean {
-  return (
-    matchesWord(known, word) ||
-    plain.has(word) ||
-    plain.has(`${word}s`) ||
-    (word.endsWith("s") && word.length > 1 && plain.has(word.slice(0, -1)))
-  );
-}
-
-export function knownGlossaryWords(
-  glossaryText: string,
-  ownershipText?: string,
-): Set<string> {
-  const glossary = readGlossary(glossaryText);
-  const kernelWords =
-    ownershipText === undefined
-      ? []
-      : listedEntries(ownershipText).flatMap(splitWords);
-  return new Set([
-    ...glossary.terms.flatMap(({ name }) => splitWords(name)),
-    ...kernelWords,
-    ...designWords,
-  ]);
-}
-
-function ownFields(value: unknown): Map<string, unknown> {
-  return new Map(
-    typeof value === "object" && value !== null ? Object.entries(value) : [],
-  );
-}
-
-function parsePlainEntry(
-  entry: unknown,
-  index: number,
-): readonly [string, string] {
-  const own = ownFields(entry);
-  const word = own.get("word");
-  const reason = own.get("reason");
-  if (
-    typeof word !== "string" ||
-    word.trim() === "" ||
-    typeof reason !== "string" ||
-    reason.trim() === ""
-  )
-    throw new Error(
-      `${plainWordsFile}: words[${index}] needs a non-empty word and reason. Repair: write each one as a non-empty string.`,
-    );
-  if (
-    !/^[\p{L}\p{N}]+$/u.test(word) ||
-    word !== word.normalize("NFC") ||
-    word !== word.toLowerCase()
-  )
-    throw new Error(
-      `${plainWordsFile}: words[${index}] word "${word}" must be one lowercase word. Repair: write a single lowercase word of letters only.`,
-    );
-  return [word, reason];
-}
-
-export function readPlainWords(
-  text: string,
-  known: ReadonlySet<string>,
-): Map<string, string> {
-  const entries = ownFields(JSON.parse(text)).get("words");
-  if (!Array.isArray(entries))
-    throw new Error(
-      `${plainWordsFile} has no "words" array. Repair: add "words": [] at its top level.`,
-    );
-  const plain = new Map<string, string>();
-  let previous: string | undefined;
-  for (const [index, entry] of entries.entries()) {
-    const [word, reason] = parsePlainEntry(entry, index);
-    if (plain.has(word))
-      throw new Error(
-        `${plainWordsFile} lists "${word}" twice. Repair: remove the duplicate entry.`,
-      );
-    if (matchesWord(known, word))
-      throw new Error(
-        `${plainWordsFile} lists "${word}", which is already a glossary word. Repair: remove it from ${plainWordsFile}, because it belongs to the glossary.`,
-      );
-    if (previous !== undefined && word < previous)
-      throw new Error(
-        `${plainWordsFile} is not sorted at "${word}" (after "${previous}"). Repair: sort words alphabetically.`,
-      );
-    previous = word;
-    plain.set(word, reason);
-  }
-  return plain;
-}
-
-export function readNameWords(
-  glossaryText: string,
-  plainText: string,
-  ownershipText?: string,
-): NameWords {
-  const known = knownGlossaryWords(glossaryText, ownershipText);
-  return { known, plain: readPlainWords(plainText, known) };
-}
-
-function coveredByGlossaryRule(
-  path: string,
-  glossary: Glossary,
-  declarationName?: string,
-): Set<string> {
-  return new Set(
-    hitsIn(path, glossary, declarationName).flatMap(({ word }) =>
-      splitWords(word),
-    ),
-  );
-}
-
-function unknownWordRepair(target: string): string {
-  return `Repair: use the glossary's word for what it names; if none fits, add a glossary entry (term, one sentence, Avoid list) or a ${plainWordsFile} entry first, for Nathan's decision. Done when bun run check:names ${target} passes.`;
-}
-
-function unknownWordsOf(
-  words: NameWords,
-  covered: ReadonlySet<string>,
-  candidates: readonly string[],
-): string[] {
-  return [...new Set(candidates)].filter(
-    (word) => !allowed(words, word) && !coveredWord(covered, word),
-  );
-}
-
-export function unknownPathProblems(
-  words: NameWords,
-  glossary: Glossary,
-  items: readonly PathItem[],
-): string[] {
-  return items.flatMap(({ path, isFile }) =>
-    unknownWordsOf(
-      words,
-      coveredByGlossaryRule(path, glossary),
-      segmentWords(path, isFile),
-    ).map(
-      (word) =>
-        `${path} uses "${word}", which no glossary term uses. ${unknownWordRepair(path)}`,
-    ),
-  );
-}
-
-export function unknownDeclarationProblems(
-  words: NameWords,
-  glossary: Glossary,
-  declarations: readonly PublicDeclaration[],
-): string[] {
-  return declarations.flatMap(({ path, line, name }) =>
-    unknownWordsOf(
-      words,
-      coveredByGlossaryRule(path, glossary, name),
-      splitWords(name),
-    ).map(
-      (word) =>
-        `${path}:${line} public declaration "${name}" uses "${word}", which no glossary term uses. ${unknownWordRepair(path)}`,
-    ),
-  );
-}
 
 function gitCommand(root: string, command: readonly string[]): Buffer {
   const result = gitInNamesCheck(root, command);
@@ -298,13 +96,30 @@ function gitNameCommand(root: string, command: readonly string[]): string[] {
     .filter((field) => field !== "");
 }
 
+function committedFiles(root: string, revision: string): string[] {
+  if (!hasCommit(root, revision)) return [];
+  return gitNameCommand(root, ["ls-tree", "-r", "--name-only", "-z", revision]);
+}
+
 function committedNames(root: string, revision: string): Set<string> {
-  if (!hasCommit(root, revision)) return new Set();
-  return new Set(
-    namesOnPaths(
-      gitNameCommand(root, ["ls-tree", "-r", "--name-only", "-z", revision]),
-    ),
-  );
+  return new Set(namesOnPaths(committedFiles(root, revision)));
+}
+
+function committedPathWords(root: string, revision: string): string[] {
+  const files = committedFiles(root, revision);
+  const dirs = new Set<string>();
+  const words: string[] = [];
+  for (const file of files) {
+    const parts = file.split("/");
+    for (let end = 1; end < parts.length; end += 1) {
+      const dir = parts.slice(0, end).join("/");
+      if (dirs.has(dir)) continue;
+      dirs.add(dir);
+      words.push(...segmentWords(dir, false));
+    }
+    words.push(...segmentWords(file, true));
+  }
+  return words;
 }
 
 function gitMoves(root: string): RenamePair[] {
@@ -332,11 +147,11 @@ function declarationKey(
   return `${path}\0${declaration}\0${name}`;
 }
 
-async function baseDeclarationKeys(
+async function baseDeclarations(
   root: string,
   base: string,
-): Promise<Set<string>> {
-  if (!committedFileExists(root, base, publicSurfaceFile)) return new Set();
+): Promise<PublicDeclaration[]> {
+  if (!committedFileExists(root, base, publicSurfaceFile)) return [];
   const surface = readPublicSurface(
     gitOrThrow(root, ["show", `${base}:${publicSurfaceFile}`]),
   );
@@ -350,7 +165,7 @@ async function baseDeclarationKeys(
     present.add(path);
     return matchesSurface(path, patterns);
   });
-  if (texts.size === 0) return new Set();
+  if (texts.size === 0) return [];
   const { publicDeclarations, followReexports } = await import(
     "./public-declarations.ts"
   );
@@ -361,11 +176,25 @@ async function baseDeclarationKeys(
     (path) => present.has(path),
     (path) => gitOrThrow(root, ["show", `${base}:${path}`]),
   );
-  return new Set(
-    publicDeclarations(root, texts, surface).map(
-      ({ path, declaration, name }) => declarationKey(path, declaration, name),
-    ),
-  );
+  return publicDeclarations(root, texts, surface);
+}
+
+function withBaseWords(
+  words: NameWords,
+  root: string,
+  base: string,
+  declarations: readonly PublicDeclaration[],
+  blocked: ReadonlySet<string>,
+): NameWords {
+  const baseWords = [
+    ...committedPathWords(root, base),
+    ...declarations.flatMap(({ name }) => splitWords(name)),
+  ].filter((word) => !matchesWord(blocked, word));
+  return {
+    known: new Set([...words.known, ...baseWords]),
+    plain: words.plain,
+    avoidTerms: words.avoidTerms,
+  };
 }
 
 async function newDeclarationsSince(
@@ -374,6 +203,7 @@ async function newDeclarationsSince(
   staged: boolean,
   paths: readonly string[] | undefined,
   renames: readonly RenamePair[],
+  baseDecls?: readonly PublicDeclaration[],
 ): Promise<PublicDeclaration[]> {
   if (paths !== undefined && !paths.some((path) => codeFile.test(path)))
     return [];
@@ -391,7 +221,11 @@ async function newDeclarationsSince(
     (declaration) => paths === undefined || paths.includes(declaration.path),
   );
   if (current.length === 0) return [];
-  const earlier = await baseDeclarationKeys(root, base);
+  const earlier = new Set(
+    (baseDecls ?? (await baseDeclarations(root, base))).map(
+      ({ path, declaration, name }) => declarationKey(path, declaration, name),
+    ),
+  );
   const renamedFrom = new Map(renames.map(({ from, to }) => [to, from]));
   return current.filter(({ path, declaration, name }) => {
     if (earlier.has(declarationKey(path, declaration, name))) return false;
@@ -439,14 +273,16 @@ function plainWordFile(
 
 function readWorkingNameWords(
   root: string,
-): { words: NameWords; glossary: Glossary } | undefined {
+): { words: NameWords; glossary: Glossary; blocked: Set<string> } | undefined {
   const plainText = plainWordFile(join(root, plainWordsFile), plainWordsFile);
   if (plainText === undefined) return undefined;
   const glossaryText = readFileSync(join(root, "GLOSSARY.md"), "utf8");
   const ownershipText = plainWordFile(join(root, ownershipFile), ownershipFile);
+  const words = readNameWords(glossaryText, plainText, ownershipText);
   return {
-    words: readNameWords(glossaryText, plainText, ownershipText),
+    words,
     glossary: readGlossary(glossaryText),
+    blocked: blockedBaseWords(words.avoidTerms, glossaryText),
   };
 }
 
@@ -475,16 +311,25 @@ export async function givenNameWordProblems(
         !isDirectoryAt(tree, name),
     }));
   const existingFiles = names.filter((path) => isFileAt(tree, path));
+  const earlierDecls = await baseDeclarations(tree, "HEAD");
+  const words = withBaseWords(
+    loaded.words,
+    tree,
+    "HEAD",
+    earlierDecls,
+    loaded.blocked,
+  );
   const declarations = await newDeclarationsSince(
     tree,
     "HEAD",
     false,
     existingFiles,
     renames,
+    earlierDecls,
   );
   return [
-    ...unknownPathProblems(loaded.words, loaded.glossary, items),
-    ...unknownDeclarationProblems(loaded.words, loaded.glossary, declarations),
+    ...unknownPathProblems(words, loaded.glossary, items),
+    ...unknownDeclarationProblems(words, loaded.glossary, declarations),
   ];
 }
 
@@ -497,8 +342,9 @@ export async function stagedNameWordProblems(root: string): Promise<string[]> {
   const ownershipText = stagedFileExists(root, ownershipFile)
     ? stagedText(root, ownershipFile)
     : undefined;
-  const words = readNameWords(glossaryText, plainText, ownershipText);
+  const baseWords = readNameWords(glossaryText, plainText, ownershipText);
   const glossary = readGlossary(glossaryText);
+  const blocked = blockedBaseWords(baseWords.avoidTerms, glossaryText);
   const { added, renames } = parseNameStatus(
     gitNameCommand(root, ["diff", "--cached", "--name-status", "-M", "-z"]),
   );
@@ -507,12 +353,15 @@ export async function stagedNameWordProblems(root: string): Promise<string[]> {
     renames,
     committedNames(root, "HEAD"),
   );
+  const earlierDecls = await baseDeclarations(root, "HEAD");
+  const words = withBaseWords(baseWords, root, "HEAD", earlierDecls, blocked);
   const declarations = await newDeclarationsSince(
     root,
     "HEAD",
     true,
     undefined,
     renames,
+    earlierDecls,
   );
   return [
     ...unknownPathProblems(words, glossary, unkeptNew),
@@ -554,12 +403,21 @@ export async function againstNameWordProblems(
   const recorded = readRecordedHits(
     readFileSync(join(root, recordedHitsFile), "utf8"),
   );
+  const earlierDecls = await baseDeclarations(root, base);
+  const words = withBaseWords(
+    loaded.words,
+    root,
+    base,
+    earlierDecls,
+    loaded.blocked,
+  );
   const declarations = await newDeclarationsSince(
     root,
     base,
     false,
     undefined,
     renames,
+    earlierDecls,
   );
   return [
     ...newNameProblems(
@@ -567,7 +425,7 @@ export async function againstNameWordProblems(
       loaded.glossary,
       recorded,
     ),
-    ...unknownPathProblems(loaded.words, loaded.glossary, unkeptNew),
-    ...unknownDeclarationProblems(loaded.words, loaded.glossary, declarations),
+    ...unknownPathProblems(words, loaded.glossary, unkeptNew),
+    ...unknownDeclarationProblems(words, loaded.glossary, declarations),
   ];
 }
