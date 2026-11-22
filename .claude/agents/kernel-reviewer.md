@@ -1,5 +1,4 @@
 ---
-
 name: kernel-reviewer
 description: Review a diff that touches the installed kernel, the Pin or `pin-move` against this repository's coding standards and return findings. Pass the output of `git log -p <base>..<head>` and the hosted check result for `<head>` in the prompt.
 tools: Read, Grep, Glob
