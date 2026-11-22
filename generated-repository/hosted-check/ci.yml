@@ -25,8 +25,8 @@ jobs:
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
-          if [ -z "${BASE:-}" ] || [ "${BASE:-}" = "0000000000000000000000000000000000000000" ]; then
-            echo "Skipping Fallow recorded-hits growth check: no base commit."
+          if [ -z "${BASE:-}" ] || ! git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
+            echo "Skipping Fallow recorded-hits growth check: no base commit ${BASE:-} in this checkout."
             exit 0
           fi
           bun run --silent quality:fallow -- --fail-on-baseline-growth --baseline-base "$BASE"

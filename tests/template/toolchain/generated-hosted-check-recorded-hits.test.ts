@@ -301,7 +301,7 @@ test(
 );
 
 test(
-  "skips and exits 0 when BASE is forty zeros or empty",
+  "skips and exits 0 when BASE is forty zeros, empty, or a commit this checkout lacks (a force push)",
   async () => {
     const { repo } = createFixtureRepository({
       includeRecordedHitsInBase: true,
@@ -315,6 +315,10 @@ test(
     const emptyBase = await runHostedGrowthStep(repo, "");
     expect(emptyBase.exit).toBe(0);
     expect(emptyBase.stdout.toLowerCase()).toContain("skip");
+
+    const missingBase = await runHostedGrowthStep(repo, "1".repeat(40));
+    expect(missingBase.exit).toBe(0);
+    expect(missingBase.stdout.toLowerCase()).toContain("skip");
   },
-  processWatchdog(2),
+  processWatchdog(3),
 );
