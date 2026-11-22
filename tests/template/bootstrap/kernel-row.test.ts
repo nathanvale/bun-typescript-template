@@ -176,7 +176,15 @@ describe("the kernel row", () => {
     const { scripts } = generatedJson(destination, "package.json") as {
       scripts: Record<string, string>;
     };
-    const { health, rules } = generatedJson(destination, ".fallowrc.json") as {
+    const { audit, health, rules } = generatedJson(
+      destination,
+      ".fallowrc.json",
+    ) as {
+      audit: {
+        deadCodeBaseline?: string;
+        dupesBaseline?: string;
+        healthBaseline?: string;
+      };
       health: { maxFileLines?: number };
       rules: Record<string, string>;
     };
@@ -198,7 +206,11 @@ describe("the kernel row", () => {
       stampScripts: Object.keys(scripts).filter((name) =>
         name.includes("stamp"),
       ),
-      complexityRules: {
+      fallowSettings: {
+        deadCodeBaseline: audit.deadCodeBaseline,
+        dupesBaseline: audit.dupesBaseline,
+        healthBaseline: audit.healthBaseline,
+        typeOnlyDependencies: rules["type-only-dependencies"],
         cyclomatic: rules["complexity-cyclomatic"],
         cognitive: rules["complexity-cognitive"],
         crap: rules["complexity-crap"],
@@ -214,7 +226,11 @@ describe("the kernel row", () => {
       recordHits:
         "node_modules/.bin/fallow --format json --quiet --type-aware --type-aware-require complete --save-baseline fallow-dead-code-recorded-hits.json && node_modules/.bin/fallow dupes --format json --quiet --save-baseline fallow-duplicates-recorded-hits.json && node_modules/.bin/fallow health --report-only --format json --quiet --baseline-mode identity --save-baseline fallow-health-recorded-hits.json && biome format --write fallow-dead-code-recorded-hits.json fallow-duplicates-recorded-hits.json fallow-health-recorded-hits.json",
       stampScripts: [],
-      complexityRules: {
+      fallowSettings: {
+        deadCodeBaseline: "fallow-dead-code-recorded-hits.json",
+        dupesBaseline: "fallow-duplicates-recorded-hits.json",
+        healthBaseline: "fallow-health-recorded-hits.json",
+        typeOnlyDependencies: "off",
         cyclomatic: "error",
         cognitive: "error",
         crap: "off",

@@ -134,4 +134,4 @@ The first Template upgrade that brings the recorded-hits files (`fallow-dead-cod
 
 With `--no-check`, the upgrade does not record the findings and commits the upgrade branch with empty recorded-hits files; a later upgrade will not repeat the recording step because the files already exist in `HEAD`. Before merging, run `bun install` and `bun run quality:fallow:record-hits` in the upgrade worktree (or on the upgrade branch) and commit the updated recorded-hits files.
 
-Limit: a recorded complex function that gets more complex is not caught. To record again by hand, run `bun run quality:fallow:record-hits`.
+Limit: a recorded complex function that gets more complex is not caught. Re-running `bun run quality:fallow:record-hits` after fixing a recorded finding is fine (the file shrinks); recording a new finding is refused by the hosted check on a pull request.

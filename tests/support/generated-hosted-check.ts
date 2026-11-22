@@ -311,21 +311,59 @@ function jobProblems(
     (step): step is PlainObject => step !== undefined,
   );
   problems.push(...pinStepProblems(validSteps, pins, where));
+  const checkoutStep = validSteps[0];
+  const checkoutWith =
+    checkoutStep === undefined
+      ? undefined
+      : asRecord(own(checkoutStep, "with"));
+  const fetchDepth =
+    checkoutWith === undefined
+      ? undefined
+      : scalar(own(checkoutWith, "fetch-depth"));
+  if (
+    checkoutStep !== undefined &&
+    scalar(own(checkoutStep, "uses"))?.split("@")[0] === CHECKOUT_ACTION &&
+    fetchDepth !== "0"
+  )
+    problems.push(
+      `${where} job check step #1 must set fetch-depth: 0 on ${CHECKOUT_ACTION}. Repair: set with.fetch-depth: 0 on ${CHECKOUT_ACTION} in generated-repository/hosted-check/ci.yml.`,
+    );
   const checkoutPin = pins.actions.get(CHECKOUT_ACTION);
   const setupBunPin = pins.actions.get(SETUP_BUN_ACTION);
-  const summary = validSteps.map((step) => ({
+  const growthStep = validSteps[4];
+  const growthRun =
+    growthStep === undefined ? undefined : scalar(own(growthStep, "run"));
+  const growthEnv =
+    growthStep === undefined ? undefined : asRecord(own(growthStep, "env"));
+  const growthBase =
+    growthEnv === undefined ? undefined : scalar(own(growthEnv, "BASE"));
+  const hasGrowthStep =
+    growthStep !== undefined &&
+    scalar(own(growthStep, "uses")) === undefined &&
+    growthBase !== undefined &&
+    growthBase.includes("github.event.pull_request.base.sha") &&
+    growthBase.includes("github.event.before") &&
+    growthRun !== undefined &&
+    growthRun.includes("quality:fallow") &&
+    growthRun.includes("--fail-on-baseline-growth") &&
+    growthRun.includes('--baseline-base "$BASE"');
+  const prefixSummary = validSteps.slice(0, 4).map((step) => ({
     uses: scalar(own(step, "uses"))?.split("@")[0],
     run: scalar(own(step, "run")),
   }));
-  const expectedSummary = [
+  const expectedPrefix = [
     { uses: CHECKOUT_ACTION, run: undefined },
     { uses: SETUP_BUN_ACTION, run: undefined },
     { uses: undefined, run: "bun install --frozen-lockfile" },
     { uses: undefined, run: KERNEL_RECIPE.checkCommand },
   ];
-  if (!Bun.deepEquals(summary, expectedSummary))
+  if (
+    validSteps.length !== 5 ||
+    !Bun.deepEquals(prefixSummary, expectedPrefix) ||
+    !hasGrowthStep
+  )
     problems.push(
-      `${where} job check must run ${checkoutPin ?? CHECKOUT_ACTION}, ${setupBunPin ?? SETUP_BUN_ACTION}, bun install --frozen-lockfile, then ${KERNEL_RECIPE.checkCommand}. Repair: match those four steps in order in generated-repository/hosted-check/ci.yml.`,
+      `${where} job check must run ${checkoutPin ?? CHECKOUT_ACTION}, ${setupBunPin ?? SETUP_BUN_ACTION}, bun install --frozen-lockfile, ${KERNEL_RECIPE.checkCommand}, then the Fallow recorded-hits growth check. Repair: match those five steps in order in generated-repository/hosted-check/ci.yml.`,
     );
   return problems;
 }
