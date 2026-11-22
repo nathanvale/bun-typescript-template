@@ -49,7 +49,7 @@ test("in process: --staged judges an added and a renamed name, and ignores a mod
   expect(await check(root, ["--staged"])).toEqual({
     stderr: [
       hostRefusal,
-      'src/allowlist.ts uses "allowlist", which GLOSSARY.md lists under Avoid for "Recorded hit". Repair: rename it with the glossary word.\n',
+      'src/allowlist.ts uses "allowlist", which GLOSSARY.md lists under Avoid for "Recorded hit". Repair: Look in the glossary first; rename it with "Recorded hit".\n',
     ].join(""),
     code: 1,
   });
@@ -84,7 +84,7 @@ test("in process: --staged refuses a name that uses an Avoid word only the stage
   put(root, "GLOSSARY.md", glossary);
   expect(await check(root, ["--staged"])).toEqual({
     stderr:
-      'docs/canary-notes.md uses "canary", which GLOSSARY.md lists under Avoid for "Planted fault". Repair: rename it with the glossary word.\n',
+      'docs/canary-notes.md uses "canary", which GLOSSARY.md lists under Avoid for "Planted fault". Repair: Look in the glossary first; rename it with "Planted fault".\n',
     code: 1,
   });
 });

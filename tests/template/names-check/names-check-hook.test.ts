@@ -18,11 +18,11 @@ const codexSettings = ".codex/hooks.json";
 const silent = { stdout: "", stderr: "", exit: 0 };
 const fixtureGlossaryRefuses = {
   mutationNotes:
-    'docs/mutation-notes.md uses "mutation", which GLOSSARY.md lists under Avoid for "Planted fault". Repair: rename it with the glossary word.',
+    'docs/mutation-notes.md uses "mutation", which GLOSSARY.md lists under Avoid for "Planted fault". Repair: Look in the glossary first; rename it with "Planted fault".',
   hostFile:
-    'src/host.ts uses "host" with no qualifier. Repair: add a word that says which host it is.',
+    'src/host.ts uses "host" with no qualifier. Repair: Look in the glossary first; add a word that says which host it is.',
   allowlistFolder:
-    'src/allowlist uses "allowlist", which GLOSSARY.md lists under Avoid for "Recorded hit". Repair: rename it with the glossary word.',
+    'src/allowlist uses "allowlist", which GLOSSARY.md lists under Avoid for "Recorded hit". Repair: Look in the glossary first; rename it with "Recorded hit".',
 };
 
 afterAll(removeFixtureTrees);
@@ -359,7 +359,7 @@ test(
     ).toEqual({
       stdout: "",
       stderr:
-        'docs/specimen.md uses "specimen", which GLOSSARY.md lists under Avoid for "Fixture". Repair: rename it with the glossary word.\n',
+        'docs/specimen.md uses "specimen", which GLOSSARY.md lists under Avoid for "Fixture". Repair: Look in the glossary first; rename it with "Fixture".\n',
       exit: 2,
     });
     expect(

@@ -96,7 +96,7 @@ test("a tracked symlink that points nowhere is a name the full-tree check judges
   git(root, "add", "--", "mutation-link.md");
   expect(trackedNames(root)).toContain("mutation-link.md");
   expect(nameProblems(trackedNames(root), readGlossary(glossary), [])).toEqual([
-    'mutation-link.md uses "mutation", which GLOSSARY.md lists under Avoid for "Planted fault". Repair: rename it with the glossary word.',
+    'mutation-link.md uses "mutation", which GLOSSARY.md lists under Avoid for "Planted fault". Repair: Look in the glossary first; rename it with "Planted fault".',
   ]);
 });
 

@@ -15,6 +15,12 @@
       "term": "Claim tag",
       "reason": "A word for the plan. No ticket is known to bring it into a tracked file here; MAG-114 is the kernel split spec, which uses the word.",
       "ticket": "MAG-114"
+    },
+    {
+      "term": "Layout rule",
+      "reason": "Shared tool word owned by the template for the kernel's planned layout rules unit; layout rules are not implemented in the template yet.",
+      "ticket": "MAG-114",
+      "approved": "Nathan decision, 22 November 2026 12:33"
     }
   ]
 }

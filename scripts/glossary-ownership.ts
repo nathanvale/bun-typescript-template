@@ -26,7 +26,7 @@ export function sharedEntries(glossary: string): string[] {
   return namesIn(sharedSection(glossary));
 }
 
-function listedEntries(text: string): string[] {
+export function listedEntries(text: string): string[] {
   const parsed: unknown = JSON.parse(text);
   const list: unknown =
     typeof parsed === "object" && parsed !== null

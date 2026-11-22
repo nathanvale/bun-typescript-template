@@ -1,0 +1,12 @@
+diff --git a/scripts/name-words.ts b/scripts/name-words.ts
+--- a/scripts/name-words.ts
++++ b/scripts/name-words.ts
+@@ -183,7 +183,7 @@ function withBaseWords(
+   const baseWords = [
+     ...committedPathWords(root, base),
+     ...declarations.flatMap(({ name }) => splitWords(name)),
+-  ].filter((word) => !matchesWord(blocked, word));
++  ];
+   return {
+     known: new Set([...words.known, ...baseWords]),
+     plain: words.plain,

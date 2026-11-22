@@ -86,13 +86,10 @@ row's guide or gate note cites two distinct witnesses.
 
 ### Glossary
 
-- `tests/template/names-check/names.test.ts`, with its shrinking
-  `recorded-hits.json`, checks every tracked file and folder name against
-  `GLOSSARY.md`. Pre-commit runs the same names check on staged names.
-- The symbol gate (`scripts/public-declarations.ts`) applies those rules to the
-  public surface in `tests/template/names-check/public-surface.json`: exports
-  in Bootstrap's copied code and consumed exports in `src/*.ts`, one level of
-  members and parameters deep. Locals and comments stay review only.
+- `tests/template/names-check/names.test.ts` and `scripts/check-names.ts` hold
+  tracked names, public declarations (`scripts/public-declarations.ts`), and
+  new names (`scripts/name-words.ts`, `names-plain-words.json`) to `GLOSSARY.md`.
+  See [the gate's coverage](docs/standards/gate-coverage.md#names-check).
 - Witnessed: [2784de0] (identifiers and comments in kernel files),
   [356cce9] (a kernel file renamed onto the glossary's words), [cacbf2c]
   (a template tool and its commands renamed onto the glossary's words).
