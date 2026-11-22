@@ -1,0 +1,97 @@
+# Template upgrade
+
+A Template upgrade carries changes made in this template between the commit a generated repository was created from and a newer template commit into that repository while keeping the repository's own edits.
+
+It works by reading `.cli-design-template.json` from the repository's committed `HEAD`, regenerating the old and new trees with each template commit's own `src/bootstrap.ts`, and merging old-to-new into the repository file by file.
+
+## Commands
+
+Preview an upgrade without writing anything to the repository:
+
+```bash
+bun run upgrade plan --repository PATH [--to REF] [--json]
+```
+
+Apply an upgrade into an isolated worktree and publish the result on a branch:
+
+```bash
+bun run upgrade apply --repository PATH [--to REF] [--no-check] [--json]
+```
+
+### Options
+
+- `--repository PATH`: Path to the generated repository root.
+- `--to REF`: Target template commit, branch, or tag (default: `HEAD` of this template checkout). The target must descend from the repository's recorded `templateRevision`; downgrades are refused.
+- `--no-check`: Available with `apply`. Skips `bun install` and `bun run check` in the upgrade worktree before committing.
+- `--json`: Prints a single JSON result envelope (`stdout` on completion or conflict/check status, `stderr` on refusal).
+
+### Inputs and refusals
+
+The command reads only committed state (`HEAD:.cli-design-template.json`, and `HEAD:package.json` if the stamp has no `name`). It refuses with an error code and a repair step when:
+
+- `--repository` is not a git repository root or has no `HEAD`.
+- `HEAD` has no `.cli-design-template.json`.
+- `.cli-design-template.json` has `templateDirty: true`.
+- The recorded `templateRevision` is not in this template checkout's history.
+- `--to REF` cannot be resolved or is not a descendant of `templateRevision`.
+- The target branch `template-upgrade/<base7>-<target7>` already exists from a different `HEAD`.
+
+If `templateRevision` equals the resolved target commit, both `plan` and `apply` exit `0` with status `up-to-date` and write nothing.
+
+## File owners and merge outcomes
+
+Every file or symbolic link present in the regenerated old or new tree receives an owner label and an outcome. Files that Bootstrap never writes do not appear and are never touched.
+
+### Owner labels
+
+| Label        | Paths                                                                                                              |
+| ------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `generated`  | `.cli-design-template.json`, `bun.lock`, `.claude/skills/*`                                                        |
+| `repository` | Owner starting copies listed in `src/recipe.ts`: `README.md`, `src/cli.ts`, `src/commands.ts`, `tests/cli.test.ts` |
+| `shared`     | Root `*.json` and `*.toml` settings (including `bunfig.toml`), `.gitignore`, `.github/**`, `AGENTS.md`             |
+| `template`   | All other files Bootstrap writes (`config/*`, `.agents/skills/*`, `tests/*`, `eslint.config.mjs`)                  |
+
+### Merge outcomes
+
+| Outcome                 | Meaning                                                                                                                                                     |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `untouched`             | Old and new trees are identical; nothing changed.                                                                                                           |
+| `already`               | The repository already matches the new tree.                                                                                                                |
+| `take`                  | The repository matched old (or the file is `.cli-design-template.json`); the new file or symbolic link was copied in.                                       |
+| `delete`                | The repository matched old and the new tree removed the file; it was removed.                                                                               |
+| `regenerate`            | `bun.lock` changed in both the template and the repository; the repository's file is kept and rebuilt by `bun install` during `apply`.                      |
+| `merge`                 | Both sides changed and merged cleanly (key-level merge for `*.json` preserving repository key order; `git merge-file` for text).                            |
+| `template-copy-changed` | A `repository`-owned starting copy changed between the old and new template commits; the file is never written. `plan` prints the `git diff` of old vs new. |
+| `conflict`              | Both sides changed the same region or JSON key; `git merge-file` markers (`<<<<<<< ours`) were written.                                                     |
+| `conflict-add`          | Added by the template while a different file already exists in the repository; `git merge-file` ran against an empty base.                                  |
+| `conflict-delete`       | Deleted on one side and modified on the other; the repository's current state was kept.                                                                     |
+| `conflict-link`         | A symbolic link disagreed across old, new, and the repository; the repository's entry was kept.                                                             |
+
+`plan` prints the per-file rows, any `package.json` dependency version changes, and the `git diff` between the old and new regenerated copies for every `template-copy-changed` path. It removes its temporary worktree and exits `0` even when conflicts are present.
+
+## Applying, resolving conflicts, and rerunning
+
+`apply` never touches the repository's working tree, current branch, or stash, and never pushes. It works under `.worktrees/` inside the repository:
+
+- Temporary merge worktree: `.worktrees/template-upgrade-tmp`
+- Active upgrade worktree: `.worktrees/template-upgrade-<target7>`
+- Published branch: `template-upgrade/<base7>-<target7>`
+
+### Apply statuses and exit codes
+
+| Status                   | Exit | Meaning                                                                                                                                      |
+| ------------------------ | ---- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `up-to-date`             | `0`  | Base and target commits match; nothing written.                                                                                              |
+| `already-done`           | `0`  | `template-upgrade/<base7>-<target7>` already exists with `HEAD` as its parent; leftover worktree removed.                                    |
+| `applied`                | `0`  | Merged, installed and checked (unless `--no-check`), committed as `Upgrade template <base7> to <target7>`, branch created, worktree removed. |
+| `conflicts`              | `2`  | Conflicts remain in `.worktrees/template-upgrade-<target7>`.                                                                                 |
+| `resolution-in-progress` | `5`  | You started editing `.worktrees/template-upgrade-<target7>` but `<<<<<<< ours` markers remain.                                               |
+| `check-failed`           | `1`  | `bun install` or `bun run check` failed in `.worktrees/template-upgrade-<target7>`; worktree kept.                                           |
+
+### Resolving conflicts and rerunning
+
+1. Open `.worktrees/template-upgrade-<target7>` and resolve each listed conflict (removing all `<<<<<<< ours`, `=======`, and `>>>>>>> new` markers).
+2. Run the exact same `bun run upgrade apply --repository PATH [--to REF]` command again.
+3. Because the worktree differs from a fresh merge and has no remaining markers, `apply` uses your resolved tree (without re-merging or nesting markers), runs `bun install` and `bun run check` (unless `--no-check`), stages only the changed paths by name (including `bun.lock` if `bun install` updated it), commits, creates `template-upgrade/<base7>-<target7>`, and removes the worktree.
+4. Rerunning `apply` after completion reports `already-done` and exits `0`.
+5. If a run is interrupted at any step before completion, rerunning the same `apply` command converges to the same branch and tree.

@@ -52,6 +52,13 @@ export const KERNEL_RECIPE: Recipe = {
 
 export const KERNEL_LOCKFILE = "generated-repository/bun.lock";
 
+export const REPOSITORY_RECIPE_COPIES: readonly string[] = [
+  "README.md",
+  "src/cli.ts",
+  "src/commands.ts",
+  "tests/cli.test.ts",
+];
+
 export function copiesOf(recipe: Recipe): readonly RecipeCopy[] {
   return [recipe.pin, ...recipe.copies];
 }
