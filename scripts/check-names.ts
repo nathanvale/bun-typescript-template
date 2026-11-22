@@ -10,10 +10,10 @@ import {
   stagedNewPaths,
   stagedText,
 } from "./glossary.ts";
+import { keptMoveTargets } from "./name-moves.ts";
 import {
   againstNameWordProblems,
   givenNameWordProblems,
-  keptMoveTargets,
   stagedNameWordProblems,
 } from "./name-words.ts";
 import { holdsTestFile, readRepository, testFilePlaces } from "./repository.ts";
@@ -131,7 +131,7 @@ function sameTree(one: string, other: string): boolean {
 async function problemsCreating(
   root: string,
   file: string,
-  keptTarget: boolean = false,
+  keptIn?: (tree: string) => ReadonlySet<string>,
 ): Promise<string[]> {
   const tree = owningTree(file);
   const own =
@@ -148,7 +148,7 @@ async function problemsCreating(
     namesOnPaths([relative(tree, file)]).filter(
       (name) => !existsSync(join(tree, name)),
     ),
-    keptTarget ? new Set([relative(tree, file)]) : undefined,
+    keptIn?.(tree),
   );
 }
 
@@ -202,12 +202,11 @@ async function toolCallProblems(
     typeof cwd === "string" ? resolve(fallbackCwd, cwd) : fallbackCwd;
   const tool = call.get("tool_name");
   const input = ownFields(call.get("tool_input"));
-  const kept = keptMoveTargets(tool, input, from);
+  const keptIn = (tree: string) => keptMoveTargets(tool, input, from, tree);
   const problems = await Promise.all(
-    createdPaths(tool, input).map((path) => {
-      const resolved = resolve(from, path);
-      return problemsCreating(root, resolved, kept.has(resolved));
-    }),
+    createdPaths(tool, input).map((path) =>
+      problemsCreating(root, resolve(from, path), keptIn),
+    ),
   );
   return problems.flat();
 }

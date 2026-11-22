@@ -1,7 +1,13 @@
 import { expect, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { keptMoveTargets } from "../../../scripts/name-words.ts";
+import {
+  keptByRenames,
+  keptMoveTargets,
+  newPathItems,
+  parseNameStatus,
+} from "../../../scripts/name-moves.ts";
+import { publicSurfaceFile } from "../../../scripts/public-surface.ts";
 import { git } from "../../support/git-fixture.ts";
 import {
   check,
@@ -164,9 +170,12 @@ test("apply_patch Move to keeping its basename passes while moving to an unknown
     "*** End Patch",
   ].join("\n");
   expect(
-    keptMoveTargets("apply_patch", new Map([["command", keepPatch]]), root).has(
-      join(root, "src/seam/gizmo.ts"),
-    ),
+    keptMoveTargets(
+      "apply_patch",
+      new Map([["command", keepPatch]]),
+      root,
+      root,
+    ).has("src/seam/gizmo.ts"),
   ).toBe(true);
   expect(
     await check(root, ["--tool-call"], () =>
@@ -195,6 +204,99 @@ test("apply_patch Move to keeping its basename passes while moving to an unknown
   ).toEqual({
     code: 1,
     stderr: `${unknownPathLine("src/seam/widget.ts", "widget")}\n`,
+  });
+});
+
+test("apply_patch Move to exempts moved ancestor folders while still judging genuinely new folder names", async () => {
+  const root = plainWordsRepository(samplePlainWords, {
+    "src/gizmo/apply.ts": "export const apply = 1;\n",
+  });
+  const keepFolderPatch = [
+    "*** Begin Patch",
+    "*** Update File: src/gizmo/apply.ts",
+    "*** Move to: src/seam/gizmo/apply.ts",
+    "@@",
+    "-export const apply = 1;",
+    "+export const apply = 2;",
+    "*** End Patch",
+  ].join("\n");
+  expect(
+    keptByRenames([
+      { from: "src/gizmo/apply.ts", to: "src/seam/gizmo/apply.ts" },
+    ]),
+  ).toEqual(new Set(["src", "src/seam/gizmo", "src/seam/gizmo/apply.ts"]));
+  const parsedMove = parseNameStatus([
+    "R100",
+    "src/gizmo/apply.ts",
+    "src/seam/gizmo/apply.ts",
+  ]);
+  expect(
+    newPathItems(parsedMove.added, parsedMove.renames, new Set(["src"]))
+      .unkeptNew,
+  ).toEqual([{ path: "src/seam", isFile: false }]);
+  expect(
+    await check(root, ["--tool-call"], () =>
+      Promise.resolve(
+        JSON.stringify({
+          tool_name: "apply_patch",
+          tool_input: { command: keepFolderPatch },
+        }),
+      ),
+    ),
+  ).toEqual({ code: 0, stderr: "" });
+
+  const newFolderPatch = keepFolderPatch.replace(
+    "src/seam/gizmo/apply.ts",
+    "src/widget/gizmo/apply.ts",
+  );
+  expect(
+    await check(root, ["--tool-call"], () =>
+      Promise.resolve(
+        JSON.stringify({
+          tool_name: "apply_patch",
+          tool_input: { command: newFolderPatch },
+        }),
+      ),
+    ),
+  ).toEqual({
+    code: 1,
+    stderr: `${unknownPathLine("src/widget", "widget")}\n`,
+  });
+});
+
+test("explicit-path checks apply git rename exemptions to moved files, moved folders, and existing declarations", async () => {
+  const body =
+    "export const gizmoWidget = 1;\nexport const plantedFault = 2;\nexport const record = 'long enough for git rename detection';\n";
+  const root = plainWordsRepository(samplePlainWords, {
+    [publicSurfaceFile]: JSON.stringify({
+      exports: ["src/**/*.ts"],
+      consumedExports: [],
+      importers: [],
+    }),
+    "src/old/gizmo.ts": body,
+    "src/old/gizmo-folder/apply.ts": body,
+  });
+  mkdirSync(join(root, "src/seam/gizmo-folder"), { recursive: true });
+  git(root, "mv", "src/old/gizmo.ts", "src/seam/gizmo.ts");
+  git(
+    root,
+    "mv",
+    "src/old/gizmo-folder/apply.ts",
+    "src/seam/gizmo-folder/apply.ts",
+  );
+  expect(await check(root, ["src/seam/gizmo.ts"])).toEqual({
+    code: 0,
+    stderr: "",
+  });
+  expect(await check(root, ["src/seam/gizmo-folder/apply.ts"])).toEqual({
+    code: 0,
+    stderr: "",
+  });
+
+  put(root, "src/seam/gizmo.ts", `${body}export const widget = 3;\n`);
+  expect(await check(root, ["src/seam/gizmo.ts"])).toEqual({
+    code: 1,
+    stderr: `${unknownDeclarationLine("src/seam/gizmo.ts", 4, "widget", "widget")}\n`,
   });
 });
 

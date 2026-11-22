@@ -1,5 +1,6 @@
 import { lstatSync, readFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
+import { withoutRepositoryLocation } from "./process-runner.ts";
 
 export const recordedHitsFile = "tests/template/names-check/recorded-hits.json";
 export const recordedUnusedTermsFile =
@@ -252,12 +253,27 @@ export function nameProblems(
 
 const gitMilliseconds = 10_000;
 
+// Platform: a decoder drops a leading byte-order mark unless told to keep it,
+// and in a git path name it is a character.
+const nameReader = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+
+export function gitNames(bytes: Uint8Array, where: string): string {
+  try {
+    return nameReader.decode(bytes);
+  } catch (error) {
+    throw new Error(
+      `names check: ${where} returned a path that is not valid UTF-8. Repair: rename the path to valid UTF-8 and run the check again.`,
+      { cause: error },
+    );
+  }
+}
+
 // Platform: Bun starts a child with the environment the process started with
 // unless `env` is given, so a change to process.env reaches git only through it.
 function git(root: string, command: readonly string[]) {
   const result = Bun.spawnSync(["git", ...command], {
     cwd: root,
-    env: process.env,
+    env: withoutRepositoryLocation(process.env),
     stdout: "pipe",
     stderr: "pipe",
     timeout: gitMilliseconds,
@@ -276,8 +292,7 @@ function gitPaths(root: string, command: readonly string[]): string[] {
     throw new Error(
       `git ${command.join(" ")} failed: ${listed.stderr.toString().trim()}`,
     );
-  return listed.stdout
-    .toString()
+  return gitNames(listed.stdout, `git ${command.join(" ")}`)
     .split("\0")
     .filter((path) => path !== "");
 }

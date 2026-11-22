@@ -1,8 +1,17 @@
-import { existsSync, lstatSync, readFileSync } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import {
+  closeSync,
+  constants as fsConstants,
+  existsSync,
+  fstatSync,
+  lstatSync,
+  openSync,
+  readFileSync,
+} from "node:fs";
+import { join } from "node:path";
 import {
   type Glossary,
   gitInNamesCheck,
+  gitNames,
   hitsIn,
   mergeBaseOf,
   namesOnPaths,
@@ -13,6 +22,13 @@ import {
   stagedText,
 } from "./glossary.ts";
 import { listedEntries, ownershipFile } from "./glossary-ownership.ts";
+import {
+  keptByRenames,
+  newPathItems,
+  parseNameStatus,
+  type PathItem,
+  type RenamePair,
+} from "./name-moves.ts";
 import type { PublicDeclaration } from "./public-declarations.ts";
 import {
   publicSurfaceFile,
@@ -40,25 +56,16 @@ export type NameWords = {
   readonly plain: ReadonlyMap<string, string>;
 };
 
-export type PathItem = {
-  readonly path: string;
-  readonly isFile: boolean;
-};
-
-type RenamePair = {
-  readonly from: string;
-  readonly to: string;
-};
-
 const codeFile = /\.(?:[cm]?ts|tsx|[cm]?js|jsx)$/;
 const patchPrefix = "tests/planted-faults/patches/";
 
 export function splitWords(text: string): string[] {
   return text
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/([A-Z])([A-Z][a-z])/g, "$1 $2")
+    .normalize("NFC")
+    .replace(/([\p{Ll}\p{N}])(\p{Lu})/gu, "$1 $2")
+    .replace(/(\p{Lu})(\p{Lu}\p{Ll})/gu, "$1 $2")
     .toLowerCase()
-    .split(/[^a-z]+/)
+    .split(/[^\p{L}\p{N}]+/u)
     .filter((word) => word !== "");
 }
 
@@ -134,7 +141,11 @@ function parsePlainEntry(
     throw new Error(
       `${plainWordsFile}: words[${index}] needs a non-empty word and reason. Repair: write each one as a non-empty string.`,
     );
-  if (!/^[a-z]+$/.test(word))
+  if (
+    !/^[\p{L}\p{N}]+$/u.test(word) ||
+    word !== word.normalize("NFC") ||
+    word !== word.toLowerCase()
+  )
     throw new Error(
       `${plainWordsFile}: words[${index}] word "${word}" must be one lowercase word. Repair: write a single lowercase word of letters only.`,
     );
@@ -241,13 +252,17 @@ export function unknownDeclarationProblems(
   );
 }
 
-function gitOrThrow(root: string, command: readonly string[]): string {
+function gitCommand(root: string, command: readonly string[]): Buffer {
   const result = gitInNamesCheck(root, command);
   if (result.exitCode !== 0)
     throw new Error(
       `git ${command.join(" ")} failed: ${result.stderr.toString().trim()}`,
     );
-  return result.stdout.toString();
+  return result.stdout;
+}
+
+function gitOrThrow(root: string, command: readonly string[]): string {
+  return gitCommand(root, command).toString();
 }
 
 function hasCommit(root: string, revision: string): boolean {
@@ -277,93 +292,26 @@ function stagedFileExists(root: string, path: string): boolean {
   return gitInNamesCheck(root, ["cat-file", "-e", `:${path}`]).exitCode === 0;
 }
 
-function nullFields(text: string): string[] {
-  return text.split("\0").filter((field) => field !== "");
+function gitNameCommand(root: string, command: readonly string[]): string[] {
+  return gitNames(gitCommand(root, command), `git ${command.join(" ")}`)
+    .split("\0")
+    .filter((field) => field !== "");
 }
 
 function committedNames(root: string, revision: string): Set<string> {
   if (!hasCommit(root, revision)) return new Set();
   return new Set(
     namesOnPaths(
-      nullFields(
-        gitOrThrow(root, ["ls-tree", "-r", "--name-only", "-z", revision]),
-      ),
+      gitNameCommand(root, ["ls-tree", "-r", "--name-only", "-z", revision]),
     ),
   );
 }
 
-function recordStatus(
-  status: string,
-  first: string,
-  second: string,
-  added: string[],
-  renames: RenamePair[],
-): void {
-  if (status.startsWith("R")) renames.push({ from: first, to: second });
-  else if (status.startsWith("A")) added.push(first);
-  else if (status.startsWith("C")) added.push(second);
-}
-
-function parseNameStatus(fields: readonly string[]): {
-  added: string[];
-  renames: RenamePair[];
-} {
-  const added: string[] = [];
-  const renames: RenamePair[] = [];
-  let index = 0;
-  while (index < fields.length) {
-    const status = fields[index] ?? "";
-    const hasSecond = status.startsWith("R") || status.startsWith("C");
-    const first = fields[index + 1] ?? "";
-    const second = fields[index + 2] ?? "";
-    recordStatus(status, first, second, added, renames);
-    index += hasSecond ? 3 : 2;
-  }
-  return { added, renames };
-}
-
-function keptByRenames(renames: readonly RenamePair[]): Set<string> {
-  const kept = new Set<string>();
-  for (const { from, to } of renames) {
-    const fromParts = from.split("/");
-    const toParts = to.split("/");
-    const fromFolders = new Set(fromParts.slice(0, -1));
-    if (fromParts.at(-1) === toParts.at(-1)) kept.add(to);
-    for (let end = 1; end < toParts.length; end += 1) {
-      if (fromFolders.has(toParts[end - 1] ?? ""))
-        kept.add(toParts.slice(0, end).join("/"));
-    }
-  }
-  return kept;
-}
-
-function itemsFromFiles(files: readonly string[]): PathItem[] {
-  const items = new Map<string, boolean>();
-  for (const file of files) {
-    const parts = file.split("/");
-    for (let end = 1; end <= parts.length; end += 1) {
-      const path = parts.slice(0, end).join("/");
-      const isFile = end === parts.length;
-      if (!items.has(path) || !isFile) items.set(path, isFile);
-    }
-  }
-  return [...items].map(([path, isFile]) => ({ path, isFile }));
-}
-
-function newPathItems(
-  added: readonly string[],
-  renames: readonly RenamePair[],
-  earlier: ReadonlySet<string>,
-): { allNew: PathItem[]; unkeptNew: PathItem[] } {
-  const kept = keptByRenames(renames);
-  const allNew = itemsFromFiles([
-    ...added,
-    ...renames.map(({ to }) => to),
-  ]).filter(({ path }) => !earlier.has(path));
-  return {
-    allNew,
-    unkeptNew: allNew.filter(({ path }) => !kept.has(path)),
-  };
+function gitMoves(root: string): RenamePair[] {
+  if (!hasCommit(root, "HEAD")) return [];
+  return parseNameStatus(
+    gitNameCommand(root, ["diff", "--name-status", "-M", "-z", "HEAD"]),
+  ).renames;
 }
 
 function isDirectoryAt(root: string, path: string): boolean {
@@ -455,22 +403,49 @@ async function newDeclarationsSince(
   });
 }
 
+function plainWordFile(
+  fullPath: string,
+  displayPath: string,
+): string | undefined {
+  let fd: number;
+  try {
+    fd = openSync(
+      fullPath,
+      fsConstants.O_RDONLY | fsConstants.O_NONBLOCK | fsConstants.O_NOFOLLOW,
+    );
+  } catch (error) {
+    const code: unknown = Reflect.get(Object(error), "code");
+    if (code === "ENOENT" || code === "ENOTDIR") return undefined;
+    if (code === "ELOOP")
+      throw new Error(
+        `${displayPath} is a symbolic link, not a regular file. Repair: replace it with a regular file.`,
+        { cause: error },
+      );
+    throw new Error(
+      `${displayPath} could not be opened (${String(code ?? error)}). Repair: make ${displayPath} a readable regular file.`,
+      { cause: error },
+    );
+  }
+  try {
+    if (!fstatSync(fd).isFile())
+      throw new Error(
+        `${displayPath} is not a regular file. Repair: replace it with a regular file.`,
+      );
+    return readFileSync(fd, "utf8");
+  } finally {
+    closeSync(fd);
+  }
+}
+
 function readWorkingNameWords(
   root: string,
 ): { words: NameWords; glossary: Glossary } | undefined {
-  const plainPath = join(root, plainWordsFile);
-  if (!existsSync(plainPath)) return undefined;
+  const plainText = plainWordFile(join(root, plainWordsFile), plainWordsFile);
+  if (plainText === undefined) return undefined;
   const glossaryText = readFileSync(join(root, "GLOSSARY.md"), "utf8");
-  const ownershipPath = join(root, ownershipFile);
-  const ownershipText = existsSync(ownershipPath)
-    ? readFileSync(ownershipPath, "utf8")
-    : undefined;
+  const ownershipText = plainWordFile(join(root, ownershipFile), ownershipFile);
   return {
-    words: readNameWords(
-      glossaryText,
-      readFileSync(plainPath, "utf8"),
-      ownershipText,
-    ),
+    words: readNameWords(glossaryText, plainText, ownershipText),
     glossary: readGlossary(glossaryText),
   };
 }
@@ -481,10 +456,18 @@ export async function givenNameWordProblems(
   keptPaths: ReadonlySet<string> = new Set(),
 ): Promise<string[]> {
   const loaded = readWorkingNameWords(tree);
-  if (loaded === undefined) return [];
+  if (loaded === undefined) {
+    if (committedFileExists(tree, "HEAD", plainWordsFile))
+      throw new Error(
+        `${plainWordsFile} exists at HEAD but is missing from this tree. Repair: restore it with git restore ${plainWordsFile}.`,
+      );
+    return [];
+  }
   const committed = committedNames(tree, "HEAD");
+  const renames = gitMoves(tree);
+  const kept = new Set([...keptPaths, ...keptByRenames(renames)]);
   const items: PathItem[] = names
-    .filter((name) => !committed.has(name) && !keptPaths.has(name))
+    .filter((name) => !committed.has(name) && !kept.has(name))
     .map((name) => ({
       path: name,
       isFile:
@@ -497,7 +480,7 @@ export async function givenNameWordProblems(
     "HEAD",
     false,
     existingFiles,
-    [],
+    renames,
   );
   return [
     ...unknownPathProblems(loaded.words, loaded.glossary, items),
@@ -517,9 +500,7 @@ export async function stagedNameWordProblems(root: string): Promise<string[]> {
   const words = readNameWords(glossaryText, plainText, ownershipText);
   const glossary = readGlossary(glossaryText);
   const { added, renames } = parseNameStatus(
-    nullFields(
-      gitOrThrow(root, ["diff", "--cached", "--name-status", "-M", "-z"]),
-    ),
+    gitNameCommand(root, ["diff", "--cached", "--name-status", "-M", "-z"]),
   );
   const { unkeptNew } = newPathItems(
     added,
@@ -550,14 +531,21 @@ export async function againstNameWordProblems(
       throw new Error(
         `${plainWordsFile} exists at ${revision} but is missing from this tree. Repair: restore it with git restore ${plainWordsFile}.`,
       );
+    if (committedFileExists(root, "HEAD", plainWordsFile))
+      throw new Error(
+        `${plainWordsFile} exists at HEAD but is missing from this tree. Repair: restore it with git restore ${plainWordsFile}.`,
+      );
     return [];
   }
   const { added, renames } = parseNameStatus(
-    nullFields(gitOrThrow(root, ["diff", "--name-status", "-M", "-z", base])),
+    gitNameCommand(root, ["diff", "--name-status", "-M", "-z", base]),
   );
-  const untracked = nullFields(
-    gitOrThrow(root, ["ls-files", "--others", "--exclude-standard", "-z"]),
-  );
+  const untracked = gitNameCommand(root, [
+    "ls-files",
+    "--others",
+    "--exclude-standard",
+    "-z",
+  ]);
   const { allNew, unkeptNew } = newPathItems(
     [...added, ...untracked],
     renames,
@@ -582,33 +570,4 @@ export async function againstNameWordProblems(
     ...unknownPathProblems(loaded.words, loaded.glossary, unkeptNew),
     ...unknownDeclarationProblems(loaded.words, loaded.glossary, declarations),
   ];
-}
-
-export function keptMoveTargets(
-  tool: unknown,
-  input: ReadonlyMap<string, unknown>,
-  from: string,
-): Set<string> {
-  if (tool !== "apply_patch") return new Set();
-  const patch = input.get("command");
-  if (typeof patch !== "string") return new Set();
-  const kept = new Set<string>();
-  let updated: string | undefined;
-  for (const line of patch.split("\n")) {
-    const updateMatch = /^\*\*\* Update File: (.+?)\s*$/.exec(line);
-    if (updateMatch !== null) {
-      updated = updateMatch[1];
-      continue;
-    }
-    const moveMatch = /^\*\*\* Move to: (.+?)\s*$/.exec(line);
-    if (moveMatch !== null && updated !== undefined) {
-      const target = moveMatch[1] ?? "";
-      if (basename(updated) === basename(target))
-        kept.add(resolve(from, target));
-      updated = undefined;
-      continue;
-    }
-    if (line.startsWith("*** ")) updated = undefined;
-  }
-  return kept;
 }

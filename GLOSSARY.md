@@ -319,7 +319,7 @@ A word a new name may use that no glossary term holds, recorded with its reason.
 _Avoid_: allowlist
 
 **Layout rule**:
-One row of `repository.json` `layoutRules`: the names a folder may hold, and the repair that names the right place for anything else. The names check refuses a path no layout rule admits.
+One row of `repository.json` `layoutRules`: the names a folder may hold, and the repair that names the right place for anything else. The kernel's names check refuses a path no layout rule admits; this repository declares none yet.
 _Avoid_: allowlist, folder policy
 
 ## Words that need a qualifier

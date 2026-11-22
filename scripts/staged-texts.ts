@@ -1,3 +1,6 @@
+import { gitNames } from "./glossary.ts";
+import { withoutRepositoryLocation } from "./process-runner.ts";
+
 type BlobEntry = { readonly object: string; readonly path: string };
 
 function runGit(
@@ -8,7 +11,7 @@ function runGit(
 ): Buffer {
   const result = Bun.spawnSync(["git", ...args], {
     cwd: root,
-    env: process.env,
+    env: withoutRepositoryLocation(process.env),
     stdin: stdin ?? "ignore",
     stdout: "pipe",
     stderr: "pipe",
@@ -64,8 +67,10 @@ export function stagedTexts(
   include: (path: string) => boolean,
 ): Map<string, string> {
   const description = "the staged public surface";
-  const entries = runGit(root, ["ls-files", "--stage", "-z"], description)
-    .toString()
+  const entries = gitNames(
+    runGit(root, ["ls-files", "--stage", "-z"], description),
+    description,
+  )
     .split("\0")
     .filter(
       (entry) => entry !== "" && include(entry.slice(entry.indexOf("\t") + 1)),
@@ -87,8 +92,10 @@ export function treeTexts(
   include: (path: string) => boolean,
 ): Map<string, string> {
   const description = `the public surface at ${revision}`;
-  const entries = runGit(root, ["ls-tree", "-r", "-z", revision], description)
-    .toString()
+  const entries = gitNames(
+    runGit(root, ["ls-tree", "-r", "-z", revision], description),
+    description,
+  )
     .split("\0")
     .flatMap((entry) => {
       if (entry === "") return [];
