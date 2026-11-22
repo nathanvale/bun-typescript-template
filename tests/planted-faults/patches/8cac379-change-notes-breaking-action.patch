@@ -1,0 +1,14 @@
+diff --git a/scripts/change-notes.ts b/scripts/change-notes.ts
+--- a/scripts/change-notes.ts
++++ b/scripts/change-notes.ts
+@@ -150,10 +150,6 @@
+     return fail(
+       `${file}: action must be a non-empty string or null. Repair: set action to null or write what the reader must do.`,
+     );
+-  if (breaking && raw === null)
+-    return fail(
+-      `${file}: breaking is true so action must explain what the reader must do. Repair: set action to a non-empty step.`,
+-    );
+   return { ok: true, value: raw === null ? null : raw.trim() };
+ }
+ 

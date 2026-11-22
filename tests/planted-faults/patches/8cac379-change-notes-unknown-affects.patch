@@ -1,0 +1,17 @@
+diff --git a/scripts/change-notes.ts b/scripts/change-notes.ts
+--- a/scripts/change-notes.ts
++++ b/scripts/change-notes.ts
+@@ -127,13 +127,6 @@
+   const affects = raw.filter(
+     (item): item is string => typeof item === "string",
+   );
+-  if (allowedAffects !== undefined) {
+-    const invalid = affects.find((item) => !allowedAffects.has(item));
+-    if (invalid !== undefined)
+-      return fail(
+-        `${file}: unknown affects entry "${invalid}". Repair: use one of ${[...allowedAffects].sort(compareText).join(", ")}.`,
+-      );
+-  }
+   if (kind !== "none" && affects.length === 0)
+     return fail(
+       `${file}: affects must name at least one surface when kind is "${kind}". Repair: list the affected surface(s).`,

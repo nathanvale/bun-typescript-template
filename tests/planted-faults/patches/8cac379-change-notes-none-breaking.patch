@@ -1,0 +1,14 @@
+diff --git a/scripts/change-notes.ts b/scripts/change-notes.ts
+--- a/scripts/change-notes.ts
++++ b/scripts/change-notes.ts
+@@ -104,10 +104,6 @@
+     return fail(
+       `${file}: breaking must be true or false. Repair: set breaking to a boolean.`,
+     );
+-  if (kind === "none" && breaking)
+-    return fail(
+-      `${file}: a "none" note cannot set breaking to true. Repair: set breaking to false or pick added, changed, fixed or removed.`,
+-    );
+   return { ok: true, value: { kind, breaking } };
+ }
+ 

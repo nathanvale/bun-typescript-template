@@ -1,0 +1,12 @@
+diff --git a/scripts/check-change-notes.ts b/scripts/check-change-notes.ts
+--- a/scripts/check-change-notes.ts
++++ b/scripts/check-change-notes.ts
+@@ -99,7 +99,7 @@
+ function readPlainUtf8(fullPath: string, displayPath: string): string {
+   const fd = openSync(
+     fullPath,
+-    constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
++    constants.O_RDONLY | constants.O_NONBLOCK,
+   );
+   try {
+     if (!fstatSync(fd).isFile())

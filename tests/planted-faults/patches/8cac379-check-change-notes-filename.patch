@@ -1,0 +1,13 @@
+diff --git a/scripts/check-change-notes.ts b/scripts/check-change-notes.ts
+--- a/scripts/check-change-notes.ts
++++ b/scripts/check-change-notes.ts
+@@ -123,9 +123,6 @@
+   path !== `${CHANGE_NOTES_FOLDER}/README.md`;
+ 
+ function noteProblem(root: string, path: string): string | undefined {
+-  const file = path.slice(CHANGE_NOTES_FOLDER.length + 1);
+-  if (file.includes("/") || !isValidChangeNoteFile(file))
+-    return `${path}: filename must match ${CHANGE_NOTES_FOLDER}/YYYY-MM-DD-<kebab-slug>.json with a valid date. Repair: rename the note to start with a valid ISO date and lowercase kebab-case slug.`;
+   let raw: string;
+   try {
+     raw = readPlainUtf8(join(root, path), path);

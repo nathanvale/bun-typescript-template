@@ -1,0 +1,12 @@
+diff --git a/scripts/check-change-notes.ts b/scripts/check-change-notes.ts
+--- a/scripts/check-change-notes.ts
++++ b/scripts/check-change-notes.ts
+@@ -60,7 +60,7 @@
+ }
+ 
+ const gitMilliseconds = 10_000;
+-const strictUtf8 = new TextDecoder("utf-8", { fatal: true });
++const strictUtf8 = new TextDecoder("utf-8");
+ const knownFlags = new Set(["--base", "--root"]);
+ const usage =
+   "Usage: bun run check:change-notes [--base <revision>] [--root <folder>]\n";
