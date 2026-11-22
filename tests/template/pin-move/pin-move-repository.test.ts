@@ -5,6 +5,7 @@ import {
   readFileSync,
   realpathSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { delimiter, join } from "node:path";
@@ -242,6 +243,15 @@ describe("pin-move --repository", () => {
 
   test("moves a generated repository Pin onto a new branch, prints change notes first, updates package.json, lockfile and pointer skills, runs check, and leaves main untouched", async () => {
     const repo = freshRepository("pin-move-apply-");
+    const oldSpecifier = cloneSpecifier(kernelRepo, trialBase);
+    const originalManifest = readFileSync(join(repo, "package.json"), "utf8");
+    const withConfig = originalManifest.replace(
+      `"version": "0.0.0",`,
+      `"version": "0.0.0",\n  "config": {\n    "agent-cli-kernel": ${JSON.stringify(oldSpecifier)}\n  },`,
+    );
+    commitIn(repo, "add unrelated config entry matching old specifier", {
+      "package.json": withConfig,
+    });
     const mainBefore = git(repo, "rev-parse", "main");
     const expectedBranch = `pin-move/${targetCommit.slice(0, 7)}`;
     const run = await runPinMove([
@@ -269,9 +279,15 @@ describe("pin-move --repository", () => {
     expect(
       gitOutput(repo, "status", "--porcelain", "--untracked-files=all"),
     ).toBe("");
-    expect(readFileSync(join(repo, "package.json"), "utf8")).toContain(
-      cloneSpecifier(kernelRepo, targetCommit),
+    const updatedManifest: unknown = JSON.parse(
+      readFileSync(join(repo, "package.json"), "utf8"),
     );
+    expect(updatedManifest).toMatchObject({
+      config: { "agent-cli-kernel": oldSpecifier },
+      dependencies: {
+        "agent-cli-kernel": cloneSpecifier(kernelRepo, targetCommit),
+      },
+    });
     expect(
       readFileSync(
         join(repo, ".agents/skills/agent-cli-kernel/SKILL.md"),
@@ -473,6 +489,32 @@ test("pins only the older commit", () => {
       expect(branchExists.stderr).toContain("Repair:");
       git(repo, "branch", "-D", existingBranch);
 
+      commitIn(repo, "use foreign kernel remote", {
+        "package.json": `${JSON.stringify(
+          {
+            name: "foreign",
+            dependencies: {
+              "agent-cli-kernel": `github:other/agent-cli-kernel#${trialBase}`,
+            },
+          },
+          null,
+          2,
+        )}\n`,
+      });
+      const foreignPin = await runPinMove([
+        targetCommit,
+        "--kernel",
+        kernelRepo,
+        "--repository",
+        repo,
+      ]);
+      expect({ exit: foreignPin.exit, stdout: foreignPin.stdout }).toEqual({
+        exit: 1,
+        stdout: "",
+      });
+      expect(foreignPin.stderr).toContain("repository_pin_missing:");
+      expect(foreignPin.stderr).toContain("Repair:");
+
       commitIn(repo, "drop kernel dependency", {
         "package.json": `${JSON.stringify({ name: "broken", dependencies: {} }, null, 2)}\n`,
       });
@@ -489,6 +531,64 @@ test("pins only the older commit", () => {
       });
       expect(missingPin.stderr).toContain("repository_pin_missing:");
       expect(missingPin.stderr).toContain("Repair:");
+    },
+    processWatchdog(3),
+  );
+
+  test(
+    "refuses a non-root repository path, detached HEAD, or symlinked package.json before changing anything",
+    async () => {
+      const repo = freshRepository("pin-move-invalid-");
+      const subdir = await runPinMove([
+        targetCommit,
+        "--kernel",
+        kernelRepo,
+        "--repository",
+        join(repo, "src"),
+      ]);
+      expect({ exit: subdir.exit, stdout: subdir.stdout }).toEqual({
+        exit: 1,
+        stdout: "",
+      });
+      expect(subdir.stderr).toContain("repository_invalid:");
+      expect(subdir.stderr).toContain("inside the repository above it");
+
+      const detached = freshRepository("pin-move-detached-");
+      git(detached, "checkout", "--quiet", "--detach", "HEAD");
+      const detachedRun = await runPinMove([
+        targetCommit,
+        "--kernel",
+        kernelRepo,
+        "--repository",
+        detached,
+      ]);
+      expect({ exit: detachedRun.exit, stdout: detachedRun.stdout }).toEqual({
+        exit: 1,
+        stdout: "",
+      });
+      expect(detachedRun.stderr).toContain("repository_invalid:");
+      expect(detachedRun.stderr).toContain("detached HEAD");
+
+      const linked = freshRepository("pin-move-symlink-");
+      const outside = join(folder("pin-move-outside-"), "outside.json");
+      writeFileSync(outside, readFileSync(join(linked, "package.json")));
+      rmSync(join(linked, "package.json"));
+      symlinkSync(outside, join(linked, "package.json"));
+      git(linked, "add", "--", "package.json");
+      git(linked, "commit", "--quiet", "-m", "replace package.json with link");
+      const linkRun = await runPinMove([
+        targetCommit,
+        "--kernel",
+        kernelRepo,
+        "--repository",
+        linked,
+      ]);
+      expect({ exit: linkRun.exit, stdout: linkRun.stdout }).toEqual({
+        exit: 1,
+        stdout: "",
+      });
+      expect(linkRun.stderr).toContain("repository_invalid:");
+      expect(linkRun.stderr).toContain("symbolic link");
     },
     processWatchdog(3),
   );

@@ -1,9 +1,9 @@
 import {
   existsSync,
+  lstatSync,
   readdirSync,
   readFileSync,
   realpathSync,
-  statSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
@@ -106,6 +106,25 @@ function requireGitWorkTreeRoot(
     throw invalid("HEAD has no commit yet.");
 }
 
+function requireStartingBranch(
+  repository: string,
+  requireAttached: boolean,
+): string {
+  const branch = repositoryGit(repository, [
+    "symbolic-ref",
+    "--quiet",
+    "--short",
+    "HEAD",
+  ]);
+  if (branch.ok) return branch.stdout.trim();
+  if (!requireAttached) return "HEAD";
+  throw new RepositoryPinRefusal(
+    "repository_invalid",
+    `Repository at ${repository} is on a detached HEAD.`,
+    `Check out a branch such as main in ${repository}, then run pin-move again.`,
+  );
+}
+
 function openGeneratedRepository(
   givenPath: string,
   requireClean: boolean,
@@ -116,27 +135,47 @@ function openGeneratedRepository(
       `No generated git repository is at ${givenPath}: ${why}`,
       "Give the root folder of a clean git checkout created from this template.",
     );
-  if (!existsSync(givenPath) || !statSync(givenPath).isDirectory())
+  if (!existsSync(givenPath) || !lstatSync(givenPath).isDirectory())
     throw invalid("that path is not an existing folder.");
   const repository = realpathSync(givenPath);
   requireGitWorkTreeRoot(repository, invalid);
+  const startingRef = requireStartingBranch(repository, requireClean);
   if (requireClean) requireCleanWorkTree(repository);
-  const branch = repositoryGit(repository, [
-    "symbolic-ref",
-    "--quiet",
-    "--short",
-    "HEAD",
-  ]);
-  return {
-    repository,
-    startingRef: branch.ok ? branch.stdout.trim() : "HEAD",
-  };
+  return { repository, startingRef };
 }
 
 function ownPropertyValue(target: unknown, key: string): unknown {
   return typeof target === "object" && target !== null
     ? Object.getOwnPropertyDescriptor(target, key)?.value
     : undefined;
+}
+
+function requirePlainEntry(
+  repository: string,
+  relativePath: string,
+  kind: "file" | "directory",
+): string {
+  const segments = relativePath.split("/").filter((part) => part !== "");
+  let current = repository;
+  for (const [index, segment] of segments.entries()) {
+    current = join(current, segment);
+    const stats = lstatSync(current);
+    const isLast = index === segments.length - 1;
+    if (stats.isSymbolicLink())
+      throw new RepositoryPinRefusal(
+        "repository_invalid",
+        `${relativePath} in ${repository} traverses a symbolic link.`,
+        `Replace the symbolic link at ${relativePath} in ${repository} with a plain ${kind}, commit it, and run pin-move again.`,
+      );
+    const expectedDirectory = !isLast || kind === "directory";
+    if (expectedDirectory ? !stats.isDirectory() : !stats.isFile())
+      throw new RepositoryPinRefusal(
+        "repository_invalid",
+        `${relativePath} in ${repository} is not a plain ${kind}.`,
+        `Restore ${relativePath} in ${repository} as a plain ${kind}, commit it, and run pin-move again.`,
+      );
+  }
+  return current;
 }
 
 type RepositoryPinRecord = {
@@ -147,11 +186,13 @@ type RepositoryPinRecord = {
 };
 
 function readManifestSpecifier(
-  manifestPath: string,
+  repository: string,
   packageName: string,
   missing: (why: string) => RepositoryPinRefusal,
 ): { readonly packageText: string; readonly specifier: string } {
+  const manifestPath = join(repository, "package.json");
   if (!existsSync(manifestPath)) throw missing("package.json is missing.");
+  requirePlainEntry(repository, "package.json", "file");
   const packageText = readFileSync(manifestPath, "utf8");
   let parsed: unknown;
   try {
@@ -181,7 +222,7 @@ function readRepositoryPin(
       `Set dependencies["${pin.repository}"] in ${manifestPath} to ${generatedPin(pin, pin.commit)} and commit it before running pin-move.`,
     );
   const { packageText, specifier } = readManifestSpecifier(
-    manifestPath,
+    repository,
     pin.repository,
     missing,
   );
@@ -214,25 +255,29 @@ function writeRepositoryPackagePin(
   record: RepositoryPinRecord,
   packageName: string,
 ): string {
-  const manifestPath = join(repository, "package.json");
-  const quotedOld = JSON.stringify(record.currentSpecifier);
-  const quotedNew = JSON.stringify(record.nextSpecifier);
-  const pattern = new RegExp(
-    `("${packageName}"\\s*:\\s*)${quotedOld.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
-  );
-  if (!pattern.test(record.packageText))
+  const manifestPath = requirePlainEntry(repository, "package.json", "file");
+  const parsed: unknown = JSON.parse(record.packageText);
+  const deps = ownPropertyValue(parsed, "dependencies");
+  if (typeof deps !== "object" || deps === null || Array.isArray(deps))
     throw new RepositoryPinRefusal(
       "repository_pin_missing",
-      `${manifestPath} does not contain a replaceable "${packageName}" dependency line.`,
-      `Write "${packageName}": ${quotedOld} in ${manifestPath}, commit it, and run pin-move again.`,
+      `${manifestPath} has no dependencies object.`,
+      `Restore dependencies["${packageName}"] in ${manifestPath}, commit it, and run pin-move again.`,
     );
-  writeFileSync(
-    manifestPath,
-    record.packageText.replace(
-      pattern,
-      (_match, prefix: string) => `${prefix}${quotedNew}`,
-    ),
-  );
+  Reflect.set(deps, packageName, record.nextSpecifier);
+  const updated = `${JSON.stringify(parsed, null, 2)}\n`;
+  if (
+    ownPropertyValue(
+      ownPropertyValue(JSON.parse(updated), "dependencies"),
+      packageName,
+    ) !== record.nextSpecifier
+  )
+    throw new RepositoryPinRefusal(
+      "repository_pin_missing",
+      `${manifestPath} could not record dependencies["${packageName}"].`,
+      `Write dependencies["${packageName}"] in ${manifestPath} by hand and run pin-move again.`,
+    );
+  writeFileSync(manifestPath, updated);
   return "package.json";
 }
 
@@ -263,7 +308,7 @@ function syncPointerSkill(
 ): string {
   let next = text.replace(
     /^Pinned commit: `[^`\n]*`$/m,
-    `Pinned commit: \`${kernelCommit}\``,
+    () => `Pinned commit: \`${kernelCommit}\``,
   );
   const full = git(kernelRepository, "cat-file", [
     "-p",
@@ -287,11 +332,14 @@ function updatePointerSkills(
 ): string[] {
   const folder = join(repository, SKILL_FOLDER);
   if (!existsSync(folder)) return [];
+  requirePlainEntry(repository, SKILL_FOLDER, "directory");
   const installedPrefix = `node_modules/${packageName}/`;
   const written: string[] = [];
   for (const name of readdirSync(folder).sort()) {
-    const file = join(folder, name, "SKILL.md");
-    if (!existsSync(file) || !statSync(file).isFile()) continue;
+    const relativeSkill = `${SKILL_FOLDER}/${name}/SKILL.md`;
+    const skillDir = join(folder, name);
+    if (!existsSync(join(skillDir, "SKILL.md"))) continue;
+    const file = requirePlainEntry(repository, relativeSkill, "file");
     const text = readFileSync(file, "utf8");
     const fullSkill = /^Full skill: `([^`\n]+)`$/m.exec(text)?.[1];
     if (fullSkill === undefined || !fullSkill.startsWith(installedPrefix))
@@ -304,7 +352,7 @@ function updatePointerSkills(
     );
     if (next !== text) {
       writeFileSync(file, next);
-      written.push(`${SKILL_FOLDER}/${name}/SKILL.md`);
+      written.push(relativeSkill);
     }
   }
   return written;
@@ -335,6 +383,13 @@ async function runRepositoryCheckSteps(
           "repository_check_failed",
           `${name} failed on branch ${branch} in ${repository}: ${detail} Branch ${branch} was left checked out for inspection; ${startingRef} was not changed.`,
           `Inspect the failure on branch ${branch} in ${repository}, fix it, run bun run check, and commit, or switch back to ${startingRef} and delete ${branch}.`,
+        );
+      }
+      if (error instanceof TrialRefusal && error.code === "trial_stopped") {
+        throw new RepositoryPinRefusal(
+          "trial_stopped",
+          `Pin move in ${repository} was stopped by ${active.stoppedBy ?? "a signal"} during ${name} on branch ${branch}. Branch ${branch} and its partial edits were left in place; ${startingRef} was not changed.`,
+          `Switch back to ${startingRef} and delete ${branch} (git checkout ${startingRef} && git branch -D ${branch}), then run pin-move again.`,
         );
       }
       throw error;
@@ -381,8 +436,11 @@ function commitPinMoveBranch(
     repository,
     [
       "commit",
+      "--only",
       "-m",
       `chore(kernel): move kernel Pin from ${oldCommit.slice(0, 7)} to ${kernelCommit.slice(0, 7)}`,
+      "--",
+      ...written,
     ],
     `Commit the staged pin move on branch ${branch} in ${repository}.`,
   );
