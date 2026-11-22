@@ -1,0 +1,7 @@
+{
+  "kind": "changed",
+  "breaking": true,
+  "affects": ["generated-repository"],
+  "summary": "Enabled the source layout gate in generated repositories from day one: .fallowrc.json turns on boundary-violation with entry, rules, shared, subject, and flat zones under requireAllFiles, and eslint.config.mjs refuses loose files in src/ once subject folders exist.",
+  "action": "Flat repositories (one subject, no subfolders under src/) pass untouched. Repositories that already added custom boundaries in .fallowrc.json resolve the JSON key merge on boundaries.zones and boundaries.rules by keeping their own stricter rules or taking the template's block. Pre-rule multi-folder repositories (such as src/commands/ + non-shared helper folders) will report existing boundary violations on bun run check: either move to subject folders under src/<subject>/ and src/shared/, or run bun run quality:fallow:record-hits to record pre-existing violations while blocking any new ones (noting that hosted baseline-growth checks refuse recorded-hits growth until paid down or explicitly accepted on the upgrade pull request)."
+}
