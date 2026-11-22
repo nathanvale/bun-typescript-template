@@ -2224,5 +2224,19 @@
     "testFile": "tests/template/test-helpers/git-fixture.test.ts",
     "title": "^the shipped git fixture test passes in a bootstrapped generated repository$",
     "source": "6af3b16 feat(git-fixture): disable automatic git maintenance and ship gitFixture helper"
+  },
+  {
+    "id": "c808d75-generated-source-layout-boundaries",
+    "patch": "tests/planted-faults/patches/c808d75-generated-source-layout-boundaries.patch",
+    "testFile": "tests/template/bootstrap/generated-source-layout-gate.test.ts",
+    "title": "^a fresh Bootstrap passes flat and subject-folder checks and refuses every planted source layout violation$",
+    "source": "c808d75 feat(generated-repository): ship the source layout gate from day one"
+  },
+  {
+    "id": "c808d75-generated-loose-source-lint",
+    "patch": "tests/planted-faults/patches/c808d75-generated-loose-source-lint.patch",
+    "testFile": "tests/template/bootstrap/generated-source-layout-gate.test.ts",
+    "title": "^a fresh Bootstrap passes flat and subject-folder checks and refuses every planted source layout violation$",
+    "source": "c808d75 feat(generated-repository): ship the source layout gate from day one"
   }
 ]

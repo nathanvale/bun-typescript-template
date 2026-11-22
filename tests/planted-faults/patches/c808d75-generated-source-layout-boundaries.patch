@@ -1,0 +1,12 @@
+diff --git a/generated-repository/settings/.fallowrc.json b/generated-repository/settings/.fallowrc.json
+--- a/generated-repository/settings/.fallowrc.json
++++ b/generated-repository/settings/.fallowrc.json
+@@ -26,7 +26,7 @@
+     "maxFileLines": 500
+   },
+   "rules": {
+-    "boundary-violation": "error",
++    "boundary-violation": "off",
+     "circular-dependencies": "error",
+     "coverage-gaps": "off",
+     "css-broken-reference": "off",
