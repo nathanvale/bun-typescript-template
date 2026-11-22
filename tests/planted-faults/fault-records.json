@@ -2210,5 +2210,19 @@
     "testFile": "tests/template/bootstrap/kernel-row.test.ts",
     "title": "leaves the nine zero-finding default Fallow rules at Fallow's default severity$",
     "source": "8976133 feat(generated-repository): restore nine zero-finding default Fallow rules"
+  },
+  {
+    "id": "6af3b16-template-git-fixture-count",
+    "patch": "tests/planted-faults/patches/6af3b16-template-git-fixture-count.patch",
+    "testFile": "tests/template/test-helpers/git-fixture.test.ts",
+    "title": "^the template git fixture commits with maintenance\\.auto false and gc\\.auto 0$",
+    "source": "6af3b16 feat(git-fixture): disable automatic git maintenance and ship gitFixture helper"
+  },
+  {
+    "id": "6af3b16-generated-git-fixture-count",
+    "patch": "tests/planted-faults/patches/6af3b16-generated-git-fixture-count.patch",
+    "testFile": "tests/template/test-helpers/git-fixture.test.ts",
+    "title": "^the shipped git fixture test passes in a bootstrapped generated repository$",
+    "source": "6af3b16 feat(git-fixture): disable automatic git maintenance and ship gitFixture helper"
   }
 ]

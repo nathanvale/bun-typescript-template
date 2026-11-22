@@ -1,0 +1,12 @@
+diff --git a/generated-repository/application/tests/support/git-fixture.ts b/generated-repository/application/tests/support/git-fixture.ts
+--- a/generated-repository/application/tests/support/git-fixture.ts
++++ b/generated-repository/application/tests/support/git-fixture.ts
+@@ -13,7 +13,7 @@
+ const gitEnv = {
+   GIT_CONFIG_GLOBAL: "/dev/null",
+   GIT_CONFIG_NOSYSTEM: "1",
+-  GIT_CONFIG_COUNT: "2",
++  GIT_CONFIG_COUNT: "0",
+   GIT_CONFIG_KEY_0: "maintenance.auto",
+   GIT_CONFIG_VALUE_0: "false",
+   GIT_CONFIG_KEY_1: "gc.auto",
