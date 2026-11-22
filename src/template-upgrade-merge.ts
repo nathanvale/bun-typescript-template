@@ -37,7 +37,7 @@ export type TemplateUpgradeFileOwner =
 
 export type TemplateUpgradeOutcome =
   | "untouched"
-  | "already"
+  | "already-applied"
   | "take"
   | "delete"
   | "regenerate"
@@ -496,7 +496,7 @@ async function mergeSinglePath(options: {
     return { outcome: "template-copy-changed" };
   }
   if (entriesEqual(oursEntry, newEntry)) {
-    return { outcome: "already" };
+    return { outcome: "already-applied" };
   }
   if (relativePath === STAMP_FILE) {
     return {
@@ -589,7 +589,7 @@ export async function mergeTemplateUpgradeTrees(
     const packageChanged =
       packageRow !== undefined &&
       packageRow.outcome !== "untouched" &&
-      packageRow.outcome !== "already";
+      packageRow.outcome !== "already-applied";
     rowByPath.set(
       LOCK_FILE,
       Object.freeze({

@@ -108,7 +108,7 @@ test("identifies conflict outcomes accurately", () => {
   expect(isTemplateUpgradeConflict("delete")).toBe(false);
   expect(isTemplateUpgradeConflict("regenerate")).toBe(false);
   expect(isTemplateUpgradeConflict("untouched")).toBe(false);
-  expect(isTemplateUpgradeConflict("already")).toBe(false);
+  expect(isTemplateUpgradeConflict("already-applied")).toBe(false);
   expect(isTemplateUpgradeConflict("template-copy-changed")).toBe(false);
 });
 
@@ -150,7 +150,7 @@ test("merges untouched, already, take, delete, stamp, bun.lock, and repository-o
     {
       path: ".github/workflows/ci.yml",
       ownerLabel: "shared",
-      outcome: "already",
+      outcome: "already-applied",
     },
     { path: "AGENTS.md", ownerLabel: "shared", outcome: "take" },
     { path: "bun.lock", ownerLabel: "generated", outcome: "regenerate" },
