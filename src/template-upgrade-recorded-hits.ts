@@ -1,7 +1,14 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { RECORDED_HITS_FILES, RECORDED_HITS_SCRIPT } from "./recipe.ts";
-import type { ProcessEnvMap } from "./template-upgrade-git.ts";
+import {
+  PIN_SETTINGS,
+  RECORDED_HITS_FILES,
+  RECORDED_HITS_SCRIPT,
+} from "./recipe.ts";
+import {
+  type ProcessEnvMap,
+  readCommittedBytesAt,
+} from "./template-upgrade-git.ts";
 import {
   createTemplateUpgradeApplyStep,
   skipTemplateUpgradeSteps,
@@ -26,6 +33,8 @@ function definesRecordedHitsScript(worktree: string): boolean {
 
 export interface RecordedHitsRequest {
   readonly worktree: string;
+  readonly templateRoot: string;
+  readonly targetCommit: string;
   readonly repository: string;
   readonly repositoryHead: string;
   readonly env: ProcessEnvMap;
@@ -33,25 +42,68 @@ export interface RecordedHitsRequest {
 
 export function recordedHitsRequestFor(
   worktree: string,
-  inputs: { readonly repository: string; readonly repositoryHead: string },
+  inputs: {
+    readonly templateRoot: string;
+    readonly targetCommit: string;
+    readonly repository: string;
+    readonly repositoryHead: string;
+  },
   env: ProcessEnvMap,
 ): RecordedHitsRequest {
   return {
     worktree,
+    templateRoot: inputs.templateRoot,
+    targetCommit: inputs.targetCommit,
     repository: inputs.repository,
     repositoryHead: inputs.repositoryHead,
     env,
   };
 }
 
+function readWorktreeRegularFileBytes(
+  fullPath: string,
+): Uint8Array | undefined {
+  let stats: ReturnType<typeof lstatSync>;
+  try {
+    stats = lstatSync(fullPath);
+  } catch (error) {
+    const code: unknown = Reflect.get(Object(error), "code");
+    if (code === "ENOENT" || code === "ENOTDIR") return undefined;
+    throw error;
+  }
+  if (!stats.isFile()) return undefined;
+  return readFileSync(fullPath);
+}
+
+function matchesTemplateRecordedHits(
+  options: RecordedHitsRequest,
+  file: string,
+): boolean {
+  const worktreeBytes = readWorktreeRegularFileBytes(
+    join(options.worktree, file),
+  );
+  if (worktreeBytes === undefined) return false;
+  const templateBytes = readCommittedBytesAt(
+    options.templateRoot,
+    options.targetCommit,
+    `${PIN_SETTINGS.from}/${file}`,
+    options.env,
+  );
+  if (templateBytes === undefined) return false;
+  return Buffer.compare(worktreeBytes, templateBytes) === 0;
+}
+
 function newRecordedHitsPresent(options: RecordedHitsRequest): boolean {
   const { worktree, repository, repositoryHead, env } = options;
   if (!definesRecordedHitsScript(worktree)) return false;
-  return RECORDED_HITS_FILES.some(
+  const missingInRepositoryHead = RECORDED_HITS_FILES.some(
     (file) =>
-      existsSync(join(worktree, file)) &&
       resolveRefIfPresent(repository, `${repositoryHead}:${file}`, env) ===
-        undefined,
+      undefined,
+  );
+  if (!missingInRepositoryHead) return false;
+  return RECORDED_HITS_FILES.every((file) =>
+    matchesTemplateRecordedHits(options, file),
   );
 }
 

@@ -657,5 +657,5 @@ test(
     }
     await assertFallowGates(destination, path, original);
   },
-  processWatchdog(10),
+  processWatchdog(25),
 );

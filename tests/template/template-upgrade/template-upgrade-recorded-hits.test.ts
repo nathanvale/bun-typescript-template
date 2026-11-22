@@ -1,9 +1,14 @@
 import { expect, test } from "bun:test";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import {
+  noCheckTemplateUpgradeSteps,
+  recordedHitsRequestFor,
+  runRecordedHitsStep,
+} from "../../../src/template-upgrade-recorded-hits.ts";
 import {} from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
-import { commitIn, git } from "../../support/git-fixture.ts";
+import { commitIn, git, initRepository } from "../../support/git-fixture.ts";
 import {} from "../../support/kernel-sibling.ts";
 import { processWatchdog } from "../../support/process.ts";
 import { streamWrites } from "../../support/stream-writes.ts";
@@ -426,4 +431,204 @@ exit 0
     ).toEqual(["install", "run check"]);
   },
   processWatchdog(4),
+);
+
+test(
+  "does not rerun the recorded-hits script on retry after check-failed, keeping the first recorded hits",
+  async () => {
+    const { templateClone, baseCommit, targetCommit, branch } =
+      createRecordedHitsUpgradeFixture();
+    const repo = await bootstrapGeneratedRepository(
+      folder,
+      templateClone,
+      baseCommit,
+      "retry-recorded-hits-app",
+    );
+    const failFlag = join(folder("scripted-bun-retry-flag-"), "fail-check");
+    writeFileSync(failFlag, "1\n");
+    const { ledger, env } = writeScriptedBun(
+      folder,
+      "scripted-bun-retry-record-hits-",
+      `#!/bin/sh
+echo "$*" >> __LEDGER__
+if [ "$1" = "run" ] && [ "$2" = "quality:fallow:record-hits" ]; then
+  if grep -q '"pass":1' fallow-dead-code-recorded-hits.json 2>/dev/null; then
+    printf '{"pass":2,"file":"dead-code"}\\n' > fallow-dead-code-recorded-hits.json
+  else
+    printf '{"pass":1,"file":"dead-code"}\\n' > fallow-dead-code-recorded-hits.json
+  fi
+  exit 0
+fi
+if [ "$1" = "run" ] && [ "$2" = "check" ] && [ -f ${JSON.stringify(failFlag)} ]; then
+  echo "planted check failure" >&2
+  exit 1
+fi
+exit 0
+`,
+    );
+    const stdout = captureStream(process.stdout);
+    const stderr = captureStream(process.stderr);
+    const args = [
+      "apply",
+      "--repository",
+      repo,
+      "--to",
+      targetCommit,
+      "--json",
+    ];
+    const runtime = { templateRoot: templateClone, env };
+    const worktree = join(
+      repo,
+      ".worktrees",
+      `template-upgrade-${targetCommit.slice(0, 7)}`,
+    );
+
+    const firstRun = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      args,
+      runtime,
+    );
+    expect(firstRun.exitCode).toBe(1);
+    expect(JSON.parse(firstRun.stdout)).toMatchObject({
+      status: "check-failed",
+      failedStep: "bun run check",
+      worktree,
+      steps: [
+        { command: "bun install", ran: true, outcome: "passed" },
+        {
+          command: "bun run quality:fallow:record-hits",
+          ran: true,
+          outcome: "passed",
+        },
+        { command: "bun run check", ran: true, outcome: "failed" },
+      ],
+    });
+    expect(
+      readFileSync(
+        join(worktree, "fallow-dead-code-recorded-hits.json"),
+        "utf8",
+      ),
+    ).toBe('{"pass":1,"file":"dead-code"}\n');
+
+    rmSync(failFlag);
+    const retryRun = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      args,
+      runtime,
+    );
+    expect(retryRun.exitCode).toBe(0);
+    expect(JSON.parse(retryRun.stdout)).toMatchObject({
+      status: "applied",
+      branch,
+      steps: [
+        { command: "bun install", ran: true, outcome: "passed" },
+        { command: "bun run check", ran: true, outcome: "passed" },
+      ],
+    });
+    expect(readFileSync(ledger, "utf8").trim().split("\n")).toEqual([
+      "install",
+      "run quality:fallow:record-hits",
+      "run check",
+      "install",
+      "run check",
+    ]);
+    expect(
+      git(repo, "show", `${branch}:fallow-dead-code-recorded-hits.json`),
+    ).toBe('{"pass":1,"file":"dead-code"}');
+  },
+  processWatchdog(4),
+);
+
+test(
+  "runRecordedHitsStep records only while every worktree recorded-hits file matches the target template empty file",
+  () => {
+    const { templateClone, targetCommit } = createRecordedHitsUpgradeFixture();
+    const repo = folder("recorded-hits-step-repo-");
+    initRepository(repo);
+    const { sha: repositoryHead } = commitIn(repo, "initial without hits", {
+      "package.json": '{"name":"unit-app"}\n',
+    });
+    const worktree = folder("recorded-hits-step-worktree-");
+    writeFileSync(
+      join(worktree, "package.json"),
+      readFileSync(
+        join(templateClone, "generated-repository/settings/package.json"),
+      ),
+    );
+    for (const file of RECORDED_HITS_FILES) {
+      writeFileSync(
+        join(worktree, file),
+        readFileSync(
+          join(templateClone, "generated-repository/settings", file),
+        ),
+      );
+    }
+    const { ledger, env } = writeScriptedBun(
+      folder,
+      "scripted-bun-step-retry-",
+      `#!/bin/sh
+echo "$*" >> __LEDGER__
+if [ "$1" = "run" ] && [ "$2" = "quality:fallow:record-hits" ]; then
+  if grep -q '"pass":1' fallow-dead-code-recorded-hits.json 2>/dev/null; then
+    printf '{"pass":2,"file":"dead-code"}\\n' > fallow-dead-code-recorded-hits.json
+  else
+    printf '{"pass":1,"file":"dead-code"}\\n' > fallow-dead-code-recorded-hits.json
+  fi
+  exit 0
+fi
+exit 0
+`,
+    );
+    const inputs = {
+      templateRoot: templateClone,
+      targetCommit,
+      repository: repo,
+      repositoryHead,
+    };
+    const request = recordedHitsRequestFor(worktree, inputs, env);
+
+    expect(
+      noCheckTemplateUpgradeSteps(request).map((step) => step.command),
+    ).toEqual([
+      "bun install",
+      "bun run quality:fallow:record-hits",
+      "bun run check",
+    ]);
+
+    const first = runRecordedHitsStep(request, 10_000);
+    expect(first).toEqual({
+      ok: true,
+      steps: [
+        {
+          command: "bun run quality:fallow:record-hits",
+          ran: true,
+          outcome: "passed",
+        },
+      ],
+    });
+    expect(
+      readFileSync(
+        join(worktree, "fallow-dead-code-recorded-hits.json"),
+        "utf8",
+      ),
+    ).toBe('{"pass":1,"file":"dead-code"}\n');
+
+    const retry = runRecordedHitsStep(request, 10_000);
+    expect(retry).toEqual({ ok: true, steps: [] });
+    expect(readFileSync(ledger, "utf8").trim().split("\n")).toEqual([
+      "run quality:fallow:record-hits",
+    ]);
+    expect(
+      readFileSync(
+        join(worktree, "fallow-dead-code-recorded-hits.json"),
+        "utf8",
+      ),
+    ).toBe('{"pass":1,"file":"dead-code"}\n');
+    expect(
+      noCheckTemplateUpgradeSteps(request).map((step) => step.command),
+    ).toEqual(["bun install", "bun run check"]);
+  },
+  processWatchdog(2),
 );

@@ -176,7 +176,8 @@ describe("the kernel row", () => {
     const { scripts } = generatedJson(destination, "package.json") as {
       scripts: Record<string, string>;
     };
-    const { rules } = generatedJson(destination, ".fallowrc.json") as {
+    const { health, rules } = generatedJson(destination, ".fallowrc.json") as {
+      health: { maxFileLines?: number };
       rules: Record<string, string>;
     };
     const recordedHits = {
@@ -202,6 +203,7 @@ describe("the kernel row", () => {
         cognitive: rules["complexity-cognitive"],
         crap: rules["complexity-crap"],
         fileLines: rules["complexity-file-lines"],
+        maxFileLines: health.maxFileLines,
       },
       recordedHits,
     }).toEqual({
@@ -217,6 +219,7 @@ describe("the kernel row", () => {
         cognitive: "error",
         crap: "off",
         fileLines: "error",
+        maxFileLines: 500,
       },
       recordedHits: {
         deadCode: {

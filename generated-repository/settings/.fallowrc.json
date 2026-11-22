@@ -19,6 +19,9 @@
     "css": false,
     "cssDeep": false
   },
+  "health": {
+    "maxFileLines": 500
+  },
   "rules": {
     "boundary-violation": "off",
     "circular-dependencies": "error",

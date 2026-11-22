@@ -606,10 +606,16 @@ async function finalizeTemplateUpgradeWorktree(
       });
     }
   }
-  let steps = noCheckTemplateUpgradeSteps(
-    recordedHitsRequestFor(session.targetWorktree, session.inputs, session.env),
-  );
-  if (!skipCheckCommand) {
+  let steps: readonly TemplateUpgradeApplyStep[];
+  if (skipCheckCommand) {
+    steps = noCheckTemplateUpgradeSteps(
+      recordedHitsRequestFor(
+        session.targetWorktree,
+        session.inputs,
+        session.env,
+      ),
+    );
+  } else {
     const checked = runCheckCommandSteps(session, mergeData);
     if (!checked.ok) {
       return checked.run;
