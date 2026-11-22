@@ -190,12 +190,12 @@ test.each<[string, string, string]>([
   [
     "a check command other than bun run check",
     GENERATED_WORKFLOW.replace("bun run check", "bun test"),
-    "recipe .github/workflows/ci.yml job check must run actions/checkout@v4, oven-sh/setup-bun@v2, bun install --frozen-lockfile, bun run check, then the Fallow recorded-hits growth check. Repair: match those five steps in order in generated-repository/hosted-check/ci.yml.",
+    "recipe .github/workflows/ci.yml job check must run actions/checkout@v4 with fetch-depth: 0, oven-sh/setup-bun@v2, bun install --frozen-lockfile, bun run check, then the Fallow recorded-hits growth check with BASE ${{ github.event.pull_request.base.sha || github.event.before }}. Repair: match those five steps in order in generated-repository/hosted-check/ci.yml.",
   ],
   [
     "a shallow checkout without fetch-depth: 0",
     GENERATED_WORKFLOW.replace("        with:\n          fetch-depth: 0\n", ""),
-    "recipe .github/workflows/ci.yml job check step #1 must set fetch-depth: 0 on actions/checkout. Repair: set with.fetch-depth: 0 on actions/checkout in generated-repository/hosted-check/ci.yml.",
+    "recipe .github/workflows/ci.yml job check must run actions/checkout@v4 with fetch-depth: 0, oven-sh/setup-bun@v2, bun install --frozen-lockfile, bun run check, then the Fallow recorded-hits growth check with BASE ${{ github.event.pull_request.base.sha || github.event.before }}. Repair: match those five steps in order in generated-repository/hosted-check/ci.yml.",
   ],
   [
     "a GitHub secret reference",
