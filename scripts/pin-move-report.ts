@@ -167,15 +167,17 @@ function changeNotesSection(
 
 export function pinMoveReportText(
   report: PinMoveReport,
-  written: readonly string[],
+  written?: readonly string[],
 ): string {
   return [
     `Pin move report: ${report.from} to ${report.to}\n`,
     changeNotesSection(report.changeNotes),
-    section(
-      "Written in the template, kernel lockfile first and pin last",
-      written,
-    ),
+    written === undefined
+      ? ""
+      : section(
+          "Written in the template, kernel lockfile first and pin last",
+          written,
+        ),
     section("Kernel files added", report.added),
     section("Kernel files changed", report.changed),
     section("Kernel files removed", report.removed),

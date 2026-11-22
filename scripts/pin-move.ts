@@ -34,6 +34,10 @@ import {
   pinMoveReport,
   pinMoveReportText,
 } from "./pin-move-report.ts";
+import {
+  moveRepositoryPin,
+  RepositoryPinRefusal,
+} from "./pin-move-repository.ts";
 import { KERNEL_LOCKFILE } from "../src/recipe.ts";
 
 const templateRoot = resolve(import.meta.dir, "..");
@@ -235,24 +239,82 @@ export function movePin(
 }
 
 const usage =
-  "Usage: bun run pin-move <full kernel commit> [--kernel <path to the kernel repository>]\n";
+  "Usage: bun run pin-move <full kernel commit> [--kernel <path to the kernel repository>] [--repository <path to a generated repository>] [--plan]\n";
 
-export function argumentsOf(
-  argv: readonly string[],
-): { readonly commit: string; readonly path?: string } | undefined {
-  const [commit, flag, path, ...rest] = argv;
-  if (commit === undefined || rest.length > 0) return undefined;
-  if (flag === undefined) return { commit };
-  return flag === "--kernel" && path !== undefined
-    ? { commit, path }
-    : undefined;
+function readFlagValue(
+  rest: readonly string[],
+  index: number,
+  current: string | undefined,
+): string | undefined {
+  const value = rest[index + 1];
+  if (current !== undefined || value === undefined || value.startsWith("--"))
+    return undefined;
+  return value;
+}
+
+type ParsedFlags = {
+  path?: string;
+  repository?: string;
+  plan: boolean;
+};
+
+function applyFlag(
+  rest: readonly string[],
+  index: number,
+  parsed: ParsedFlags,
+): number | undefined {
+  const flag = rest[index];
+  if (flag === "--plan") {
+    if (parsed.plan) return undefined;
+    parsed.plan = true;
+    return index + 1;
+  }
+  const key =
+    flag === "--kernel"
+      ? "path"
+      : flag === "--repository"
+        ? "repository"
+        : undefined;
+  if (key === undefined) return undefined;
+  const value = readFlagValue(rest, index, parsed[key]);
+  if (value === undefined) return undefined;
+  parsed[key] = value;
+  return index + 2;
+}
+
+export function argumentsOf(argv: readonly string[]):
+  | {
+      readonly commit: string;
+      readonly path?: string;
+      readonly repository?: string;
+      readonly plan?: boolean;
+    }
+  | undefined {
+  const [commit, ...rest] = argv;
+  if (commit === undefined || commit.startsWith("-")) return undefined;
+  const parsed: ParsedFlags = { plan: false };
+  for (let index = 0; index < rest.length; ) {
+    const next = applyFlag(rest, index, parsed);
+    if (next === undefined) return undefined;
+    index = next;
+  }
+  if (parsed.plan && parsed.repository === undefined) return undefined;
+  return {
+    commit,
+    ...(parsed.path === undefined ? {} : { path: parsed.path }),
+    ...(parsed.repository === undefined
+      ? {}
+      : { repository: parsed.repository }),
+    ...(parsed.plan ? { plan: true } : {}),
+  };
 }
 
 function refusalExit(error: unknown): number {
   if (
     !(error instanceof PinRefusal) &&
     !(error instanceof KernelRefusal) &&
-    !(error instanceof TrialRefusal)
+    !(error instanceof TrialRefusal) &&
+    !(error instanceof RepositoryPinRefusal)
   )
     throw error;
   process.stderr.write(`${error.code}: ${error.message}\n`);
@@ -296,6 +358,28 @@ export async function main(argv: readonly string[]): Promise<number> {
     repository: given.path ?? siblingKernelPath(templateRoot, pin),
     commit: given.commit,
   };
+  if (given.repository !== undefined) {
+    const active: TrialActive = {};
+    try {
+      return await withStopSignals(active, () =>
+        moveRepositoryPin(
+          kernel,
+          pin,
+          resolve(given.repository ?? ""),
+          given.plan === true,
+          active,
+          (seam, currentPin) =>
+            verifyPin(
+              seam,
+              currentPin,
+              branchCommitHeldBy(currentPin, seam.repository),
+            ),
+        ),
+      );
+    } catch (error) {
+      return refusalExit(error);
+    }
+  }
   const folder = mkdtempSync(join(tmpdir(), "kernel-trial-"));
   const active: TrialActive = {};
   try {

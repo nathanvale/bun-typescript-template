@@ -1,0 +1,7 @@
+{
+  "kind": "added",
+  "breaking": false,
+  "affects": ["generated-repository", "kernel-pin"],
+  "summary": "Added --repository and --plan to bun run pin-move so generated repositories can preview kernel change notes and move their kernel Pin onto a new branch with install, pointer skill updates, and check command verification, and documented the route in the generated README.",
+  "action": null
+}

@@ -62,6 +62,19 @@ describe("the pin move command's arguments", () => {
     [["c", "--kernel"], undefined],
     [["c", "--other", "/k"], undefined],
     [["c", "--kernel", "/k", "more"], undefined],
+    [["c", "--repository", "/r"], { commit: "c", repository: "/r" }],
+    [
+      ["c", "--repository", "/r", "--plan"],
+      { commit: "c", repository: "/r", plan: true },
+    ],
+    [
+      ["c", "--kernel", "/k", "--repository", "/r"],
+      { commit: "c", path: "/k", repository: "/r" },
+    ],
+    [["c", "--plan"], undefined],
+    [["c", "--repository"], undefined],
+    [["c", "--repository", "--plan"], undefined],
+    [["c", "--repository", "/r", "--repository", "/r2"], undefined],
   ] as const)("%j reads as %j", (argv, expected) => {
     expect(argumentsOf(argv)).toEqual(expected);
   });
@@ -75,7 +88,7 @@ describe("the pin move command", () => {
         exit: 2,
         stdout: "",
         stderr:
-          "Usage: bun run pin-move <full kernel commit> [--kernel <path to the kernel repository>]\n",
+          "Usage: bun run pin-move <full kernel commit> [--kernel <path to the kernel repository>] [--repository <path to a generated repository>] [--plan]\n",
       });
     },
     processWatchdog(1),
