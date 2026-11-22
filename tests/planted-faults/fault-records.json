@@ -2128,10 +2128,10 @@
     "source": "9063630 feat(bootstrap): the generated AGENTS.md says where the kernel's skills are and when to read them"
   },
   {
-    "id": "0039ef3-generated-biome",
-    "patch": "tests/planted-faults/patches/0039ef3-generated-biome.patch",
+    "id": "4da63bc-generated-biome",
+    "patch": "tests/planted-faults/patches/4da63bc-generated-biome.patch",
     "testFile": "tests/template/bootstrap/kernel-row.test.ts",
     "title": "leaves Markdown with front matter and plain Markdown byte-identical when formatting a generated repository, while still checking TypeScript$",
-    "source": "0039ef3 fix(bootstrap): disable Biome Markdown formatting in generated repositories"
+    "source": "4da63bc fix(generated-repository): stop Biome rewriting Markdown and its front matter"
   }
 ]
