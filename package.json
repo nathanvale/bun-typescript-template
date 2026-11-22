@@ -18,6 +18,7 @@
     "planted-fault:add": "bun run scripts/planted-faults.ts add",
     "pin-move": "bun run scripts/pin-move.ts",
     "pin-verification": "bun run scripts/pin-verification.ts",
+    "template-version": "bun run scripts/template-version.ts",
     "pretest": "bun run doctor",
     "test": "bun test --parallel=2 --path-ignore-patterns 'generated-repository/**'",
     "test:area": "bun run scripts/test-area.ts",

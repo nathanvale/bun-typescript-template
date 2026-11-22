@@ -62,7 +62,7 @@ const notePrefixBytes = Buffer.from(`${CHANGE_NOTES_FOLDER}/`);
 const noteReadmeBytes = Buffer.from(`${CHANGE_NOTES_FOLDER}/README.md`);
 const shippedPrefixBytes = shippedPrefixes.map((prefix) => Buffer.from(prefix));
 
-type DiffEntry = {
+export type DiffEntry = {
   readonly mode: string;
   readonly blob: string;
   readonly status: string;
@@ -96,7 +96,7 @@ function runGit(root: string, args: readonly string[]): Buffer {
   return result.stdout;
 }
 
-function nulFields(output: Buffer): Buffer[] {
+export function nulFields(output: Buffer): Buffer[] {
   const fields: Buffer[] = [];
   let offset = 0;
   for (let end = output.indexOf(0); end >= 0; end = output.indexOf(0, offset)) {
@@ -106,8 +106,40 @@ function nulFields(output: Buffer): Buffer[] {
   return fields;
 }
 
+function parseDiffEntry(
+  headerBytes: Buffer | undefined,
+  rawPath: Buffer | undefined,
+  range: string,
+): DiffEntry {
+  const header = headerBytes?.toString("ascii") ?? "";
+  const [, mode = "", , blob = "", status = ""] = header.split(" ");
+  if (rawPath === undefined || [mode, blob, status].includes(""))
+    throw new Error(`git diff ${range} returned an incomplete record.`);
+  return {
+    mode,
+    blob,
+    status,
+    rawPath,
+    path: nameText(rawPath),
+  };
+}
+
+export function parseDiffEntries(
+  output: Buffer,
+  range: string,
+): readonly DiffEntry[] {
+  const fields = nulFields(output);
+  if (fields.length % 2 !== 0)
+    throw new Error(`git diff ${range} returned an incomplete record.`);
+  const entries: DiffEntry[] = [];
+  for (let index = 0; index < fields.length; index += 2) {
+    entries.push(parseDiffEntry(fields[index], fields[index + 1], range));
+  }
+  return entries;
+}
+
 function diffEntries(root: string, range: string): readonly DiffEntry[] {
-  const fields = nulFields(
+  return parseDiffEntries(
     runGit(root, [
       "diff",
       "--raw",
@@ -119,25 +151,8 @@ function diffEntries(root: string, range: string): readonly DiffEntry[] {
       "-z",
       range,
     ]),
+    range,
   );
-  if (fields.length % 2 !== 0)
-    throw new Error(`git diff ${range} returned an incomplete record.`);
-  const entries: DiffEntry[] = [];
-  for (let index = 0; index < fields.length; index += 2) {
-    const header = fields[index]?.toString("ascii") ?? "";
-    const rawPath = fields[index + 1];
-    const [, mode = "", , blob = "", status = ""] = header.split(" ");
-    if (rawPath === undefined || mode === "" || blob === "" || status === "")
-      throw new Error(`git diff ${range} returned an incomplete record.`);
-    entries.push({
-      mode,
-      blob,
-      status,
-      rawPath,
-      path: nameText(rawPath),
-    });
-  }
-  return entries;
 }
 
 function isNoteEntry(entry: DiffEntry): boolean {
@@ -263,12 +278,14 @@ export function runChangeNoteCheck(
   }
 }
 
-if (import.meta.main) {
-  const result = runChangeNoteCheck(
-    process.argv.slice(2),
-    join(import.meta.dir, ".."),
-  );
+export function writeCommandResult(result: ChangeNoteCheckResult): void {
   if (result.stdout !== "") process.stdout.write(result.stdout);
   if (result.stderr !== "") process.stderr.write(result.stderr);
   process.exitCode = result.code;
+}
+
+if (import.meta.main) {
+  writeCommandResult(
+    runChangeNoteCheck(process.argv.slice(2), join(import.meta.dir, "..")),
+  );
 }

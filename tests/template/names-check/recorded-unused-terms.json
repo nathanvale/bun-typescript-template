@@ -2,11 +2,6 @@
   "about": "Terms that GLOSSARY.md defines and no tracked file uses yet, each with the reason and the ticket that will bring it into use. The glossary files test fails on an unused term not listed here, on a listed term that a tracked file now uses, and on a listed term that GLOSSARY.md no longer defines: remove an entry in the change that first uses its term.",
   "terms": [
     {
-      "term": "Template version",
-      "reason": "MAG-108 owns the design of template versions and builds the first one.",
-      "ticket": "MAG-108"
-    },
-    {
       "term": "Kernel migration",
       "reason": "Not designed. No ticket is known to bring it into a tracked file here; MAG-114 is the kernel split spec, which uses the word.",
       "ticket": "MAG-114"

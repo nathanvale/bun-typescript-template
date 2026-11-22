@@ -1,0 +1,7 @@
+{
+  "kind": "none",
+  "breaking": false,
+  "affects": [],
+  "summary": "Added the template-version changelog generator script and documented breaking-change criteria in change-notes/README.md; no change to Bootstrap or generated repositories.",
+  "action": null
+}
