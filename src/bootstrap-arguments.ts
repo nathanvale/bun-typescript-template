@@ -1,5 +1,5 @@
 import { basename, isAbsolute, resolve } from "node:path";
-import { CliError } from "./cli-error.ts";
+import { CliError, RUNTIME_FAILURE_REPAIR } from "./cli-error.ts";
 
 export interface BootstrapOptions {
   destination: string;
@@ -16,9 +16,6 @@ interface ParsedFlags {
 }
 
 type ValueFlag = "destination" | "name" | "sourcePacket";
-
-export const RUNTIME_FAILURE_REPAIR =
-  "correct what the message names, then rerun the same command";
 
 export const HELP = `Create a Bun TypeScript repository with the kernel at the template's Pin.
 

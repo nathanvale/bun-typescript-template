@@ -11,6 +11,7 @@ import { publicSurfaceFile } from "../../../scripts/public-surface.ts";
 import { git } from "../../support/git-fixture.ts";
 import {
   check,
+  glossary,
   namesCheckFixture,
   put,
   samplePlainWords,
@@ -333,4 +334,93 @@ test("Avoid and Qualify refusals keep their own lines and suppress duplicate unk
     'src/known-hit.ts uses "known hit", which GLOSSARY.md lists under Avoid for "Recorded hit". Repair: rename it with the glossary word.',
   );
   expect(against.stderr).not.toContain('src/known-hit.ts uses "known"');
+});
+
+test("staged checks treat paths, declarations and base words from MERGE_HEAD as existing while still refusing new names", async () => {
+  const mergeGlossary = `${glossary}\n**Merge gizmo**:\nA fixture merge term.\n`;
+  const root = plainWordsRepository(samplePlainWords, {
+    "GLOSSARY.md": mergeGlossary,
+  });
+
+  git(root, "checkout", "--quiet", "-b", "branch-a");
+  put(root, "src/merge-gizmo.ts", "export const mergeGizmo = 1;\n");
+  git(root, "add", "--", "src/merge-gizmo.ts");
+  git(root, "commit", "--quiet", "-m", "branch a adds merge-gizmo");
+
+  git(root, "checkout", "--quiet", "main");
+  put(root, "src/upgrade-widget.ts", "export const upgradeWidget = 1;\n");
+  put(root, "docs/recorded-proof.md", "# Recorded proof\n");
+  git(root, "add", "--", "src/upgrade-widget.ts", "docs/recorded-proof.md");
+  git(root, "commit", "--quiet", "-m", "main adds upgrade-widget");
+
+  git(root, "checkout", "--quiet", "branch-a");
+  git(root, "merge", "--quiet", "--no-commit", "--no-ff", "main");
+
+  expect(await check(root, ["--staged"])).toEqual({ code: 0, stderr: "" });
+  expect(await check(root, ["src/upgrade-widget.ts"])).toEqual({
+    code: 0,
+    stderr: "",
+  });
+
+  put(root, "src/gizmo-widget.ts", "export const upgradeGizmo = 1;\n");
+  git(root, "add", "--", "src/gizmo-widget.ts");
+  expect(await check(root, ["--staged"])).toEqual({ code: 0, stderr: "" });
+  git(root, "rm", "--quiet", "-f", "--", "src/gizmo-widget.ts");
+
+  put(root, "src/gizmo-proof.ts", "export const mergeGizmo = 1;\n");
+  git(root, "add", "--", "src/gizmo-proof.ts");
+  expect(await check(root, ["--staged"])).toEqual({
+    code: 1,
+    stderr: `${unknownPathLine("src/gizmo-proof.ts", "proof")}\n`,
+  });
+  git(root, "rm", "--quiet", "-f", "--", "src/gizmo-proof.ts");
+
+  put(root, "src/gizmo-two.ts", "export const gizmoTwo = 1;\n");
+  git(root, "add", "--", "src/gizmo-two.ts");
+  const gizmoTwoRefusal = {
+    code: 1,
+    stderr: [
+      unknownPathLine("src/gizmo-two.ts", "two"),
+      unknownDeclarationLine("src/gizmo-two.ts", 1, "gizmoTwo", "two"),
+      "",
+    ].join("\n"),
+  };
+  expect(await check(root, ["--staged"])).toEqual(gizmoTwoRefusal);
+  expect(await check(root, ["src/gizmo-two.ts"])).toEqual(gizmoTwoRefusal);
+  git(root, "rm", "--quiet", "-f", "--", "src/gizmo-two.ts");
+
+  put(
+    root,
+    "src/upgrade-widget.ts",
+    "export const upgradeWidget = 1;\nexport const upgradeTwo = 2;\n",
+  );
+  git(root, "add", "--", "src/upgrade-widget.ts");
+  expect(await check(root, ["--staged"])).toEqual({
+    code: 1,
+    stderr: `${unknownDeclarationLine("src/upgrade-widget.ts", 2, "upgradeTwo", "two")}\n`,
+  });
+
+  git(root, "merge", "--abort");
+  put(root, "src/upgrade-widget.ts", "export const upgradeWidget = 1;\n");
+  git(root, "add", "--", "src/upgrade-widget.ts");
+  expect(await check(root, ["--staged"])).toEqual({
+    code: 1,
+    stderr: [
+      unknownPathLine("src/upgrade-widget.ts", "upgrade"),
+      unknownPathLine("src/upgrade-widget.ts", "widget"),
+      unknownDeclarationLine(
+        "src/upgrade-widget.ts",
+        1,
+        "upgradeWidget",
+        "upgrade",
+      ),
+      unknownDeclarationLine(
+        "src/upgrade-widget.ts",
+        1,
+        "upgradeWidget",
+        "widget",
+      ),
+      "",
+    ].join("\n"),
+  });
 });

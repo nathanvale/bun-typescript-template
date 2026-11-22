@@ -18,18 +18,17 @@ import {
   type BootstrapOptions,
   HELP,
   parseArgs,
-  RUNTIME_FAILURE_REPAIR,
   resolveRepositoryName,
   validateSourcePacket,
 } from "./bootstrap-arguments.ts";
-import { CliError } from "./cli-error.ts";
+import { CliError, writeCliError } from "./cli-error.ts";
 import {
   clonePin,
   findSiblingKernel,
   generatedPin,
   readKernelPin,
 } from "./kernel-pin.ts";
-import { KernelRefusal, type KernelSeam, readKernel } from "./kernel-reader.ts";
+import { type KernelSeam, readKernel } from "./kernel-reader.ts";
 import {
   type RecipeCopy,
   copiesOf,
@@ -294,6 +293,7 @@ async function writeRepositoryContext(
   const revision = templateIdentity(["rev-parse", "HEAD"]);
   const dirty = templateIdentity(["status", "--porcelain"]);
   const metadata = {
+    name: options.name,
     specRevision: "4",
     templateRevision: revision,
     templateDirty: dirty.length > 0,
@@ -407,39 +407,6 @@ function bootstrapOnKernel(
   });
 }
 
-function failureOf(error: unknown): CliError {
-  if (error instanceof CliError) return error;
-  if (error instanceof KernelRefusal)
-    return new CliError(error.code, error.reason, error.repair, 1, false);
-  return new CliError(
-    "runtime_failure",
-    error instanceof Error ? error.message : "unexpected runtime failure",
-    RUNTIME_FAILURE_REPAIR,
-    1,
-    false,
-  );
-}
-
-function writeError(error: unknown, json: boolean): number {
-  const failure = failureOf(error);
-  const envelope = {
-    schemaVersion: SCHEMA_VERSION,
-    status: "refused",
-    error: {
-      code: failure.code,
-      message: failure.message,
-      repair: failure.repair,
-      retrySafe: failure.retrySafe,
-    },
-  };
-  process.stderr.write(
-    json
-      ? `${JSON.stringify(envelope)}\n`
-      : `${failure.message}\nRepair: ${failure.repair}\n`,
-  );
-  return failure.exitCode;
-}
-
 export async function main(argv: string[]): Promise<number> {
   const json = argv.includes("--json");
   try {
@@ -456,7 +423,7 @@ export async function main(argv: string[]): Promise<number> {
     );
     return 0;
   } catch (error) {
-    return writeError(error, json);
+    return writeCliError(error, json);
   }
 }
 

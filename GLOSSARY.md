@@ -74,6 +74,13 @@ _Avoid_: stub, copy (for a pointer skill)
 One released state of the template, named by a git tag.
 _Avoid_: version (unqualified); release, pin (for a template version)
 
+**Template upgrade**:
+Carrying the template's changes between the commit a generated repository's
+stamp records and a newer template commit into that repository, keeping the
+repository's own edits. `bun run upgrade plan` previews the per-file merge;
+`bun run upgrade apply` writes the merged result onto a branch without touching
+the repository's working tree. It does not move a pin on its own.
+
 ### The kernel split
 
 **Kernel split**:
@@ -315,6 +322,11 @@ _Avoid_: recorded origin (that is one repository and one commit), allowed hosts
 The mark on a claim in a plan that says how sure it is: passed on Linux,
 passed on macOS only, designed and not run, decided by Nathan, or open.
 _Avoid_: confidence, status (for a claim tag), proven (for a prototype run)
+
+**Change note**:
+One JSON file under `change-notes/` recording a shipped change, whether it is
+breaking, what it affects, and any action the reader must take.
+_Avoid_: changeset, release note; changelog (for a change note)
 
 **Plain word**:
 A word a new name may use that no glossary term holds, recorded with its reason.

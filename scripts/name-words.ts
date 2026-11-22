@@ -7,7 +7,7 @@ import {
   openSync,
   readFileSync,
 } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import {
   type Glossary,
   gitInNamesCheck,
@@ -96,17 +96,43 @@ function gitNameCommand(root: string, command: readonly string[]): string[] {
     .filter((field) => field !== "");
 }
 
-function committedFiles(root: string, revision: string): string[] {
-  if (!hasCommit(root, revision)) return [];
-  return gitNameCommand(root, ["ls-tree", "-r", "--name-only", "-z", revision]);
+function revisionList(
+  revisions: string | readonly string[],
+): readonly string[] {
+  return typeof revisions === "string" ? [revisions] : revisions;
 }
 
-function committedNames(root: string, revision: string): Set<string> {
-  return new Set(namesOnPaths(committedFiles(root, revision)));
+function committedFiles(
+  root: string,
+  revisions: string | readonly string[],
+): string[] {
+  const files = new Set<string>();
+  for (const revision of revisionList(revisions)) {
+    if (!hasCommit(root, revision)) continue;
+    for (const file of gitNameCommand(root, [
+      "ls-tree",
+      "-r",
+      "--name-only",
+      "-z",
+      revision,
+    ]))
+      files.add(file);
+  }
+  return [...files];
 }
 
-function committedPathWords(root: string, revision: string): string[] {
-  const files = committedFiles(root, revision);
+function committedNames(
+  root: string,
+  revisions: string | readonly string[],
+): Set<string> {
+  return new Set(namesOnPaths(committedFiles(root, revisions)));
+}
+
+function committedPathWords(
+  root: string,
+  revisions: string | readonly string[],
+): string[] {
+  const files = committedFiles(root, revisions);
   const dirs = new Set<string>();
   const words: string[] = [];
   for (const file of files) {
@@ -122,11 +148,17 @@ function committedPathWords(root: string, revision: string): string[] {
   return words;
 }
 
-function gitMoves(root: string): RenamePair[] {
-  if (!hasCommit(root, "HEAD")) return [];
-  return parseNameStatus(
-    gitNameCommand(root, ["diff", "--name-status", "-M", "-z", "HEAD"]),
-  ).renames;
+function gitMoves(root: string, parents: readonly string[]): RenamePair[] {
+  const renames: RenamePair[] = [];
+  for (const parent of parents) {
+    if (!hasCommit(root, parent)) continue;
+    renames.push(
+      ...parseNameStatus(
+        gitNameCommand(root, ["diff", "--name-status", "-M", "-z", parent]),
+      ).renames,
+    );
+  }
+  return renames;
 }
 
 function isDirectoryAt(root: string, path: string): boolean {
@@ -147,13 +179,13 @@ function declarationKey(
   return `${path}\0${declaration}\0${name}`;
 }
 
-async function baseDeclarations(
+async function revisionDeclarations(
   root: string,
-  base: string,
+  revision: string,
 ): Promise<PublicDeclaration[]> {
-  if (!committedFileExists(root, base, publicSurfaceFile)) return [];
+  if (!committedFileExists(root, revision, publicSurfaceFile)) return [];
   const surface = readPublicSurface(
-    gitOrThrow(root, ["show", `${base}:${publicSurfaceFile}`]),
+    gitOrThrow(root, ["show", `${revision}:${publicSurfaceFile}`]),
   );
   const patterns = [
     ...surface.exports,
@@ -161,7 +193,7 @@ async function baseDeclarations(
     ...surface.importers,
   ];
   const present = new Set<string>();
-  const texts = treeTexts(root, base, (path) => {
+  const texts = treeTexts(root, revision, (path) => {
     present.add(path);
     return matchesSurface(path, patterns);
   });
@@ -174,15 +206,25 @@ async function baseDeclarations(
     texts,
     surface,
     (path) => present.has(path),
-    (path) => gitOrThrow(root, ["show", `${base}:${path}`]),
+    (path) => gitOrThrow(root, ["show", `${revision}:${path}`]),
   );
   return publicDeclarations(root, texts, surface);
+}
+
+async function baseDeclarations(
+  root: string,
+  base: string | readonly string[],
+): Promise<PublicDeclaration[]> {
+  const groups = await Promise.all(
+    revisionList(base).map((revision) => revisionDeclarations(root, revision)),
+  );
+  return groups.flat();
 }
 
 function withBaseWords(
   words: NameWords,
   root: string,
-  base: string,
+  base: string | readonly string[],
   declarations: readonly PublicDeclaration[],
   blocked: ReadonlySet<string>,
 ): NameWords {
@@ -199,11 +241,13 @@ function withBaseWords(
 
 async function newDeclarationsSince(
   root: string,
-  base: string,
+  base: string | readonly string[],
   staged: boolean,
   paths: readonly string[] | undefined,
   renames: readonly RenamePair[],
-  baseDecls?: readonly PublicDeclaration[],
+  baseDecls?:
+    | readonly PublicDeclaration[]
+    | (() => Promise<readonly PublicDeclaration[]>),
 ): Promise<PublicDeclaration[]> {
   if (paths !== undefined && !paths.some((path) => codeFile.test(path)))
     return [];
@@ -221,18 +265,25 @@ async function newDeclarationsSince(
     (declaration) => paths === undefined || paths.includes(declaration.path),
   );
   if (current.length === 0) return [];
+  const loadedBase =
+    typeof baseDecls === "function"
+      ? await baseDecls()
+      : (baseDecls ?? (await baseDeclarations(root, base)));
   const earlier = new Set(
-    (baseDecls ?? (await baseDeclarations(root, base))).map(
-      ({ path, declaration, name }) => declarationKey(path, declaration, name),
+    loadedBase.map(({ path, declaration, name }) =>
+      declarationKey(path, declaration, name),
     ),
   );
-  const renamedFrom = new Map(renames.map(({ from, to }) => [to, from]));
+  const renamedFrom = new Map<string, string[]>();
+  for (const { from, to } of renames) {
+    const list = renamedFrom.get(to);
+    if (list === undefined) renamedFrom.set(to, [from]);
+    else list.push(from);
+  }
   return current.filter(({ path, declaration, name }) => {
     if (earlier.has(declarationKey(path, declaration, name))) return false;
-    const from = renamedFrom.get(path);
-    return (
-      from === undefined ||
-      !earlier.has(declarationKey(from, declaration, name))
+    return !(renamedFrom.get(path) ?? []).some((from) =>
+      earlier.has(declarationKey(from, declaration, name)),
     );
   });
 }
@@ -286,21 +337,59 @@ function readWorkingNameWords(
   };
 }
 
+function mergeParents(root: string): string[] {
+  const located = gitInNamesCheck(root, [
+    "rev-parse",
+    "--git-path",
+    "MERGE_HEAD",
+  ]);
+  if (located.exitCode !== 0) return ["HEAD"];
+  const gitPath = gitNames(
+    located.stdout,
+    "git rev-parse --git-path MERGE_HEAD",
+  ).replace(/\r?\n$/, "");
+  const mergeHeadText = plainWordFile(resolve(root, gitPath), "MERGE_HEAD");
+  if (mergeHeadText === undefined) return ["HEAD"];
+  const mergeHeads = mergeHeadText
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+  if (mergeHeads.length === 0)
+    throw new Error(
+      "MERGE_HEAD is empty, so the names check cannot read the merge parents. Repair: finish or abort the merge with git merge --abort, then run the check again.",
+    );
+  return [
+    "HEAD",
+    ...mergeHeads.map((revision) =>
+      gitOrThrow(root, [
+        "rev-parse",
+        "--verify",
+        `${revision}^{commit}`,
+      ]).trim(),
+    ),
+  ];
+}
+
 export async function givenNameWordProblems(
   tree: string,
   names: readonly string[],
   keptPaths: ReadonlySet<string> = new Set(),
 ): Promise<string[]> {
+  const parents = mergeParents(tree);
   const loaded = readWorkingNameWords(tree);
   if (loaded === undefined) {
-    if (committedFileExists(tree, "HEAD", plainWordsFile))
+    if (
+      parents.some((parent) =>
+        committedFileExists(tree, parent, plainWordsFile),
+      )
+    )
       throw new Error(
         `${plainWordsFile} exists at HEAD but is missing from this tree. Repair: restore it with git restore ${plainWordsFile}.`,
       );
     return [];
   }
-  const committed = committedNames(tree, "HEAD");
-  const renames = gitMoves(tree);
+  const committed = committedNames(tree, parents);
+  const renames = gitMoves(tree, parents);
   const kept = new Set([...keptPaths, ...keptByRenames(renames)]);
   const items: PathItem[] = names
     .filter((name) => !committed.has(name) && !kept.has(name))
@@ -311,31 +400,84 @@ export async function givenNameWordProblems(
         !isDirectoryAt(tree, name),
     }));
   const existingFiles = names.filter((path) => isFileAt(tree, path));
-  const earlierDecls = await baseDeclarations(tree, "HEAD");
-  const words = withBaseWords(
+  let cachedDecls: Promise<PublicDeclaration[]> | undefined;
+  const loadEarlierDecls = () => {
+    cachedDecls ??= baseDeclarations(tree, parents);
+    return cachedDecls;
+  };
+  const pathWords = withBaseWords(
     loaded.words,
     tree,
-    "HEAD",
-    earlierDecls,
+    parents,
+    [],
     loaded.blocked,
   );
+  let pathProblems = unknownPathProblems(pathWords, loaded.glossary, items);
+  if (pathProblems.length > 0) {
+    const words = withBaseWords(
+      loaded.words,
+      tree,
+      parents,
+      await loadEarlierDecls(),
+      loaded.blocked,
+    );
+    pathProblems = unknownPathProblems(words, loaded.glossary, items);
+  }
   const declarations = await newDeclarationsSince(
     tree,
-    "HEAD",
+    parents,
     false,
     existingFiles,
     renames,
-    earlierDecls,
+    loadEarlierDecls,
   );
-  return [
-    ...unknownPathProblems(words, loaded.glossary, items),
-    ...unknownDeclarationProblems(words, loaded.glossary, declarations),
-  ];
+  const declarationProblems =
+    declarations.length === 0
+      ? []
+      : unknownDeclarationProblems(
+          withBaseWords(
+            loaded.words,
+            tree,
+            parents,
+            await loadEarlierDecls(),
+            loaded.blocked,
+          ),
+          loaded.glossary,
+          declarations,
+        );
+  return [...pathProblems, ...declarationProblems];
+}
+
+function stagedChanges(
+  root: string,
+  parents: readonly string[],
+): { added: string[]; renames: RenamePair[] } {
+  const { added, renames } = parseNameStatus(
+    gitNameCommand(root, ["diff", "--cached", "--name-status", "-M", "-z"]),
+  );
+  for (const parent of parents.slice(1)) {
+    const parentDiff = parseNameStatus(
+      gitNameCommand(root, [
+        "diff",
+        "--cached",
+        "--name-status",
+        "-M",
+        "-z",
+        parent,
+      ]),
+    );
+    renames.push(...parentDiff.renames);
+  }
+  return { added, renames };
 }
 
 export async function stagedNameWordProblems(root: string): Promise<string[]> {
+  const parents = mergeParents(root);
   const hasStagedPlain = stagedFileExists(root, plainWordsFile);
-  if (!hasStagedPlain && !committedFileExists(root, "HEAD", plainWordsFile))
+  if (
+    !hasStagedPlain &&
+    !parents.some((parent) => committedFileExists(root, parent, plainWordsFile))
+  )
     return [];
   const plainText = stagedText(root, plainWordsFile);
   const glossaryText = stagedText(root, "GLOSSARY.md");
@@ -345,19 +487,17 @@ export async function stagedNameWordProblems(root: string): Promise<string[]> {
   const baseWords = readNameWords(glossaryText, plainText, ownershipText);
   const glossary = readGlossary(glossaryText);
   const blocked = blockedBaseWords(baseWords.avoidTerms, glossaryText);
-  const { added, renames } = parseNameStatus(
-    gitNameCommand(root, ["diff", "--cached", "--name-status", "-M", "-z"]),
-  );
+  const { added, renames } = stagedChanges(root, parents);
   const { unkeptNew } = newPathItems(
     added,
     renames,
-    committedNames(root, "HEAD"),
+    committedNames(root, parents),
   );
-  const earlierDecls = await baseDeclarations(root, "HEAD");
-  const words = withBaseWords(baseWords, root, "HEAD", earlierDecls, blocked);
+  const earlierDecls = await baseDeclarations(root, parents);
+  const words = withBaseWords(baseWords, root, parents, earlierDecls, blocked);
   const declarations = await newDeclarationsSince(
     root,
-    "HEAD",
+    parents,
     true,
     undefined,
     renames,
