@@ -48,7 +48,7 @@ separate internal files. `bun run admit:cli -- <repository-root>` checks its
 entry points across source, manifests, scripts and documented invocations.
 
 Generated `AGENTS.md` gives the exact check and smoke commands.
-`.cli-design-template.json` records source-packet and template provenance,
+`.template.json` records source-packet and template provenance,
 including whether the source checkout had uncommitted changes.
 
 Bootstrap copies this repository's own lint rule files from `config/`, and the

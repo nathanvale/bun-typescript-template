@@ -88,11 +88,12 @@ function makeStampedRepository(
   stamp: Record<string, unknown>,
   packageName?: string,
   kernelPinSpecifier: string | null = DEFAULT_KERNEL_PIN,
+  stampFile = ".template.json",
 ) {
   const repository = folder("upgrade-repo-");
   initRepository(repository);
   const files: Record<string, string> = {
-    ".cli-design-template.json": `${JSON.stringify(stamp, null, 2)}\n`,
+    [stampFile]: `${JSON.stringify(stamp, null, 2)}\n`,
   };
   if (packageName !== undefined) {
     const manifest: Record<string, unknown> = { name: packageName };
@@ -138,7 +139,7 @@ test("refuses a repository with no HEAD commit and one with no committed stamp",
   commitIn(unstamped, "init", { "package.json": '{"name":"demo"}\n' });
   write(
     unstamped,
-    ".cli-design-template.json",
+    ".template.json",
     JSON.stringify({
       templateRevision: baseCommit,
       templateDirty: false,
@@ -154,7 +155,7 @@ test("refuses a repository with no HEAD commit and one with no committed stamp",
     }),
   );
   expect(refusal.code).toBe("stamp_missing");
-  expect(refusal.repair).toContain(".cli-design-template.json");
+  expect(refusal.repair).toContain(".template.json");
 });
 
 test("refuses templateDirty: true from HEAD even when working tree is edited", () => {
@@ -170,7 +171,7 @@ test("refuses templateDirty: true from HEAD even when working tree is edited", (
   );
   write(
     repository,
-    ".cli-design-template.json",
+    ".template.json",
     JSON.stringify({
       name: "demo",
       templateRevision: baseCommit,

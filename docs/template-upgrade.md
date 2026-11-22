@@ -2,7 +2,7 @@
 
 A Template upgrade carries changes made in this template between the commit a generated repository was created from and a newer template commit into that repository while keeping the repository's own edits.
 
-It works by reading `.cli-design-template.json` from the repository's committed `HEAD`, regenerating the old and new trees with each template commit's own `src/bootstrap.ts`, and merging old-to-new into the repository file by file.
+It works by reading `.template.json` (or `.cli-design-template.json` when `.template.json` is absent) from the repository's committed `HEAD`, regenerating the old and new trees with each template commit's own `src/bootstrap.ts`, and merging old-to-new into the repository file by file. When a repository still carries `.cli-design-template.json`, the upgrade removes it and writes `.template.json` with the current fields (`name`, `templateRevision`, `templateDirty`, and `sourcePacket`).
 
 ## Commands
 
@@ -27,11 +27,12 @@ bun run upgrade apply --repository PATH [--to REF] [--no-check] [--json]
 
 ### Inputs and refusals
 
-The command reads only committed state (`HEAD:.cli-design-template.json` and `HEAD:package.json`). It never moves the repository's kernel Pin: it reads the repository's pinned commit from `dependencies.agent-cli-kernel` (`#<40-hex>`) in `HEAD:package.json` and regenerates both the base and target template trees against that Pin. It refuses with an error code and a repair step when:
+The command reads only committed state (`HEAD:.template.json` — or `HEAD:.cli-design-template.json` when `.template.json` is absent — and `HEAD:package.json`). It never moves the repository's kernel Pin: it reads the repository's pinned commit from `dependencies.agent-cli-kernel` (`#<40-hex>`) in `HEAD:package.json` and regenerates both the base and target template trees against that Pin. It refuses with an error code and a repair step when:
 
 - `--repository` is not a git repository root or has no `HEAD`.
-- `HEAD` has no `.cli-design-template.json`.
-- `.cli-design-template.json` has `templateDirty: true`.
+- `HEAD` has neither `.template.json` nor `.cli-design-template.json`.
+- `HEAD` has both `.template.json` and `.cli-design-template.json` (`stamp_duplicate`); delete `.cli-design-template.json` and commit the removal.
+- The committed stamp (`.template.json` or `.cli-design-template.json`) has `templateDirty: true`.
 - The recorded `templateRevision` is not in this template checkout's history.
 - The recorded `templateRevision` is not a descendant of the oldest supported base commit (`46e0f66`).
 - `--to REF` cannot be resolved or is not a descendant of `templateRevision`.
@@ -58,7 +59,7 @@ Every file or symbolic link present in the regenerated old or new tree receives 
 
 | Label        | Paths                                                                                                              |
 | ------------ | ------------------------------------------------------------------------------------------------------------------ |
-| `generated`  | `.cli-design-template.json`, `bun.lock`, `.claude/skills/*`                                                        |
+| `generated`  | `.template.json`, `.cli-design-template.json`, `bun.lock`, `.claude/skills/*`                                      |
 | `repository` | Owner starting copies listed in `src/recipe.ts`: `README.md`, `src/cli.ts`, `src/commands.ts`, `tests/cli.test.ts` |
 | `shared`     | Root `*.json` and `*.toml` settings (including `bunfig.toml`), `.gitignore`, `.github/**`, `AGENTS.md`             |
 | `template`   | All other files Bootstrap writes (`config/*`, `.agents/skills/*`, `tests/*`, `eslint.config.mjs`)                  |
@@ -69,8 +70,8 @@ Every file or symbolic link present in the regenerated old or new tree receives 
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `untouched`             | Old and new trees are identical; nothing changed.                                                                                                                                                                                                                                                                                                                                                                                       |
 | `already-applied`       | The repository already matches the new tree.                                                                                                                                                                                                                                                                                                                                                                                            |
-| `take`                  | The repository matched old (or the file is `.cli-design-template.json`); the new file or symbolic link was copied in.                                                                                                                                                                                                                                                                                                                   |
-| `delete`                | The repository matched old and the new tree removed the file; it was removed.                                                                                                                                                                                                                                                                                                                                                           |
+| `take`                  | The repository matched old (or the file is `.template.json`); the new file or symbolic link was copied in.                                                                                                                                                                                                                                                                                                                              |
+| `delete`                | The repository matched old and the new tree removed the file (or the file is an old `.cli-design-template.json` stamp replaced by `.template.json`); it was removed.                                                                                                                                                                                                                                                                    |
 | `regenerate`            | `package.json` changed; the repository's `bun.lock` is kept (never replaced with the template's kernel lockfile) and rebuilt by `bun install` during `apply`.                                                                                                                                                                                                                                                                           |
 | `merge`                 | Both sides changed and merged cleanly (key-level merge for `*.json` preserving repository key order; `git merge-file` for text).                                                                                                                                                                                                                                                                                                        |
 | `template-copy-changed` | A `repository`-owned starting copy changed between the old and new template commits, or a delete-versus-change conflict hit a file that cannot hold text conflict markers (for example, one containing a NUL byte or non-UTF-8 bytes); the repository's file (or deletion) is kept untouched, not counted as a conflict, and the row includes the reason when markers could not be written. `plan` prints the `git diff` of old vs new. |

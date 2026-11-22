@@ -11,7 +11,7 @@ and leaves every existing byte in place.
   the safety line.
 - `bootstrap-green` creates a repository whose `package.json` names the
   kernel at the template's Pin.
-- `bootstrap-provenance` writes `.cli-design-template.json` and `AGENTS.md`
+- `bootstrap-provenance` writes `.template.json` and `AGENTS.md`
   naming the template commit and the source packet.
 - `bootstrap-ready` lets the generated repository install, pass its check
   command and run its CLI.
@@ -56,7 +56,7 @@ Preconditions:
   Exit 0; stdout reads
   `Created a repository at <path>, with the kernel at the template's Pin`.
 - **Provenance.** Record `bootstrap-provenance` in `generated/repository`:
-  `cat .cli-design-template.json AGENTS.md`. `templateRevision` and
+  `cat .template.json AGENTS.md`. `templateRevision` and
   `Template source:` equal the launched commit, `templateDirty` is `false`,
   `sourcePacket` equals `$packet`, and the file names no `profile` or
   `starter`.

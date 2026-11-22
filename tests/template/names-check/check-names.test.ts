@@ -23,12 +23,12 @@ test.each([
   [
     "an Avoid word",
     "docs/mutation-notes.md",
-    'docs/mutation-notes.md uses "mutation", which GLOSSARY.md lists under Avoid for "Planted fault". Repair: rename it with the glossary word.',
+    'docs/mutation-notes.md uses "mutation", which GLOSSARY.md lists under Avoid for "Planted fault". Repair: Look in the glossary first; rename it with "Planted fault".',
   ],
   [
     "a qualify word alone",
     "src/host.ts",
-    'src/host.ts uses "host" with no qualifier. Repair: add a word that says which host it is.',
+    'src/host.ts uses "host" with no qualifier. Repair: Look in the glossary first; add a word that says which host it is.',
   ],
 ])(
   "CN.a a name that uses %s is refused with its word and its repair",
@@ -96,8 +96,8 @@ test(
     ).toEqual({
       stdout: "",
       stderr: [
-        'src/allowlist uses "allowlist", which GLOSSARY.md lists under Avoid for "Recorded hit". Repair: rename it with the glossary word.',
-        'src/allowlist/proof uses "proof" with no qualifier. Repair: add a word that says which proof it is.',
+        'src/allowlist uses "allowlist", which GLOSSARY.md lists under Avoid for "Recorded hit". Repair: Look in the glossary first; rename it with "Recorded hit".',
+        'src/allowlist/proof uses "proof" with no qualifier. Repair: Look in the glossary first; add a word that says which proof it is.',
         "",
       ].join("\n"),
       exit: 1,
@@ -133,8 +133,8 @@ test(
     expect(await checkNames(tree, ["--staged"])).toEqual({
       stdout: "",
       stderr: [
-        'docs/host.md uses "host" with no qualifier. Repair: add a word that says which host it is.',
-        'src/allowlist.ts uses "allowlist", which GLOSSARY.md lists under Avoid for "Recorded hit". Repair: rename it with the glossary word.',
+        'docs/host.md uses "host" with no qualifier. Repair: Look in the glossary first; add a word that says which host it is.',
+        'src/allowlist.ts uses "allowlist", which GLOSSARY.md lists under Avoid for "Recorded hit". Repair: Look in the glossary first; rename it with "Recorded hit".',
         "",
       ].join("\n"),
       exit: 1,
@@ -145,7 +145,7 @@ test(
 
 const hostHit = { path: "docs/host.md", word: "host", reason: "fixture" };
 const hostRefusal =
-  'docs/host.md uses "host" with no qualifier. Repair: add a word that says which host it is.\n';
+  'docs/host.md uses "host" with no qualifier. Repair: Look in the glossary first; add a word that says which host it is.\n';
 
 async function repositoryWithStagedHost(): Promise<string> {
   const tree = await fixtureRepository();
@@ -206,7 +206,7 @@ test(
     expect(await checkNames(tree, ["--staged"])).toEqual({
       stdout: "",
       stderr:
-        'docs/canary-notes.md uses "canary", which GLOSSARY.md lists under Avoid for "Planted fault". Repair: rename it with the glossary word.\n',
+        'docs/canary-notes.md uses "canary", which GLOSSARY.md lists under Avoid for "Planted fault". Repair: Look in the glossary first; rename it with "Planted fault".\n',
       exit: 1,
     });
   },
@@ -234,7 +234,7 @@ test(
     expect(await checkNames(tree, [join(tree, "src/host.ts")])).toEqual({
       stdout: "",
       stderr:
-        'src/host.ts uses "host" with no qualifier. Repair: add a word that says which host it is.\n',
+        'src/host.ts uses "host" with no qualifier. Repair: Look in the glossary first; add a word that says which host it is.\n',
       exit: 1,
     });
   },
@@ -250,13 +250,13 @@ test(
     expect(await checkNamesFrom(tree, docs, ["host.md"])).toEqual({
       stdout: "",
       stderr:
-        'docs/host.md uses "host" with no qualifier. Repair: add a word that says which host it is.\n',
+        'docs/host.md uses "host" with no qualifier. Repair: Look in the glossary first; add a word that says which host it is.\n',
       exit: 1,
     });
     expect(await checkNamesFrom(tree, docs, ["../src/host.ts"])).toEqual({
       stdout: "",
       stderr:
-        'src/host.ts uses "host" with no qualifier. Repair: add a word that says which host it is.\n',
+        'src/host.ts uses "host" with no qualifier. Repair: Look in the glossary first; add a word that says which host it is.\n',
       exit: 1,
     });
   },

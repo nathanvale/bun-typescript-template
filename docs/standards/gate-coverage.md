@@ -224,6 +224,34 @@ file extensions in those directories.
 - Whether the chosen place is the one the fault meant stays review: a
   fault in the wrong place still fails its test.
 
+## Names check
+
+- `tests/template/names-check/names.test.ts`, with its shrinking
+  `tests/template/names-check/recorded-hits.json`, checks every tracked file and
+  folder name against `GLOSSARY.md`. Pre-commit runs the same names check on
+  staged names (`--staged`), file-creation hooks run `--tool-call`, and pull
+  requests run `--against`.
+- The symbol gate (`scripts/public-declarations.ts`) applies those rules to the
+  public surface in `tests/template/names-check/public-surface.json`: exports
+  in Bootstrap's copied code and consumed exports in `src/*.ts`, one level of
+  members and parameters deep. Locals and comments stay review only.
+- For new file names, new folder names and new exported symbols against the
+  base (`--staged`, `--against`, `--tool-call`, and new given paths),
+  `scripts/name-words.ts` requires every word to come from a term heading in
+  `GLOSSARY.md`, a kernel term in `glossary-ownership.json`, the design words,
+  a tracked path or public declaration name on the base branch, or
+  `names-plain-words.json` (matching an optional trailing `s` either way).
+  Parameters, object fields, type members, local names, planted-fault patch
+  file names under `tests/planted-faults/patches/`, a leading `YYYY-MM-DD-`
+  date prefix on a file name, existing names and renamed paths that keep their
+  last segment are not judged. Glossary Avoid words and unqualified Qualify
+  words are never made known by the base branch and keep refusing with the
+  glossary term or qualifier to use.
+- Look in the glossary first; if it has a word for this, use it. Otherwise
+  propose the word for the names table in your pull request (a sorted
+  `{ "word", "reason" }` entry in `names-plain-words.json` or a new glossary
+  entry), for Nathan's decision.
+
 ## Recorded hits
 
 - `eslint-suppressions.json` holds the recorded hits each lint rule found

@@ -9,7 +9,9 @@ import {
 import {
   type RecordedHit,
   recordedHitsFile,
+  recordedUnusedTermsFile,
 } from "../../../scripts/glossary.ts";
+import { plainWordsFile } from "../../../scripts/plain-words.ts";
 import {
   git,
   gitEnv,
@@ -32,7 +34,7 @@ _Avoid_: known hit, allowlist
 _Qualify_: host, proof
 `;
 export const hostRefusal =
-  'docs/host.md uses "host" with no qualifier. Repair: add a word that says which host it is.\n';
+  'docs/host.md uses "host" with no qualifier. Repair: Look in the glossary first; add a word that says which host it is.\n';
 
 export const hostHit: RecordedHit = {
   path: "docs/host.md",
@@ -69,6 +71,38 @@ export function thrownBy(run: () => unknown): string {
     return error instanceof Error ? error.message : String(error);
   }
   throw new Error("expected the call to throw");
+}
+
+export const samplePlainWords = JSON.stringify({
+  words: [
+    { word: "apply", reason: "Approved verb for applying a change." },
+    { word: "pattern", reason: "Approved noun for a matching pattern." },
+    { word: "src", reason: "Source folder in fixture tests." },
+  ],
+});
+
+const unknownWordRepairText =
+  "Look in the glossary first; if it has a word for this, use it. Otherwise propose the word for the names table in your pull request (the plain-words list or a new glossary entry), for Nathan's decision.";
+
+export function unknownPathLine(path: string, word: string): string {
+  return `${path} uses "${word}", which no glossary term uses. Repair: ${unknownWordRepairText} Done when bun run check:names ${path} passes.`;
+}
+
+export function avoidPathLine(
+  path: string,
+  word: string,
+  term: string,
+): string {
+  return `${path} uses "${word}", which GLOSSARY.md lists under Avoid for "${term}". Repair: Look in the glossary first; rename it with "${term}". Done when bun run check:names ${path} passes.`;
+}
+
+export function unknownDeclarationLine(
+  path: string,
+  line: number,
+  name: string,
+  word: string,
+): string {
+  return `${path}:${line} public declaration "${name}" uses "${word}", which no glossary term uses. Repair: ${unknownWordRepairText} Done when bun run check:names ${path} passes.`;
 }
 
 export function namesCheckFixture() {
@@ -134,5 +168,44 @@ export function namesCheckFixture() {
     return root;
   }
 
-  return { emptyRepository, folder, namesRepository, outsideRepository };
+  function plainWordsRepository(
+    plainJson: string = samplePlainWords,
+    extraFiles: Record<string, string> = {},
+  ): string {
+    const root = namesRepository();
+    put(root, plainWordsFile, plainJson);
+    put(root, recordedUnusedTermsFile, JSON.stringify({ terms: [] }));
+    put(
+      root,
+      publicSurfaceFile,
+      JSON.stringify({
+        exports: ["src/*.ts"],
+        consumedExports: [],
+        importers: [],
+      }),
+    );
+    put(root, "src/planted-fault.ts", "export const plantedFault = 1;\n");
+    for (const [path, content] of Object.entries(extraFiles))
+      put(root, path, content);
+    git(
+      root,
+      "add",
+      "--",
+      plainWordsFile,
+      recordedUnusedTermsFile,
+      publicSurfaceFile,
+      "src/planted-fault.ts",
+      ...Object.keys(extraFiles),
+    );
+    git(root, "commit", "--quiet", "-m", "plain words");
+    return root;
+  }
+
+  return {
+    emptyRepository,
+    folder,
+    namesRepository,
+    outsideRepository,
+    plainWordsRepository,
+  };
 }

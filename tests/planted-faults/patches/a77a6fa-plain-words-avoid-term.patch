@@ -1,0 +1,11 @@
+diff --git a/scripts/plain-words.ts b/scripts/plain-words.ts
+--- a/scripts/plain-words.ts
++++ b/scripts/plain-words.ts
+@@ -247,9 +247,6 @@ function avoidTermsFor(
+ 
+ function unknownReason(words: NameWords, word: string): string {
+-  const terms = avoidTermsFor(words.avoidTerms, word);
+-  if (terms.length > 0)
+-    return `which GLOSSARY.md lists under Avoid for ${terms.map((term) => `"${term}"`).join(", ")}`;
+   return "which no glossary term uses";
+ }
