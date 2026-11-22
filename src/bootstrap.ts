@@ -36,6 +36,7 @@ import {
   KERNEL_RECIPE,
   type Recipe,
   SKILL_FOLDER,
+  TEMPLATE_JSON_FILE,
 } from "./recipe.ts";
 import { substituteTokens } from "./token-substitution.ts";
 
@@ -294,16 +295,12 @@ async function writeRepositoryContext(
   const dirty = templateIdentity(["status", "--porcelain"]);
   const metadata = {
     name: options.name,
-    specRevision: "4",
     templateRevision: revision,
     templateDirty: dirty.length > 0,
     sourcePacket: options.sourcePacket,
-    entryPoint: "src/cli.ts",
-    commandOwner: "src/commands.ts",
-    registrationVersion: 1,
   };
   await writeFile(
-    join(staging, ".cli-design-template.json"),
+    join(staging, TEMPLATE_JSON_FILE),
     `${JSON.stringify(metadata, null, 2)}\n`,
   );
   const check = recipe.checkCommand;

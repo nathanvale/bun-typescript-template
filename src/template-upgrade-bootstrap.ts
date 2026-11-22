@@ -9,17 +9,21 @@ import {
   readKernelPin,
   writeKernelPin,
 } from "./kernel-pin.ts";
+import { TEMPLATE_JSON_FILE } from "./recipe.ts";
 import {
   decodeUtf8Strict,
   gitCommitIdentityArgs,
+  lstatIfPresent,
   runGitText,
   withoutGitLocation,
 } from "./template-upgrade-git.ts";
-import type { TemplateUpgradeInputs } from "./template-upgrade-inputs.ts";
+import {
+  OLD_TEMPLATE_JSON_FILE,
+  type TemplateUpgradeInputs,
+} from "./template-upgrade-inputs.ts";
 
 const CLONE_TIMEOUT_MS = 30_000;
 const BOOTSTRAP_TIMEOUT_MS = 30_000;
-const STAMP_FILE = ".cli-design-template.json";
 const STRICT_UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 export interface TemplateUpgradeTrees {
@@ -64,16 +68,49 @@ function summarizeBootstrapFailure(stderr: string, stdout: string): string {
     : trimmedStdout;
 }
 
-async function readBootstrappedStampRevision(
+async function resolveBootstrappedStampFile(
   destination: string,
   label: "old" | "new",
 ): Promise<string> {
-  const stampPath = join(destination, STAMP_FILE);
+  const [currentStats, oldStats] = await Promise.all([
+    lstatIfPresent(join(destination, TEMPLATE_JSON_FILE)),
+    lstatIfPresent(join(destination, OLD_TEMPLATE_JSON_FILE)),
+  ]);
+  if (currentStats !== undefined && oldStats !== undefined) {
+    throw new CliError(
+      "regeneration_stamp_duplicate",
+      `${label} regeneration wrote both ${TEMPLATE_JSON_FILE} and ${OLD_TEMPLATE_JSON_FILE}`,
+      `inspect bootstrap at that template commit and keep only ${TEMPLATE_JSON_FILE}`,
+      1,
+      false,
+    );
+  }
+  if (currentStats !== undefined) {
+    return TEMPLATE_JSON_FILE;
+  }
+  if (oldStats !== undefined) {
+    return OLD_TEMPLATE_JSON_FILE;
+  }
+  throw new CliError(
+    "regeneration_stamp_missing",
+    `${label} regeneration did not write ${TEMPLATE_JSON_FILE}`,
+    `verify the template commit's bootstrap writes ${TEMPLATE_JSON_FILE}`,
+    1,
+    false,
+  );
+}
+
+async function readBootstrappedStampRevision(
+  destination: string,
+  stampFile: string,
+  label: "old" | "new",
+): Promise<string> {
+  const stampPath = join(destination, stampFile);
   let text: string;
   try {
     text = decodeUtf8Strict(
       new Uint8Array(await readFile(stampPath)),
-      `${label} regeneration ${STAMP_FILE}`,
+      `${label} regeneration ${stampFile}`,
     );
   } catch (error) {
     if (error instanceof CliError) {
@@ -81,8 +118,8 @@ async function readBootstrappedStampRevision(
     }
     throw new CliError(
       "regeneration_stamp_missing",
-      `${label} regeneration did not write ${STAMP_FILE}`,
-      "verify the template commit's bootstrap writes .cli-design-template.json",
+      `${label} regeneration did not write ${stampFile}`,
+      `verify the template commit's bootstrap writes ${stampFile}`,
       1,
       false,
     );
@@ -93,7 +130,7 @@ async function readBootstrappedStampRevision(
   } catch {
     throw new CliError(
       "regeneration_stamp_invalid",
-      `${label} regeneration wrote invalid JSON to ${STAMP_FILE}`,
+      `${label} regeneration wrote invalid JSON to ${stampFile}`,
       "inspect bootstrap at that template commit",
       1,
       false,
@@ -106,7 +143,7 @@ async function readBootstrappedStampRevision(
   if (typeof revision !== "string") {
     throw new CliError(
       "regeneration_stamp_invalid",
-      `${label} regeneration ${STAMP_FILE} has no templateRevision`,
+      `${label} regeneration ${stampFile} has no templateRevision`,
       "inspect bootstrap at that template commit",
       1,
       false,
@@ -231,19 +268,20 @@ async function rewriteTemporaryCommitInTree(
 
 async function normalizeRegeneratedStamp(
   destination: string,
+  stampFile: string,
   realCommit: string,
   label: "old" | "new",
 ): Promise<void> {
-  const stampPath = join(destination, STAMP_FILE);
+  const stampPath = join(destination, stampFile);
   const text = decodeUtf8Strict(
     new Uint8Array(await readFile(stampPath)),
-    `${label} regeneration ${STAMP_FILE}`,
+    `${label} regeneration ${stampFile}`,
   );
   const parsed: unknown = JSON.parse(text);
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
     throw new CliError(
       "regeneration_stamp_invalid",
-      `${label} regeneration wrote a non-object ${STAMP_FILE}`,
+      `${label} regeneration wrote a non-object ${stampFile}`,
       "inspect bootstrap at that template commit",
       1,
       false,
@@ -372,8 +410,13 @@ async function bootstrapAtCommit(
   const temporaryCommit = pinTemplateCloneToRepositoryPin(request, cloneFolder);
   runBootstrapAtCommit(request, cloneFolder, destination);
   const expectedCommit = temporaryCommit ?? request.commit;
+  const stampFile = await resolveBootstrappedStampFile(
+    destination,
+    request.label,
+  );
   const stampedRevision = await readBootstrappedStampRevision(
     destination,
+    stampFile,
     request.label,
   );
   if (stampedRevision !== expectedCommit) {
@@ -391,7 +434,12 @@ async function bootstrapAtCommit(
       temporaryCommit,
       request.commit,
     );
-    await normalizeRegeneratedStamp(destination, request.commit, request.label);
+    await normalizeRegeneratedStamp(
+      destination,
+      stampFile,
+      request.commit,
+      request.label,
+    );
   }
   return destination;
 }

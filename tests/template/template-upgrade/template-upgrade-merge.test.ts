@@ -50,6 +50,7 @@ function seedRepositoryStartingCopies() {
 }
 
 test("classifies generated, repository, shared (including root *.toml), and template paths per MAG-108", () => {
+  expect(classifyTemplateUpgradeFileOwner(".template.json")).toBe("generated");
   expect(classifyTemplateUpgradeFileOwner(".cli-design-template.json")).toBe(
     "generated",
   );
@@ -125,13 +126,9 @@ test("merges untouched, already, take, delete, stamp, bun.lock, and repository-o
   write(oursDir, "AGENTS.md", "old-agents\n");
   write(oldDir, "tests/removed.test.ts", "old-test\n");
   write(oursDir, "tests/removed.test.ts", "old-test\n");
-  write(oldDir, ".cli-design-template.json", '{"templateRevision":"old"}\n');
-  write(newDir, ".cli-design-template.json", '{"templateRevision":"new"}\n');
-  write(
-    oursDir,
-    ".cli-design-template.json",
-    '{"templateRevision":"hand-edited"}\n',
-  );
+  write(oldDir, ".template.json", '{"templateRevision":"old"}\n');
+  write(newDir, ".template.json", '{"templateRevision":"new"}\n');
+  write(oursDir, ".template.json", '{"templateRevision":"hand-edited"}\n');
   write(oldDir, "bun.lock", "lock-v1\n");
   write(newDir, "bun.lock", "lock-v2\n");
   write(oursDir, "bun.lock", "lock-owner\n");
@@ -143,14 +140,14 @@ test("merges untouched, already, take, delete, stamp, bun.lock, and repository-o
   const rows = await mergeTemplateUpgradeTrees(oldDir, newDir, oursDir);
   expect(rows).toEqual([
     {
-      path: ".cli-design-template.json",
-      ownerLabel: "generated",
-      outcome: "take",
-    },
-    {
       path: ".github/workflows/ci.yml",
       ownerLabel: "shared",
       outcome: "already-applied",
+    },
+    {
+      path: ".template.json",
+      ownerLabel: "generated",
+      outcome: "take",
     },
     { path: "AGENTS.md", ownerLabel: "shared", outcome: "take" },
     { path: "bun.lock", ownerLabel: "generated", outcome: "regenerate" },
@@ -167,7 +164,7 @@ test("merges untouched, already, take, delete, stamp, bun.lock, and repository-o
   );
   expect(readFileSync(join(oursDir, "AGENTS.md"), "utf8")).toBe("new-agents\n");
   expect(existsSync(join(oursDir, "tests/removed.test.ts"))).toBe(false);
-  expect(readFileSync(join(oursDir, ".cli-design-template.json"), "utf8")).toBe(
+  expect(readFileSync(join(oursDir, ".template.json"), "utf8")).toBe(
     '{"templateRevision":"new"}\n',
   );
   expect(readFileSync(join(oursDir, "bun.lock"), "utf8")).toBe("lock-owner\n");
