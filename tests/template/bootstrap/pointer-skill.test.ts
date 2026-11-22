@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
@@ -92,6 +93,33 @@ describe("the kernel row's pointer skills", () => {
           /^Pinned commit: .*$/gm,
         ),
       ).toEqual([`Pinned commit: \`${commit}\``]);
+    }
+  });
+
+  test("names every installed skill's path in the first lines of AGENTS.md, and each named path exists in the generated repository", async () => {
+    const { destination } = await generated();
+    const installed = readdirSync(join(destination, ".agents/skills")).toSorted(
+      (left, right) => (left < right ? -1 : left > right ? 1 : 0),
+    );
+    expect(installed.length).toBeGreaterThan(0);
+    const lines = readFileSync(join(destination, "AGENTS.md"), "utf8").split(
+      "\n",
+    );
+    const opening = lines.slice(0, installed.length + 6);
+    const openingText = opening.join("\n");
+    const expectedPaths = installed.map(
+      (name) => `.agents/skills/${name}/SKILL.md`,
+    );
+    const namedPaths = [
+      ...openingText.matchAll(/\.agents\/skills\/[^\s`]+\/SKILL\.md/g),
+    ].map(([match]) => match);
+    expect(namedPaths).toEqual(expectedPaths);
+    for (const skillPath of namedPaths) {
+      expect(lstatSync(join(destination, skillPath)).isFile()).toBe(true);
+      const line = opening.find((entry) => entry.includes(skillPath)) ?? "";
+      expect(line).toMatch(
+        /^-\s+\S.+:\s+read `\.agents\/skills\/[^`]+\/SKILL\.md`\.$/,
+      );
     }
   });
 });

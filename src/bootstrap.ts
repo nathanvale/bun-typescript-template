@@ -285,6 +285,49 @@ A comment that opens with \`Platform:\` or \`Interface:\` makes a claim that a r
 The lint rule files in config/ are the template's. Change a lint rule in the template, not here.
 `;
 
+function unquoteYamlValue(value: string): string {
+  const trimmed = value.trim();
+  if (
+    trimmed.length >= 2 &&
+    ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+      (trimmed.startsWith("'") && trimmed.endsWith("'")))
+  ) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+}
+
+function skillPurpose(text: string, name: string): string {
+  const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(text)?.[1];
+  const raw =
+    frontmatter === undefined
+      ? undefined
+      : /^description:\s*(.+)$/m.exec(frontmatter)?.[1];
+  const description = raw === undefined ? "" : unquoteYamlValue(raw);
+  if (description === "") return name;
+  const period = description.indexOf(". ");
+  const sentence = period >= 0 ? description.slice(0, period) : description;
+  const cleaned = sentence.replace(/\.$/, "").trim();
+  return cleaned === "" ? name : cleaned;
+}
+
+async function skillGuidance(staging: string): Promise<string> {
+  const skills = join(staging, SKILL_FOLDER);
+  if ((await lstatIfPresent(skills)) === undefined) return "";
+  const names = (await readdir(skills, { withFileTypes: true }))
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .toSorted((left, right) => (left < right ? -1 : left > right ? 1 : 0));
+  if (names.length === 0) return "";
+  const lines: string[] = [];
+  for (const name of names) {
+    const text = await readFile(join(skills, name, "SKILL.md"), "utf8");
+    const purpose = skillPurpose(text, name);
+    lines.push(`- ${purpose}: read \`${SKILL_FOLDER}/${name}/SKILL.md\`.`);
+  }
+  return `The kernel's skills are installed under \`${SKILL_FOLDER}/\` (and linked under \`.claude/skills/\`). Read the matching skill before working:\n\n${lines.join("\n")}\n\n`;
+}
+
 async function writeRepositoryContext(
   staging: string,
   options: BootstrapOptions,
@@ -307,9 +350,10 @@ async function writeRepositoryContext(
     `${JSON.stringify(metadata, null, 2)}\n`,
   );
   const check = recipe.checkCommand;
+  const skills = await skillGuidance(staging);
   await writeFile(
     join(staging, "AGENTS.md"),
-    `# Repository commands\n\nUse the existing repository CLI at src/cli.ts. Add commands through src/commands.ts.\nKeep domain implementation in separate files and preserve one public application CLI.\n\nCheck command: ${check}\nSmoke: bun run start --help\nSource packet: ${options.sourcePacket}\nTemplate source: ${metadata.templateRevision}\n\n${COMMENT_GUIDANCE}`,
+    `# Repository commands\n\n${skills}Use the existing repository CLI at src/cli.ts. Add commands through src/commands.ts.\nKeep domain implementation in separate files and preserve one public application CLI.\n\nCheck command: ${check}\nSmoke: bun run start --help\nSource packet: ${options.sourcePacket}\nTemplate source: ${metadata.templateRevision}\n\n${COMMENT_GUIDANCE}`,
   );
 }
 
