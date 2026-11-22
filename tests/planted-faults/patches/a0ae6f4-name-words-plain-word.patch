@@ -1,0 +1,21 @@
+diff --git a/scripts/name-words.ts b/scripts/name-words.ts
+--- a/scripts/name-words.ts
++++ b/scripts/name-words.ts
+@@ -115,9 +115,7 @@ function parsePlainEntry(
+   const reason = own.get("reason");
+   if (
+     typeof word !== "string" ||
+-    word.trim() === "" ||
+-    typeof reason !== "string" ||
+-    reason.trim() === ""
++    word.trim() === ""
+   )
+     throw new Error(
+       `${plainWordsFile}: words[${index}] needs a non-empty word and reason. Repair: write each one as a non-empty string.`,
+@@ -127,5 +125,5 @@ function parsePlainEntry(
+     throw new Error(
+       `${plainWordsFile}: words[${index}] word "${word}" must be one lowercase word. Repair: write a single lowercase word of letters only.`,
+     );
+-  return [word, reason];
++  return [word, typeof reason === "string" ? reason : ""];
+ }

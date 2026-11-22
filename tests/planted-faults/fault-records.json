@@ -1958,5 +1958,26 @@
     "testFile": "tests/template/bootstrap/kernel-row.test.ts",
     "title": "ignores \\.worktrees in the generated repository without a personal Git ignore file$",
     "source": "158042f fix(bootstrap): ignore .worktrees in generated repositories"
+  },
+  {
+    "id": "a0ae6f4-name-words-file",
+    "patch": "tests/planted-faults/patches/a0ae6f4-name-words-file.patch",
+    "testFile": "tests/template/names-check/name-words.test.ts",
+    "title": "^NW\\.a a new folder and new file with a non-glossary word are refused",
+    "source": "a0ae6f4 feat(names-check): enforce glossary words on new names"
+  },
+  {
+    "id": "a0ae6f4-name-words-declaration",
+    "patch": "tests/planted-faults/patches/a0ae6f4-name-words-declaration.patch",
+    "testFile": "tests/template/names-check/name-words.test.ts",
+    "title": "^NW\\.b a new exported symbol with a non-glossary word is refused",
+    "source": "a0ae6f4 feat(names-check): enforce glossary words on new names"
+  },
+  {
+    "id": "a0ae6f4-name-words-plain-word",
+    "patch": "tests/planted-faults/patches/a0ae6f4-name-words-plain-word.patch",
+    "testFile": "tests/template/names-check/name-words.test.ts",
+    "title": "^NW\\.c readPlainWords refuses entry without reason$",
+    "source": "a0ae6f4 feat(names-check): enforce glossary words on new names"
   }
 ]

@@ -415,3 +415,7 @@ export function termUseProblems(
   });
   return [...unused, ...stale];
 }
+
+export function gitInNamesCheck(root: string, command: readonly string[]) {
+  return git(root, command);
+}

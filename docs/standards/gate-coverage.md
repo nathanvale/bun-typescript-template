@@ -224,6 +224,28 @@ file extensions in those directories.
 - Whether the chosen place is the one the fault meant stays review: a
   fault in the wrong place still fails its test.
 
+## Names check
+
+- `tests/template/names-check/names.test.ts`, with its shrinking
+  `tests/template/names-check/recorded-hits.json`, checks every tracked file and
+  folder name against `GLOSSARY.md`. Pre-commit runs the same names check on
+  staged names.
+- The symbol gate (`scripts/public-declarations.ts`) applies those rules to the
+  public surface in `tests/template/names-check/public-surface.json`: exports
+  in Bootstrap's copied code and consumed exports in `src/*.ts`, one level of
+  members and parameters deep. Locals and comments stay review only.
+- For added paths and new public declarations against the base (`--staged`,
+  `--against`, `--tool-call`, and new given paths), `scripts/name-words.ts`
+  requires every word to come from a term heading in `GLOSSARY.md`, a kernel
+  term in `glossary-ownership.json`, the design words, or
+  `names-plain-words.json` (matching an optional trailing `s` either way).
+  Existing names and renamed paths that keep their last segment are not judged
+  again; Avoid and Qualify refusals keep their own lines and run first.
+- To propose a new plain word when no glossary term fits, add a sorted
+  `{ "word", "reason" }` entry to `names-plain-words.json` and list each added
+  word under its own heading in the pull request description for Nathan's
+  decision.
+
 ## Recorded hits
 
 - `eslint-suppressions.json` holds the recorded hits each lint rule found

@@ -16,8 +16,9 @@ template needs is added here and never to the kernel's glossary.
 
 ## Shared tool words
 
-The tool words that both repositories carry (names check, recorded hit, gate
-and the rest of the section "Shared tool words") belong to this repository.
+The tool words that both repositories carry (names check, recorded hit, gate,
+plain word, layout rule and the rest of the section "Shared tool words") belong
+to this repository.
 The kernel holds a copy. `tests/template/names-check/shared-tool-words.txt` records
 this repository's section, and a test fails when `GLOSSARY.md` differs from it.
 The kernel's own export names the template commit it was copied from. Change

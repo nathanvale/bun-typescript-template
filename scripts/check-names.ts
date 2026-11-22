@@ -10,6 +10,12 @@ import {
   stagedNewPaths,
   stagedText,
 } from "./glossary.ts";
+import {
+  againstNameWordProblems,
+  givenNameWordProblems,
+  keptMoveTargets,
+  stagedNameWordProblems,
+} from "./name-words.ts";
 import { holdsTestFile, readRepository, testFilePlaces } from "./repository.ts";
 import { publicNameProblems } from "./public-surface.ts";
 
@@ -59,6 +65,7 @@ function placementProblems(tree: string, names: readonly string[]): string[] {
 async function problemsIn(
   tree: string,
   names: readonly string[],
+  keptPaths?: ReadonlySet<string>,
 ): Promise<string[]> {
   return [
     ...problemsGiven((path) => readFileSync(join(tree, path), "utf8"), names),
@@ -68,6 +75,7 @@ async function problemsIn(
       false,
       names.filter((path) => existsSync(join(tree, path))),
     )),
+    ...(await givenNameWordProblems(tree, names, keptPaths)),
   ];
 }
 
@@ -77,6 +85,7 @@ async function stagedProblems(root: string): Promise<string[]> {
     ...problemsGiven((path) => stagedText(root, path), names),
     ...placementProblems(root, names),
     ...(await publicNameProblems(root, true)),
+    ...(await stagedNameWordProblems(root)),
   ];
 }
 
@@ -119,7 +128,11 @@ function sameTree(one: string, other: string): boolean {
   return realpathSync(one) === realpathSync(other);
 }
 
-async function problemsCreating(root: string, file: string): Promise<string[]> {
+async function problemsCreating(
+  root: string,
+  file: string,
+  keptTarget: boolean = false,
+): Promise<string[]> {
   const tree = owningTree(file);
   const own =
     tree === undefined
@@ -135,6 +148,7 @@ async function problemsCreating(root: string, file: string): Promise<string[]> {
     namesOnPaths([relative(tree, file)]).filter(
       (name) => !existsSync(join(tree, name)),
     ),
+    keptTarget ? new Set([relative(tree, file)]) : undefined,
   );
 }
 
@@ -186,10 +200,14 @@ async function toolCallProblems(
   const cwd = call.get("cwd");
   const from =
     typeof cwd === "string" ? resolve(fallbackCwd, cwd) : fallbackCwd;
+  const tool = call.get("tool_name");
+  const input = ownFields(call.get("tool_input"));
+  const kept = keptMoveTargets(tool, input, from);
   const problems = await Promise.all(
-    createdPaths(call.get("tool_name"), ownFields(call.get("tool_input"))).map(
-      (path) => problemsCreating(root, resolve(from, path)),
-    ),
+    createdPaths(tool, input).map((path) => {
+      const resolved = resolve(from, path);
+      return problemsCreating(root, resolved, kept.has(resolved));
+    }),
   );
   return problems.flat();
 }
@@ -220,6 +238,7 @@ async function problemsFor(
         readFileSync(join(environment.root, path), "utf8"),
       ),
       ...(await publicNameProblems(environment.root, false, undefined, true)),
+      ...(await againstNameWordProblems(environment.root, revision)),
     ];
   }
   const mode = modes.get(first);

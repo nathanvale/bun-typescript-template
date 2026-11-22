@@ -26,5 +26,10 @@ readiness and the machine's load, and names a repair for each failure.
 A fault replay gives each planted fault one verdict: KILLED, SURVIVED, STALE,
 BROKEN or TIMEOUT. The per-commit check gives each commit GREEN or RED.
 
-The names check runs as a test, as a hook when a file is created, and at
-commit.
+The names check runs as a test, as a hook when a file is created, at commit,
+and on pull requests (`--against`). Added paths and new public declarations
+must use only words from `GLOSSARY.md`, `glossary-ownership.json`, the design
+words, or `names-plain-words.json`. To propose a plain word when no glossary
+term fits, add a sorted `{ "word", "reason" }` entry to
+`names-plain-words.json` and list it in the pull request description for
+Nathan's decision.

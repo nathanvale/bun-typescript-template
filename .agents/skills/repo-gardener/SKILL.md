@@ -25,7 +25,9 @@ each pointer rather than a copy:
 - [GLOSSARY-MAP.md](../../../GLOSSARY-MAP.md): the glossary that owns each
   word. [GLOSSARY.md](../../../GLOSSARY.md) holds this repository's words,
   their Avoid words, how a note on an Avoid line is read, and the words
-  that need a qualifier. `tests/template/names-check/recorded-hits.json` holds the names
+  that need a qualifier. [names-plain-words.json](../../../names-plain-words.json)
+  lists plain words new names may use, each with its reason.
+  `tests/template/names-check/recorded-hits.json` holds the names
   check's recorded hits, and `tests/template/names-check/recorded-unused-terms.json` the
   glossary words that no tracked file uses yet.
 
@@ -54,7 +56,7 @@ Change only `CODING_STANDARDS.md`, `docs/standards/`, the files in
 [Lint owners](#lint-owners), `eslint-suppressions.json`,
 `tests/planted-faults/` and `tests/template/standards/`. Weed may also change
 `AGENTS.md` and `.agents/skills/`. Stake may also change `GLOSSARY.md`,
-`GLOSSARY-MAP.md` and `tests/template/names-check/`, and may rename a path the names check
+`GLOSSARY-MAP.md`, `names-plain-words.json` and `tests/template/names-check/`, and may rename a path the names check
 refuses, with the files that refer to it. Report a change the lesson needs
 anywhere else, with its path, for that path's owner.
 
@@ -208,7 +210,11 @@ repository meets.
      the form its entries use. When no tracked file uses it yet, list it in
      `tests/template/names-check/recorded-unused-terms.json` with its reason and its
      ticket. Report a word another glossary should own, for the owner
-     `GLOSSARY-MAP.md` names.
+     `GLOSSARY-MAP.md` names. If a new path or public declaration needs a plain
+     word that no glossary term holds, propose it by adding a sorted
+     `{ "word", "reason" }` entry to `names-plain-words.json` and listing it
+     under its own heading in the pull request description for Nathan's
+     decision.
    - The name is older than the glossary rule that refuses it, and its
      rename belongs to a larger change: add a recorded hit with its reason
      and the change that will remove it. A name newer than its rule takes

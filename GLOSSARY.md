@@ -15,6 +15,10 @@ check cannot tell what a name means. The names check refuses a word with no note
 after it in every file and folder name and public declaration name. It refuses a word noted
 `(unqualified)` as a whole name only when
 [Words that need a qualifier](#words-that-need-a-qualifier) also lists it.
+For added paths and new public declarations against the base, every word must
+come from a term heading here or in `glossary-ownership.json`, the design words,
+or `names-plain-words.json`; propose a new plain word by adding a sorted entry
+with its reason to `names-plain-words.json` for Nathan's decision.
 
 ### Creating a repository
 
@@ -309,6 +313,14 @@ _Avoid_: recorded origin (that is one repository and one commit), allowed hosts
 The mark on a claim in a plan that says how sure it is: passed on Linux,
 passed on macOS only, designed and not run, decided by Nathan, or open.
 _Avoid_: confidence, status (for a claim tag), proven (for a prototype run)
+
+**Plain word**:
+A word a new name may use that no glossary term holds, recorded with its reason.
+_Avoid_: allowlist
+
+**Layout rule**:
+One row of `repository.json` `layoutRules`: the names a folder may hold, and the repair that names the right place for anything else. The names check refuses a path no layout rule admits.
+_Avoid_: allowlist, folder policy
 
 ## Words that need a qualifier
 

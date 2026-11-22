@@ -62,6 +62,8 @@ const sources = [
   "scripts/staged-texts.ts",
   "scripts/surface-match.ts",
   "scripts/glossary-map.ts",
+  "scripts/glossary-ownership.ts",
+  "scripts/name-words.ts",
   "scripts/repository.ts",
   ".claude/settings.json",
   ".claude/hooks/names-check.sh",

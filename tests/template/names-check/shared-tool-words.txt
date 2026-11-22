@@ -143,6 +143,14 @@ The mark on a claim in a plan that says how sure it is: passed on Linux,
 passed on macOS only, designed and not run, decided by Nathan, or open.
 _Avoid_: confidence, status (for a claim tag), proven (for a prototype run)
 
+**Plain word**:
+A word a new name may use that no glossary term holds, recorded with its reason.
+_Avoid_: allowlist
+
+**Layout rule**:
+One row of `repository.json` `layoutRules`: the names a folder may hold, and the repair that names the right place for anything else. The names check refuses a path no layout rule admits.
+_Avoid_: allowlist, folder policy
+
 ## Words that need a qualifier
 
 Each of these words names different things in different projects. In the name

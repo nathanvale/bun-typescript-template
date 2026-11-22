@@ -1,0 +1,16 @@
+diff --git a/scripts/name-words.ts b/scripts/name-words.ts
+--- a/scripts/name-words.ts
++++ b/scripts/name-words.ts
+@@ -208,11 +208,7 @@ export function unknownPathProblems(
+   items: readonly PathItem[],
+ ): string[] {
+   return items.flatMap(({ path, isFile }) =>
+-    unknownWordsOf(
+-      words,
+-      coveredByGlossaryRule(path, glossary),
+-      segmentWords(path, isFile),
+-    ).map(
++    [].map(
+       (word) =>
+         `${path} uses "${word}", which no glossary term uses. ${unknownWordRepair(path)}`,
+     ),
