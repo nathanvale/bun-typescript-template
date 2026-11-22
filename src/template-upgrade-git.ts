@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { basename, delimiter, dirname, join } from "node:path";
 import { CliError } from "./cli-error.ts";
 
+export type ProcessEnvMap = Readonly<Record<string, string | undefined>>;
+
 const GIT_LOCATION_VARIABLES: readonly string[] = [
   "GIT_DIR",
   "GIT_WORK_TREE",
@@ -36,7 +38,7 @@ export interface GitRefusal {
 }
 
 export function withoutGitLocation(
-  env: Readonly<Record<string, string | undefined>>,
+  env: ProcessEnvMap,
 ): Record<string, string | undefined> {
   return Object.fromEntries(
     Object.entries(env).filter(
@@ -52,7 +54,7 @@ function isNodeModulesBinaryFolder(entry: string): boolean {
 }
 
 export function toolchainEnvironment(
-  env: Readonly<Record<string, string | undefined>>,
+  env: ProcessEnvMap,
 ): Record<string, string | undefined> {
   const entries = (env.PATH ?? "")
     .split(delimiter)
@@ -81,7 +83,7 @@ export function runGitCommand(
   cwd: string,
   args: readonly string[],
   options: {
-    readonly env?: Readonly<Record<string, string | undefined>>;
+    readonly env?: ProcessEnvMap;
     readonly timeoutMilliseconds?: number;
   } = {},
 ): GitCommandResult {
@@ -107,7 +109,7 @@ export function runGitText(
   args: readonly string[],
   refusal: GitRefusal,
   options: {
-    readonly env?: Readonly<Record<string, string | undefined>>;
+    readonly env?: ProcessEnvMap;
     readonly timeoutMilliseconds?: number;
   } = {},
 ): string {
@@ -141,7 +143,7 @@ export function runGitText(
 export function resolveTemplateCommit(
   templateRoot: string,
   targetRef: string,
-  env: Readonly<Record<string, string | undefined>> = process.env,
+  env: ProcessEnvMap = process.env,
 ): string {
   const commit = runGitText(
     templateRoot,
@@ -200,7 +202,7 @@ function notGitRepositoryError(repository: string): CliError {
 
 function requireGitWorkTreeRoot(
   repository: string,
-  env: Readonly<Record<string, string | undefined>>,
+  env: ProcessEnvMap,
 ): string {
   let realRepository: string;
   try {
@@ -245,7 +247,7 @@ function requireGitWorkTreeRoot(
 
 export function verifyGitRepository(
   repository: string,
-  env: Readonly<Record<string, string | undefined>> = process.env,
+  env: ProcessEnvMap = process.env,
 ): string {
   const realRepository = requireGitWorkTreeRoot(repository, env);
   return runGitText(
@@ -266,7 +268,7 @@ export function readCommittedBytesAt(
   repository: string,
   revision: string,
   filePath: string,
-  env: Readonly<Record<string, string | undefined>> = process.env,
+  env: ProcessEnvMap = process.env,
 ): Uint8Array | undefined {
   const objectSpec = `${revision}:${filePath}`;
   const listed = runGitCommand(repository, ["cat-file", "-e", objectSpec], {
@@ -302,14 +304,14 @@ export function readCommittedBytesAt(
 export function readCommittedBytes(
   repository: string,
   filePath: string,
-  env: Readonly<Record<string, string | undefined>> = process.env,
+  env: ProcessEnvMap = process.env,
 ): Uint8Array | undefined {
   return readCommittedBytesAt(repository, "HEAD", filePath, env);
 }
 
 export function gitCommitIdentityArgs(
   worktree: string,
-  env: Readonly<Record<string, string | undefined>>,
+  env: ProcessEnvMap,
 ): string[] {
   const hasName =
     (env.GIT_AUTHOR_NAME !== undefined && env.GIT_AUTHOR_NAME !== "") ||
@@ -333,7 +335,7 @@ function assertCommitAncestor(options: {
   readonly templateRoot: string;
   readonly ancestor: string;
   readonly descendant: string;
-  readonly env: Readonly<Record<string, string | undefined>>;
+  readonly env: ProcessEnvMap;
   readonly timeoutMessage: string;
   readonly notAncestor: GitRefusal;
   readonly unreadablePrefix: string;
@@ -389,7 +391,7 @@ export function verifyTemplateAncestry(
   templateRoot: string,
   baseCommit: string,
   targetCommit: string,
-  env: Readonly<Record<string, string | undefined>> = process.env,
+  env: ProcessEnvMap = process.env,
 ): void {
   const baseType = runGitCommand(templateRoot, ["cat-file", "-t", baseCommit], {
     env,
@@ -449,7 +451,7 @@ export function gitMergeFile(
   oursPath: string,
   basePath: string,
   nextPath: string,
-  env: Readonly<Record<string, string | undefined>> = process.env,
+  env: ProcessEnvMap = process.env,
 ): "clean" | "conflict" {
   const child = Bun.spawnSync(
     [
@@ -551,7 +553,7 @@ export async function gitDiffFiles(options: {
   readonly oldPath: string;
   readonly newPath: string;
   readonly relativePath: string;
-  readonly env?: Readonly<Record<string, string | undefined>>;
+  readonly env?: ProcessEnvMap;
 }): Promise<string> {
   const { oldPath, newPath, relativePath, env = process.env } = options;
   const scratch = await mkdtemp(join(tmpdir(), "template-upgrade-diff-"));

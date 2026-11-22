@@ -4,7 +4,7 @@ import { CliError } from "./cli-error.ts";
 import { withTemplateUpgradeTrees } from "./template-upgrade-bootstrap.ts";
 import {
   lstatIfPresent,
-  runGitCommand,
+  type ProcessEnvMap,
   runGitText,
 } from "./template-upgrade-git.ts";
 import type { TemplateUpgradeInputs } from "./template-upgrade-inputs.ts";
@@ -25,8 +25,10 @@ import {
   assertWorktreePathsNotSymlinks,
   compareCodeUnits,
   findConflictMarkerFiles,
+  readGitOutput,
   readTextIfFile,
   readWorktreeOwnHead,
+  removeTemplateUpgradeLeftoverWorktree,
   removeWorktreeIfPresent,
   resolveRefIfPresent,
   runBunStep,
@@ -77,6 +79,7 @@ export interface TemplateUpgradeApplyResult {
   readonly dependencyChanges: readonly PackageDependencyChange[];
   readonly templateCopyChanges: readonly TemplateUpgradeCopyChange[];
   readonly pinMoveNotice?: string;
+  readonly leftoverWorktreeNotice?: string;
   readonly failedStep?: string;
   readonly checkCommandOutput?: string;
 }
@@ -94,7 +97,7 @@ interface ApplySession {
   readonly temporaryWorktree: string;
   readonly targetWorktree: string;
   readonly skipCheckCommand: boolean;
-  readonly env: Readonly<Record<string, string | undefined>>;
+  readonly env: ProcessEnvMap;
 }
 
 interface ApplyMergeData {
@@ -110,54 +113,44 @@ function pinMoveNoticeFor(inputs: TemplateUpgradeInputs): string | undefined {
   return `The template's Pin moved from ${inputs.repositoryPinnedCommit.slice(0, 7)} to ${inputs.templatePinnedCommit.slice(0, 7)}; a Template upgrade does not move it. Move yours separately.`;
 }
 
-function optionalApplyFields(
-  options: {
-    readonly commit?: string;
-    readonly worktree?: string;
-    readonly failedStep?: string;
-    readonly checkCommandOutput?: string;
-  },
-  pinMoveNotice: string | undefined,
-): Partial<TemplateUpgradeApplyResult> {
-  const fields: {
-    commit?: string;
-    worktree?: string;
-    pinMoveNotice?: string;
-    failedStep?: string;
-    checkCommandOutput?: string;
-  } = {};
-  if (options.commit !== undefined) {
-    fields.commit = options.commit;
-  }
-  if (options.worktree !== undefined) {
-    fields.worktree = options.worktree;
-  }
-  if (pinMoveNotice !== undefined) {
-    fields.pinMoveNotice = pinMoveNotice;
-  }
-  if (options.failedStep !== undefined) {
-    fields.failedStep = options.failedStep;
-  }
-  if (options.checkCommandOutput !== undefined) {
-    fields.checkCommandOutput = options.checkCommandOutput;
-  }
-  return fields;
-}
-
-function buildTemplateUpgradeApplyRun(options: {
+interface ApplyRunOptions {
   readonly exitCode: number;
   readonly inputs: TemplateUpgradeInputs;
   readonly branch: string;
   readonly status: TemplateUpgradeApplyStatus;
   readonly commit?: string;
   readonly worktree?: string;
+  readonly leftoverWorktreeNotice?: string;
   readonly rows?: readonly TemplateUpgradeRow[];
   readonly conflicts?: readonly string[];
   readonly dependencyChanges?: readonly PackageDependencyChange[];
   readonly templateCopyChanges?: readonly TemplateUpgradeCopyChange[];
   readonly failedStep?: string;
   readonly checkCommandOutput?: string;
-}): TemplateUpgradeApplyRun {
+}
+
+function definedApplyFields(
+  options: ApplyRunOptions,
+  pinMoveNotice: string | undefined,
+): Partial<TemplateUpgradeApplyResult> {
+  const pairs: readonly (readonly [string, string | undefined])[] = [
+    ["commit", options.commit],
+    ["worktree", options.worktree],
+    ["pinMoveNotice", pinMoveNotice],
+    ["leftoverWorktreeNotice", options.leftoverWorktreeNotice],
+    ["failedStep", options.failedStep],
+    ["checkCommandOutput", options.checkCommandOutput],
+  ];
+  return Object.fromEntries(
+    pairs.filter(
+      (pair): pair is readonly [string, string] => pair[1] !== undefined,
+    ),
+  );
+}
+
+function buildTemplateUpgradeApplyRun(
+  options: ApplyRunOptions,
+): TemplateUpgradeApplyRun {
   const pinMoveNotice = pinMoveNoticeFor(options.inputs);
   const result: TemplateUpgradeApplyResult = {
     schemaVersion: SCHEMA_VERSION,
@@ -170,21 +163,9 @@ function buildTemplateUpgradeApplyRun(options: {
     conflicts: options.conflicts ?? Object.freeze([]),
     dependencyChanges: options.dependencyChanges ?? Object.freeze([]),
     templateCopyChanges: options.templateCopyChanges ?? Object.freeze([]),
-    ...optionalApplyFields(options, pinMoveNotice),
+    ...definedApplyFields(options, pinMoveNotice),
   };
   return { exitCode: options.exitCode, result: Object.freeze(result) };
-}
-
-function gitStdoutIfOk(
-  cwd: string,
-  args: readonly string[],
-  env: Readonly<Record<string, string | undefined>>,
-): string | undefined {
-  const result = runGitCommand(cwd, args, { env });
-  if (result.timedOut || result.exitCode !== 0) {
-    return undefined;
-  }
-  return new TextDecoder("utf-8").decode(result.stdout).trim();
 }
 
 async function findCommittedWorktreeHead(
@@ -205,10 +186,10 @@ async function findCommittedWorktreeHead(
   ) {
     return undefined;
   }
-  if (gitStdoutIfOk(targetWorktree, ["status", "--porcelain=v1"], env) !== "") {
+  if (readGitOutput(targetWorktree, ["status", "--porcelain=v1"], env) !== "") {
     return undefined;
   }
-  const subject = gitStdoutIfOk(
+  const subject = readGitOutput(
     targetWorktree,
     ["log", "-1", "--format=%s", worktreeHead],
     env,
@@ -250,7 +231,7 @@ async function executePlanInWorktree(
   oldFolder: string,
   newFolder: string,
   planWorktree: string,
-  env: Readonly<Record<string, string | undefined>>,
+  env: ProcessEnvMap,
 ): Promise<TemplateUpgradePlanResult> {
   const beforePackage = await readTextIfFile(
     join(planWorktree, "package.json"),
@@ -292,7 +273,7 @@ async function executePlanInWorktree(
 
 export async function templateUpgradePlan(
   inputs: TemplateUpgradeInputs,
-  env: Readonly<Record<string, string | undefined>> = process.env,
+  env: ProcessEnvMap = process.env,
 ): Promise<TemplateUpgradePlanResult> {
   if (inputs.baseCommit === inputs.targetCommit) {
     const pinMoveNotice = pinMoveNoticeFor(inputs);
@@ -414,14 +395,27 @@ async function inspectExistingTemplateUpgradeBranch(
     env,
   );
   if (existingParent === inputs.repositoryHead) {
-    await removeWorktreeIfPresent(inputs.repository, targetWorktree, env);
-    await removeWorktreeIfPresent(inputs.repository, temporaryWorktree, env);
+    const leftoverWorktreeNotice = await removeTemplateUpgradeLeftoverWorktree({
+      repository: inputs.repository,
+      worktreePath: targetWorktree,
+      expectedHead: existingTip,
+      env,
+    });
+    await removeTemplateUpgradeLeftoverWorktree({
+      repository: inputs.repository,
+      worktreePath: temporaryWorktree,
+      expectedHead: inputs.repositoryHead,
+      env,
+    });
     return buildTemplateUpgradeApplyRun({
       exitCode: 0,
       inputs,
       branch,
       status: "already-done",
       commit: existingTip,
+      ...(leftoverWorktreeNotice === undefined
+        ? {}
+        : { worktree: targetWorktree, leftoverWorktreeNotice }),
     });
   }
   throw new CliError(
@@ -670,7 +664,7 @@ export async function templateUpgradeApply(
   inputs: TemplateUpgradeInputs,
   options: {
     readonly skipCheckCommand: boolean;
-    readonly env?: Readonly<Record<string, string | undefined>>;
+    readonly env?: ProcessEnvMap;
   },
 ): Promise<TemplateUpgradeApplyRun> {
   const env = options.env ?? process.env;

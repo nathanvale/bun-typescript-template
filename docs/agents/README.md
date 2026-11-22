@@ -6,8 +6,6 @@
   [pull request workflow](pull-requests.md).
 - For choosing a test area or reproducing a failed hosted check, use
   [Checks](#checks).
-- For carrying template changes into a generated repository, use
-  [Template upgrade](../template-upgrade.md).
 
 ## Checks
 

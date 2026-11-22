@@ -52,7 +52,18 @@ export interface TemplateUpgradeRow {
   readonly path: string;
   readonly ownerLabel: TemplateUpgradeFileOwner;
   readonly outcome: TemplateUpgradeOutcome;
+  readonly reason?: string;
 }
+
+interface PathMergeResult {
+  readonly outcome: TemplateUpgradeOutcome;
+  readonly reason?: string;
+}
+
+const UNMARKABLE_TEMPLATE_DELETE_REASON =
+  "template deleted a file that cannot hold conflict markers; kept the repository's file";
+const UNMARKABLE_OWNER_DELETE_REASON =
+  "template changed a deleted file that cannot hold conflict markers; kept the repository's deletion";
 
 export interface TemplateUpgradeCopyChange {
   readonly path: string;
@@ -227,12 +238,15 @@ async function writeDeleteConflictEntry(options: {
   readonly relativePath: string;
   readonly oursEntry: TreeEntry;
   readonly newEntry: TreeEntry;
-}): Promise<void> {
+}): Promise<PathMergeResult> {
   const { targetFolder, relativePath, oursEntry, newEntry } = options;
   if (newEntry.kind === "absent" && oursEntry.kind === "file") {
     const oursText = decodeUtf8TextWithoutNul(oursEntry.bytes);
     if (oursText === undefined) {
-      return;
+      return {
+        outcome: "template-copy-changed",
+        reason: UNMARKABLE_TEMPLATE_DELETE_REASON,
+      };
     }
     const marked =
       `<<<<<<< ours\n` +
@@ -244,12 +258,15 @@ async function writeDeleteConflictEntry(options: {
       bytes: new TextEncoder().encode(marked),
       mode: oursEntry.mode,
     });
-    return;
+    return { outcome: "conflict-delete" };
   }
   if (oursEntry.kind === "absent" && newEntry.kind === "file") {
     const newText = decodeUtf8TextWithoutNul(newEntry.bytes);
     if (newText === undefined) {
-      return;
+      return {
+        outcome: "template-copy-changed",
+        reason: UNMARKABLE_OWNER_DELETE_REASON,
+      };
     }
     const marked =
       `<<<<<<< ours (deleted by owner)\n` +
@@ -261,7 +278,9 @@ async function writeDeleteConflictEntry(options: {
       bytes: new TextEncoder().encode(marked),
       mode: newEntry.mode,
     });
+    return { outcome: "conflict-delete" };
   }
+  return { outcome: "conflict-delete" };
 }
 
 async function mergeAddedConflictFile(
@@ -411,45 +430,46 @@ async function mergeDivergentPath(options: {
   readonly oldEntry: TreeEntry;
   readonly newEntry: TreeEntry;
   readonly env: Readonly<Record<string, string | undefined>>;
-}): Promise<TemplateUpgradeOutcome> {
+}): Promise<PathMergeResult> {
   const { relativePath, targetFolder, oldFolder, newFolder, env } = options;
   const { oursEntry, oldEntry, newEntry } = options;
   if (oldEntry.kind === "absent") {
     if (oursEntry.kind === "file" && newEntry.kind === "file") {
       await mergeAddedConflictFile(targetFolder, newFolder, relativePath, env);
     }
-    return "conflict-add";
+    return { outcome: "conflict-add" };
   }
   const nonFileConflict = detectNonFileConflict(oursEntry, oldEntry, newEntry);
   if (nonFileConflict === "conflict-delete") {
-    await writeDeleteConflictEntry({
+    return await writeDeleteConflictEntry({
       targetFolder,
       relativePath,
       oursEntry,
       newEntry,
     });
-    return "conflict-delete";
   }
   if (nonFileConflict !== undefined) {
-    return nonFileConflict;
+    return { outcome: nonFileConflict };
   }
   if (
     oursEntry.kind !== "file" ||
     oldEntry.kind !== "file" ||
     newEntry.kind !== "file"
   ) {
-    return "conflict";
+    return { outcome: "conflict" };
   }
-  return await mergeRegularFiles({
-    relativePath,
-    targetFolder,
-    oldFolder,
-    newFolder,
-    oursBytes: oursEntry.bytes,
-    oldBytes: oldEntry.bytes,
-    newBytes: newEntry.bytes,
-    env,
-  });
+  return {
+    outcome: await mergeRegularFiles({
+      relativePath,
+      targetFolder,
+      oldFolder,
+      newFolder,
+      oursBytes: oursEntry.bytes,
+      oldBytes: oldEntry.bytes,
+      newBytes: newEntry.bytes,
+      env,
+    }),
+  };
 }
 
 async function mergeSinglePath(options: {
@@ -459,7 +479,7 @@ async function mergeSinglePath(options: {
   readonly newFolder: string;
   readonly targetFolder: string;
   readonly env: Readonly<Record<string, string | undefined>>;
-}): Promise<TemplateUpgradeOutcome> {
+}): Promise<PathMergeResult> {
   const { relativePath, ownerLabel, oldFolder, newFolder, targetFolder, env } =
     options;
 
@@ -470,19 +490,31 @@ async function mergeSinglePath(options: {
   ]);
 
   if (entriesEqual(oldEntry, newEntry)) {
-    return "untouched";
+    return { outcome: "untouched" };
   }
   if (ownerLabel === "repository") {
-    return "template-copy-changed";
+    return { outcome: "template-copy-changed" };
   }
   if (entriesEqual(oursEntry, newEntry)) {
-    return "already";
+    return { outcome: "already" };
   }
   if (relativePath === STAMP_FILE) {
-    return await applyUnchangedPathUpdate(targetFolder, relativePath, newEntry);
+    return {
+      outcome: await applyUnchangedPathUpdate(
+        targetFolder,
+        relativePath,
+        newEntry,
+      ),
+    };
   }
   if (entriesEqual(oursEntry, oldEntry)) {
-    return await applyUnchangedPathUpdate(targetFolder, relativePath, newEntry);
+    return {
+      outcome: await applyUnchangedPathUpdate(
+        targetFolder,
+        relativePath,
+        newEntry,
+      ),
+    };
   }
   return await mergeDivergentPath({
     relativePath,
@@ -534,7 +566,7 @@ export async function mergeTemplateUpgradeTrees(
       continue;
     }
     const ownerLabel = classifyTemplateUpgradeFileOwner(relativePath);
-    const outcome = await mergeSinglePath({
+    const merged = await mergeSinglePath({
       relativePath,
       ownerLabel,
       oldFolder,
@@ -547,7 +579,8 @@ export async function mergeTemplateUpgradeTrees(
       Object.freeze({
         path: relativePath,
         ownerLabel,
-        outcome,
+        outcome: merged.outcome,
+        ...(merged.reason === undefined ? {} : { reason: merged.reason }),
       }),
     );
   }

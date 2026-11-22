@@ -154,7 +154,7 @@ function pinTemplateCloneToRepositoryPin(
   });
   runGitText(
     cloneFolder,
-    ["add", "--", kernelPinFile],
+    ["--literal-pathspecs", "add", "--", kernelPinFile],
     {
       code: "regeneration_pin_failed",
       message: `cannot stage ${kernelPinFile} in temporary ${label} template clone`,

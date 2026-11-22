@@ -32,10 +32,13 @@ function formatRows(rows: readonly TemplateUpgradeRow[]): string[] {
   const width = Math.max(...rows.map((row) => row.path.length), "Path".length);
   return [
     `${"Path".padEnd(width)}  ${"Owner".padEnd(10)}  Outcome`,
-    ...rows.map(
-      (row) =>
-        `${row.path.padEnd(width)}  ${row.ownerLabel.padEnd(10)}  ${row.outcome}`,
-    ),
+    ...rows.map((row) => {
+      const outcomeText =
+        row.reason === undefined
+          ? row.outcome
+          : `${row.outcome} (${row.reason})`;
+      return `${row.path.padEnd(width)}  ${row.ownerLabel.padEnd(10)}  ${outcomeText}`;
+    }),
   ];
 }
 
@@ -63,7 +66,7 @@ function formatTemplateCopyDiffs(
   }
   return [
     "",
-    "Repository-owned starting copies changed in template (not written):",
+    "Template changes left untouched (not written):",
     ...changes.flatMap((change) =>
       change.diff === "" ? [`  ${change.path}`] : [change.diff],
     ),
@@ -78,7 +81,7 @@ function formatTemplateCopyNotice(
     return [];
   }
   return [
-    "Repository-owned starting copies changed in template (left untouched):",
+    "Template changes left untouched:",
     ...changes.map((change) => `  ${change.path}`),
     `Run bun run upgrade plan --repository PATH --to ${targetCommit.slice(0, 7)} to see the diff between old and new regenerated copies.`,
   ];
@@ -161,7 +164,13 @@ function formatApply(result: TemplateUpgradeApplyResult): string {
     return `${[`Template upgrade: up-to-date at ${target7}`, ...pinNotice].join("\n")}\n`;
   }
   if (result.status === "already-done") {
-    return `${[`Template upgrade: already-done on branch ${result.branch}`, ...pinNotice].join("\n")}\n`;
+    const extraLines = [
+      ...pinNotice,
+      ...(result.leftoverWorktreeNotice === undefined
+        ? []
+        : [result.leftoverWorktreeNotice]),
+    ];
+    return `${[`Template upgrade: already-done on branch ${result.branch}`, ...extraLines].join("\n")}\n`;
   }
   const notices = [
     ...pinNotice,

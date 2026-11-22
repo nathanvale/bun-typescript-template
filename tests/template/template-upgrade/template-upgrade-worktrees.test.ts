@@ -378,3 +378,162 @@ test(
   },
   processWatchdog(4),
 );
+
+async function makePublishedUpgradeRepository(name: string) {
+  const { templateClone, baseCommit } = cloneTemplateAtHead(folder);
+  const targetCommit = commitTemplateUpgradeChanges(templateClone);
+  const target7 = targetCommit.slice(0, 7);
+  const branch = `template-upgrade/${baseCommit.slice(0, 7)}-${target7}`;
+  const repo = await bootstrapGeneratedRepository(
+    folder,
+    templateClone,
+    baseCommit,
+    name,
+  );
+  commitIn(repo, "owner baseline commit", { "owner-note.txt": "baseline\n" });
+  const runtime = { templateRoot: templateClone, env: templateUpgradeEnv() };
+  const stdout = captureStream(process.stdout);
+  const stderr = captureStream(process.stderr);
+  const applyJsonArgs = applyNoCheckJsonArgs(repo, targetCommit);
+  const initial = await invokeTemplateUpgradeMain(
+    stdout,
+    stderr,
+    applyJsonArgs,
+    runtime,
+  );
+  expect(initial.exitCode).toBe(0);
+  const targetWorktree = join(
+    repo,
+    ".worktrees",
+    `template-upgrade-${target7}`,
+  );
+  return {
+    repo,
+    branch,
+    targetCommit,
+    targetWorktree,
+    runtime,
+    stdout,
+    stderr,
+    applyJsonArgs,
+  };
+}
+
+test(
+  "already-done leaves a leftover target worktree at another commit untouched and reports one line explaining why",
+  async () => {
+    const setup = await makePublishedUpgradeRepository(
+      "already-done-other-app",
+    );
+    git(
+      setup.repo,
+      "worktree",
+      "add",
+      "--quiet",
+      "--detach",
+      setup.targetWorktree,
+      "HEAD^",
+    );
+    const ownerFile = join(setup.targetWorktree, "owner-edit.txt");
+    writeFileSync(ownerFile, "do not delete\n");
+
+    const jsonRun = await invokeTemplateUpgradeMain(
+      setup.stdout,
+      setup.stderr,
+      setup.applyJsonArgs,
+      setup.runtime,
+    );
+    expect(jsonRun.exitCode).toBe(0);
+    const payload = JSON.parse(jsonRun.stdout) as {
+      status: string;
+      branch: string;
+      worktree?: string;
+      leftoverWorktreeNotice?: string;
+    };
+    expect(payload.status).toBe("already-done");
+    expect(payload.branch).toBe(setup.branch);
+    expect(payload.worktree).toBe(setup.targetWorktree);
+    expect(payload.leftoverWorktreeNotice).toContain(setup.targetWorktree);
+    expect(payload.leftoverWorktreeNotice).not.toContain("\n");
+    expect(readFileSync(ownerFile, "utf8")).toBe("do not delete\n");
+
+    const textRun = await invokeTemplateUpgradeMain(
+      setup.stdout,
+      setup.stderr,
+      [
+        "apply",
+        "--repository",
+        setup.repo,
+        "--to",
+        setup.targetCommit,
+        "--no-check",
+      ],
+      setup.runtime,
+    );
+    expect(textRun.exitCode).toBe(0);
+    const textLines = textRun.stdout.trimEnd().split("\n");
+    expect(textLines).toHaveLength(2);
+    expect(textLines[0]).toBe(
+      `Template upgrade: already-done on branch ${setup.branch}`,
+    );
+    expect(textLines[1]).toContain(setup.targetWorktree);
+    expect(readFileSync(ownerFile, "utf8")).toBe("do not delete\n");
+  },
+  processWatchdog(4),
+);
+
+test(
+  "already-done leaves a dirty leftover worktree at the published commit and removes it once clean",
+  async () => {
+    const setup = await makePublishedUpgradeRepository("already-done-own-app");
+    git(
+      setup.repo,
+      "worktree",
+      "add",
+      "--quiet",
+      "--detach",
+      setup.targetWorktree,
+      setup.branch,
+    );
+    const ownerFile = join(setup.targetWorktree, "owner-edit.txt");
+    writeFileSync(ownerFile, "owner edit on published commit\n");
+
+    const dirtyRun = await invokeTemplateUpgradeMain(
+      setup.stdout,
+      setup.stderr,
+      setup.applyJsonArgs,
+      setup.runtime,
+    );
+    expect(dirtyRun.exitCode).toBe(0);
+    const dirtyPayload = JSON.parse(dirtyRun.stdout) as {
+      status: string;
+      worktree?: string;
+      leftoverWorktreeNotice?: string;
+    };
+    expect(dirtyPayload.status).toBe("already-done");
+    expect(dirtyPayload.worktree).toBe(setup.targetWorktree);
+    expect(dirtyPayload.leftoverWorktreeNotice).toContain("uncommitted");
+    expect(readFileSync(ownerFile, "utf8")).toBe(
+      "owner edit on published commit\n",
+    );
+
+    rmSync(ownerFile);
+    const cleanRun = await invokeTemplateUpgradeMain(
+      setup.stdout,
+      setup.stderr,
+      setup.applyJsonArgs,
+      setup.runtime,
+    );
+    expect(cleanRun.exitCode).toBe(0);
+    const cleanPayload = JSON.parse(cleanRun.stdout) as {
+      status: string;
+      worktree?: string;
+      leftoverWorktreeNotice?: string;
+    };
+    expect(cleanPayload.status).toBe("already-done");
+    expect(cleanPayload.worktree).toBeUndefined();
+    expect(cleanPayload.leftoverWorktreeNotice).toBeUndefined();
+    expect(existsSync(setup.targetWorktree)).toBe(false);
+  },
+  processWatchdog(4),
+);

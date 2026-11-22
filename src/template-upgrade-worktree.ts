@@ -9,11 +9,24 @@ import {
   runGitCommand,
   runGitText,
   toolchainEnvironment,
+  type ProcessEnvMap,
 } from "./template-upgrade-git.ts";
 
 const WORKTREE_TIMEOUT_MS = 30_000;
 const IGNORED_TREE_ENTRIES = new Set([".git", "node_modules", ".worktrees"]);
 const CONFLICT_MARKER_PATTERN = /^(?:<<<<<<< ours|>>>>>>> new)(?: .*)?\r?$/m;
+const UTF8 = new TextDecoder("utf-8");
+
+export function readGitOutput(
+  cwd: string,
+  args: readonly string[],
+  env: ProcessEnvMap,
+): string | undefined {
+  const result = runGitCommand(cwd, args, { env });
+  return result.timedOut || result.exitCode !== 0
+    ? undefined
+    : UTF8.decode(result.stdout).trim();
+}
 
 export async function assertNotSymlinkPath(
   fullPath: string,
@@ -120,7 +133,7 @@ export async function readTextIfFile(
   if (stats === undefined || !stats.isFile()) {
     return undefined;
   }
-  return new TextDecoder("utf-8").decode(await readPlainFileBytes(filePath));
+  return UTF8.decode(await readPlainFileBytes(filePath));
 }
 
 async function walkTreeEntries(
@@ -194,7 +207,7 @@ async function fileHasConflictMarker(fullPath: string): Promise<boolean> {
   if (bytes.includes(0)) {
     return false;
   }
-  return CONFLICT_MARKER_PATTERN.test(new TextDecoder("utf-8").decode(bytes));
+  return CONFLICT_MARKER_PATTERN.test(UTF8.decode(bytes));
 }
 
 export async function findConflictMarkerFiles(
@@ -216,35 +229,29 @@ export async function findConflictMarkerFiles(
 export function resolveRefIfPresent(
   repository: string,
   ref: string,
-  env: Readonly<Record<string, string | undefined>>,
+  env: ProcessEnvMap,
 ): string | undefined {
-  const result = runGitCommand(
+  return readGitOutput(
     repository,
     ["rev-parse", "--quiet", "--verify", ref],
-    { env },
+    env,
   );
-  if (result.timedOut || result.exitCode !== 0) {
-    return undefined;
-  }
-  return new TextDecoder("utf-8").decode(result.stdout).trim();
 }
 
 export async function readWorktreeOwnHead(
   worktree: string,
-  env: Readonly<Record<string, string | undefined>>,
+  env: ProcessEnvMap,
 ): Promise<string | undefined> {
   const gitMarker = await lstatIfPresent(join(worktree, ".git"));
   if (gitMarker === undefined || gitMarker.isSymbolicLink()) {
     return undefined;
   }
-  const topLevel = runGitCommand(worktree, ["rev-parse", "--show-toplevel"], {
+  const topLevelText = readGitOutput(
+    worktree,
+    ["rev-parse", "--show-toplevel"],
     env,
-  });
-  if (topLevel.timedOut || topLevel.exitCode !== 0) {
-    return undefined;
-  }
-  const topLevelText = new TextDecoder("utf-8").decode(topLevel.stdout).trim();
-  if (topLevelText === "") {
+  );
+  if (topLevelText === undefined || topLevelText === "") {
     return undefined;
   }
   try {
@@ -311,12 +318,12 @@ function stageWorktreePaths(
   worktree: string,
   presentPaths: readonly string[],
   deletedPaths: readonly string[],
-  env: Readonly<Record<string, string | undefined>>,
+  env: ProcessEnvMap,
 ): void {
   if (presentPaths.length > 0) {
     runGitText(
       worktree,
-      ["add", "--", ...presentPaths],
+      ["--literal-pathspecs", "add", "--", ...presentPaths],
       {
         code: "worktree_stage_failed",
         message: `cannot stage upgraded files in ${worktree}`,
@@ -328,7 +335,16 @@ function stageWorktreePaths(
   if (deletedPaths.length > 0) {
     runGitText(
       worktree,
-      ["rm", "--quiet", "--", ...deletedPaths],
+      [
+        "--literal-pathspecs",
+        "rm",
+        "--cached",
+        "--force",
+        "--ignore-unmatch",
+        "--quiet",
+        "--",
+        ...deletedPaths,
+      ],
       {
         code: "worktree_stage_failed",
         message: `cannot stage deleted files in ${worktree}`,
@@ -342,7 +358,7 @@ function stageWorktreePaths(
 export async function stageAndCommitWorktree(options: {
   readonly worktree: string;
   readonly message: string;
-  readonly env: Readonly<Record<string, string | undefined>>;
+  readonly env: ProcessEnvMap;
 }): Promise<string> {
   const { worktree, message, env } = options;
   const status = runGitCommand(
@@ -399,7 +415,7 @@ export function runBunStep(options: {
   readonly worktree: string;
   readonly args: readonly string[];
   readonly timeoutMilliseconds: number;
-  readonly env: Readonly<Record<string, string | undefined>>;
+  readonly env: ProcessEnvMap;
 }): { readonly ok: boolean; readonly output: string } {
   const { worktree, args, timeoutMilliseconds, env } = options;
   const toolEnv = toolchainEnvironment(env);
@@ -413,9 +429,8 @@ export function runBunStep(options: {
     timeout: timeoutMilliseconds,
     killSignal: "SIGKILL",
   });
-  const stdout = new TextDecoder("utf-8").decode(child.stdout);
-  const stderr = new TextDecoder("utf-8").decode(child.stderr);
-  const combined = `${stdout}${stderr}`.trim();
+  const combined =
+    `${UTF8.decode(child.stdout)}${UTF8.decode(child.stderr)}`.trim();
   if (child.exitedDueToTimeout) {
     return {
       ok: false,
@@ -437,25 +452,30 @@ function normalizeWorktreeTarget(targetPath: string): string {
   }
 }
 
+function readGitCommonDir(
+  folderPath: string,
+  env: ProcessEnvMap,
+): string | undefined {
+  const commonDirRaw = readGitOutput(
+    folderPath,
+    ["rev-parse", "--git-common-dir"],
+    env,
+  );
+  if (commonDirRaw === undefined || commonDirRaw === "") {
+    return undefined;
+  }
+  return normalizeWorktreeTarget(resolve(folderPath, commonDirRaw));
+}
+
 async function worktreesMetadataFolder(
   repository: string,
-  env: Readonly<Record<string, string | undefined>>,
+  env: ProcessEnvMap,
 ): Promise<string | undefined> {
-  const commonDirResult = runGitCommand(
-    repository,
-    ["rev-parse", "--git-common-dir"],
-    { env },
-  );
-  if (commonDirResult.timedOut || commonDirResult.exitCode !== 0) {
+  const commonDir = readGitCommonDir(repository, env);
+  if (commonDir === undefined) {
     return undefined;
   }
-  const commonDirRaw = new TextDecoder("utf-8")
-    .decode(commonDirResult.stdout)
-    .trim();
-  if (commonDirRaw === "") {
-    return undefined;
-  }
-  const folderPath = join(resolve(repository, commonDirRaw), "worktrees");
+  const folderPath = join(commonDir, "worktrees");
   const stats = await lstatIfPresent(folderPath);
   return stats !== undefined && stats.isDirectory() ? folderPath : undefined;
 }
@@ -485,7 +505,7 @@ async function registrationMatchesWorktree(
 async function removeWorktreeRegistrationByPath(
   repository: string,
   worktreePath: string,
-  env: Readonly<Record<string, string | undefined>>,
+  env: ProcessEnvMap,
 ): Promise<void> {
   const worktreesMetaDir = await worktreesMetadataFolder(repository, env);
   if (worktreesMetaDir === undefined) {
@@ -514,7 +534,7 @@ async function removeWorktreeRegistrationByPath(
 export async function removeWorktreeIfPresent(
   repository: string,
   worktreePath: string,
-  env: Readonly<Record<string, string | undefined>> = process.env,
+  env: ProcessEnvMap = process.env,
 ): Promise<void> {
   const removed = runGitCommand(
     repository,
@@ -549,7 +569,7 @@ export async function assertTargetWorktreeMatchesHead(options: {
   readonly repositoryHead: string;
   readonly targetCommit: string;
   readonly targetWorktree: string;
-  readonly env: Readonly<Record<string, string | undefined>>;
+  readonly env: ProcessEnvMap;
 }): Promise<void> {
   const { repository, repositoryHead, targetCommit, targetWorktree, env } =
     options;
@@ -580,4 +600,92 @@ export async function assertTargetWorktreeMatchesHead(options: {
     4,
     false,
   );
+}
+
+function describeWorktreeStateBlock(
+  worktreePath: string,
+  worktreeHead: string,
+  expectedHead: string,
+  env: ProcessEnvMap,
+): string | undefined {
+  const branchRef = runGitCommand(
+    worktreePath,
+    ["symbolic-ref", "--quiet", "--short", "HEAD"],
+    { env },
+  );
+  if (branchRef.timedOut) {
+    return "its branch state could not be verified";
+  }
+  if (branchRef.exitCode === 0) {
+    return `it is checked out on branch ${UTF8.decode(branchRef.stdout).trim()}`;
+  }
+  const statusText = readGitOutput(
+    worktreePath,
+    ["status", "--porcelain=v1", "--untracked-files=all"],
+    env,
+  );
+  if (statusText === undefined) {
+    return "its working tree status could not be verified";
+  }
+  const hasChanges = statusText !== "";
+  if (worktreeHead !== expectedHead) {
+    const headShort = worktreeHead.slice(0, 7);
+    const expectedShort = expectedHead.slice(0, 7);
+    return hasChanges
+      ? `it is at commit ${headShort} (not ${expectedShort}) and has uncommitted changes`
+      : `it is at commit ${headShort}, not ${expectedShort}`;
+  }
+  return hasChanges ? "it has uncommitted changes" : undefined;
+}
+
+export interface LeftoverWorktreeRequest {
+  readonly repository: string;
+  readonly worktreePath: string;
+  readonly expectedHead: string;
+  readonly env: ProcessEnvMap;
+}
+
+async function describeLeftoverWorktreeBlock(
+  options: LeftoverWorktreeRequest,
+): Promise<string | undefined> {
+  const { repository, worktreePath, expectedHead, env } = options;
+  const stats = await lstatIfPresent(worktreePath);
+  if (stats === undefined) {
+    return undefined;
+  }
+  const gitMarker = stats.isDirectory()
+    ? await lstatIfPresent(join(worktreePath, ".git"))
+    : undefined;
+  const repoCommonDir = readGitCommonDir(repository, env);
+  const worktreeHead = gitMarker?.isFile()
+    ? await readWorktreeOwnHead(worktreePath, env)
+    : undefined;
+  if (
+    repoCommonDir === undefined ||
+    worktreeHead === undefined ||
+    readGitCommonDir(worktreePath, env) !== repoCommonDir
+  ) {
+    return "it is not a git worktree of this repository";
+  }
+  return describeWorktreeStateBlock(
+    worktreePath,
+    worktreeHead,
+    expectedHead,
+    env,
+  );
+}
+
+export async function removeTemplateUpgradeLeftoverWorktree(
+  options: LeftoverWorktreeRequest,
+): Promise<string | undefined> {
+  const reason = await describeLeftoverWorktreeBlock(options);
+  if (reason !== undefined) {
+    return `Leftover worktree ${options.worktreePath} was left untouched because ${reason}.`;
+  }
+  await removeWorktreeIfPresent(
+    options.repository,
+    options.worktreePath,
+    options.env,
+  );
+  return undefined;
 }
