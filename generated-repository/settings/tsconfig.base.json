@@ -11,6 +11,7 @@
     "strict": true,
     "exactOptionalPropertyTypes": true,
     "noImplicitReturns": true,
+    "allowUnreachableCode": false,
     "skipLibCheck": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
