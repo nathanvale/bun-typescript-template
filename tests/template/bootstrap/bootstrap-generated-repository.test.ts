@@ -27,12 +27,17 @@ interface CombinedFallowReport {
   health?: { findings?: Array<{ name: string; exceeded: string }> };
 }
 
+interface RecordedHitsFile {
+  kind?: string;
+  identity_finding_counts?: Record<string, unknown>;
+}
+
 function parseCombinedFallow(
   stdout: string,
   stderr: string,
 ): CombinedFallowReport {
   const start = stdout.indexOf("{");
-  if (start === -1) {
+  if (start < 0) {
     throw new Error(
       `Expected Fallow JSON output, got stdout=${JSON.stringify(stdout)} stderr=${JSON.stringify(stderr)}`,
     );
@@ -66,7 +71,8 @@ function duplicateModuleSource(name: string): string {
 `;
 }
 
-const COMPLEX_MODULE_SOURCE = `export function decideBranch(value: number): number {
+function complexModuleSource(name: string): string {
+  return `export function ${name}(value: number): number {
   if (value === 1) return 1;
   if (value === 2) return 2;
   if (value === 3) return 3;
@@ -91,6 +97,59 @@ const COMPLEX_MODULE_SOURCE = `export function decideBranch(value: number): numb
   return 0;
 }
 `;
+}
+
+function secondComplexModuleSource(name: string): string {
+  return `export function ${name}(code: string): string {
+  switch (code) {
+    case "a":
+      return "alpha";
+    case "b":
+      return "bravo";
+    case "c":
+      return "charlie";
+    case "d":
+      return "delta";
+    case "e":
+      return "echo";
+    case "f":
+      return "foxtrot";
+    case "g":
+      return "golf";
+    case "h":
+      return "hotel";
+    case "i":
+      return "india";
+    case "j":
+      return "juliet";
+    case "k":
+      return "kilo";
+    case "l":
+      return "lima";
+    case "m":
+      return "mike";
+    case "n":
+      return "november";
+    case "o":
+      return "oscar";
+    case "p":
+      return "papa";
+    case "q":
+      return "quebec";
+    case "r":
+      return "romeo";
+    case "s":
+      return "sierra";
+    case "t":
+      return "tango";
+    case "u":
+      return "uniform";
+    default:
+      return "other";
+  }
+}
+`;
+}
 
 async function assertFallowGates(
   destination: string,
@@ -170,8 +229,29 @@ async function assertFallowGates(
   }
 
   const complexPath = join(destination, "src/complex-branching.ts");
+  const secondComplexPath = join(
+    destination,
+    "src/second-complex-branching.ts",
+  );
+  const recordedHitsPath = join(
+    destination,
+    "fallow-health-recorded-hits.json",
+  );
+  const originalRecordedHits = await readFile(recordedHitsPath, "utf8");
   try {
-    await writeFile(complexPath, COMPLEX_MODULE_SOURCE);
+    await rm(recordedHitsPath);
+    const missingRecordedHits = await runIn(
+      destination,
+      ["run", "quality:fallow"],
+      {},
+    );
+    expect(missingRecordedHits.exitCode).toBe(2);
+    expect(missingRecordedHits.stdout).toContain(
+      "failed to read health baseline",
+    );
+    await writeFile(recordedHitsPath, originalRecordedHits);
+
+    await writeFile(complexPath, complexModuleSource("decideBranch"));
     await writeFile(
       commandsPath,
       `import { decideBranch } from "./complex-branching.ts";\n${original.replace("ready: true", "ready: decideBranch(1) === 1")}`,
@@ -190,9 +270,78 @@ async function assertFallowGates(
       health: "fail",
       findings: ["decideBranch"],
     });
+
+    const recorded = await runIn(
+      destination,
+      ["run", "quality:fallow:record-hits"],
+      {},
+    );
+    requireSuccess(recorded, "record Fallow complexity hits");
+    const recordedHits = JSON.parse(
+      await readFile(recordedHitsPath, "utf8"),
+    ) as RecordedHitsFile;
+    expect({
+      kind: recordedHits.kind,
+      recordedFunctions: Object.keys(
+        recordedHits.identity_finding_counts ?? {},
+      ),
+    }).toEqual({
+      kind: "health",
+      recordedFunctions: ["src/complex-branching.ts\u0000decideBranch"],
+    });
+
+    const withRecorded = await runIn(destination, ["run", "check"], {});
+    requireSuccess(withRecorded, "check command with recorded complexity hits");
+    const withRecordedReport = parseCombinedFallow(
+      withRecorded.stdout,
+      withRecorded.stderr,
+    );
+    expect({
+      deadCode:
+        withRecordedReport.gate_outcomes["error-severity-findings"]?.status,
+      duplication:
+        withRecordedReport.gate_outcomes["duplication-findings"]?.status,
+      health: withRecordedReport.gate_outcomes["health-findings"]?.status,
+    }).toEqual({
+      deadCode: "pass",
+      duplication: "pass",
+      health: "pass",
+    });
+
+    await writeFile(
+      secondComplexPath,
+      secondComplexModuleSource("classifyCode"),
+    );
+    await writeFile(
+      commandsPath,
+      `import { decideBranch } from "./complex-branching.ts";\nimport { classifyCode } from "./second-complex-branching.ts";\n${original.replace("ready: true", 'ready: decideBranch(1) === 1 && classifyCode("a") === "alpha"')}`,
+    );
+    const secondComplex = await runIn(destination, ["run", "check"], {});
+    expect(secondComplex.exitCode).toBe(1);
+    const secondComplexReport = parseCombinedFallow(
+      secondComplex.stdout,
+      secondComplex.stderr,
+    );
+    expect({
+      deadCode:
+        secondComplexReport.gate_outcomes["error-severity-findings"]?.status,
+      duplication:
+        secondComplexReport.gate_outcomes["duplication-findings"]?.status,
+      health: secondComplexReport.gate_outcomes["health-findings"]?.status,
+      findings: secondComplexReport.health?.findings?.map(
+        (entry) => entry.name,
+      ),
+    }).toEqual({
+      deadCode: "pass",
+      duplication: "pass",
+      health: "fail",
+      findings: ["classifyCode"],
+    });
   } finally {
     await rm(complexPath, { force: true });
+    await rm(secondComplexPath, { force: true });
     await writeFile(commandsPath, original);
+    await writeFile(recordedHitsPath, originalRecordedHits);
   }
 }
 

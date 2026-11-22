@@ -124,3 +124,7 @@ Add `--force` to `git worktree remove` if the worktree contains uncommitted chan
 3. Because the worktree differs from a fresh merge (including when a resolution deletes a conflicted file) and has no remaining markers, `apply` uses your resolved tree (without re-merging or nesting markers), runs `bun install` and `bun run check` (unless `--no-check`), stages only the changed paths by name (including `bun.lock` if `bun install` updated it), commits, creates `template-upgrade/<base7>-<target7>`, and removes the worktree.
 4. Rerunning `apply` after completion reports `already-done` and exits `0`.
 5. If a run is interrupted at any step before completion, rerunning the same `apply` command converges to the same branch and tree. If `.worktrees/template-upgrade-<target7>` is left over from an older `HEAD`, `apply` refuses and leaves it untouched so your edits are never lost.
+
+### Recording existing complexity findings
+
+After a Template upgrade that turns on Fallow complexity rules, run `bun run quality:fallow:record-hits` once to record existing complexity findings in `fallow-health-recorded-hits.json`. Thereafter, `bun run check` passes on the recorded findings and fails on new complexity findings; a recorded function that gets more complex is not caught, because the recorded file counts findings per function rather than their complexity score.

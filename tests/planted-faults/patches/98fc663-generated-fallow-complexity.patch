@@ -1,0 +1,17 @@
+diff --git a/generated-repository/settings/.fallowrc.json b/generated-repository/settings/.fallowrc.json
+--- a/generated-repository/settings/.fallowrc.json
++++ b/generated-repository/settings/.fallowrc.json
+@@ -80,10 +80,10 @@
+     "unused-effect-layers": "off",
+     "unused-tagged-errors": "off",
+     "unproduced-catch-tags": "off",
+-    "complexity-cyclomatic": "error",
+-    "complexity-cognitive": "error",
++    "complexity-cyclomatic": "off",
++    "complexity-cognitive": "off",
+     "complexity-crap": "off",
+-    "complexity-file-lines": "error",
++    "complexity-file-lines": "off",
+     "unlisted-binaries": "off",
+     "duplicate-export-aliases": "off",
+     "package-cycle": "off",

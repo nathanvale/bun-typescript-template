@@ -2042,5 +2042,26 @@
     "testFile": "tests/template/change-notes/change-notes.test.ts",
     "title": "exits 2 on invalid arguments or an unknown base revision$",
     "source": "8cac379 feat(change-notes): record each shipped template change as a JSON change note"
+  },
+  {
+    "id": "98fc663-generated-fallow-complexity",
+    "patch": "tests/planted-faults/patches/98fc663-generated-fallow-complexity.patch",
+    "testFile": "tests/template/bootstrap/kernel-row.test.ts",
+    "title": "gives a check command with no stamp check step, combined Fallow quality check with recorded hits, and a recording script$",
+    "source": "98fc663 feat(generated-repository): check dead code, duplication and complexity with Fallow"
+  },
+  {
+    "id": "98fc663-generated-fallow-scripts",
+    "patch": "tests/planted-faults/patches/98fc663-generated-fallow-scripts.patch",
+    "testFile": "tests/template/bootstrap/kernel-row.test.ts",
+    "title": "gives a check command with no stamp check step, combined Fallow quality check with recorded hits, and a recording script$",
+    "source": "98fc663 feat(generated-repository): check dead code, duplication and complexity with Fallow"
+  },
+  {
+    "id": "98fc663-generated-fallow-recorded-hits",
+    "patch": "tests/planted-faults/patches/98fc663-generated-fallow-recorded-hits.patch",
+    "testFile": "tests/template/bootstrap/kernel-row.test.ts",
+    "title": "gives a check command with no stamp check step, combined Fallow quality check with recorded hits, and a recording script$",
+    "source": "98fc663 feat(generated-repository): check dead code, duplication and complexity with Fallow"
   }
 ]

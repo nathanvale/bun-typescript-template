@@ -44,6 +44,7 @@ const ownFiles = [
   "config/platform-rules.mjs",
   "config/template-rules.mjs",
   "eslint.config.mjs",
+  "fallow-health-recorded-hits.json",
   "package.json",
   "src/cli.ts",
   "src/commands.ts",
@@ -165,7 +166,7 @@ describe("the kernel row", () => {
     expect(settings.match(/addons: [^,\n]*,/g)).toEqual(["addons: [],"]);
   });
 
-  test("gives a check command with no stamp check step and a combined Fallow quality check", async () => {
+  test("gives a check command with no stamp check step, combined Fallow quality check with recorded hits, and a recording script", async () => {
     const { destination, request } = run();
     await bootstrapRow(request);
     const { scripts } = generatedJson(destination, "package.json") as {
@@ -174,9 +175,14 @@ describe("the kernel row", () => {
     const { rules } = generatedJson(destination, ".fallowrc.json") as {
       rules: Record<string, string>;
     };
+    const recordedHits = generatedJson(
+      destination,
+      "fallow-health-recorded-hits.json",
+    );
     expect({
       check: scripts.check,
       qualityFallow: scripts["quality:fallow"],
+      recordHits: scripts["quality:fallow:record-hits"],
       stampScripts: Object.keys(scripts).filter((name) =>
         name.includes("stamp"),
       ),
@@ -186,17 +192,27 @@ describe("the kernel row", () => {
         crap: rules["complexity-crap"],
         fileLines: rules["complexity-file-lines"],
       },
+      recordedHits,
     }).toEqual({
       check:
         "bun run lint && bun run format:check && bun run typecheck && bun run test && bun run --silent quality:fallow",
       qualityFallow:
-        "node_modules/.bin/fallow --format json --quiet --type-aware --type-aware-require complete --fail-on-issues",
+        "node_modules/.bin/fallow --format json --quiet --type-aware --type-aware-require complete --fail-on-issues --baseline-mode identity --health-baseline fallow-health-recorded-hits.json",
+      recordHits:
+        "node_modules/.bin/fallow health --report-only --format json --quiet --baseline-mode identity --save-baseline fallow-health-recorded-hits.json && biome format --write fallow-health-recorded-hits.json",
       stampScripts: [],
       complexityRules: {
         cyclomatic: "error",
         cognitive: "error",
         crap: "off",
         fileLines: "error",
+      },
+      recordedHits: {
+        kind: "health",
+        finding_counts: {},
+        identity_finding_counts: {},
+        runtime_coverage_findings: [],
+        target_keys: [],
       },
     });
   });
