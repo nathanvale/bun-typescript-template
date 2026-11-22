@@ -1,6 +1,6 @@
-diff --git a/scripts/change-notes.ts b/scripts/change-notes.ts
---- a/scripts/change-notes.ts
-+++ b/scripts/change-notes.ts
+diff --git a/src/change-notes.ts b/src/change-notes.ts
+--- a/src/change-notes.ts
++++ b/src/change-notes.ts
 @@ -150,10 +150,6 @@
      return fail(
        `${file}: action must be a non-empty string or null. Repair: set action to null or write what the reader must do.`,

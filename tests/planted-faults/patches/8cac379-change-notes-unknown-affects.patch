@@ -1,6 +1,6 @@
-diff --git a/scripts/change-notes.ts b/scripts/change-notes.ts
---- a/scripts/change-notes.ts
-+++ b/scripts/change-notes.ts
+diff --git a/src/change-notes.ts b/src/change-notes.ts
+--- a/src/change-notes.ts
++++ b/src/change-notes.ts
 @@ -127,13 +127,6 @@
    const affects = raw.filter(
      (item): item is string => typeof item === "string",

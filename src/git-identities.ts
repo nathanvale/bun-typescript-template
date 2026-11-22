@@ -141,3 +141,23 @@ export function treeIdentity(files: readonly GitFile[], root: string): string {
   if (top.size === 0) throw new Error(`No listed file is under "${root}".`);
   return identityOfTree(top);
 }
+
+// Platform: git prints each path as the bytes it stores, which need not be
+// UTF-8 text, so paths are keyed as latin1 text, one character per byte,
+// and decoded as UTF-8 only when shown or parsed.
+export function parseGitTreeEntries(listing: Buffer): Map<string, string> {
+  const files = new Map<string, string>();
+  for (let start = 0; start < listing.length; ) {
+    const end = listing.indexOf(0, start);
+    const record = listing.subarray(start, end < 0 ? listing.length : end);
+    const tab = record.indexOf(9);
+    if (tab > 0) {
+      files.set(
+        record.subarray(tab + 1).toString("latin1"),
+        record.subarray(0, tab).toString("latin1"),
+      );
+    }
+    start = end < 0 ? listing.length : end + 1;
+  }
+  return files;
+}
