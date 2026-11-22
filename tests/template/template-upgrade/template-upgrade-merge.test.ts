@@ -256,9 +256,11 @@ test("records conflict-add and conflict-delete outcomes without dropping owner e
     "<<<<<<< ours",
   );
   expect(readFileSync(join(oursDir, "deleted-in-new.txt"), "utf8")).toBe(
-    "owner-modified\n",
+    "<<<<<<< ours\nowner-modified\n=======\n>>>>>>> new (deleted by template)\n",
   );
-  expect(existsSync(join(oursDir, "deleted-in-ours.txt"))).toBe(false);
+  expect(readFileSync(join(oursDir, "deleted-in-ours.txt"), "utf8")).toBe(
+    "<<<<<<< ours (deleted by owner)\n=======\ntemplate-modified\n>>>>>>> new\n",
+  );
 });
 
 test("updates unchanged symlinks and reports conflict-link when both sides change a symlink", async () => {

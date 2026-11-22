@@ -1,10 +1,9 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, rmdir } from "node:fs/promises";
 import { join } from "node:path";
 import { CliError } from "./cli-error.ts";
 import { withTemplateUpgradeTrees } from "./template-upgrade-bootstrap.ts";
 import {
   lstatIfPresent,
-  removeWorktreeIfPresent,
   runGitCommand,
   runGitText,
 } from "./template-upgrade-git.ts";
@@ -21,9 +20,14 @@ import {
   type TemplateUpgradeRow,
 } from "./template-upgrade-merge.ts";
 import {
+  assertNotSymlinkPath,
+  assertTargetWorktreeMatchesHead,
+  assertWorktreePathsNotSymlinks,
   compareCodeUnits,
   findConflictMarkerFiles,
   readTextIfFile,
+  readWorktreeOwnHead,
+  removeWorktreeIfPresent,
   resolveRefIfPresent,
   runBunStep,
   stageAndCommitWorktree,
@@ -191,7 +195,7 @@ async function findCommittedWorktreeHead(
   if (stats === undefined || !stats.isDirectory()) {
     return undefined;
   }
-  const worktreeHead = resolveRefIfPresent(targetWorktree, "HEAD", env);
+  const worktreeHead = await readWorktreeOwnHead(targetWorktree, env);
   if (worktreeHead === undefined || worktreeHead === inputs.repositoryHead) {
     return undefined;
   }
@@ -305,6 +309,10 @@ export async function templateUpgradePlan(
       ...(pinMoveNotice === undefined ? {} : { pinMoveNotice }),
     });
   }
+  await assertNotSymlinkPath(
+    join(inputs.repository, ".worktrees"),
+    ".worktrees",
+  );
   return await withTemplateUpgradeTrees(inputs, env, async (trees) => {
     const planWorktree = join(trees.scratchFolder, "plan-worktree");
     runGitText(
@@ -433,7 +441,7 @@ async function hasModifiedTargetWorktree(
   if (targetStats === undefined || !targetStats.isDirectory()) {
     return false;
   }
-  const targetHead = resolveRefIfPresent(targetWorktree, "HEAD", env);
+  const targetHead = await readWorktreeOwnHead(targetWorktree, env);
   return (
     targetHead === inputs.repositoryHead &&
     !(await treesEqual(targetWorktree, temporaryWorktree))
@@ -450,6 +458,13 @@ async function prepareTemplateUpgradeWorktree(
   | { readonly kind: "ready"; readonly usingResolved: boolean }
 > {
   const { inputs, branch, temporaryWorktree, targetWorktree, env } = session;
+  await assertTargetWorktreeMatchesHead({
+    repository: inputs.repository,
+    repositoryHead: inputs.repositoryHead,
+    targetCommit: inputs.targetCommit,
+    targetWorktree,
+    env,
+  });
   if (await hasModifiedTargetWorktree(session)) {
     await removeWorktreeIfPresent(inputs.repository, temporaryWorktree, env);
     const markerFiles = await findConflictMarkerFiles(targetWorktree);
@@ -604,7 +619,8 @@ async function applyTemplateUpgradeInTrees(
   oldFolder: string,
   newFolder: string,
 ): Promise<TemplateUpgradeApplyRun> {
-  const { inputs, temporaryWorktree, env } = session;
+  const { inputs, worktreesRoot, temporaryWorktree, env } = session;
+  const worktreesExisted = (await lstatIfPresent(worktreesRoot)) !== undefined;
   await createTemporaryTemplateUpgradeWorktree(session);
   let temporaryMoved = false;
   try {
@@ -643,6 +659,9 @@ async function applyTemplateUpgradeInTrees(
   } finally {
     if (!temporaryMoved) {
       await removeWorktreeIfPresent(inputs.repository, temporaryWorktree, env);
+      if (!worktreesExisted) {
+        await rmdir(worktreesRoot).catch(() => {});
+      }
     }
   }
 }
@@ -682,6 +701,10 @@ export async function templateUpgradeApply(
     skipCheckCommand: options.skipCheckCommand,
     env,
   };
+  await assertWorktreePathsNotSymlinks({
+    ...paths,
+    targetCommit: inputs.targetCommit,
+  });
   const existing = await inspectExistingTemplateUpgradeBranch(session);
   if (existing !== undefined) {
     return existing;
@@ -690,6 +713,13 @@ export async function templateUpgradeApply(
   if (recovered !== undefined) {
     return recovered;
   }
+  await assertTargetWorktreeMatchesHead({
+    repository: inputs.repository,
+    repositoryHead: inputs.repositoryHead,
+    targetCommit: inputs.targetCommit,
+    targetWorktree: paths.targetWorktree,
+    env,
+  });
   return await withTemplateUpgradeTrees(inputs, env, (trees) =>
     applyTemplateUpgradeInTrees(session, trees.oldFolder, trees.newFolder),
   );

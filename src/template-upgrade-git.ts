@@ -595,17 +595,3 @@ export async function gitDiffFiles(options: {
     await rm(scratch, { force: true, recursive: true });
   }
 }
-
-export async function removeWorktreeIfPresent(
-  repository: string,
-  worktreePath: string,
-  env: Readonly<Record<string, string | undefined>> = process.env,
-): Promise<void> {
-  runGitCommand(
-    repository,
-    ["worktree", "remove", "--force", "--force", worktreePath],
-    { env, timeoutMilliseconds: 30_000 },
-  );
-  await rm(worktreePath, { force: true, recursive: true });
-  runGitCommand(repository, ["worktree", "prune"], { env });
-}

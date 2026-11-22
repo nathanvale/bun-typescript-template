@@ -15,7 +15,6 @@ import {
   lstatIfPresent,
   readCommittedBytes,
   readCommittedBytesAt,
-  removeWorktreeIfPresent,
   resolveTemplateCommit,
   runGitCommand,
   runGitText,
@@ -28,6 +27,7 @@ import {
 import { resolveTemplateUpgradeInputs } from "../../../src/template-upgrade-inputs.ts";
 import {
   findConflictMarkerFiles,
+  removeWorktreeIfPresent,
   templateUpgradeBranchName,
   templateUpgradeCommitMessage,
   treesEqual,

@@ -38,6 +38,8 @@ The command reads only committed state (`HEAD:.cli-design-template.json` and `HE
 - `HEAD:package.json` is missing or its `dependencies.agent-cli-kernel` entry does not carry a full 40-character pinned commit (`#<40-hex>`).
 - Regenerating either tree with the repository's Pin fails (quoting the bootstrap error and naming moving the Pin as a possible cause).
 - The target branch `template-upgrade/<base7>-<target7>` already exists from a different `HEAD`.
+- Any ancestor folder of an upgraded path (in the old tree, new tree, or worktree), or `.worktrees` itself, is a symbolic link (`symlink_ancestor`).
+- The active upgrade worktree `.worktrees/template-upgrade-<target7>` already exists at a different `HEAD` (`worktree_exists_other_head`); copy what you need out of it, remove it with `git worktree remove --force`, and rerun.
 
 If `templateRevision` equals the resolved target commit, both `plan` and `apply` exit `0` with status `up-to-date` and write nothing. When the template's own Pin at the target (`kernel-pin.json`) differs from the repository's Pin, both `plan` and `apply` print one notice (and include `pinMoveNotice` in `--json` output) reminding you that a Template upgrade does not move the Pin and to move yours separately.
 
@@ -62,19 +64,19 @@ Every file or symbolic link present in the regenerated old or new tree receives 
 
 ### Merge outcomes
 
-| Outcome                 | Meaning                                                                                                                                                       |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `untouched`             | Old and new trees are identical; nothing changed.                                                                                                             |
-| `already`               | The repository already matches the new tree.                                                                                                                  |
-| `take`                  | The repository matched old (or the file is `.cli-design-template.json`); the new file or symbolic link was copied in.                                         |
-| `delete`                | The repository matched old and the new tree removed the file; it was removed.                                                                                 |
-| `regenerate`            | `package.json` changed; the repository's `bun.lock` is kept (never replaced with the template's kernel lockfile) and rebuilt by `bun install` during `apply`. |
-| `merge`                 | Both sides changed and merged cleanly (key-level merge for `*.json` preserving repository key order; `git merge-file` for text).                              |
-| `template-copy-changed` | A `repository`-owned starting copy changed between the old and new template commits; the file is never written. `plan` prints the `git diff` of old vs new.   |
-| `conflict`              | Both sides changed the same region or JSON key; `git merge-file` markers (`<<<<<<< ours`) were written.                                                       |
-| `conflict-add`          | Added by the template while a different file already exists in the repository; `git merge-file` ran against an empty base.                                    |
-| `conflict-delete`       | Deleted on one side and modified on the other; the repository's current state was kept.                                                                       |
-| `conflict-link`         | A symbolic link disagreed across old, new, and the repository; the repository's entry was kept.                                                               |
+| Outcome                 | Meaning                                                                                                                                                                                          |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `untouched`             | Old and new trees are identical; nothing changed.                                                                                                                                                |
+| `already`               | The repository already matches the new tree.                                                                                                                                                     |
+| `take`                  | The repository matched old (or the file is `.cli-design-template.json`); the new file or symbolic link was copied in.                                                                            |
+| `delete`                | The repository matched old and the new tree removed the file; it was removed.                                                                                                                    |
+| `regenerate`            | `package.json` changed; the repository's `bun.lock` is kept (never replaced with the template's kernel lockfile) and rebuilt by `bun install` during `apply`.                                    |
+| `merge`                 | Both sides changed and merged cleanly (key-level merge for `*.json` preserving repository key order; `git merge-file` for text).                                                                 |
+| `template-copy-changed` | A `repository`-owned starting copy changed between the old and new template commits; the file is never written. `plan` prints the `git diff` of old vs new.                                      |
+| `conflict`              | Both sides changed the same region or JSON key; `git merge-file` markers (`<<<<<<< ours`) were written.                                                                                          |
+| `conflict-add`          | Added by the template while a different file already exists in the repository; `git merge-file` ran against an empty base.                                                                       |
+| `conflict-delete`       | Deleted on one side and modified on the other; conflict markers are written with an empty side noting who deleted it (`>>>>>>> new (deleted by template)` or `<<<<<<< ours (deleted by owner)`). |
+| `conflict-link`         | A symbolic link disagreed across old, new, and the repository; the repository's entry was kept.                                                                                                  |
 
 `plan` prints the per-file rows, any `package.json` dependency version changes, and the `git diff` between the old and new regenerated copies for every `template-copy-changed` path. It removes its temporary worktree and exits `0` even when conflicts are present.
 
@@ -99,8 +101,10 @@ Every file or symbolic link present in the regenerated old or new tree receives 
 
 ### Resolving conflicts and rerunning
 
-1. Open `.worktrees/template-upgrade-<target7>` and resolve each listed conflict (removing all `<<<<<<< ours`, `=======`, and `>>>>>>> new` markers).
+1. Open `.worktrees/template-upgrade-<target7>` and resolve each listed conflict (removing all `<<<<<<< ours`, `=======`, and `>>>>>>> new` markers):
+   - When the template deleted a file you edited, the file holds your content wrapped with an empty `>>>>>>> new (deleted by template)` side. Remove the markers to keep your file, or delete the file to accept the template's deletion.
+   - When you deleted a file the template changed, the file is written with an empty `<<<<<<< ours (deleted by owner)` side and the template's content on the `new` side. Remove the markers to take the template's file, or delete the file to keep it deleted.
 2. Run the exact same `bun run upgrade apply --repository PATH [--to REF]` command again.
-3. Because the worktree differs from a fresh merge and has no remaining markers, `apply` uses your resolved tree (without re-merging or nesting markers), runs `bun install` and `bun run check` (unless `--no-check`), stages only the changed paths by name (including `bun.lock` if `bun install` updated it), commits, creates `template-upgrade/<base7>-<target7>`, and removes the worktree.
+3. Because the worktree differs from a fresh merge (including when a resolution deletes a conflicted file) and has no remaining markers, `apply` uses your resolved tree (without re-merging or nesting markers), runs `bun install` and `bun run check` (unless `--no-check`), stages only the changed paths by name (including `bun.lock` if `bun install` updated it), commits, creates `template-upgrade/<base7>-<target7>`, and removes the worktree.
 4. Rerunning `apply` after completion reports `already-done` and exits `0`.
-5. If a run is interrupted at any step before completion, rerunning the same `apply` command converges to the same branch and tree.
+5. If a run is interrupted at any step before completion, rerunning the same `apply` command converges to the same branch and tree. If `.worktrees/template-upgrade-<target7>` is left over from an older `HEAD`, `apply` refuses and leaves it untouched so your edits are never lost.

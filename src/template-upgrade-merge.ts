@@ -3,10 +3,10 @@ import {
   mkdir,
   mkdtemp,
   readdir,
-  readFile,
   readlink,
   rm,
   symlink,
+  unlink,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -18,6 +18,10 @@ import {
   lstatIfPresent,
 } from "./template-upgrade-git.ts";
 import { tryMergeJsonText } from "./template-upgrade-json-merge.ts";
+import {
+  assertNoSymlinkAncestors,
+  readPlainFileBytes,
+} from "./template-upgrade-worktree.ts";
 
 const STAMP_FILE = ".cli-design-template.json";
 const LOCK_FILE = "bun.lock";
@@ -118,7 +122,12 @@ async function collectTreePaths(root: string, prefix = ""): Promise<string[]> {
   return paths;
 }
 
-async function inspectEntry(fullPath: string): Promise<TreeEntry> {
+async function inspectTreeEntry(
+  root: string,
+  relativePath: string,
+): Promise<TreeEntry> {
+  await assertNoSymlinkAncestors(root, relativePath);
+  const fullPath = join(root, relativePath);
   const stats = await lstatIfPresent(fullPath);
   if (stats === undefined) {
     return { kind: "absent" };
@@ -129,7 +138,7 @@ async function inspectEntry(fullPath: string): Promise<TreeEntry> {
   if (stats.isFile()) {
     return {
       kind: "file",
-      bytes: new Uint8Array(await readFile(fullPath)),
+      bytes: await readPlainFileBytes(fullPath),
       mode: Number(stats.mode) & 0o777,
     };
   }
@@ -152,12 +161,27 @@ function entriesEqual(left: TreeEntry, right: TreeEntry): boolean {
   return false;
 }
 
+async function removeEntryIfPresent(fullPath: string): Promise<void> {
+  const stats = await lstatIfPresent(fullPath);
+  if (stats === undefined) {
+    return;
+  }
+  if (stats.isDirectory()) {
+    await rm(fullPath, { force: true, recursive: true });
+    return;
+  }
+  await unlink(fullPath);
+}
+
 async function writeTreeEntry(
-  destinationPath: string,
+  targetFolder: string,
+  relativePath: string,
   entry: Extract<TreeEntry, { readonly kind: "file" | "symlink" }>,
 ): Promise<void> {
+  await assertNoSymlinkAncestors(targetFolder, relativePath);
+  const destinationPath = join(targetFolder, relativePath);
   await mkdir(dirname(destinationPath), { recursive: true });
-  await rm(destinationPath, { force: true, recursive: true });
+  await removeEntryIfPresent(destinationPath);
   if (entry.kind === "symlink") {
     await symlink(entry.target, destinationPath);
     return;
@@ -168,6 +192,14 @@ async function writeTreeEntry(
   }
 }
 
+async function deleteTreeEntry(
+  targetFolder: string,
+  relativePath: string,
+): Promise<void> {
+  await assertNoSymlinkAncestors(targetFolder, relativePath);
+  await removeEntryIfPresent(join(targetFolder, relativePath));
+}
+
 function decodeTextIfUtf8(bytes: Uint8Array): string | undefined {
   try {
     return STRICT_UTF8.decode(bytes);
@@ -176,11 +208,72 @@ function decodeTextIfUtf8(bytes: Uint8Array): string | undefined {
   }
 }
 
+function decodeUtf8TextWithoutNul(bytes: Uint8Array): string | undefined {
+  if (bytes.includes(0)) {
+    return undefined;
+  }
+  return decodeTextIfUtf8(bytes);
+}
+
+function ensureTrailingNewline(content: string): string {
+  if (content === "" || content.endsWith("\n")) {
+    return content;
+  }
+  return `${content}\n`;
+}
+
+async function writeDeleteConflictEntry(options: {
+  readonly targetFolder: string;
+  readonly relativePath: string;
+  readonly oursEntry: TreeEntry;
+  readonly newEntry: TreeEntry;
+}): Promise<void> {
+  const { targetFolder, relativePath, oursEntry, newEntry } = options;
+  if (newEntry.kind === "absent" && oursEntry.kind === "file") {
+    const oursText = decodeUtf8TextWithoutNul(oursEntry.bytes);
+    if (oursText === undefined) {
+      return;
+    }
+    const marked =
+      `<<<<<<< ours\n` +
+      `${ensureTrailingNewline(oursText)}` +
+      `=======\n` +
+      `>>>>>>> new (deleted by template)\n`;
+    await writeTreeEntry(targetFolder, relativePath, {
+      kind: "file",
+      bytes: new TextEncoder().encode(marked),
+      mode: oursEntry.mode,
+    });
+    return;
+  }
+  if (oursEntry.kind === "absent" && newEntry.kind === "file") {
+    const newText = decodeUtf8TextWithoutNul(newEntry.bytes);
+    if (newText === undefined) {
+      return;
+    }
+    const marked =
+      `<<<<<<< ours (deleted by owner)\n` +
+      `=======\n` +
+      `${ensureTrailingNewline(newText)}` +
+      `>>>>>>> new\n`;
+    await writeTreeEntry(targetFolder, relativePath, {
+      kind: "file",
+      bytes: new TextEncoder().encode(marked),
+      mode: newEntry.mode,
+    });
+  }
+}
+
 async function mergeAddedConflictFile(
-  oursPath: string,
-  newPath: string,
+  targetFolder: string,
+  newFolder: string,
+  relativePath: string,
   env: Readonly<Record<string, string | undefined>>,
 ): Promise<void> {
+  await assertNoSymlinkAncestors(targetFolder, relativePath);
+  await assertNoSymlinkAncestors(newFolder, relativePath);
+  const oursPath = join(targetFolder, relativePath);
+  const newPath = join(newFolder, relativePath);
   const emptyFolder = await mkdtemp(join(tmpdir(), "template-upgrade-base-"));
   try {
     const emptyBase = join(emptyFolder, "empty");
@@ -192,16 +285,31 @@ async function mergeAddedConflictFile(
 }
 
 async function mergeJsonFile(options: {
-  readonly oursPath: string;
-  readonly oldPath: string;
-  readonly newPath: string;
+  readonly targetFolder: string;
+  readonly oldFolder: string;
+  readonly newFolder: string;
+  readonly relativePath: string;
   readonly oursBytes: Uint8Array;
   readonly oldBytes: Uint8Array;
   readonly newBytes: Uint8Array;
   readonly env: Readonly<Record<string, string | undefined>>;
 }): Promise<"merge" | "conflict"> {
-  const { oursPath, oldPath, newPath, oursBytes, oldBytes, newBytes, env } =
-    options;
+  const {
+    targetFolder,
+    oldFolder,
+    newFolder,
+    relativePath,
+    oursBytes,
+    oldBytes,
+    newBytes,
+    env,
+  } = options;
+  await assertNoSymlinkAncestors(targetFolder, relativePath);
+  await assertNoSymlinkAncestors(oldFolder, relativePath);
+  await assertNoSymlinkAncestors(newFolder, relativePath);
+  const oursPath = join(targetFolder, relativePath);
+  const oldPath = join(oldFolder, relativePath);
+  const newPath = join(newFolder, relativePath);
   const oursText = decodeTextIfUtf8(oursBytes);
   const oldText = decodeTextIfUtf8(oldBytes);
   const newText = decodeTextIfUtf8(newBytes);
@@ -221,15 +329,16 @@ async function mergeJsonFile(options: {
 }
 
 async function applyUnchangedPathUpdate(
-  oursPath: string,
+  targetFolder: string,
+  relativePath: string,
   newEntry: TreeEntry,
 ): Promise<TemplateUpgradeOutcome> {
   if (newEntry.kind === "absent") {
-    await rm(oursPath, { force: true });
+    await deleteTreeEntry(targetFolder, relativePath);
     return "delete";
   }
   if (newEntry.kind === "file" || newEntry.kind === "symlink") {
-    await writeTreeEntry(oursPath, newEntry);
+    await writeTreeEntry(targetFolder, relativePath, newEntry);
     return "take";
   }
   return "conflict";
@@ -270,9 +379,9 @@ function detectNonFileConflict(
 
 async function mergeRegularFiles(options: {
   readonly relativePath: string;
-  readonly oursPath: string;
-  readonly oldPath: string;
-  readonly newPath: string;
+  readonly targetFolder: string;
+  readonly oldFolder: string;
+  readonly newFolder: string;
   readonly oursBytes: Uint8Array;
   readonly oldBytes: Uint8Array;
   readonly newBytes: Uint8Array;
@@ -281,10 +390,13 @@ async function mergeRegularFiles(options: {
   if (options.relativePath.endsWith(".json")) {
     return await mergeJsonFile(options);
   }
+  await assertNoSymlinkAncestors(options.targetFolder, options.relativePath);
+  await assertNoSymlinkAncestors(options.oldFolder, options.relativePath);
+  await assertNoSymlinkAncestors(options.newFolder, options.relativePath);
   const fileResult = gitMergeFile(
-    options.oursPath,
-    options.oldPath,
-    options.newPath,
+    join(options.targetFolder, options.relativePath),
+    join(options.oldFolder, options.relativePath),
+    join(options.newFolder, options.relativePath),
     options.env,
   );
   return fileResult === "clean" ? "merge" : "conflict";
@@ -292,23 +404,32 @@ async function mergeRegularFiles(options: {
 
 async function mergeDivergentPath(options: {
   readonly relativePath: string;
-  readonly oursPath: string;
-  readonly oldPath: string;
-  readonly newPath: string;
+  readonly targetFolder: string;
+  readonly oldFolder: string;
+  readonly newFolder: string;
   readonly oursEntry: TreeEntry;
   readonly oldEntry: TreeEntry;
   readonly newEntry: TreeEntry;
   readonly env: Readonly<Record<string, string | undefined>>;
 }): Promise<TemplateUpgradeOutcome> {
-  const { relativePath, oursPath, oldPath, newPath, env } = options;
+  const { relativePath, targetFolder, oldFolder, newFolder, env } = options;
   const { oursEntry, oldEntry, newEntry } = options;
   if (oldEntry.kind === "absent") {
     if (oursEntry.kind === "file" && newEntry.kind === "file") {
-      await mergeAddedConflictFile(oursPath, newPath, env);
+      await mergeAddedConflictFile(targetFolder, newFolder, relativePath, env);
     }
     return "conflict-add";
   }
   const nonFileConflict = detectNonFileConflict(oursEntry, oldEntry, newEntry);
+  if (nonFileConflict === "conflict-delete") {
+    await writeDeleteConflictEntry({
+      targetFolder,
+      relativePath,
+      oursEntry,
+      newEntry,
+    });
+    return "conflict-delete";
+  }
   if (nonFileConflict !== undefined) {
     return nonFileConflict;
   }
@@ -321,9 +442,9 @@ async function mergeDivergentPath(options: {
   }
   return await mergeRegularFiles({
     relativePath,
-    oursPath,
-    oldPath,
-    newPath,
+    targetFolder,
+    oldFolder,
+    newFolder,
     oursBytes: oursEntry.bytes,
     oldBytes: oldEntry.bytes,
     newBytes: newEntry.bytes,
@@ -341,14 +462,11 @@ async function mergeSinglePath(options: {
 }): Promise<TemplateUpgradeOutcome> {
   const { relativePath, ownerLabel, oldFolder, newFolder, targetFolder, env } =
     options;
-  const oldPath = join(oldFolder, relativePath);
-  const newPath = join(newFolder, relativePath);
-  const oursPath = join(targetFolder, relativePath);
 
   const [oldEntry, newEntry, oursEntry] = await Promise.all([
-    inspectEntry(oldPath),
-    inspectEntry(newPath),
-    inspectEntry(oursPath),
+    inspectTreeEntry(oldFolder, relativePath),
+    inspectTreeEntry(newFolder, relativePath),
+    inspectTreeEntry(targetFolder, relativePath),
   ]);
 
   if (entriesEqual(oldEntry, newEntry)) {
@@ -361,21 +479,34 @@ async function mergeSinglePath(options: {
     return "already";
   }
   if (relativePath === STAMP_FILE) {
-    return await applyUnchangedPathUpdate(oursPath, newEntry);
+    return await applyUnchangedPathUpdate(targetFolder, relativePath, newEntry);
   }
   if (entriesEqual(oursEntry, oldEntry)) {
-    return await applyUnchangedPathUpdate(oursPath, newEntry);
+    return await applyUnchangedPathUpdate(targetFolder, relativePath, newEntry);
   }
   return await mergeDivergentPath({
     relativePath,
-    oursPath,
-    oldPath,
-    newPath,
+    targetFolder,
+    oldFolder,
+    newFolder,
     oursEntry,
     oldEntry,
     newEntry,
     env,
   });
+}
+
+async function assertAllPathAncestorsSafe(
+  allPaths: readonly string[],
+  oldFolder: string,
+  newFolder: string,
+  targetFolder: string,
+): Promise<void> {
+  for (const relativePath of allPaths) {
+    await assertNoSymlinkAncestors(oldFolder, relativePath);
+    await assertNoSymlinkAncestors(newFolder, relativePath);
+    await assertNoSymlinkAncestors(targetFolder, relativePath);
+  }
 }
 
 export async function mergeTemplateUpgradeTrees(
@@ -390,6 +521,12 @@ export async function mergeTemplateUpgradeTrees(
   ]);
   const allPaths = [...new Set([...oldPaths, ...newPaths])].sort(
     compareCodeUnits,
+  );
+  await assertAllPathAncestorsSafe(
+    allPaths,
+    oldFolder,
+    newFolder,
+    targetFolder,
   );
   const rowByPath = new Map<string, TemplateUpgradeRow>();
   for (const relativePath of allPaths) {
@@ -448,6 +585,8 @@ export async function diffTemplateUpgradeCopyChanges(
     if (row.outcome !== "template-copy-changed") {
       continue;
     }
+    await assertNoSymlinkAncestors(oldFolder, row.path);
+    await assertNoSymlinkAncestors(newFolder, row.path);
     const diff = await gitDiffFiles({
       oldPath: join(oldFolder, row.path),
       newPath: join(newFolder, row.path),

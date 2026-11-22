@@ -1,6 +1,7 @@
 import type { Dirent } from "node:fs";
-import { readdir, readFile, readlink } from "node:fs/promises";
-import { join } from "node:path";
+import { constants, realpathSync } from "node:fs";
+import { open, readdir, readFile, readlink, rm } from "node:fs/promises";
+import { basename, dirname, join, resolve } from "node:path";
 import { CliError } from "./cli-error.ts";
 import {
   gitCommitIdentityArgs,
@@ -12,7 +13,72 @@ import {
 
 const WORKTREE_TIMEOUT_MS = 30_000;
 const IGNORED_TREE_ENTRIES = new Set([".git", "node_modules", ".worktrees"]);
-const CONFLICT_MARKER_PATTERN = /^<<<<<<< ours\r?$/m;
+const CONFLICT_MARKER_PATTERN = /^(?:<<<<<<< ours|>>>>>>> new)(?: .*)?\r?$/m;
+
+export async function assertNotSymlinkPath(
+  fullPath: string,
+  displayPath: string,
+): Promise<void> {
+  const stats = await lstatIfPresent(fullPath);
+  if (stats !== undefined && stats.isSymbolicLink()) {
+    throw new CliError(
+      "symlink_ancestor",
+      `refused to follow symbolic link at ${displayPath}`,
+      `replace or remove symbolic link ${displayPath}, commit the change if tracked, then rerun`,
+      2,
+      true,
+    );
+  }
+}
+
+export async function assertNoSymlinkAncestors(
+  root: string,
+  relativePath: string,
+): Promise<void> {
+  const segments = relativePath.split("/");
+  for (let index = 0; index < segments.length - 1; index += 1) {
+    const ancestor = segments.slice(0, index + 1).join("/");
+    const stats = await lstatIfPresent(join(root, ancestor));
+    if (stats === undefined) {
+      return;
+    }
+    if (stats.isSymbolicLink()) {
+      throw new CliError(
+        "symlink_ancestor",
+        `symbolic link ancestor "${ancestor}" blocks path "${relativePath}"`,
+        `replace symbolic link "${ancestor}" with a regular folder (or remove it), commit the change if tracked, then rerun`,
+        2,
+        true,
+      );
+    }
+    if (!stats.isDirectory()) {
+      return;
+    }
+  }
+}
+
+export async function readPlainFileBytes(
+  fullPath: string,
+): Promise<Uint8Array> {
+  const flags =
+    constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
+  const handle = await open(fullPath, flags);
+  try {
+    const stats = await handle.stat();
+    if (!stats.isFile()) {
+      throw new CliError(
+        "unreadable_file",
+        `expected a regular file at ${fullPath}`,
+        `replace ${fullPath} with a regular file, then rerun`,
+        1,
+        false,
+      );
+    }
+    return new Uint8Array(await handle.readFile());
+  } finally {
+    await handle.close();
+  }
+}
 
 export function compareCodeUnits(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
@@ -54,7 +120,7 @@ export async function readTextIfFile(
   if (stats === undefined || !stats.isFile()) {
     return undefined;
   }
-  return await readFile(filePath, "utf8");
+  return new TextDecoder("utf-8").decode(await readPlainFileBytes(filePath));
 }
 
 async function walkTreeEntries(
@@ -90,7 +156,7 @@ async function collectComparisonEntries(
     } else if (entry.isDirectory()) {
       result.set(relativePath, "dir");
     } else if (entry.isFile()) {
-      result.set(relativePath, new Uint8Array(await readFile(fullPath)));
+      result.set(relativePath, await readPlainFileBytes(fullPath));
     }
   });
   return result;
@@ -124,7 +190,7 @@ export async function treesEqual(
 }
 
 async function fileHasConflictMarker(fullPath: string): Promise<boolean> {
-  const bytes = new Uint8Array(await readFile(fullPath));
+  const bytes = await readPlainFileBytes(fullPath);
   if (bytes.includes(0)) {
     return false;
   }
@@ -161,6 +227,34 @@ export function resolveRefIfPresent(
     return undefined;
   }
   return new TextDecoder("utf-8").decode(result.stdout).trim();
+}
+
+export async function readWorktreeOwnHead(
+  worktree: string,
+  env: Readonly<Record<string, string | undefined>>,
+): Promise<string | undefined> {
+  const gitMarker = await lstatIfPresent(join(worktree, ".git"));
+  if (gitMarker === undefined || gitMarker.isSymbolicLink()) {
+    return undefined;
+  }
+  const topLevel = runGitCommand(worktree, ["rev-parse", "--show-toplevel"], {
+    env,
+  });
+  if (topLevel.timedOut || topLevel.exitCode !== 0) {
+    return undefined;
+  }
+  const topLevelText = new TextDecoder("utf-8").decode(topLevel.stdout).trim();
+  if (topLevelText === "") {
+    return undefined;
+  }
+  try {
+    if (realpathSync(topLevelText) !== realpathSync(worktree)) {
+      return undefined;
+    }
+  } catch {
+    return undefined;
+  }
+  return resolveRefIfPresent(worktree, "HEAD", env);
 }
 
 function parseStatusPaths(stdout: Uint8Array): string[] {
@@ -202,6 +296,7 @@ async function partitionChangedPaths(
   const presentPaths: string[] = [];
   const deletedPaths: string[] = [];
   for (const relativePath of changedPaths) {
+    await assertNoSymlinkAncestors(worktree, relativePath);
     const entry = await lstatIfPresent(join(worktree, relativePath));
     if (entry === undefined) {
       deletedPaths.push(relativePath);
@@ -328,4 +423,161 @@ export function runBunStep(options: {
     };
   }
   return { ok: child.exitCode === 0, output: combined };
+}
+
+function normalizeWorktreeTarget(targetPath: string): string {
+  try {
+    return realpathSync(targetPath);
+  } catch {
+    try {
+      return join(realpathSync(dirname(targetPath)), basename(targetPath));
+    } catch {
+      return resolve(targetPath);
+    }
+  }
+}
+
+async function worktreesMetadataFolder(
+  repository: string,
+  env: Readonly<Record<string, string | undefined>>,
+): Promise<string | undefined> {
+  const commonDirResult = runGitCommand(
+    repository,
+    ["rev-parse", "--git-common-dir"],
+    { env },
+  );
+  if (commonDirResult.timedOut || commonDirResult.exitCode !== 0) {
+    return undefined;
+  }
+  const commonDirRaw = new TextDecoder("utf-8")
+    .decode(commonDirResult.stdout)
+    .trim();
+  if (commonDirRaw === "") {
+    return undefined;
+  }
+  const folderPath = join(resolve(repository, commonDirRaw), "worktrees");
+  const stats = await lstatIfPresent(folderPath);
+  return stats !== undefined && stats.isDirectory() ? folderPath : undefined;
+}
+
+async function registrationMatchesWorktree(
+  entryDir: string,
+  expectedGitDir: string,
+  rawExpectedGitDir: string,
+): Promise<boolean> {
+  const gitdirFile = join(entryDir, "gitdir");
+  const gitdirStats = await lstatIfPresent(gitdirFile);
+  if (gitdirStats === undefined || !gitdirStats.isFile()) {
+    return false;
+  }
+  const recorded = (await readFile(gitdirFile, "utf8")).trim();
+  const normalizedRecorded = join(
+    normalizeWorktreeTarget(dirname(recorded)),
+    basename(recorded),
+  );
+  return (
+    recorded === expectedGitDir ||
+    recorded === rawExpectedGitDir ||
+    normalizedRecorded === expectedGitDir
+  );
+}
+
+async function removeWorktreeRegistrationByPath(
+  repository: string,
+  worktreePath: string,
+  env: Readonly<Record<string, string | undefined>>,
+): Promise<void> {
+  const worktreesMetaDir = await worktreesMetadataFolder(repository, env);
+  if (worktreesMetaDir === undefined) {
+    return;
+  }
+  const expectedGitDir = join(normalizeWorktreeTarget(worktreePath), ".git");
+  const rawExpectedGitDir = join(resolve(worktreePath), ".git");
+  const entries = await readdir(worktreesMetaDir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.isSymbolicLink()) {
+      continue;
+    }
+    const entryDir = join(worktreesMetaDir, entry.name);
+    if (
+      await registrationMatchesWorktree(
+        entryDir,
+        expectedGitDir,
+        rawExpectedGitDir,
+      )
+    ) {
+      await rm(entryDir, { force: true, recursive: true });
+    }
+  }
+}
+
+export async function removeWorktreeIfPresent(
+  repository: string,
+  worktreePath: string,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): Promise<void> {
+  const removed = runGitCommand(
+    repository,
+    ["worktree", "remove", "--force", "--force", worktreePath],
+    { env, timeoutMilliseconds: WORKTREE_TIMEOUT_MS },
+  );
+  await rm(worktreePath, { force: true, recursive: true });
+  if (removed.timedOut || removed.exitCode !== 0) {
+    await removeWorktreeRegistrationByPath(repository, worktreePath, env);
+  }
+}
+
+export async function assertWorktreePathsNotSymlinks(options: {
+  readonly worktreesRoot: string;
+  readonly temporaryWorktree: string;
+  readonly targetWorktree: string;
+  readonly targetCommit: string;
+}): Promise<void> {
+  await assertNotSymlinkPath(options.worktreesRoot, ".worktrees");
+  await assertNotSymlinkPath(
+    options.temporaryWorktree,
+    ".worktrees/template-upgrade-tmp",
+  );
+  await assertNotSymlinkPath(
+    options.targetWorktree,
+    `.worktrees/template-upgrade-${options.targetCommit.slice(0, 7)}`,
+  );
+}
+
+export async function assertTargetWorktreeMatchesHead(options: {
+  readonly repository: string;
+  readonly repositoryHead: string;
+  readonly targetCommit: string;
+  readonly targetWorktree: string;
+  readonly env: Readonly<Record<string, string | undefined>>;
+}): Promise<void> {
+  const { repository, repositoryHead, targetCommit, targetWorktree, env } =
+    options;
+  const stats = await lstatIfPresent(targetWorktree);
+  if (stats === undefined) {
+    return;
+  }
+  if (stats.isSymbolicLink()) {
+    await assertNotSymlinkPath(
+      targetWorktree,
+      `.worktrees/template-upgrade-${targetCommit.slice(0, 7)}`,
+    );
+  }
+  const worktreeHead = stats.isDirectory()
+    ? await readWorktreeOwnHead(targetWorktree, env)
+    : undefined;
+  if (worktreeHead === repositoryHead) {
+    return;
+  }
+  const headDetail =
+    worktreeHead === undefined
+      ? "is not a git worktree at the current HEAD"
+      : `is at commit ${worktreeHead.slice(0, 7)}, not current HEAD ${repositoryHead.slice(0, 7)}`;
+  throw new CliError(
+    "worktree_exists_other_head",
+    `leftover worktree ${targetWorktree} ${headDetail}`,
+    `copy what you need out of ${targetWorktree}, then run git worktree remove --force ${targetWorktree} in ${repository}, then rerun`,
+    4,
+    false,
+  );
 }
