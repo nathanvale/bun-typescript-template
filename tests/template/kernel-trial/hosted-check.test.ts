@@ -24,6 +24,8 @@ type Step = {
 };
 type Job = {
   readonly name?: string;
+  readonly if?: string;
+  readonly "runs-on"?: string;
   readonly strategy?: {
     readonly matrix: { readonly shard: readonly number[] };
   };
@@ -123,15 +125,38 @@ describe("the hosted check", () => {
     });
   });
 
-  test("the upgrade gate job fetches full history, names the kernel repository in KERNEL_REPOSITORY, and stops within ten minutes", () => {
+  test("the upgrade gate job runs on pull requests on ubuntu-latest with full history, pinned Bun, frozen install, KERNEL_REPOSITORY, and a ten-minute bound", () => {
     const job = jobOf("ci.yml", "upgrade-gate");
-    const checkout = job.steps.find(({ uses }) =>
-      uses?.startsWith("actions/checkout"),
+    const checkout = job.steps.find(
+      ({ uses }) => uses === "actions/checkout@v4",
     );
-    expect([job["timeout-minutes"], job.env, checkout?.with]).toEqual([
+    const setupBunIndex = job.steps.findIndex(
+      ({ uses }) => uses === "oven-sh/setup-bun@v2",
+    );
+    const installIndex = job.steps.findIndex(
+      ({ run }) => run === "bun install --frozen-lockfile",
+    );
+    const gateIndex = job.steps.findIndex(
+      ({ run }) => run === "bun run upgrade-gate",
+    );
+    expect([
+      job.if,
+      job["runs-on"],
+      job["timeout-minutes"],
+      job.env,
+      checkout?.with,
+      job.steps[setupBunIndex]?.with,
+      setupBunIndex >= 0 &&
+        installIndex > setupBunIndex &&
+        gateIndex > installIndex,
+    ]).toEqual([
+      "github.event_name == 'pull_request'",
+      "ubuntu-latest",
       10,
       { KERNEL_REPOSITORY: "${{ github.workspace }}/../agent-cli-kernel" },
       { "fetch-depth": 0 },
+      { "bun-version": "1.4.4" },
+      true,
     ]);
   });
 

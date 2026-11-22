@@ -1,10 +1,4 @@
-import {
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { findSiblingKernel, readKernelPin } from "../src/kernel-pin.ts";
@@ -16,18 +10,20 @@ import {
   bootstrapAtCommit,
   commitInitialRepository,
   type EnvMap,
+  firstParentOf,
   GIT_MS,
   gateEnv,
   gitFileExists,
   isAncestor,
   readPackageKernelPin,
+  readUtf8Strict,
   revParse,
   runGit,
   runProcess,
 } from "./template-upgrade-gate-git.ts";
 
 const templateRoot = resolve(import.meta.dir, "..");
-const UPGRADE_MS = 180_000;
+const DEFAULT_STEP_MS = 120_000;
 
 export type UpgradeGateBase = {
   readonly commit: string;
@@ -41,6 +37,7 @@ export type UpgradeGateCaseOptions = {
   readonly kernelRepository: string;
   readonly check: boolean;
   readonly alignPin: boolean;
+  readonly stepLimitMilliseconds?: number;
 };
 
 export type UpgradeGateCaseReport = {
@@ -82,7 +79,7 @@ export const UPGRADE_GATE_BASES: readonly UpgradeGateBase[] = [
 type UpgradeAnswer = {
   readonly status?: string;
   readonly branch?: string;
-  readonly conflicts?: readonly string[];
+  readonly conflicts?: unknown;
   readonly pinMoveNotice?: string;
   readonly error?: {
     readonly code?: string;
@@ -91,14 +88,17 @@ type UpgradeAnswer = {
   };
 };
 
-export function resolveUpgradeGateBases(root: string, targetRevision = "HEAD") {
-  const targetCommit = revParse(root, targetRevision);
+export async function resolveUpgradeGateBases(
+  root: string,
+  targetRevision = "HEAD",
+) {
+  const targetCommit = await revParse(root, targetRevision);
   if (targetCommit === undefined) {
     throw new Error(
       `Cannot resolve target revision "${targetRevision}". Repair: pass a valid git commit to --to.`,
     );
   }
-  const belowFloorCommit = revParse(root, `${TEMPLATE_UPGRADE_FLOOR}~1`);
+  const belowFloorCommit = await revParse(root, `${TEMPLATE_UPGRADE_FLOOR}~1`);
   if (belowFloorCommit === undefined) {
     throw new Error(
       `Commit ${TEMPLATE_UPGRADE_FLOOR.slice(0, 7)}~1 is missing. Repair: run git fetch --unshallow.`,
@@ -107,13 +107,13 @@ export function resolveUpgradeGateBases(root: string, targetRevision = "HEAD") {
   const seen = new Set<string>();
   const bases: UpgradeGateBase[] = [];
   for (const base of UPGRADE_GATE_BASES) {
-    const commit = revParse(root, base.commit);
+    const commit = await revParse(root, base.commit);
     if (commit === undefined) {
       throw new Error(
         `Base ${base.commit.slice(0, 7)} is missing. Repair: run git fetch --unshallow.`,
       );
     }
-    if (!isAncestor(root, commit, targetCommit)) {
+    if (!(await isAncestor(root, commit, targetCommit))) {
       throw new Error(
         `Base ${commit.slice(0, 7)} is not an ancestor of ${targetCommit.slice(0, 7)}.`,
       );
@@ -123,12 +123,12 @@ export function resolveUpgradeGateBases(root: string, targetRevision = "HEAD") {
       bases.push({ commit, label: base.label });
     }
   }
-  const firstParent = revParse(root, `${targetCommit}^1`);
+  const firstParent = await firstParentOf(root, targetCommit);
   if (
     firstParent !== undefined &&
     firstParent !== targetCommit &&
     !seen.has(firstParent) &&
-    isAncestor(root, TEMPLATE_UPGRADE_FLOOR, firstParent)
+    (await isAncestor(root, TEMPLATE_UPGRADE_FLOOR, firstParent))
   ) {
     bases.push({
       commit: firstParent,
@@ -159,33 +159,79 @@ function check(condition: boolean, message: string): void {
   if (!condition) throw new Error(message);
 }
 
-function assertUpgradedBranch(
+async function assertRepositoryUntouched(
+  repositoryDir: string,
+  headBefore: string,
+  worktreesBefore: string,
+  targetCommit: string,
+  label: string,
+  env: EnvMap,
+): Promise<void> {
+  check(
+    (await runGit(repositoryDir, ["rev-parse", "HEAD"], env)) === headBefore,
+    `Repository HEAD moved ${label}.`,
+  );
+  const dirty = await runGit(repositoryDir, ["status", "--porcelain"], env);
+  check(dirty === "", `Working tree modified ${label}: ${dirty}`);
+  const worktreesAfter = await runGit(
+    repositoryDir,
+    ["worktree", "list", "--porcelain"],
+    env,
+  );
+  check(
+    worktreesAfter === worktreesBefore,
+    `Worktree registrations changed ${label}.`,
+  );
+  const targetWorktree = join(
+    repositoryDir,
+    ".worktrees",
+    `template-upgrade-${targetCommit.slice(0, 7)}`,
+  );
+  const tempWorktree = join(
+    repositoryDir,
+    ".worktrees",
+    "template-upgrade-tmp",
+  );
+  check(
+    !existsSync(targetWorktree),
+    `Leftover worktree ${label}: ${targetWorktree}`,
+  );
+  check(
+    !existsSync(tempWorktree),
+    `Leftover temp worktree ${label}: ${tempWorktree}`,
+  );
+}
+
+async function assertUpgradedBranch(
   repositoryDir: string,
   branch: string,
   expectedPin: string,
   targetCommit: string,
   fixtureName: string,
   sourcePacket: string,
-  headBefore: string,
   env: EnvMap,
-): void {
+): Promise<void> {
   const upgradedPin = readPackageKernelPin(
-    runGit(repositoryDir, ["show", `${branch}:package.json`], env),
+    await runGit(repositoryDir, ["show", `${branch}:package.json`], env),
   );
   check(
     upgradedPin === expectedPin,
     `Pin changed on ${branch}: expected ${expectedPin}, got ${upgradedPin}.`,
   );
   check(
-    gitFileExists(repositoryDir, `${branch}:${TEMPLATE_JSON_FILE}`, env),
+    await gitFileExists(repositoryDir, branch, TEMPLATE_JSON_FILE, env),
     `Expected ${TEMPLATE_JSON_FILE} on ${branch}.`,
   );
   check(
-    !gitFileExists(repositoryDir, `${branch}:${OLD_TEMPLATE_JSON_FILE}`, env),
+    !(await gitFileExists(repositoryDir, branch, OLD_TEMPLATE_JSON_FILE, env)),
     `Expected ${OLD_TEMPLATE_JSON_FILE} absent on ${branch}.`,
   );
   const record = JSON.parse(
-    runGit(repositoryDir, ["show", `${branch}:${TEMPLATE_JSON_FILE}`], env),
+    await runGit(
+      repositoryDir,
+      ["show", `${branch}:${TEMPLATE_JSON_FILE}`],
+      env,
+    ),
   ) as {
     readonly name?: string;
     readonly templateRevision?: string;
@@ -199,24 +245,48 @@ function assertUpgradedBranch(
       record.sourcePacket === sourcePacket,
     `Unexpected ${TEMPLATE_JSON_FILE} on ${branch}: ${JSON.stringify(record)}.`,
   );
-  check(
-    runGit(repositoryDir, ["rev-parse", "HEAD"], env) === headBefore,
-    `Repository HEAD moved on ${branch}.`,
-  );
-  const dirty = runGit(repositoryDir, ["status", "--porcelain"], env);
-  check(dirty === "", `Working tree modified on ${branch}: ${dirty}`);
-  const worktree = join(
-    repositoryDir,
-    ".worktrees",
-    `template-upgrade-${targetCommit.slice(0, 7)}`,
-  );
-  check(!existsSync(worktree), `Leftover worktree on ${branch}: ${worktree}`);
 }
 
-export function runUpgradeGateCase(
+async function verifyPublishedBranchCheck(
+  workDir: string,
+  repositoryDir: string,
+  branch: string,
+  env: EnvMap,
+  stepLimit: number,
+): Promise<void> {
+  const verifyDir = join(workDir, "verify");
+  await runGit(
+    workDir,
+    ["clone", "--quiet", "--branch", branch, repositoryDir, verifyDir],
+    env,
+  );
+  const installRun = await runProcess(
+    [process.execPath, "install", "--frozen-lockfile"],
+    verifyDir,
+    env,
+    stepLimit,
+  );
+  check(
+    !installRun.timedOut && installRun.exitCode === 0,
+    `Independent bun install --frozen-lockfile failed on ${branch}: ${(installRun.stderr || installRun.stdout).slice(-400)}`,
+  );
+  const checkRun = await runProcess(
+    [process.execPath, "run", "check"],
+    verifyDir,
+    env,
+    stepLimit,
+  );
+  check(
+    !checkRun.timedOut && checkRun.exitCode === 0,
+    `Independent bun run check failed on ${branch}: ${(checkRun.stderr || checkRun.stdout).slice(-400)}`,
+  );
+}
+
+export async function runUpgradeGateCase(
   options: UpgradeGateCaseOptions,
-): UpgradeGateCaseReport {
+): Promise<UpgradeGateCaseReport> {
   const start = performance.now();
+  const stepLimit = options.stepLimitMilliseconds ?? DEFAULT_STEP_MS;
   const baseShort = options.base.commit.slice(0, 7);
   const targetShort = options.targetCommit.slice(0, 7);
   const fixtureName = `upgrade-gate-${baseShort}`;
@@ -224,7 +294,7 @@ export function runUpgradeGateCase(
   const env = gateEnv(options.kernelRepository);
   const workDir = mkdtempSync(join(tmpdir(), `upgrade-gate-${baseShort}-`));
   try {
-    const repositoryDir = bootstrapAtCommit(
+    const repositoryDir = await bootstrapAtCommit(
       workDir,
       options.templateRoot,
       options.base.commit,
@@ -233,7 +303,7 @@ export function runUpgradeGateCase(
       env,
     );
     const initialPin = readPackageKernelPin(
-      readFileSync(join(repositoryDir, "package.json"), "utf8"),
+      readUtf8Strict(join(repositoryDir, "package.json")),
     );
     const targetPin = readKernelPin(options.templateRoot).commit;
     const expectedPin =
@@ -241,8 +311,13 @@ export function runUpgradeGateCase(
     if (expectedPin !== initialPin) {
       alignRepositoryKernelPin(repositoryDir, initialPin, expectedPin);
     }
-    commitInitialRepository(repositoryDir, env);
-    const headBefore = runGit(repositoryDir, ["rev-parse", "HEAD"], env);
+    await commitInitialRepository(repositoryDir, env);
+    const headBefore = await runGit(repositoryDir, ["rev-parse", "HEAD"], env);
+    const worktreesBefore = await runGit(
+      repositoryDir,
+      ["worktree", "list", "--porcelain"],
+      env,
+    );
     const applyArgs = [
       process.execPath,
       "run",
@@ -255,7 +330,12 @@ export function runUpgradeGateCase(
       ...(options.check ? [] : ["--no-check"]),
       "--json",
     ];
-    const first = runProcess(applyArgs, options.templateRoot, env, UPGRADE_MS);
+    const first = await runProcess(
+      applyArgs,
+      options.templateRoot,
+      env,
+      stepLimit,
+    );
     check(
       !first.timedOut && first.exitCode === 0 && first.stderr === "",
       `Apply failed for ${baseShort} -> ${targetShort} (exit ${first.exitCode}): ${(first.stdout || first.stderr).slice(-400)}`,
@@ -265,7 +345,8 @@ export function runUpgradeGateCase(
     check(
       firstAnswer.status === "applied" &&
         firstAnswer.branch === branch &&
-        (firstAnswer.conflicts ?? []).length === 0,
+        Array.isArray(firstAnswer.conflicts) &&
+        firstAnswer.conflicts.length === 0,
       `Unexpected apply payload for ${baseShort}: ${JSON.stringify(firstAnswer)}.`,
     );
     if (expectedPin !== targetPin) {
@@ -276,17 +357,38 @@ export function runUpgradeGateCase(
         `Expected pinMoveNotice naming ${expectedPin.slice(0, 7)} and ${targetPin.slice(0, 7)}.`,
       );
     }
-    assertUpgradedBranch(
+    await assertUpgradedBranch(
       repositoryDir,
       branch,
       expectedPin,
       options.targetCommit,
       fixtureName,
       sourcePacket,
-      headBefore,
       env,
     );
-    const second = runProcess(applyArgs, options.templateRoot, env, UPGRADE_MS);
+    await assertRepositoryUntouched(
+      repositoryDir,
+      headBefore,
+      worktreesBefore,
+      options.targetCommit,
+      `after first apply (${baseShort})`,
+      env,
+    );
+    if (options.check) {
+      await verifyPublishedBranchCheck(
+        workDir,
+        repositoryDir,
+        branch,
+        env,
+        stepLimit,
+      );
+    }
+    const second = await runProcess(
+      applyArgs,
+      options.templateRoot,
+      env,
+      stepLimit,
+    );
     check(
       !second.timedOut && second.exitCode === 0 && second.stderr === "",
       `Second apply failed for ${baseShort} (exit ${second.exitCode}): ${second.stderr.slice(-300)}`,
@@ -298,6 +400,14 @@ export function runUpgradeGateCase(
     check(
       secondAnswer.status === "already-done" && secondAnswer.branch === branch,
       `Expected already-done for ${baseShort}, got ${JSON.stringify(secondAnswer)}.`,
+    );
+    await assertRepositoryUntouched(
+      repositoryDir,
+      headBefore,
+      worktreesBefore,
+      options.targetCommit,
+      `after rerun (${baseShort})`,
+      env,
     );
     return {
       baseCommit: options.base.commit,
@@ -312,17 +422,17 @@ export function runUpgradeGateCase(
   }
 }
 
-export function runBelowFloorRefusalCheck(options: {
+export async function runBelowFloorRefusalCheck(options: {
   readonly templateRoot: string;
   readonly belowFloorCommit: string;
   readonly targetCommit: string;
   readonly kernelRepository: string;
-}): { readonly code: string; readonly elapsedMilliseconds: number } {
+}): Promise<{ readonly code: string; readonly elapsedMilliseconds: number }> {
   const start = performance.now();
   const env = gateEnv(options.kernelRepository);
   const workDir = mkdtempSync(join(tmpdir(), "upgrade-gate-below-floor-"));
   try {
-    const repositoryDir = bootstrapAtCommit(
+    const repositoryDir = await bootstrapAtCommit(
       workDir,
       options.templateRoot,
       TEMPLATE_UPGRADE_FLOOR,
@@ -331,7 +441,7 @@ export function runBelowFloorRefusalCheck(options: {
       env,
     );
     const stampPath = join(repositoryDir, OLD_TEMPLATE_JSON_FILE);
-    const stamp = JSON.parse(readFileSync(stampPath, "utf8")) as Record<
+    const stamp = JSON.parse(readUtf8Strict(stampPath)) as Record<
       string,
       unknown
     >;
@@ -339,8 +449,8 @@ export function runBelowFloorRefusalCheck(options: {
       stampPath,
       `${JSON.stringify({ ...stamp, templateRevision: options.belowFloorCommit }, null, 2)}\n`,
     );
-    commitInitialRepository(repositoryDir, env);
-    const run = runProcess(
+    await commitInitialRepository(repositoryDir, env);
+    const run = await runProcess(
       [
         process.execPath,
         "run",
@@ -363,13 +473,13 @@ export function runBelowFloorRefusalCheck(options: {
     const payload = parseJsonAnswer(run.stderr, "Below-floor refusal");
     const floorShort = TEMPLATE_UPGRADE_FLOOR.slice(0, 7);
     const belowShort = options.belowFloorCommit.slice(0, 7);
+    const expectedMessage = `base commit ${belowShort} is older than the oldest supported template upgrade base ${floorShort}; older template commits required --profile in bootstrap`;
     check(
       payload.status === "refused" &&
         payload.error?.code === "base_commit_unsupported" &&
-        Boolean(payload.error.message?.includes(belowShort)) &&
-        Boolean(payload.error.message?.includes(floorShort)) &&
-        Boolean(payload.error.message?.includes("--profile")) &&
-        Boolean(payload.error.repair && payload.error.repair.trim().length > 0),
+        payload.error.message === expectedMessage &&
+        payload.error.repair ===
+          "regenerate the repository from a newer template commit, or carry changes by hand",
       `Unexpected below-floor refusal: ${JSON.stringify(payload)}.`,
     );
     check(
@@ -377,8 +487,11 @@ export function runBelowFloorRefusalCheck(options: {
       "Below-floor refusal should not create .worktrees.",
     );
     check(
-      runGit(repositoryDir, ["branch", "--list", "template-upgrade/*"], env) ===
-        "",
+      (await runGit(
+        repositoryDir,
+        ["branch", "--list", "template-upgrade/*"],
+        env,
+      )) === "",
       "Below-floor refusal should not create a branch.",
     );
     return {
@@ -398,7 +511,7 @@ function parseGateArguments(argv: readonly string[]) {
     : undefined;
 }
 
-export function main(
+export async function main(
   argv: readonly string[],
   root = templateRoot,
   write: (line: string) => void = (line) => {
@@ -407,7 +520,7 @@ export function main(
   writeError: (line: string) => void = (line) => {
     process.stderr.write(`${line}\n`);
   },
-): number {
+): Promise<number> {
   const parsed = parseGateArguments(argv);
   if (parsed === undefined) {
     writeError("Usage: bun run upgrade-gate [--to <git revision>]");
@@ -415,13 +528,11 @@ export function main(
   }
   try {
     const kernelRepository = findSiblingKernel(root, process.env);
-    const { targetCommit, belowFloorCommit, bases } = resolveUpgradeGateBases(
-      root,
-      parsed.targetRevision,
-    );
+    const { targetCommit, belowFloorCommit, bases } =
+      await resolveUpgradeGateBases(root, parsed.targetRevision);
     const totalStart = performance.now();
     const targetShort = targetCommit.slice(0, 7);
-    const belowFloor = runBelowFloorRefusalCheck({
+    const belowFloor = await runBelowFloorRefusalCheck({
       templateRoot: root,
       belowFloorCommit,
       targetCommit,
@@ -435,7 +546,7 @@ export function main(
       floorBase !== undefined &&
       floorBase.commit === TEMPLATE_UPGRADE_FLOOR
     ) {
-      const original = runUpgradeGateCase({
+      const original = await runUpgradeGateCase({
         templateRoot: root,
         base: floorBase,
         targetCommit,
@@ -448,7 +559,7 @@ export function main(
       );
     }
     for (const base of bases) {
-      const report = runUpgradeGateCase({
+      const report = await runUpgradeGateCase({
         templateRoot: root,
         base,
         targetCommit,
@@ -473,5 +584,5 @@ export function main(
 }
 
 if (import.meta.main) {
-  process.exitCode = main(process.argv.slice(2));
+  process.exitCode = await main(process.argv.slice(2));
 }

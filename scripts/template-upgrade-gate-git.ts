@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { startChild, withoutRepositoryLocation } from "./process-runner.ts";
 
 export const GIT_MS = 30_000;
 const BOOTSTRAP_MS = 60_000;
@@ -23,41 +24,45 @@ const GIT_ENV = {
   GIT_TERMINAL_PROMPT: "0",
 } as const;
 
-export function runProcess(
+export function readUtf8Strict(filePath: string): string {
+  return UTF8.decode(readFileSync(filePath));
+}
+
+export async function runProcess(
   argv: readonly string[],
   cwd: string,
   env: EnvMap,
-  timeout: number,
-): ProcessResult {
-  const result = Bun.spawnSync([...argv], {
+  limitMilliseconds: number,
+): Promise<ProcessResult> {
+  const child = startChild(argv, {
     cwd,
     env,
-    stdin: "ignore",
-    stdout: "pipe",
-    stderr: "pipe",
-    timeout,
-    killSignal: "SIGKILL",
+    ownGroup: true,
+    limitMilliseconds,
+    graceMilliseconds: 0,
   });
+  const finished = await child.finished;
   return {
-    exitCode: result.exitCode,
-    stdout: UTF8.decode(result.stdout),
-    stderr: UTF8.decode(result.stderr),
-    timedOut: result.exitedDueToTimeout ?? false,
+    exitCode: finished.exitCode,
+    stdout: finished.stdout,
+    stderr: finished.stderr,
+    timedOut: finished.timedOut,
   };
 }
 
 export function gateEnv(kernelRepository?: string): EnvMap {
+  const base = withoutRepositoryLocation(process.env);
   return kernelRepository === undefined
-    ? { ...process.env, ...GIT_ENV }
-    : { ...process.env, ...GIT_ENV, KERNEL_REPOSITORY: kernelRepository };
+    ? { ...base, ...GIT_ENV }
+    : { ...base, ...GIT_ENV, KERNEL_REPOSITORY: kernelRepository };
 }
 
-export function runGit(
+export async function runGit(
   cwd: string,
   args: readonly string[],
   env = gateEnv(),
-): string {
-  const result = runProcess(["git", ...args], cwd, env, GIT_MS);
+): Promise<string> {
+  const result = await runProcess(["git", ...args], cwd, env, GIT_MS);
   if (result.timedOut) throw new Error(`git ${args.join(" ")} timed out.`);
   if (result.exitCode !== 0) {
     throw new Error(
@@ -67,45 +72,70 @@ export function runGit(
   return result.stdout.trim();
 }
 
-export function isAncestor(
+export async function isAncestor(
   root: string,
   ancestor: string,
   descendant: string,
-): boolean {
-  const result = runProcess(
+): Promise<boolean> {
+  const result = await runProcess(
     ["git", "merge-base", "--is-ancestor", ancestor, descendant],
     root,
     gateEnv(),
     GIT_MS,
   );
   if (result.timedOut) throw new Error("git merge-base timed out.");
-  return result.exitCode === 0;
+  if (result.exitCode === 0) return true;
+  if (result.exitCode === 1) return false;
+  throw new Error(
+    `git merge-base failed (${result.exitCode}): ${result.stderr.trim()}`,
+  );
 }
 
-export function revParse(root: string, revision: string): string | undefined {
-  const result = runProcess(
-    ["git", "rev-parse", "--verify", `${revision}^{commit}`],
+export async function revParse(
+  root: string,
+  revision: string,
+): Promise<string | undefined> {
+  const result = await runProcess(
+    ["git", "rev-parse", "--verify", "--quiet", `${revision}^{commit}`],
     root,
     gateEnv(),
     GIT_MS,
   );
-  return !result.timedOut && result.exitCode === 0
-    ? result.stdout.trim()
-    : undefined;
+  if (result.timedOut) {
+    throw new Error(`git rev-parse timed out for "${revision}".`);
+  }
+  if (result.exitCode === 0) return result.stdout.trim();
+  if (result.exitCode === 1) return undefined;
+  throw new Error(
+    `git rev-parse failed (${result.exitCode}) for "${revision}": ${result.stderr.trim()}`,
+  );
 }
 
-export function gitFileExists(
+export async function firstParentOf(
+  root: string,
+  commit: string,
+): Promise<string | undefined> {
+  const line = await runGit(root, ["rev-list", "--parents", "-n", "1", commit]);
+  const parts = line.split(" ").filter((entry) => entry !== "");
+  if (parts[0] !== commit) {
+    throw new Error(`git rev-list returned unexpected parents for ${commit}.`);
+  }
+  return parts[1];
+}
+
+export async function gitFileExists(
   repositoryDir: string,
-  refPath: string,
+  revision: string,
+  filePath: string,
   env: EnvMap,
-): boolean {
-  const result = runProcess(
-    ["git", "cat-file", "-e", refPath],
+): Promise<boolean> {
+  const output = await runGit(
     repositoryDir,
+    ["ls-tree", "--name-only", "-z", revision, "--", filePath],
     env,
-    GIT_MS,
   );
-  return !result.timedOut && result.exitCode === 0;
+  const entries = output.split("\0").filter((entry) => entry !== "");
+  return entries.includes(filePath);
 }
 
 export function readPackageKernelPin(packageJsonText: string): string {
@@ -140,7 +170,7 @@ export function alignRepositoryKernelPin(
   const packagePath = join(repositoryDir, "package.json");
   writeFileSync(
     packagePath,
-    readFileSync(packagePath, "utf8").replaceAll(oldPin, newPin),
+    readUtf8Strict(packagePath).replaceAll(oldPin, newPin),
   );
   const skillsDir = join(repositoryDir, ".agents", "skills");
   if (!existsSync(skillsDir)) return;
@@ -149,29 +179,29 @@ export function alignRepositoryKernelPin(
     if (entry.isDirectory() && existsSync(skillPath)) {
       writeFileSync(
         skillPath,
-        readFileSync(skillPath, "utf8").replaceAll(oldPin, newPin),
+        readUtf8Strict(skillPath).replaceAll(oldPin, newPin),
       );
     }
   }
 }
 
-export function bootstrapAtCommit(
+export async function bootstrapAtCommit(
   workDir: string,
   root: string,
   baseCommit: string,
   name: string,
   sourcePacket: string,
   env: EnvMap,
-): string {
+): Promise<string> {
   const checkout = join(workDir, `template-${baseCommit.slice(0, 7)}`);
-  runGit(
+  await runGit(
     workDir,
     ["clone", "--quiet", "--shared", "--no-checkout", root, checkout],
     env,
   );
-  runGit(checkout, ["checkout", "--quiet", "--detach", baseCommit], env);
+  await runGit(checkout, ["checkout", "--quiet", "--detach", baseCommit], env);
   const destination = join(workDir, name);
-  const run = runProcess(
+  const run = await runProcess(
     [
       process.execPath,
       "run",
@@ -196,11 +226,15 @@ export function bootstrapAtCommit(
   return destination;
 }
 
-export function commitInitialRepository(
+export async function commitInitialRepository(
   repositoryDir: string,
   env: EnvMap,
-): void {
-  runGit(repositoryDir, ["init", "--quiet"], env);
-  runGit(repositoryDir, ["add", "--all"], env);
-  runGit(repositoryDir, ["commit", "--quiet", "-m", "Initial bootstrap"], env);
+): Promise<void> {
+  await runGit(repositoryDir, ["init", "--quiet"], env);
+  await runGit(repositoryDir, ["add", "--all"], env);
+  await runGit(
+    repositoryDir,
+    ["commit", "--quiet", "-m", "Initial bootstrap"],
+    env,
+  );
 }
