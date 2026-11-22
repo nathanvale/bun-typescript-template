@@ -1,5 +1,4 @@
 ---
-
 name: verify-cli
 description: Prove that a CLI built on agent-cli-kernel really works, the way a user meets it. Use when asked to verify, smoke-test or prove a command of a repository that installs agent-cli-kernel, before claiming a CLI change is done, or when its tests pass but nobody has run the real CLI.
 ---

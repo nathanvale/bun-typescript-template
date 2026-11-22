@@ -10,8 +10,13 @@ const SCHEMA_VERSION = 1;
 
 export type TemplateUpgradeStepOutcome = "passed" | "failed" | "skipped";
 
+export type TemplateUpgradeStepCommand =
+  | "bun install"
+  | "bun run check"
+  | `bun run ${string}`;
+
 export interface TemplateUpgradeApplyStep {
-  readonly command: "bun install" | "bun run check";
+  readonly command: TemplateUpgradeStepCommand;
   readonly ran: boolean;
   readonly outcome: TemplateUpgradeStepOutcome;
   readonly reason?: string;
@@ -100,6 +105,20 @@ function pinMoveNoticeFor(inputs: TemplateUpgradeInputs): string | undefined {
     return undefined;
   }
   return `The template's Pin moved from ${inputs.repositoryPinnedCommit.slice(0, 7)} to ${inputs.templatePinnedCommit.slice(0, 7)}; a Template upgrade does not move it. Move yours separately.`;
+}
+
+export function createTemplateUpgradeApplyStep(
+  command: TemplateUpgradeStepCommand,
+  ran: boolean,
+  outcome: TemplateUpgradeStepOutcome,
+  reason?: string,
+): TemplateUpgradeApplyStep {
+  return Object.freeze({
+    command,
+    ran,
+    outcome,
+    ...(reason === undefined ? {} : { reason }),
+  });
 }
 
 export function skipTemplateUpgradeSteps(

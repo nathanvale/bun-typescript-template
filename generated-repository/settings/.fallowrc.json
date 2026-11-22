@@ -17,7 +17,13 @@
   "audit": {
     "gate": "all",
     "css": false,
-    "cssDeep": false
+    "cssDeep": false,
+    "deadCodeBaseline": "fallow-dead-code-recorded-hits.json",
+    "dupesBaseline": "fallow-duplicates-recorded-hits.json",
+    "healthBaseline": "fallow-health-recorded-hits.json"
+  },
+  "health": {
+    "maxFileLines": 500
   },
   "rules": {
     "boundary-violation": "off",
@@ -49,7 +55,7 @@
     "stale-suppressions": "error",
     "test-only-dependencies": "error",
     "thin-wrapper": "off",
-    "type-only-dependencies": "error",
+    "type-only-dependencies": "off",
     "unlisted-dependencies": "error",
     "unprovided-injects": "off",
     "unrendered-components": "off",
@@ -80,10 +86,10 @@
     "unused-effect-layers": "off",
     "unused-tagged-errors": "off",
     "unproduced-catch-tags": "off",
-    "complexity-cyclomatic": "off",
-    "complexity-cognitive": "off",
+    "complexity-cyclomatic": "error",
+    "complexity-cognitive": "error",
     "complexity-crap": "off",
-    "complexity-file-lines": "off",
+    "complexity-file-lines": "error",
     "unlisted-binaries": "off",
     "duplicate-export-aliases": "off",
     "package-cycle": "off",

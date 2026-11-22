@@ -1,0 +1,18 @@
+{
+  "kind": "dead-code",
+  "analysis_identity": {
+    "mode": "type-aware",
+    "semantic_schema_version": 3,
+    "capabilities": ["symbol-use", "type-coupling"],
+    "project_config_hash": "deferred:no-semantic-queries",
+    "backend_family": "typescript-go",
+    "completeness": "complete",
+    "node_modules": "present"
+  },
+  "identity": "dc1",
+  "unused_files": [],
+  "unused_exports": [],
+  "unused_types": [],
+  "unused_dependencies": [],
+  "unused_dev_dependencies": []
+}

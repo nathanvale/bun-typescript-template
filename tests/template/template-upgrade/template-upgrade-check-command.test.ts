@@ -1,73 +1,23 @@
 import { expect, test } from "bun:test";
-import {
-  chmodSync,
-  existsSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
-import { delimiter, join } from "node:path";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
-import { git, gitEnv } from "../../support/git-fixture.ts";
-import { siblingKernel } from "../../support/kernel-sibling.ts";
+import { git } from "../../support/git-fixture.ts";
+import {} from "../../support/kernel-sibling.ts";
 import { processWatchdog, spawnBounded } from "../../support/process.ts";
 import { streamWrites } from "../../support/stream-writes.ts";
 import {
   bootstrapGeneratedRepository,
   cloneTemplateAtHead,
+  commitTemplateLintChange,
   commitTemplateUpgradeChanges,
   invokeTemplateUpgradeMain,
+  writeScriptedBun,
 } from "../../support/template-upgrade-fixture.ts";
 
 const folder = ownedFolders();
 const captureStream = streamWrites();
-
-function writeScriptedBun(prefix: string, script: string) {
-  const binFolder = folder(prefix);
-  const ledger = join(binFolder, "calls.log");
-  const bunPath = join(binFolder, "bun");
-  writeFileSync(bunPath, script.replace("__LEDGER__", JSON.stringify(ledger)));
-  chmodSync(bunPath, 0o755);
-  return {
-    binFolder,
-    ledger,
-    env: {
-      ...process.env,
-      ...gitEnv,
-      KERNEL_REPOSITORY: siblingKernel(),
-      PATH: `${binFolder}${delimiter}${process.env.PATH ?? ""}`,
-    },
-  };
-}
-
-function commitTemplateLintChange(templateClone: string): string {
-  const eslintPath = join(
-    templateClone,
-    "generated-repository/settings/eslint.config.mjs",
-  );
-  writeFileSync(eslintPath, `${readFileSync(eslintPath, "utf8")}\n`);
-  const templateRulesPath = join(templateClone, "config/template-rules.mjs");
-  writeFileSync(
-    templateRulesPath,
-    `${readFileSync(templateRulesPath, "utf8")}\n`,
-  );
-  git(
-    templateClone,
-    "add",
-    "--",
-    "generated-repository/settings/eslint.config.mjs",
-    "config/template-rules.mjs",
-  );
-  git(
-    templateClone,
-    "commit",
-    "--quiet",
-    "-m",
-    "template change without package.json change",
-  );
-  return git(templateClone, "rev-parse", "HEAD");
-}
 
 test(
   "always runs bun install before bun run check even without a package.json change, and commits a bun.lock updated by install",
@@ -82,6 +32,7 @@ test(
     const targetCommit = commitTemplateLintChange(templateClone);
     const branch = `template-upgrade/${baseCommit.slice(0, 7)}-${targetCommit.slice(0, 7)}`;
     const { ledger, env } = writeScriptedBun(
+      folder,
       "scripted-bun-no-pkg-",
       `#!/bin/sh
 echo "$*" >> __LEDGER__
@@ -225,6 +176,7 @@ test(
     const failFlag = join(folder("scripted-bun-flag-"), "fail-check");
     writeFileSync(failFlag, "1\n");
     const { ledger, env } = writeScriptedBun(
+      folder,
       "scripted-bun-",
       `#!/bin/sh
 echo "$*" >> __LEDGER__
@@ -317,6 +269,7 @@ test(
       "install-fail-app",
     );
     const { env } = writeScriptedBun(
+      folder,
       "scripted-bun-install-fail-",
       `#!/bin/sh
 echo "$*" >> __LEDGER__

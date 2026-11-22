@@ -1,5 +1,4 @@
 ---
-
 name: agent-cli-kernel
 description: Write commands on the agent-cli-kernel package. Use when code imports agent-cli-kernel to declare a command or its input, write a command that changes something, declare a result it can produce (a station), build the contract with contractFor, test a command, or read a throw from contractFor when the CLI starts.
 ---

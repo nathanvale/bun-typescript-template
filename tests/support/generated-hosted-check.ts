@@ -223,6 +223,27 @@ function permissionProblems(document: PlainObject, where: string): string[] {
   return [];
 }
 
+const GROWTH_CHECK = "the Fallow recorded-hits growth check";
+const GROWTH_BASE =
+  "${{ github.event.pull_request.base.sha || github.event.before }}";
+
+function field(step: PlainObject, block: string, key: string) {
+  const record = asRecord(own(step, block));
+  return record === undefined ? undefined : scalar(own(record, key));
+}
+
+function stepSummary(step: PlainObject) {
+  const run = scalar(own(step, "run"));
+  return {
+    uses: scalar(own(step, "uses"))?.split("@")[0],
+    run: run?.includes('--fail-on-baseline-growth --baseline-base "$BASE"')
+      ? GROWTH_CHECK
+      : run,
+    fetchDepth: field(step, "with", "fetch-depth"),
+    base: field(step, "env", "BASE"),
+  };
+}
+
 function pinStepProblems(
   steps: readonly PlainObject[],
   pins: TemplatePins,
@@ -313,19 +334,36 @@ function jobProblems(
   problems.push(...pinStepProblems(validSteps, pins, where));
   const checkoutPin = pins.actions.get(CHECKOUT_ACTION);
   const setupBunPin = pins.actions.get(SETUP_BUN_ACTION);
-  const summary = validSteps.map((step) => ({
-    uses: scalar(own(step, "uses"))?.split("@")[0],
-    run: scalar(own(step, "run")),
-  }));
   const expectedSummary = [
-    { uses: CHECKOUT_ACTION, run: undefined },
-    { uses: SETUP_BUN_ACTION, run: undefined },
-    { uses: undefined, run: "bun install --frozen-lockfile" },
-    { uses: undefined, run: KERNEL_RECIPE.checkCommand },
+    { uses: CHECKOUT_ACTION, run: undefined, fetchDepth: "0", base: undefined },
+    {
+      uses: SETUP_BUN_ACTION,
+      run: undefined,
+      fetchDepth: undefined,
+      base: undefined,
+    },
+    {
+      uses: undefined,
+      run: "bun install --frozen-lockfile",
+      fetchDepth: undefined,
+      base: undefined,
+    },
+    {
+      uses: undefined,
+      run: KERNEL_RECIPE.checkCommand,
+      fetchDepth: undefined,
+      base: undefined,
+    },
+    {
+      uses: undefined,
+      run: GROWTH_CHECK,
+      fetchDepth: undefined,
+      base: GROWTH_BASE,
+    },
   ];
-  if (!Bun.deepEquals(summary, expectedSummary))
+  if (!Bun.deepEquals(validSteps.map(stepSummary), expectedSummary))
     problems.push(
-      `${where} job check must run ${checkoutPin ?? CHECKOUT_ACTION}, ${setupBunPin ?? SETUP_BUN_ACTION}, bun install --frozen-lockfile, then ${KERNEL_RECIPE.checkCommand}. Repair: match those four steps in order in generated-repository/hosted-check/ci.yml.`,
+      `${where} job check must run ${checkoutPin ?? CHECKOUT_ACTION} with fetch-depth: 0, ${setupBunPin ?? SETUP_BUN_ACTION}, bun install --frozen-lockfile, ${KERNEL_RECIPE.checkCommand}, then the Fallow recorded-hits growth check with BASE ${GROWTH_BASE}. Repair: match those five steps in order in generated-repository/hosted-check/ci.yml.`,
     );
   return problems;
 }

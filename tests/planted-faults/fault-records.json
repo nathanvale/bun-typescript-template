@@ -2128,6 +2128,55 @@
     "source": "9063630 feat(bootstrap): the generated AGENTS.md says where the kernel's skills are and when to read them"
   },
   {
+    "id": "98fc663-generated-fallow-complexity",
+    "patch": "tests/planted-faults/patches/98fc663-generated-fallow-complexity.patch",
+    "testFile": "tests/template/bootstrap/kernel-row.test.ts",
+    "title": "gives a check command with no stamp check step, combined Fallow quality check with recorded hits, and a recording script$",
+    "source": "98fc663 feat(generated-repository): check dead code, duplication and complexity with Fallow"
+  },
+  {
+    "id": "98fc663-generated-fallow-scripts",
+    "patch": "tests/planted-faults/patches/98fc663-generated-fallow-scripts.patch",
+    "testFile": "tests/template/bootstrap/kernel-row.test.ts",
+    "title": "gives a check command with no stamp check step, combined Fallow quality check with recorded hits, and a recording script$",
+    "source": "98fc663 feat(generated-repository): check dead code, duplication and complexity with Fallow"
+  },
+  {
+    "id": "98fc663-generated-fallow-recorded-hits",
+    "patch": "tests/planted-faults/patches/98fc663-generated-fallow-recorded-hits.patch",
+    "testFile": "tests/template/bootstrap/kernel-row.test.ts",
+    "title": "gives a check command with no stamp check step, combined Fallow quality check with recorded hits, and a recording script$",
+    "source": "98fc663 feat(generated-repository): check dead code, duplication and complexity with Fallow"
+  },
+  {
+    "id": "7b430d4-generated-fallow-dead-code-recorded-hits",
+    "patch": "tests/planted-faults/patches/7b430d4-generated-fallow-dead-code-recorded-hits.patch",
+    "testFile": "tests/template/bootstrap/kernel-row.test.ts",
+    "title": "gives a check command with no stamp check step, combined Fallow quality check with recorded hits, and a recording script$",
+    "source": "7b430d4 feat(generated-repository): record existing complexity findings so an upgrade fails only on new ones"
+  },
+  {
+    "id": "7b430d4-generated-fallow-duplicates-recorded-hits",
+    "patch": "tests/planted-faults/patches/7b430d4-generated-fallow-duplicates-recorded-hits.patch",
+    "testFile": "tests/template/bootstrap/kernel-row.test.ts",
+    "title": "gives a check command with no stamp check step, combined Fallow quality check with recorded hits, and a recording script$",
+    "source": "7b430d4 feat(generated-repository): record existing complexity findings so an upgrade fails only on new ones"
+  },
+  {
+    "id": "78a67e1-generated-fallow-growth",
+    "patch": "tests/planted-faults/patches/78a67e1-generated-fallow-growth.patch",
+    "testFile": "tests/template/toolchain/generated-hosted-check-recorded-hits.test.ts",
+    "title": "^refuses a head commit that adds a complex function and records it in recorded-hits files$",
+    "source": "78a67e1 fix(generated-repository): the hosted check refuses a pull request that grows the recorded Fallow findings"
+  },
+  {
+    "id": "4da63bc-generated-biome",
+    "patch": "tests/planted-faults/patches/4da63bc-generated-biome.patch",
+    "testFile": "tests/template/bootstrap/kernel-row.test.ts",
+    "title": "leaves Markdown with front matter and plain Markdown byte-identical when formatting a generated repository, while still checking TypeScript$",
+    "source": "4da63bc fix(generated-repository): stop Biome rewriting Markdown and its front matter"
+  },
+  {
     "id": "3de4a8a-template-upgrade-floor",
     "patch": "tests/planted-faults/patches/3de4a8a-template-upgrade-floor.patch",
     "testFile": "tests/template/template-upgrade/template-upgrade-inputs.test.ts",

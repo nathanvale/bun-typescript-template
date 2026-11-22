@@ -1,5 +1,4 @@
 ---
-
 name: verify-template
 description: Prove the template's user journey black-box from a scratch clone. Bootstrap a generated repository, run its check command, commit, and see the doctor, the commit hook and check:commits refuse planted mistakes. Use after changing Bootstrap, the generated repository, a gate script or a git hook, or before claiming one works.
 ---
