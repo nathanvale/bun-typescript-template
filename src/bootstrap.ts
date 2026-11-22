@@ -38,6 +38,7 @@ import {
   SKILL_FOLDER,
   TEMPLATE_JSON_FILE,
 } from "./recipe.ts";
+import { decodeUtf8Strict } from "./template-upgrade-git.ts";
 import { substituteTokens } from "./token-substitution.ts";
 
 const SCHEMA_VERSION = 1;
@@ -322,9 +323,11 @@ async function skillGuidance(staging: string): Promise<string> {
   if (names.length === 0) return "";
   const lines: string[] = [];
   for (const name of names) {
-    const text = await readFile(join(skills, name, "SKILL.md"), "utf8");
+    const skillPath = `${SKILL_FOLDER}/${name}/SKILL.md`;
+    const bytes = await readFile(join(skills, name, "SKILL.md"));
+    const text = decodeUtf8Strict(bytes, skillPath);
     const purpose = skillPurpose(text, name);
-    lines.push(`- ${purpose}: read \`${SKILL_FOLDER}/${name}/SKILL.md\`.`);
+    lines.push(`- ${purpose}: read \`${skillPath}\`.`);
   }
   return `The kernel's skills are installed under \`${SKILL_FOLDER}/\` (and linked under \`.claude/skills/\`). Read the matching skill before working:\n\n${lines.join("\n")}\n\n`;
 }

@@ -10,14 +10,26 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+import { readKernelPin, writeKernelPin } from "../../../src/kernel-pin.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
+import { ownedFolders } from "../../support/fixture-files.ts";
+import { gitEnv, inherited } from "../../support/git-fixture.ts";
 import {
   bootstrapRow,
   kernelRowFixture,
+  leftBehind,
 } from "../../support/recipe-fixture.ts";
 import { processWatchdog, spawnBounded } from "../../support/process.ts";
+import { templateCopy } from "../../support/template-copy.ts";
 
 const run = kernelRowFixture();
+const folder = ownedFolders();
+const defaultKernelLayout = {
+  sourceRoot: "kernel",
+  core: "src/kernel",
+  settings: "config/kernel",
+  extras: "src/addons",
+};
 const pointer = ".agents/skills/agent-cli-kernel/SKILL.md";
 const onlyOneFailed = "\n 4 pass\n 1 fail\n";
 const installedKernel = "node_modules/agent-cli-kernel";
@@ -122,6 +134,79 @@ describe("the kernel row's pointer skills", () => {
       );
     }
   });
+
+  test(
+    "refuses a skill whose description holds byte 0xFF, naming the skill path and repair, and publishes nothing",
+    async () => {
+      const row = run(defaultKernelLayout);
+      const copy = templateCopy(folder("pointer-skill-template-"));
+      const pin = readKernelPin(copy);
+      writeKernelPin(copy, { ...pin, commit: row.request.kernel.commit });
+      const skillFile = join(
+        copy,
+        "generated-repository/skills/agent-cli-kernel/SKILL.md",
+      );
+      const original = readFileSync(skillFile, "utf8");
+      const marker = "description: ";
+      const offset = original.indexOf(marker);
+      expect(offset).toBeGreaterThanOrEqual(0);
+      const split = offset + marker.length;
+      writeFileSync(
+        skillFile,
+        Buffer.concat([
+          Buffer.from(original.slice(0, split), "utf8"),
+          Buffer.from([0xff]),
+          Buffer.from(original.slice(split), "utf8"),
+        ]),
+      );
+
+      const child = await spawnBounded(
+        [
+          process.execPath,
+          "run",
+          join(copy, "src/bootstrap.ts"),
+          "--destination",
+          row.destination,
+          "--source-packet",
+          "/abs/packets/demo",
+          "--json",
+        ],
+        {
+          cwd: copy,
+          env: {
+            ...inherited(),
+            ...gitEnv,
+            KERNEL_REPOSITORY: row.request.kernel.repository,
+          },
+          processGroup: true,
+        },
+      );
+
+      const stderr: unknown =
+        child.stderr === "" ? "" : JSON.parse(child.stderr);
+      expect({
+        exitCode: child.exit,
+        stdout: child.stdout,
+        stderr,
+        leftBehind: leftBehind(row),
+      }).toEqual({
+        exitCode: 1,
+        stdout: "",
+        stderr: {
+          schemaVersion: 1,
+          status: "refused",
+          error: {
+            code: "invalid_utf8",
+            message: `${pointer} is not valid UTF-8 text`,
+            repair: `fix or replace ${pointer} with valid UTF-8 text, then rerun`,
+            retrySafe: false,
+          },
+        },
+        leftBehind: [],
+      });
+    },
+    processWatchdog(1),
+  );
 });
 
 describe("the generated repository's pointer skill check", () => {
