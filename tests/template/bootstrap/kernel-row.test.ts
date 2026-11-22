@@ -281,6 +281,28 @@ describe("the kernel row", () => {
     });
   });
 
+  test("leaves the nine zero-finding default Fallow rules at Fallow's default severity", async () => {
+    const { destination, request } = run();
+    await bootstrapRow(request);
+    const { rules } = generatedJson(destination, ".fallowrc.json") as {
+      rules: Record<string, string>;
+    };
+    const defaultEnabledRules = [
+      "unused-class-members",
+      "unused-enum-members",
+      "duplicate-exports",
+      "misconfigured-dependency-overrides",
+      "unused-dev-dependencies",
+      "unused-optional-dependencies",
+      "duplicate-export-aliases",
+      "unlisted-binaries",
+      "unused-dependency-overrides",
+    ];
+    expect(
+      defaultEnabledRules.filter((rule) => Object.hasOwn(rules, rule)),
+    ).toEqual([]);
+  });
+
   test("ignores .worktrees in the generated repository without a personal Git ignore file", async () => {
     const { destination, request } = run();
     await bootstrapRow(request);

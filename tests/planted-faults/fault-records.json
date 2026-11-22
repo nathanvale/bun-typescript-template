@@ -2205,6 +2205,13 @@
     "source": "f116191 fix(template-upgrade): refuse symbolic link folders, keep owner work, make every conflict resolvable"
   },
   {
+    "id": "8976133-generated-fallow-default-rules",
+    "patch": "tests/planted-faults/patches/8976133-generated-fallow-default-rules.patch",
+    "testFile": "tests/template/bootstrap/kernel-row.test.ts",
+    "title": "leaves the nine zero-finding default Fallow rules at Fallow's default severity$",
+    "source": "8976133 feat(generated-repository): restore nine zero-finding default Fallow rules"
+  },
+  {
     "id": "6af3b16-template-git-fixture-count",
     "patch": "tests/planted-faults/patches/6af3b16-template-git-fixture-count.patch",
     "testFile": "tests/template/test-helpers/git-fixture.test.ts",

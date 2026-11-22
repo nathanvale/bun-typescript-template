@@ -1,0 +1,11 @@
+diff --git a/generated-repository/settings/.fallowrc.json b/generated-repository/settings/.fallowrc.json
+--- a/generated-repository/settings/.fallowrc.json
++++ b/generated-repository/settings/.fallowrc.json
+@@ -65,6 +65,7 @@
+     "unused-component-outputs": "off",
+     "unused-component-props": "off",
+     "unused-dependencies": "error",
++    "unused-enum-members": "off",
+     "unused-exports": "error",
+     "unused-files": "error",
+     "unused-load-data-keys": "off",
