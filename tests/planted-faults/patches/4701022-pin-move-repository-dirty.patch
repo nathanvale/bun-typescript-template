@@ -1,11 +1,11 @@
 diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
 --- a/scripts/pin-move-repository.ts
 +++ b/scripts/pin-move-repository.ts
-@@ -120,7 +120,6 @@ function openGeneratedRepository(
-     throw invalid("that path is not an existing folder.");
+@@ -137,7 +137,6 @@ function openGeneratedRepository(
    const repository = realpathSync(givenPath);
    requireGitWorkTreeRoot(repository, invalid);
+   const startingRef = requireStartingBranch(repository, requireClean);
 -  if (requireClean) requireCleanWorkTree(repository);
-   const branch = repositoryGit(repository, [
-     "symbolic-ref",
-     "--quiet",
+   return { repository, startingRef };
+ }
+ 

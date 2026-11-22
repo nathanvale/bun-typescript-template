@@ -2168,5 +2168,26 @@
     "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
     "title": "refuses when the generated repository Pin is missing, already at the target commit, or the target branch already exists$",
     "source": "4701022 feat(pin-move): move a generated repository kernel Pin onto a new branch"
+  },
+  {
+    "id": "bdf08d9-pin-move-repository-root",
+    "patch": "tests/planted-faults/patches/bdf08d9-pin-move-repository-root.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses a non-root repository path, detached HEAD, or symlinked package\\.json before changing anything$",
+    "source": "bdf08d9 fix(pin-move): harden manifest edit, symlink guards, detached HEAD, and isolated commit"
+  },
+  {
+    "id": "bdf08d9-pin-move-repository-detached-head",
+    "patch": "tests/planted-faults/patches/bdf08d9-pin-move-repository-detached-head.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses a non-root repository path, detached HEAD, or symlinked package\\.json before changing anything$",
+    "source": "bdf08d9 fix(pin-move): harden manifest edit, symlink guards, detached HEAD, and isolated commit"
+  },
+  {
+    "id": "bdf08d9-pin-move-repository-symlink",
+    "patch": "tests/planted-faults/patches/bdf08d9-pin-move-repository-symlink.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses a non-root repository path, detached HEAD, or symlinked package\\.json before changing anything$",
+    "source": "bdf08d9 fix(pin-move): harden manifest edit, symlink guards, detached HEAD, and isolated commit"
   }
 ]
