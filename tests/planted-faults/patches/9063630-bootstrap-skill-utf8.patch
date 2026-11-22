@@ -1,0 +1,13 @@
+diff --git a/src/bootstrap.ts b/src/bootstrap.ts
+--- a/src/bootstrap.ts
++++ b/src/bootstrap.ts
+@@ -323,9 +323,8 @@ async function skillGuidance(staging: string): Promise<string> {
+   const lines: string[] = [];
+   for (const name of names) {
+     const skillPath = `${SKILL_FOLDER}/${name}/SKILL.md`;
+-    const bytes = await readFile(join(skills, name, "SKILL.md"));
+-    const text = decodeUtf8Strict(bytes, skillPath);
++    const text = await readFile(join(skills, name, "SKILL.md"), "utf8");
+     const purpose = skillPurpose(text, name);
+     lines.push(`- ${purpose}: read \`${skillPath}\`.`);
+   }

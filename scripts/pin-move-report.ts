@@ -1,4 +1,8 @@
-import { fileModeOf, nameText } from "../src/git-identities.ts";
+import {
+  fileModeOf,
+  nameText,
+  parseGitTreeEntries,
+} from "../src/git-identities.ts";
 import { git } from "../src/kernel-reader.ts";
 import {
   CHANGE_NOTES_FOLDER,
@@ -6,7 +10,7 @@ import {
   compareText,
   formatChangeNoteLines,
   parseChangeNote,
-} from "./change-notes.ts";
+} from "../src/change-notes.ts";
 
 export type PinMoveReport = {
   readonly from: string;
@@ -33,28 +37,10 @@ function read(
   return run.stdout;
 }
 
-// Platform: git prints each path as the bytes it stores, which need not be
-// UTF-8 text, so paths are compared as latin1 text, one character per byte,
-// and decoded as UTF-8 only to be shown.
 function filesAt(repository: string, commit: string): Map<string, string> {
-  const listing = read(repository, "ls-tree", [
-    "-r",
-    "-z",
-    "--full-tree",
-    commit,
-  ]);
-  const files = new Map<string, string>();
-  for (let start = 0; start < listing.length; ) {
-    const end = listing.indexOf(0, start);
-    const record = listing.subarray(start, end < 0 ? listing.length : end);
-    const tab = record.indexOf(9);
-    files.set(
-      record.subarray(tab + 1).toString("latin1"),
-      record.subarray(0, tab).toString("latin1"),
-    );
-    start = end < 0 ? listing.length : end + 1;
-  }
-  return files;
+  return parseGitTreeEntries(
+    read(repository, "ls-tree", ["-r", "-z", "--full-tree", commit]),
+  );
 }
 
 function shown(path: string): string {

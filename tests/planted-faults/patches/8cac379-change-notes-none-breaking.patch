@@ -1,6 +1,6 @@
-diff --git a/scripts/change-notes.ts b/scripts/change-notes.ts
---- a/scripts/change-notes.ts
-+++ b/scripts/change-notes.ts
+diff --git a/src/change-notes.ts b/src/change-notes.ts
+--- a/src/change-notes.ts
++++ b/src/change-notes.ts
 @@ -104,10 +104,6 @@
      return fail(
        `${file}: breaking must be true or false. Repair: set breaking to a boolean.`,

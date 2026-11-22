@@ -109,13 +109,103 @@ exit 0
       { templateRoot: templateClone, env },
     );
     expect(run.exitCode).toBe(0);
-    expect(JSON.parse(run.stdout)).toMatchObject({ status: "applied", branch });
+    expect(JSON.parse(run.stdout)).toMatchObject({
+      status: "applied",
+      branch,
+      steps: [
+        { command: "bun install", ran: true, outcome: "passed" },
+        { command: "bun run check", ran: true, outcome: "passed" },
+      ],
+    });
     expect(readFileSync(ledger, "utf8").trim().split("\n")).toEqual([
       "install",
       "run check",
     ]);
     expect(git(repo, "show", `${branch}:bun.lock`)).toContain(
       "updated-by-install",
+    );
+
+    const textRepo = await bootstrapGeneratedRepository(
+      folder,
+      templateClone,
+      baseCommit,
+      "no-package-text-app",
+    );
+    const textRun = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      ["apply", "--repository", textRepo, "--to", targetCommit],
+      { templateRoot: templateClone, env },
+    );
+    expect(textRun.exitCode).toBe(0);
+    expect(textRun.stdout).toContain(`Target commit: ${targetCommit}`);
+    expect(textRun.stdout).toContain("bun install: passed");
+    expect(textRun.stdout).toContain("bun run check: passed");
+
+    const skippedRepo = await bootstrapGeneratedRepository(
+      folder,
+      templateClone,
+      baseCommit,
+      "no-check-steps-app",
+    );
+    const skippedJsonRun = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      [
+        "apply",
+        "--repository",
+        skippedRepo,
+        "--to",
+        targetCommit,
+        "--no-check",
+        "--json",
+      ],
+      { templateRoot: templateClone, env },
+    );
+    expect(skippedJsonRun.exitCode).toBe(0);
+    expect(JSON.parse(skippedJsonRun.stdout)).toMatchObject({
+      status: "applied",
+      steps: [
+        {
+          command: "bun install",
+          ran: false,
+          outcome: "skipped",
+          reason: "--no-check",
+        },
+        {
+          command: "bun run check",
+          ran: false,
+          outcome: "skipped",
+          reason: "--no-check",
+        },
+      ],
+    });
+
+    const skippedTextRepo = await bootstrapGeneratedRepository(
+      folder,
+      templateClone,
+      baseCommit,
+      "no-check-text-app",
+    );
+    const skippedTextRun = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      [
+        "apply",
+        "--repository",
+        skippedTextRepo,
+        "--to",
+        targetCommit,
+        "--no-check",
+      ],
+      { templateRoot: templateClone, env },
+    );
+    expect(skippedTextRun.exitCode).toBe(0);
+    expect(skippedTextRun.stdout).toContain(
+      "bun install: skipped (--no-check)",
+    );
+    expect(skippedTextRun.stdout).toContain(
+      "bun run check: skipped (--no-check)",
     );
   },
   processWatchdog(4),
@@ -173,12 +263,27 @@ exit 0
       status: "check-failed",
       failedStep: "bun run check",
       worktree: expectedWorktree,
+      steps: [
+        { command: "bun install", ran: true, outcome: "passed" },
+        { command: "bun run check", ran: true, outcome: "failed" },
+      ],
     });
     expect(existsSync(expectedWorktree)).toBe(true);
     expect(readFileSync(ledger, "utf8").trim().split("\n")).toEqual([
       "install",
       "run check",
     ]);
+
+    const failTextRun = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      ["apply", "--repository", repo, "--to", targetCommit],
+      runtime,
+    );
+    expect(failTextRun.exitCode).toBe(1);
+    expect(failTextRun.stdout).toContain(`Target commit: ${targetCommit}`);
+    expect(failTextRun.stdout).toContain("bun install: passed");
+    expect(failTextRun.stdout).toContain("bun run check: failed");
 
     rmSync(failFlag);
     const passRun = await invokeTemplateUpgradeMain(
@@ -188,8 +293,77 @@ exit 0
       runtime,
     );
     expect(passRun.exitCode).toBe(0);
-    expect(JSON.parse(passRun.stdout)).toMatchObject({ status: "applied" });
+    expect(JSON.parse(passRun.stdout)).toMatchObject({
+      status: "applied",
+      steps: [
+        { command: "bun install", ran: true, outcome: "passed" },
+        { command: "bun run check", ran: true, outcome: "passed" },
+      ],
+    });
     expect(existsSync(expectedWorktree)).toBe(false);
+  },
+  processWatchdog(4),
+);
+
+test(
+  "reports bun install failed and bun run check skipped when bun install fails",
+  async () => {
+    const { templateClone, baseCommit } = cloneTemplateAtHead(folder);
+    const targetCommit = commitTemplateUpgradeChanges(templateClone);
+    const repo = await bootstrapGeneratedRepository(
+      folder,
+      templateClone,
+      baseCommit,
+      "install-fail-app",
+    );
+    const { env } = writeScriptedBun(
+      "scripted-bun-install-fail-",
+      `#!/bin/sh
+echo "$*" >> __LEDGER__
+if [ "$1" = "install" ]; then
+  echo "planted install failure" >&2
+  exit 1
+fi
+exit 0
+`,
+    );
+    const stdout = captureStream(process.stdout);
+    const stderr = captureStream(process.stderr);
+    const runtime = { templateRoot: templateClone, env };
+
+    const jsonRun = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      ["apply", "--repository", repo, "--to", targetCommit, "--json"],
+      runtime,
+    );
+    expect(jsonRun.exitCode).toBe(1);
+    expect(JSON.parse(jsonRun.stdout)).toMatchObject({
+      status: "check-failed",
+      failedStep: "bun install",
+      steps: [
+        { command: "bun install", ran: true, outcome: "failed" },
+        {
+          command: "bun run check",
+          ran: false,
+          outcome: "skipped",
+          reason: "bun install failed",
+        },
+      ],
+    });
+
+    const textRun = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      ["apply", "--repository", repo, "--to", targetCommit],
+      runtime,
+    );
+    expect(textRun.exitCode).toBe(1);
+    expect(textRun.stdout).toContain(`Target commit: ${targetCommit}`);
+    expect(textRun.stdout).toContain("bun install: failed");
+    expect(textRun.stdout).toContain(
+      "bun run check: skipped (bun install failed)",
+    );
   },
   processWatchdog(4),
 );

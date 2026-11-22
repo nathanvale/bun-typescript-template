@@ -2121,6 +2121,13 @@
     "source": "b8f4264 feat(template-stamp): refuse duplicate regenerated template stamps"
   },
   {
+    "id": "9063630-bootstrap-skill-utf8",
+    "patch": "tests/planted-faults/patches/9063630-bootstrap-skill-utf8.patch",
+    "testFile": "tests/template/bootstrap/pointer-skill.test.ts",
+    "title": "refuses a skill whose description holds byte 0xFF, naming the skill path and repair, and publishes nothing$",
+    "source": "9063630 feat(bootstrap): the generated AGENTS.md says where the kernel's skills are and when to read them"
+  },
+  {
     "id": "4701022-pin-move-repository-dirty",
     "patch": "tests/planted-faults/patches/4701022-pin-move-repository-dirty.patch",
     "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
