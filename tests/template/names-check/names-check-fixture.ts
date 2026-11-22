@@ -9,7 +9,9 @@ import {
 import {
   type RecordedHit,
   recordedHitsFile,
+  recordedUnusedTermsFile,
 } from "../../../scripts/glossary.ts";
+import { plainWordsFile } from "../../../scripts/name-words.ts";
 import {
   git,
   gitEnv,
@@ -69,6 +71,27 @@ export function thrownBy(run: () => unknown): string {
     return error instanceof Error ? error.message : String(error);
   }
   throw new Error("expected the call to throw");
+}
+
+export const samplePlainWords = JSON.stringify({
+  words: [
+    { word: "apply", reason: "Approved verb for applying a change." },
+    { word: "pattern", reason: "Approved noun for a matching pattern." },
+    { word: "src", reason: "Source folder in fixture tests." },
+  ],
+});
+
+export function unknownPathLine(path: string, word: string): string {
+  return `${path} uses "${word}", which no glossary term uses. Repair: use the glossary's word for what it names; if none fits, add a glossary entry (term, one sentence, Avoid list) or a ${plainWordsFile} entry first, for Nathan's decision. Done when bun run check:names ${path} passes.`;
+}
+
+export function unknownDeclarationLine(
+  path: string,
+  line: number,
+  name: string,
+  word: string,
+): string {
+  return `${path}:${line} public declaration "${name}" uses "${word}", which no glossary term uses. Repair: use the glossary's word for what it names; if none fits, add a glossary entry (term, one sentence, Avoid list) or a ${plainWordsFile} entry first, for Nathan's decision. Done when bun run check:names ${path} passes.`;
 }
 
 export function namesCheckFixture() {
@@ -134,5 +157,44 @@ export function namesCheckFixture() {
     return root;
   }
 
-  return { emptyRepository, folder, namesRepository, outsideRepository };
+  function plainWordsRepository(
+    plainJson: string = samplePlainWords,
+    extraFiles: Record<string, string> = {},
+  ): string {
+    const root = namesRepository();
+    put(root, plainWordsFile, plainJson);
+    put(root, recordedUnusedTermsFile, JSON.stringify({ terms: [] }));
+    put(
+      root,
+      publicSurfaceFile,
+      JSON.stringify({
+        exports: ["src/*.ts"],
+        consumedExports: [],
+        importers: [],
+      }),
+    );
+    put(root, "src/planted-fault.ts", "export const plantedFault = 1;\n");
+    for (const [path, content] of Object.entries(extraFiles))
+      put(root, path, content);
+    git(
+      root,
+      "add",
+      "--",
+      plainWordsFile,
+      recordedUnusedTermsFile,
+      publicSurfaceFile,
+      "src/planted-fault.ts",
+      ...Object.keys(extraFiles),
+    );
+    git(root, "commit", "--quiet", "-m", "plain words");
+    return root;
+  }
+
+  return {
+    emptyRepository,
+    folder,
+    namesRepository,
+    outsideRepository,
+    plainWordsRepository,
+  };
 }

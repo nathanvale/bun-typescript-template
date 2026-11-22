@@ -376,6 +376,14 @@ function isFileAt(root: string, path: string): boolean {
   return stat !== undefined && stat.isFile();
 }
 
+function declarationKey(
+  path: string,
+  declaration: string,
+  name: string,
+): string {
+  return `${path}\0${declaration}\0${name}`;
+}
+
 async function baseDeclarationKeys(
   root: string,
   base: string,
@@ -407,7 +415,7 @@ async function baseDeclarationKeys(
   );
   return new Set(
     publicDeclarations(root, texts, surface).map(
-      ({ path, declaration }) => `${path}\0${declaration}`,
+      ({ path, declaration, name }) => declarationKey(path, declaration, name),
     ),
   );
 }
@@ -437,10 +445,13 @@ async function newDeclarationsSince(
   if (current.length === 0) return [];
   const earlier = await baseDeclarationKeys(root, base);
   const renamedFrom = new Map(renames.map(({ from, to }) => [to, from]));
-  return current.filter(({ path, declaration }) => {
-    if (earlier.has(`${path}\0${declaration}`)) return false;
+  return current.filter(({ path, declaration, name }) => {
+    if (earlier.has(declarationKey(path, declaration, name))) return false;
     const from = renamedFrom.get(path);
-    return from === undefined || !earlier.has(`${from}\0${declaration}`);
+    return (
+      from === undefined ||
+      !earlier.has(declarationKey(from, declaration, name))
+    );
   });
 }
 

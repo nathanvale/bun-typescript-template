@@ -229,7 +229,8 @@ file extensions in those directories.
 - `tests/template/names-check/names.test.ts`, with its shrinking
   `tests/template/names-check/recorded-hits.json`, checks every tracked file and
   folder name against `GLOSSARY.md`. Pre-commit runs the same names check on
-  staged names.
+  staged names (`--staged`), file-creation hooks run `--tool-call`, and pull
+  requests run `--against`.
 - The symbol gate (`scripts/public-declarations.ts`) applies those rules to the
   public surface in `tests/template/names-check/public-surface.json`: exports
   in Bootstrap's copied code and consumed exports in `src/*.ts`, one level of
