@@ -1,0 +1,7 @@
+{
+  "kind": "fixed",
+  "breaking": false,
+  "affects": ["generated-repository"],
+  "summary": "Fixed Template upgrade so a rerun of apply after check-failed never runs bun run quality:fallow:record-hits again once the first recording passed in that upgrade worktree, whatever the recorded-hits files then hold, so a finding introduced during the repair still fails bun run check instead of being recorded.",
+  "action": null
+}

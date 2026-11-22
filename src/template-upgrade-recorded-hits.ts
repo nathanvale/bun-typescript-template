@@ -1,4 +1,4 @@
-import { existsSync, lstatSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   PIN_SETTINGS,
@@ -8,6 +8,7 @@ import {
 import {
   type ProcessEnvMap,
   readCommittedBytesAt,
+  runGitText,
 } from "./template-upgrade-git.ts";
 import {
   createTemplateUpgradeApplyStep,
@@ -20,6 +21,8 @@ import {
 } from "./template-upgrade-worktree.ts";
 
 export const RECORDED_HITS_STEP = `bun run ${RECORDED_HITS_SCRIPT}` as const;
+
+const RECORDING_DONE_MARK = "template-upgrade-recorded-hits-done";
 
 function definesRecordedHitsScript(worktree: string): boolean {
   const packagePath = join(worktree, "package.json");
@@ -93,6 +96,37 @@ function matchesTemplateRecordedHits(
   return Buffer.compare(worktreeBytes, templateBytes) === 0;
 }
 
+function recordingDoneMarkPath(options: RecordedHitsRequest): string {
+  return runGitText(
+    options.worktree,
+    ["rev-parse", "--path-format=absolute", "--git-path", RECORDING_DONE_MARK],
+    {
+      code: "worktree_git_path_failed",
+      message: `cannot locate the recorded-hits mark for ${options.worktree}`,
+      repair: `inspect ${options.worktree} with git rev-parse --git-dir, then rerun`,
+    },
+    { env: options.env },
+  );
+}
+
+function recordingDone(options: RecordedHitsRequest): boolean {
+  const markPath = recordingDoneMarkPath(options);
+  try {
+    lstatSync(markPath);
+    return true;
+  } catch (error) {
+    const code: unknown = Reflect.get(Object(error), "code");
+    if (code === "ENOENT") return false;
+    throw error;
+  }
+}
+
+function markRecordingDone(options: RecordedHitsRequest): void {
+  writeFileSync(recordingDoneMarkPath(options), `${options.targetCommit}\n`, {
+    flag: "wx",
+  });
+}
+
 function newRecordedHitsPresent(options: RecordedHitsRequest): boolean {
   const { worktree, repository, repositoryHead, env } = options;
   if (!definesRecordedHitsScript(worktree)) return false;
@@ -102,6 +136,7 @@ function newRecordedHitsPresent(options: RecordedHitsRequest): boolean {
       undefined,
   );
   if (!missingInRepositoryHead) return false;
+  if (recordingDone(options)) return false;
   return RECORDED_HITS_FILES.every((file) =>
     matchesTemplateRecordedHits(options, file),
   );
@@ -144,6 +179,7 @@ export function runRecordedHitsStep(
     env: request.env,
   });
   if (record.ok) {
+    markRecordingDone(request);
     return {
       ok: true,
       steps: [

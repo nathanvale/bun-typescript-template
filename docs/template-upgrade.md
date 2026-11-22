@@ -132,6 +132,8 @@ Add `--force` to `git worktree remove` if the worktree contains uncommitted chan
 
 The first Template upgrade that brings the recorded-hits files (`fallow-dead-code-recorded-hits.json`, `fallow-duplicates-recorded-hits.json`, `fallow-health-recorded-hits.json`) runs `bun run quality:fallow:record-hits` itself, after `bun install` and before `bun run check`, and reports it as a step. The repository's existing findings are recorded, so the check fails only on new ones. A repository that already has the files keeps its own records.
 
+The step runs at most once per upgrade worktree. When it passes, the upgrade leaves a mark in the worktree's own Git folder (`git rev-parse --git-path template-upgrade-recorded-hits-done`), and a rerun of `apply` after `check-failed` never runs it again, whatever the recorded-hits files then hold. A finding added during the repair therefore still fails `bun run check`. Removing the upgrade worktree removes the mark, and the next `apply` starts from a fresh worktree and records again.
+
 With `--no-check`, the upgrade does not record the findings and commits the upgrade branch with empty recorded-hits files; a later upgrade will not repeat the recording step because the files already exist in `HEAD`. Before merging, run `bun install` and `bun run quality:fallow:record-hits` in the upgrade worktree (or on the upgrade branch) and commit the updated recorded-hits files.
 
 Limit: a recorded complex function that gets more complex is not caught. Re-running `bun run quality:fallow:record-hits` after fixing a recorded finding is fine (the file shrinks); recording a new finding is refused by the hosted check on a pull request.
