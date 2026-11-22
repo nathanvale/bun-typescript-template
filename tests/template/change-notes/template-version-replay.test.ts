@@ -6,7 +6,7 @@ import {
   nextTemplateVersion,
   STARTING_TEMPLATE_VERSION,
   TEMPLATE_VERSIONS_FOLDER,
-} from "../../../scripts/template-version-core.ts";
+} from "../../../scripts/template-version-parse.ts";
 import {
   cutTemplateVersion,
   defaultGitReader,
@@ -21,7 +21,7 @@ import {
   initRepository,
 } from "../../support/git-fixture.ts";
 import { withEnvironment } from "../../support/recipe-fixture.ts";
-import { studyCuts, studyNotes } from "./study-notes-fixture.ts";
+import { studyCuts, studyNotes } from "./replay-notes-fixture.ts";
 
 const folder = ownedFolders();
 const readOnlySubcommands = new Set([

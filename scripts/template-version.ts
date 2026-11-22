@@ -33,7 +33,7 @@ import {
   STARTING_TEMPLATE_VERSION,
   TEMPLATE_VERSIONS_FOLDER,
   TemplateVersionRefusal,
-} from "./template-version-core.ts";
+} from "./template-version-parse.ts";
 
 export type GitReadCommand = "for-each-ref" | "ls-tree" | "diff" | "cat-file";
 

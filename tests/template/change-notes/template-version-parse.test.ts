@@ -22,7 +22,7 @@ import {
   renderTemplateVersion,
   STARTING_TEMPLATE_VERSION,
   TemplateVersionRefusal,
-} from "../../../scripts/template-version-core.ts";
+} from "../../../scripts/template-version-parse.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 
@@ -191,7 +191,7 @@ test("validates ISO calendar dates, lead sentences, and this pull request's chan
   expect(refusal).toBeInstanceOf(Error);
   expect(refusal.name).toBe("TemplateVersionRefusal");
 
-  const file = "2026-11-22-template-version-changelog.json";
+  const file = "2026-11-22-template-version-sections.json";
   expect(isValidChangeNoteFile(file)).toBe(true);
   const raw = readFileSync(join(ROOT, CHANGE_NOTES_FOLDER, file), "utf8");
   const parsed = parseChangeNote(

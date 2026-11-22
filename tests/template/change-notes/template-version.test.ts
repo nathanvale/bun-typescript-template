@@ -11,7 +11,7 @@ import {
   CHANGE_NOTES_FOLDER,
   type ChangeNote,
 } from "../../../scripts/change-notes.ts";
-import { TEMPLATE_VERSIONS_FOLDER } from "../../../scripts/template-version-core.ts";
+import { TEMPLATE_VERSIONS_FOLDER } from "../../../scripts/template-version-parse.ts";
 import {
   cutTemplateVersion,
   defaultGitReader,
