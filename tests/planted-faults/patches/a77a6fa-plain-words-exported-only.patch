@@ -1,0 +1,11 @@
+diff --git a/scripts/plain-words.ts b/scripts/plain-words.ts
+--- a/scripts/plain-words.ts
++++ b/scripts/plain-words.ts
+@@ -293,7 +293,6 @@ export function unknownDeclarationProblems(
+   declarations: readonly PublicDeclaration[],
+ ): string[] {
+   return declarations
+-    .filter(isExportedDeclaration)
+     .flatMap(({ path, line, name }) =>
+       unknownWordsOf(
+         words,

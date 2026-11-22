@@ -1,0 +1,12 @@
+{
+  "words": [
+    {
+      "word": "apply",
+      "reason": "The verb for applying a change, approved by Nathan for the template CLI."
+    },
+    {
+      "word": "pattern",
+      "reason": "A glob or matching pattern, approved by Nathan for the template CLI."
+    }
+  ]
+}

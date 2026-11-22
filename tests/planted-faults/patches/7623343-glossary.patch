@@ -1,20 +1,24 @@
 diff --git a/scripts/glossary.ts b/scripts/glossary.ts
-index 9494190..6fb639f 100644
+index 5a58d04..654fd43 100644
 --- a/scripts/glossary.ts
 +++ b/scripts/glossary.ts
-@@ -215,24 +215,12 @@ export function nameProblems(
+@@ -251,8 +251,6 @@ export function nameProblems(
    return [...fresh, ...stale];
  }
  
 -const gitMilliseconds = 10_000;
 -
--// Platform: Bun starts a child with the environment the process started with
--// unless `env` is given, so a change to process.env reaches git only through it.
+ // Platform: a decoder drops a leading byte-order mark unless told to keep it,
+ // and in a git path name it is a character.
+ const nameReader = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+@@ -271,19 +269,12 @@ export function gitNames(bytes: Uint8Array, where: string): string {
+ // Platform: Bun starts a child with the environment the process started with
+ // unless `env` is given, so a change to process.env reaches git only through it.
  function git(root: string, command: readonly string[]) {
 -  const result = Bun.spawnSync(["git", ...command], {
 +  return Bun.spawnSync(["git", ...command], {
      cwd: root,
--    env: process.env,
+     env: withoutRepositoryLocation(process.env),
      stdout: "pipe",
      stderr: "pipe",
 -    timeout: gitMilliseconds,

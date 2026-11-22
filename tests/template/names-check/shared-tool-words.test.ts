@@ -32,8 +32,8 @@ test("the shared tool words in GLOSSARY.md are the template's recorded export, b
   expect(sharedSection(read("GLOSSARY.md"))).toBe(read(sharedExportFile));
 });
 
-test("the shared tool words are 33 entries that stay template-owned", () => {
-  expect(sharedEntries(read("GLOSSARY.md"))).toHaveLength(33);
+test("the shared tool words are 35 entries that stay template-owned", () => {
+  expect(sharedEntries(read("GLOSSARY.md"))).toHaveLength(35);
 });
 
 test("GLOSSARY.md defines no entry that glossary-ownership.json lists as the kernel's", () => {
@@ -56,6 +56,24 @@ test("every term is used in a tracked file or recorded unused", () => {
       readRecordedUnusedTerms(read(recordedUnusedTermsFile)),
     ),
   ).toEqual([]);
+});
+
+test("a GLOSSARY.md entry naming a repository.json key absent from repository.json states none is declared yet", () => {
+  const repoFields = new Map(
+    Object.entries(
+      JSON.parse(read("repository.json")) as Record<string, unknown>,
+    ),
+  );
+  const entries = read("GLOSSARY.md").split(/\n(?=\*\*[^*]+\*\*:)/);
+  const undeclared = entries.filter((block) => {
+    const key = /`repository\.json` `([^`]+)`/.exec(block)?.[1];
+    return key !== undefined && !repoFields.has(key);
+  });
+  expect(undeclared.length).toBeGreaterThan(0);
+  for (const block of undeclared) {
+    expect(block).not.toContain("The names check refuses a path");
+    expect(block).toContain("this repository declares none yet.");
+  }
 });
 
 test("SW.a the shared section ends at the end of the file, so a changed qualifier line is a difference", () => {
