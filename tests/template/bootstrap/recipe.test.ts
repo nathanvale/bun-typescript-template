@@ -3,6 +3,7 @@ import { existsSync, statSync, writeFileSync } from "node:fs";
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import {
+  CHANGE_NOTES_FOLDER,
   copiesOf,
   HOSTED_CHECK_FOLDER,
   KERNEL_LOCKFILE,
@@ -121,6 +122,14 @@ describe("the recipe", () => {
         .filter((file) => file.startsWith(`${HOSTED_CHECK_FOLDER}/`))
         .toSorted(),
     ).toEqual([`${HOSTED_CHECK_FOLDER}/ci.yml`]);
+  });
+
+  test("it copies the change notes README into change-notes", async () => {
+    expect(
+      (await copiedFiles(KERNEL_RECIPE))
+        .filter((file) => file.startsWith(`${CHANGE_NOTES_FOLDER}/`))
+        .toSorted(),
+    ).toEqual([`${CHANGE_NOTES_FOLDER}/README.md`]);
   });
 });
 

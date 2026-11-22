@@ -1,5 +1,6 @@
 export const SKILL_FOLDER = ".agents/skills";
 export const HOSTED_CHECK_FOLDER = ".github/workflows";
+export const CHANGE_NOTES_FOLDER = "change-notes";
 
 export interface RecipeCopy {
   readonly from: string;
@@ -10,7 +11,8 @@ export interface RecipeCopy {
     | "tests/support"
     | "config"
     | typeof SKILL_FOLDER
-    | typeof HOSTED_CHECK_FOLDER;
+    | typeof HOSTED_CHECK_FOLDER
+    | typeof CHANGE_NOTES_FOLDER;
   readonly only?: readonly string[];
 }
 
@@ -38,6 +40,7 @@ export const KERNEL_RECIPE: Recipe = {
   pin: PIN_SETTINGS,
   copies: [
     { from: "generated-repository/application", into: "." },
+    { from: "generated-repository/change-notes", into: CHANGE_NOTES_FOLDER },
     { from: "generated-repository/hosted-check", into: HOSTED_CHECK_FOLDER },
     { from: "generated-repository/skills", into: SKILL_FOLDER },
     {
