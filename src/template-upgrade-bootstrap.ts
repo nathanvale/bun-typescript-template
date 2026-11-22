@@ -1,11 +1,17 @@
 import { realpathSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CliError } from "./cli-error.ts";
-import { findSiblingKernel } from "./kernel-pin.ts";
+import {
+  findSiblingKernel,
+  kernelPinFile,
+  readKernelPin,
+  writeKernelPin,
+} from "./kernel-pin.ts";
 import {
   decodeUtf8Strict,
+  gitCommitIdentityArgs,
   runGitText,
   withoutGitLocation,
 } from "./template-upgrade-git.ts";
@@ -14,6 +20,7 @@ import type { TemplateUpgradeInputs } from "./template-upgrade-inputs.ts";
 const CLONE_TIMEOUT_MS = 30_000;
 const BOOTSTRAP_TIMEOUT_MS = 30_000;
 const STAMP_FILE = ".cli-design-template.json";
+const STRICT_UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 export interface TemplateUpgradeTrees {
   readonly oldFolder: string;
@@ -115,8 +122,145 @@ interface BootstrapCommitRequest {
   readonly commit: string;
   readonly repositoryName: string;
   readonly sourcePacket: string;
+  readonly repositoryPinnedCommit: string;
   readonly kernelRepository: string;
   readonly env: Readonly<Record<string, string | undefined>>;
+}
+
+function pinTemplateCloneToRepositoryPin(
+  request: BootstrapCommitRequest,
+  cloneFolder: string,
+): string | undefined {
+  const { label, commit, repositoryPinnedCommit, env } = request;
+  let currentPin: ReturnType<typeof readKernelPin>;
+  try {
+    currentPin = readKernelPin(cloneFolder);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new CliError(
+      "template_pin_invalid",
+      `${label} template commit ${commit.slice(0, 7)} has an invalid ${kernelPinFile}: ${detail}`,
+      `restore a valid ${kernelPinFile} at template commit ${commit.slice(0, 7)}`,
+      1,
+      false,
+    );
+  }
+  if (currentPin.commit === repositoryPinnedCommit) {
+    return undefined;
+  }
+  writeKernelPin(cloneFolder, {
+    ...currentPin,
+    commit: repositoryPinnedCommit,
+  });
+  runGitText(
+    cloneFolder,
+    ["add", "--", kernelPinFile],
+    {
+      code: "regeneration_pin_failed",
+      message: `cannot stage ${kernelPinFile} in temporary ${label} template clone`,
+      repair: `verify git can write inside the temporary clone at ${commit.slice(0, 7)}, then rerun`,
+    },
+    { env, timeoutMilliseconds: CLONE_TIMEOUT_MS },
+  );
+  runGitText(
+    cloneFolder,
+    [
+      ...gitCommitIdentityArgs(cloneFolder, env),
+      "-c",
+      "commit.gpgsign=false",
+      "commit",
+      "--quiet",
+      "--no-verify",
+      "-m",
+      `temporary template upgrade pin ${repositoryPinnedCommit.slice(0, 7)}`,
+    ],
+    {
+      code: "regeneration_pin_failed",
+      message: `cannot commit repository Pin ${repositoryPinnedCommit.slice(0, 7)} in temporary ${label} template clone`,
+      repair: `verify git can commit inside the temporary clone at ${commit.slice(0, 7)}, then rerun`,
+    },
+    { env, timeoutMilliseconds: CLONE_TIMEOUT_MS },
+  );
+  return runGitText(
+    cloneFolder,
+    ["rev-parse", "HEAD"],
+    {
+      code: "regeneration_pin_failed",
+      message: `cannot read temporary commit in ${label} template clone`,
+      repair: `verify git in the temporary clone at ${commit.slice(0, 7)}, then rerun`,
+    },
+    { env, timeoutMilliseconds: CLONE_TIMEOUT_MS },
+  );
+}
+
+function decodeUtf8IfValid(bytes: Uint8Array): string | undefined {
+  if (bytes.includes(0)) {
+    return undefined;
+  }
+  try {
+    return STRICT_UTF8.decode(bytes);
+  } catch {
+    return undefined;
+  }
+}
+
+async function rewriteTemporaryCommitInTree(
+  folder: string,
+  temporaryCommit: string,
+  realCommit: string,
+): Promise<void> {
+  const entries = await readdir(folder, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.name === ".git" || entry.isSymbolicLink()) {
+      continue;
+    }
+    const fullPath = join(folder, entry.name);
+    if (entry.isDirectory()) {
+      await rewriteTemporaryCommitInTree(fullPath, temporaryCommit, realCommit);
+      continue;
+    }
+    if (!entry.isFile()) {
+      continue;
+    }
+    const text = decodeUtf8IfValid(new Uint8Array(await readFile(fullPath)));
+    if (text !== undefined && text.includes(temporaryCommit)) {
+      await writeFile(fullPath, text.replaceAll(temporaryCommit, realCommit));
+    }
+  }
+}
+
+async function normalizeRegeneratedStamp(
+  destination: string,
+  realCommit: string,
+  label: "old" | "new",
+): Promise<void> {
+  const stampPath = join(destination, STAMP_FILE);
+  const text = decodeUtf8Strict(
+    new Uint8Array(await readFile(stampPath)),
+    `${label} regeneration ${STAMP_FILE}`,
+  );
+  const parsed: unknown = JSON.parse(text);
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new CliError(
+      "regeneration_stamp_invalid",
+      `${label} regeneration wrote a non-object ${STAMP_FILE}`,
+      "inspect bootstrap at that template commit",
+      1,
+      false,
+    );
+  }
+  const normalized = Object.fromEntries(
+    Object.entries(parsed).map(([key, value]) => {
+      if (key === "templateRevision") {
+        return [key, realCommit];
+      }
+      if (key === "templateDirty") {
+        return [key, false];
+      }
+      return [key, value];
+    }),
+  );
+  await writeFile(stampPath, `${JSON.stringify(normalized, null, 2)}\n`);
 }
 
 function cloneTemplateCommit(
@@ -159,8 +303,15 @@ function runBootstrapAtCommit(
   cloneFolder: string,
   destination: string,
 ): void {
-  const { label, commit, repositoryName, sourcePacket, kernelRepository, env } =
-    request;
+  const {
+    label,
+    commit,
+    repositoryName,
+    sourcePacket,
+    repositoryPinnedCommit,
+    kernelRepository,
+    env,
+  } = request;
   const bootstrapScript = join(cloneFolder, "src", "bootstrap.ts");
   const child = Bun.spawnSync(
     [
@@ -187,7 +338,7 @@ function runBootstrapAtCommit(
   if (child.exitedDueToTimeout) {
     throw new CliError(
       "regeneration_failed",
-      `${label} bootstrap at ${commit.slice(0, 7)} did not finish within ${BOOTSTRAP_TIMEOUT_MS} ms`,
+      `${label} bootstrap at ${commit.slice(0, 7)} with Pin ${repositoryPinnedCommit.slice(0, 7)} did not finish within ${BOOTSTRAP_TIMEOUT_MS} ms`,
       `run bootstrap at ${commit.slice(0, 7)} by hand to see where it waits, then rerun`,
       1,
       false,
@@ -200,8 +351,8 @@ function runBootstrapAtCommit(
     );
     throw new CliError(
       "regeneration_failed",
-      `${label} bootstrap at ${commit.slice(0, 7)} failed: ${detail}`,
-      `fix the underlying bootstrap failure at ${commit.slice(0, 7)} or ensure KERNEL_REPOSITORY holds its pinned commit, then rerun`,
+      `${label} bootstrap at ${commit.slice(0, 7)} with Pin ${repositoryPinnedCommit.slice(0, 7)} failed: ${detail}`,
+      `ensure KERNEL_REPOSITORY holds Pin ${repositoryPinnedCommit.slice(0, 7)}, or move the repository's Pin if template commit ${commit.slice(0, 7)} requires a newer kernel commit, then rerun`,
       1,
       false,
     );
@@ -218,19 +369,29 @@ async function bootstrapAtCommit(
     request.repositoryName,
   );
   cloneTemplateCommit(request, cloneFolder);
+  const temporaryCommit = pinTemplateCloneToRepositoryPin(request, cloneFolder);
   runBootstrapAtCommit(request, cloneFolder, destination);
+  const expectedCommit = temporaryCommit ?? request.commit;
   const stampedRevision = await readBootstrappedStampRevision(
     destination,
     request.label,
   );
-  if (stampedRevision !== request.commit) {
+  if (stampedRevision !== expectedCommit) {
     throw new CliError(
       "regeneration_revision_mismatch",
-      `${request.label} regeneration stamped ${stampedRevision}, expected ${request.commit}`,
+      `${request.label} regeneration stamped ${stampedRevision}, expected ${expectedCommit}`,
       "check git and bootstrap in the template checkout, then rerun",
       1,
       false,
     );
+  }
+  if (temporaryCommit !== undefined) {
+    await rewriteTemporaryCommitInTree(
+      destination,
+      temporaryCommit,
+      request.commit,
+    );
+    await normalizeRegeneratedStamp(destination, request.commit, request.label);
   }
   return destination;
 }
@@ -252,6 +413,7 @@ export async function withTemplateUpgradeTrees<Result>(
       commit: inputs.baseCommit,
       repositoryName: inputs.repositoryName,
       sourcePacket: inputs.sourcePacket,
+      repositoryPinnedCommit: inputs.repositoryPinnedCommit,
       kernelRepository,
       env,
     });
@@ -262,6 +424,7 @@ export async function withTemplateUpgradeTrees<Result>(
       commit: inputs.targetCommit,
       repositoryName: inputs.repositoryName,
       sourcePacket: inputs.sourcePacket,
+      repositoryPinnedCommit: inputs.repositoryPinnedCommit,
       kernelRepository,
       env,
     });

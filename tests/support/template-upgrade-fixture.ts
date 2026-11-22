@@ -6,6 +6,29 @@ import { git, gitEnv, initRepository } from "./git-fixture.ts";
 import { siblingKernel } from "./kernel-sibling.ts";
 import { spawnBounded } from "./process.ts";
 
+export function templateUpgradeEnv() {
+  return {
+    ...process.env,
+    ...gitEnv,
+    KERNEL_REPOSITORY: siblingKernel(),
+  };
+}
+
+export function applyNoCheckJsonArgs(
+  repo: string,
+  targetCommit: string,
+): string[] {
+  return [
+    "apply",
+    "--repository",
+    repo,
+    "--to",
+    targetCommit,
+    "--no-check",
+    "--json",
+  ];
+}
+
 export async function invokeTemplateUpgradeMain(
   stdout: () => string,
   stderr: () => string,

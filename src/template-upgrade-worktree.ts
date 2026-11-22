@@ -3,6 +3,7 @@ import { readdir, readFile, readlink } from "node:fs/promises";
 import { join } from "node:path";
 import { CliError } from "./cli-error.ts";
 import {
+  gitCommitIdentityArgs,
   lstatIfPresent,
   runGitCommand,
   runGitText,
@@ -191,28 +192,6 @@ function parseStatusPaths(stdout: Uint8Array): string[] {
   return [...new Set(paths)].sort(compareCodeUnits);
 }
 
-function commitIdentityArgs(
-  worktree: string,
-  env: Readonly<Record<string, string | undefined>>,
-): string[] {
-  const hasName =
-    (env.GIT_AUTHOR_NAME !== undefined && env.GIT_AUTHOR_NAME !== "") ||
-    runGitCommand(worktree, ["config", "--get", "user.name"], { env })
-      .exitCode === 0;
-  const hasEmail =
-    (env.GIT_AUTHOR_EMAIL !== undefined && env.GIT_AUTHOR_EMAIL !== "") ||
-    runGitCommand(worktree, ["config", "--get", "user.email"], { env })
-      .exitCode === 0;
-  const args: string[] = [];
-  if (!hasName) {
-    args.push("-c", "user.name=template-upgrade");
-  }
-  if (!hasEmail) {
-    args.push("-c", "user.email=template-upgrade@local");
-  }
-  return args;
-}
-
 async function partitionChangedPaths(
   worktree: string,
   changedPaths: readonly string[],
@@ -292,7 +271,7 @@ export async function stageAndCommitWorktree(options: {
   );
   stageWorktreePaths(worktree, presentPaths, deletedPaths, env);
   const commitArgs = [
-    ...commitIdentityArgs(worktree, env),
+    ...gitCommitIdentityArgs(worktree, env),
     "commit",
     "--quiet",
     ...(changedPaths.length === 0 ? ["--allow-empty"] : []),

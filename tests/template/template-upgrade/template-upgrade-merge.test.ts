@@ -135,6 +135,9 @@ test("merges untouched, already, take, delete, stamp, bun.lock, and repository-o
   write(oldDir, "bun.lock", "lock-v1\n");
   write(newDir, "bun.lock", "lock-v2\n");
   write(oursDir, "bun.lock", "lock-owner\n");
+  write(oldDir, "package.json", '{"name":"demo","version":"0.0.1"}\n');
+  write(newDir, "package.json", '{"name":"demo","version":"0.0.2"}\n');
+  write(oursDir, "package.json", '{"name":"demo","version":"0.0.1"}\n');
   write(oursDir, "src/repository-only.ts", "export const owned = true;\n");
 
   const rows = await mergeTemplateUpgradeTrees(oldDir, newDir, oursDir);
@@ -151,6 +154,7 @@ test("merges untouched, already, take, delete, stamp, bun.lock, and repository-o
     },
     { path: "AGENTS.md", ownerLabel: "shared", outcome: "take" },
     { path: "bun.lock", ownerLabel: "generated", outcome: "regenerate" },
+    { path: "package.json", ownerLabel: "shared", outcome: "take" },
     {
       path: "tests/removed.test.ts",
       ownerLabel: "template",
@@ -361,15 +365,46 @@ test("repository-owned starting copies are never written, whatever the repositor
   expect(diffs[0]?.diff).toContain("+# starter v2");
 });
 
-test("bun.lock takes new when the repository matches old", async () => {
-  const { oldDir, newDir, oursDir } = makeThreeTreeFolders("lock");
-  write(oldDir, "bun.lock", "lock-v1\n");
-  write(newDir, "bun.lock", "lock-v2\n");
-  write(oursDir, "bun.lock", "lock-v1\n");
+test("bun.lock never takes the template lockfile: stays untouched when package.json is unchanged and marks regenerate when package.json changed", async () => {
+  const unchanged = makeThreeTreeFolders("lock-unchanged-pkg");
+  write(unchanged.oldDir, "bun.lock", "lock-v1\n");
+  write(unchanged.newDir, "bun.lock", "lock-v2\n");
+  write(unchanged.oursDir, "bun.lock", "lock-v1\n");
+  write(unchanged.oldDir, "package.json", '{"name":"demo"}\n');
+  write(unchanged.newDir, "package.json", '{"name":"demo"}\n');
+  write(unchanged.oursDir, "package.json", '{"name":"demo"}\n');
 
-  const rows = await mergeTemplateUpgradeTrees(oldDir, newDir, oursDir);
-  expect(rows).toEqual([
-    { path: "bun.lock", ownerLabel: "generated", outcome: "take" },
+  const unchangedRows = await mergeTemplateUpgradeTrees(
+    unchanged.oldDir,
+    unchanged.newDir,
+    unchanged.oursDir,
+  );
+  expect(unchangedRows).toEqual([
+    { path: "bun.lock", ownerLabel: "generated", outcome: "untouched" },
+    { path: "package.json", ownerLabel: "shared", outcome: "untouched" },
   ]);
-  expect(readFileSync(join(oursDir, "bun.lock"), "utf8")).toBe("lock-v2\n");
+  expect(readFileSync(join(unchanged.oursDir, "bun.lock"), "utf8")).toBe(
+    "lock-v1\n",
+  );
+
+  const changed = makeThreeTreeFolders("lock-changed-pkg");
+  write(changed.oldDir, "bun.lock", "lock-v1\n");
+  write(changed.newDir, "bun.lock", "lock-v2\n");
+  write(changed.oursDir, "bun.lock", "lock-v1\n");
+  write(changed.oldDir, "package.json", '{"name":"demo","version":"0.0.1"}\n');
+  write(changed.newDir, "package.json", '{"name":"demo","version":"0.0.2"}\n');
+  write(changed.oursDir, "package.json", '{"name":"demo","version":"0.0.1"}\n');
+
+  const changedRows = await mergeTemplateUpgradeTrees(
+    changed.oldDir,
+    changed.newDir,
+    changed.oursDir,
+  );
+  expect(changedRows).toEqual([
+    { path: "bun.lock", ownerLabel: "generated", outcome: "regenerate" },
+    { path: "package.json", ownerLabel: "shared", outcome: "take" },
+  ]);
+  expect(readFileSync(join(changed.oursDir, "bun.lock"), "utf8")).toBe(
+    "lock-v1\n",
+  );
 });

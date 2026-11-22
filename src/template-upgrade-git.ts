@@ -17,6 +17,9 @@ const DEFAULT_GIT_TIMEOUT_MS = 10_000;
 const FULL_COMMIT_PATTERN = /^[0-9a-f]{40}$/;
 const STRICT_UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
+export const TEMPLATE_UPGRADE_FLOOR =
+  "46e0f6659f879b45b68ef64d1d3a72f229b7b3bd";
+
 export interface GitCommandResult {
   readonly exitCode: number;
   readonly stdout: Uint8Array;
@@ -259,20 +262,20 @@ export function verifyGitRepository(
   );
 }
 
-export function readCommittedBytes(
+export function readCommittedBytesAt(
   repository: string,
+  revision: string,
   filePath: string,
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): Uint8Array | undefined {
-  const listed = runGitCommand(
-    repository,
-    ["cat-file", "-e", `HEAD:${filePath}`],
-    { env },
-  );
+  const objectSpec = `${revision}:${filePath}`;
+  const listed = runGitCommand(repository, ["cat-file", "-e", objectSpec], {
+    env,
+  });
   if (listed.timedOut) {
     throw new CliError(
       "repository_git_unreadable",
-      `git timed out while checking HEAD:${filePath} in ${repository}`,
+      `git timed out while checking ${objectSpec} in ${repository}`,
       `check git status in ${repository}, then rerun`,
       1,
       false,
@@ -281,19 +284,105 @@ export function readCommittedBytes(
   if (listed.exitCode !== 0) {
     return undefined;
   }
-  const shown = runGitCommand(repository, ["show", `HEAD:${filePath}`], {
+  const shown = runGitCommand(repository, ["show", objectSpec], {
     env,
   });
   if (shown.timedOut || shown.exitCode !== 0) {
     throw new CliError(
       "repository_git_unreadable",
-      `cannot read HEAD:${filePath} from ${repository}`,
+      `cannot read ${objectSpec} from ${repository}`,
       `verify git history in ${repository}, then rerun`,
       1,
       false,
     );
   }
   return shown.stdout;
+}
+
+export function readCommittedBytes(
+  repository: string,
+  filePath: string,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): Uint8Array | undefined {
+  return readCommittedBytesAt(repository, "HEAD", filePath, env);
+}
+
+export function gitCommitIdentityArgs(
+  worktree: string,
+  env: Readonly<Record<string, string | undefined>>,
+): string[] {
+  const hasName =
+    (env.GIT_AUTHOR_NAME !== undefined && env.GIT_AUTHOR_NAME !== "") ||
+    runGitCommand(worktree, ["config", "--get", "user.name"], { env })
+      .exitCode === 0;
+  const hasEmail =
+    (env.GIT_AUTHOR_EMAIL !== undefined && env.GIT_AUTHOR_EMAIL !== "") ||
+    runGitCommand(worktree, ["config", "--get", "user.email"], { env })
+      .exitCode === 0;
+  const args: string[] = [];
+  if (!hasName) {
+    args.push("-c", "user.name=template-upgrade");
+  }
+  if (!hasEmail) {
+    args.push("-c", "user.email=template-upgrade@local");
+  }
+  return args;
+}
+
+function assertCommitAncestor(options: {
+  readonly templateRoot: string;
+  readonly ancestor: string;
+  readonly descendant: string;
+  readonly env: Readonly<Record<string, string | undefined>>;
+  readonly timeoutMessage: string;
+  readonly notAncestor: GitRefusal;
+  readonly unreadablePrefix: string;
+  readonly unreadableRepair: string;
+}): void {
+  const {
+    templateRoot,
+    ancestor,
+    descendant,
+    env,
+    timeoutMessage,
+    notAncestor,
+    unreadablePrefix,
+    unreadableRepair,
+  } = options;
+  const ancestry = runGitCommand(
+    templateRoot,
+    ["merge-base", "--is-ancestor", ancestor, descendant],
+    { env },
+  );
+  if (ancestry.timedOut) {
+    throw new CliError(
+      "template_history_unreadable",
+      timeoutMessage,
+      "check the template checkout and rerun",
+      1,
+      false,
+    );
+  }
+  if (ancestry.exitCode === 0) {
+    return;
+  }
+  if (ancestry.exitCode === 1) {
+    throw new CliError(
+      notAncestor.code,
+      notAncestor.message,
+      notAncestor.repair,
+      notAncestor.exitCode ?? 2,
+      notAncestor.retrySafe ?? true,
+    );
+  }
+  const detail = new TextDecoder("utf-8").decode(ancestry.stderr).trim();
+  throw new CliError(
+    "template_history_unreadable",
+    `${unreadablePrefix}: ${detail}`,
+    unreadableRepair,
+    1,
+    false,
+  );
 }
 
 export function verifyTemplateAncestry(
@@ -318,40 +407,42 @@ export function verifyTemplateAncestry(
       true,
     );
   }
-  const ancestry = runGitCommand(
+  const floorShort = TEMPLATE_UPGRADE_FLOOR.slice(0, 7);
+  assertCommitAncestor({
     templateRoot,
-    ["merge-base", "--is-ancestor", baseCommit, targetCommit],
-    { env },
-  );
-  if (ancestry.timedOut) {
-    throw new CliError(
-      "template_history_unreadable",
-      `git timed out checking ancestry from ${baseCommit} to ${targetCommit}`,
-      "check the template checkout and rerun",
-      1,
-      false,
-    );
-  }
-  if (ancestry.exitCode === 0) {
-    return;
-  }
-  if (ancestry.exitCode === 1) {
-    throw new CliError(
-      "target_not_descendant",
-      `target commit ${targetCommit} is not a descendant of base commit ${baseCommit}; downgrades and divergent targets are refused`,
-      `choose a --to commit that descends from ${baseCommit.slice(0, 7)}`,
-      2,
-      true,
-    );
-  }
-  const detail = new TextDecoder("utf-8").decode(ancestry.stderr).trim();
-  throw new CliError(
-    "template_history_unreadable",
-    `cannot verify ancestry from ${baseCommit} to ${targetCommit}: ${detail}`,
-    "fetch complete history in the template checkout, then rerun",
-    1,
-    false,
-  );
+    ancestor: TEMPLATE_UPGRADE_FLOOR,
+    descendant: baseCommit,
+    env,
+    timeoutMessage: `git timed out checking template upgrade floor ${floorShort} against ${baseCommit}`,
+    notAncestor: {
+      code: "base_commit_unsupported",
+      message: `base commit ${baseCommit.slice(0, 7)} is older than the oldest supported template upgrade base ${floorShort}; older template commits required --profile in bootstrap`,
+      repair:
+        "regenerate the repository from a newer template commit, or carry changes by hand",
+      exitCode: 2,
+      retrySafe: true,
+    },
+    unreadablePrefix: `cannot verify template upgrade floor ${floorShort} against ${baseCommit}`,
+    unreadableRepair:
+      "fetch complete history in the template checkout with git fetch --unshallow, then rerun",
+  });
+  assertCommitAncestor({
+    templateRoot,
+    ancestor: baseCommit,
+    descendant: targetCommit,
+    env,
+    timeoutMessage: `git timed out checking ancestry from ${baseCommit} to ${targetCommit}`,
+    notAncestor: {
+      code: "target_not_descendant",
+      message: `target commit ${targetCommit} is not a descendant of base commit ${baseCommit}; downgrades and divergent targets are refused`,
+      repair: `choose a --to commit that descends from ${baseCommit.slice(0, 7)}`,
+      exitCode: 2,
+      retrySafe: true,
+    },
+    unreadablePrefix: `cannot verify ancestry from ${baseCommit} to ${targetCommit}`,
+    unreadableRepair:
+      "fetch complete history in the template checkout, then rerun",
+  });
 }
 
 export function gitMergeFile(

@@ -27,16 +27,25 @@ bun run upgrade apply --repository PATH [--to REF] [--no-check] [--json]
 
 ### Inputs and refusals
 
-The command reads only committed state (`HEAD:.cli-design-template.json`, and `HEAD:package.json` if the stamp has no `name`). It refuses with an error code and a repair step when:
+The command reads only committed state (`HEAD:.cli-design-template.json` and `HEAD:package.json`). It never moves the repository's kernel Pin: it reads the repository's pinned commit from `dependencies.agent-cli-kernel` (`#<40-hex>`) in `HEAD:package.json` and regenerates both the base and target template trees against that Pin. It refuses with an error code and a repair step when:
 
 - `--repository` is not a git repository root or has no `HEAD`.
 - `HEAD` has no `.cli-design-template.json`.
 - `.cli-design-template.json` has `templateDirty: true`.
 - The recorded `templateRevision` is not in this template checkout's history.
+- The recorded `templateRevision` is not a descendant of the oldest supported base commit (`46e0f66`).
 - `--to REF` cannot be resolved or is not a descendant of `templateRevision`.
+- `HEAD:package.json` is missing or its `dependencies.agent-cli-kernel` entry does not carry a full 40-character pinned commit (`#<40-hex>`).
+- Regenerating either tree with the repository's Pin fails (quoting the bootstrap error and naming moving the Pin as a possible cause).
 - The target branch `template-upgrade/<base7>-<target7>` already exists from a different `HEAD`.
 
-If `templateRevision` equals the resolved target commit, both `plan` and `apply` exit `0` with status `up-to-date` and write nothing.
+If `templateRevision` equals the resolved target commit, both `plan` and `apply` exit `0` with status `up-to-date` and write nothing. When the template's own Pin at the target (`kernel-pin.json`) differs from the repository's Pin, both `plan` and `apply` print one notice (and include `pinMoveNotice` in `--json` output) reminding you that a Template upgrade does not move the Pin and to move yours separately.
+
+### Oldest supported base
+
+The oldest supported base commit is `46e0f66` (`46e0f6659f879b45b68ef64d1d3a72f229b7b3bd`, 21 November 2026). Older template commits required `--profile` in `src/bootstrap.ts` and refuse when regenerated without it, so bases that do not descend from `46e0f66` are refused before regeneration.
+
+Running an older template commit's `src/bootstrap.ts` under a future Bun release or a future kernel layout is untested.
 
 ## File owners and merge outcomes
 
@@ -53,19 +62,19 @@ Every file or symbolic link present in the regenerated old or new tree receives 
 
 ### Merge outcomes
 
-| Outcome                 | Meaning                                                                                                                                                     |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `untouched`             | Old and new trees are identical; nothing changed.                                                                                                           |
-| `already`               | The repository already matches the new tree.                                                                                                                |
-| `take`                  | The repository matched old (or the file is `.cli-design-template.json`); the new file or symbolic link was copied in.                                       |
-| `delete`                | The repository matched old and the new tree removed the file; it was removed.                                                                               |
-| `regenerate`            | `bun.lock` changed in both the template and the repository; the repository's file is kept and rebuilt by `bun install` during `apply`.                      |
-| `merge`                 | Both sides changed and merged cleanly (key-level merge for `*.json` preserving repository key order; `git merge-file` for text).                            |
-| `template-copy-changed` | A `repository`-owned starting copy changed between the old and new template commits; the file is never written. `plan` prints the `git diff` of old vs new. |
-| `conflict`              | Both sides changed the same region or JSON key; `git merge-file` markers (`<<<<<<< ours`) were written.                                                     |
-| `conflict-add`          | Added by the template while a different file already exists in the repository; `git merge-file` ran against an empty base.                                  |
-| `conflict-delete`       | Deleted on one side and modified on the other; the repository's current state was kept.                                                                     |
-| `conflict-link`         | A symbolic link disagreed across old, new, and the repository; the repository's entry was kept.                                                             |
+| Outcome                 | Meaning                                                                                                                                                       |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `untouched`             | Old and new trees are identical; nothing changed.                                                                                                             |
+| `already`               | The repository already matches the new tree.                                                                                                                  |
+| `take`                  | The repository matched old (or the file is `.cli-design-template.json`); the new file or symbolic link was copied in.                                         |
+| `delete`                | The repository matched old and the new tree removed the file; it was removed.                                                                                 |
+| `regenerate`            | `package.json` changed; the repository's `bun.lock` is kept (never replaced with the template's kernel lockfile) and rebuilt by `bun install` during `apply`. |
+| `merge`                 | Both sides changed and merged cleanly (key-level merge for `*.json` preserving repository key order; `git merge-file` for text).                              |
+| `template-copy-changed` | A `repository`-owned starting copy changed between the old and new template commits; the file is never written. `plan` prints the `git diff` of old vs new.   |
+| `conflict`              | Both sides changed the same region or JSON key; `git merge-file` markers (`<<<<<<< ours`) were written.                                                       |
+| `conflict-add`          | Added by the template while a different file already exists in the repository; `git merge-file` ran against an empty base.                                    |
+| `conflict-delete`       | Deleted on one side and modified on the other; the repository's current state was kept.                                                                       |
+| `conflict-link`         | A symbolic link disagreed across old, new, and the repository; the repository's entry was kept.                                                               |
 
 `plan` prints the per-file rows, any `package.json` dependency version changes, and the `git diff` between the old and new regenerated copies for every `template-copy-changed` path. It removes its temporary worktree and exits `0` even when conflicts are present.
 

@@ -48,6 +48,7 @@ export interface TemplateUpgradePlanResult {
   readonly conflicts: readonly string[];
   readonly dependencyChanges: readonly PackageDependencyChange[];
   readonly templateCopyChanges: readonly TemplateUpgradeCopyChange[];
+  readonly pinMoveNotice?: string;
 }
 
 export type TemplateUpgradeApplyStatus =
@@ -71,6 +72,7 @@ export interface TemplateUpgradeApplyResult {
   readonly conflicts: readonly string[];
   readonly dependencyChanges: readonly PackageDependencyChange[];
   readonly templateCopyChanges: readonly TemplateUpgradeCopyChange[];
+  readonly pinMoveNotice?: string;
   readonly failedStep?: string;
   readonly checkCommandOutput?: string;
 }
@@ -97,6 +99,47 @@ interface ApplyMergeData {
   readonly templateCopyChanges: readonly TemplateUpgradeCopyChange[];
 }
 
+function pinMoveNoticeFor(inputs: TemplateUpgradeInputs): string | undefined {
+  if (inputs.repositoryPinnedCommit === inputs.templatePinnedCommit) {
+    return undefined;
+  }
+  return `The template's Pin moved from ${inputs.repositoryPinnedCommit.slice(0, 7)} to ${inputs.templatePinnedCommit.slice(0, 7)}; a Template upgrade does not move it. Move yours separately.`;
+}
+
+function optionalApplyFields(
+  options: {
+    readonly commit?: string;
+    readonly worktree?: string;
+    readonly failedStep?: string;
+    readonly checkCommandOutput?: string;
+  },
+  pinMoveNotice: string | undefined,
+): Partial<TemplateUpgradeApplyResult> {
+  const fields: {
+    commit?: string;
+    worktree?: string;
+    pinMoveNotice?: string;
+    failedStep?: string;
+    checkCommandOutput?: string;
+  } = {};
+  if (options.commit !== undefined) {
+    fields.commit = options.commit;
+  }
+  if (options.worktree !== undefined) {
+    fields.worktree = options.worktree;
+  }
+  if (pinMoveNotice !== undefined) {
+    fields.pinMoveNotice = pinMoveNotice;
+  }
+  if (options.failedStep !== undefined) {
+    fields.failedStep = options.failedStep;
+  }
+  if (options.checkCommandOutput !== undefined) {
+    fields.checkCommandOutput = options.checkCommandOutput;
+  }
+  return fields;
+}
+
 function buildTemplateUpgradeApplyRun(options: {
   readonly exitCode: number;
   readonly inputs: TemplateUpgradeInputs;
@@ -111,6 +154,7 @@ function buildTemplateUpgradeApplyRun(options: {
   readonly failedStep?: string;
   readonly checkCommandOutput?: string;
 }): TemplateUpgradeApplyRun {
+  const pinMoveNotice = pinMoveNoticeFor(options.inputs);
   const result: TemplateUpgradeApplyResult = {
     schemaVersion: SCHEMA_VERSION,
     action: "apply",
@@ -118,18 +162,11 @@ function buildTemplateUpgradeApplyRun(options: {
     baseCommit: options.inputs.baseCommit,
     targetCommit: options.inputs.targetCommit,
     branch: options.branch,
-    ...(options.commit === undefined ? {} : { commit: options.commit }),
-    ...(options.worktree === undefined ? {} : { worktree: options.worktree }),
     rows: options.rows ?? Object.freeze([]),
     conflicts: options.conflicts ?? Object.freeze([]),
     dependencyChanges: options.dependencyChanges ?? Object.freeze([]),
     templateCopyChanges: options.templateCopyChanges ?? Object.freeze([]),
-    ...(options.failedStep === undefined
-      ? {}
-      : { failedStep: options.failedStep }),
-    ...(options.checkCommandOutput === undefined
-      ? {}
-      : { checkCommandOutput: options.checkCommandOutput }),
+    ...optionalApplyFields(options, pinMoveNotice),
   };
   return { exitCode: options.exitCode, result: Object.freeze(result) };
 }
@@ -234,6 +271,7 @@ async function executePlanInWorktree(
   const conflicts = rows
     .filter((row) => isTemplateUpgradeConflict(row.outcome))
     .map((row) => row.path);
+  const pinMoveNotice = pinMoveNoticeFor(inputs);
   return Object.freeze({
     schemaVersion: SCHEMA_VERSION,
     action: "plan",
@@ -244,6 +282,7 @@ async function executePlanInWorktree(
     conflicts: Object.freeze(conflicts),
     dependencyChanges,
     templateCopyChanges,
+    ...(pinMoveNotice === undefined ? {} : { pinMoveNotice }),
   });
 }
 
@@ -252,6 +291,7 @@ export async function templateUpgradePlan(
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): Promise<TemplateUpgradePlanResult> {
   if (inputs.baseCommit === inputs.targetCommit) {
+    const pinMoveNotice = pinMoveNoticeFor(inputs);
     return Object.freeze({
       schemaVersion: SCHEMA_VERSION,
       action: "plan",
@@ -262,6 +302,7 @@ export async function templateUpgradePlan(
       conflicts: Object.freeze([]),
       dependencyChanges: Object.freeze([]),
       templateCopyChanges: Object.freeze([]),
+      ...(pinMoveNotice === undefined ? {} : { pinMoveNotice }),
     });
   }
   return await withTemplateUpgradeTrees(inputs, env, async (trees) => {

@@ -9,14 +9,17 @@ import {
 import { withTemplateUpgradeTrees } from "../../../src/template-upgrade-bootstrap.ts";
 import {
   decodeUtf8Strict,
+  gitCommitIdentityArgs,
   gitDiffFiles,
   gitMergeFile,
   lstatIfPresent,
   readCommittedBytes,
+  readCommittedBytesAt,
   removeWorktreeIfPresent,
   resolveTemplateCommit,
   runGitCommand,
   runGitText,
+  TEMPLATE_UPGRADE_FLOOR,
   toolchainEnvironment,
   verifyGitRepository,
   verifyTemplateAncestry,
@@ -30,6 +33,7 @@ import {
   treesEqual,
 } from "../../../src/template-upgrade-worktree.ts";
 import { main } from "../../../src/template-upgrade.ts";
+import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders, write } from "../../support/fixture-files.ts";
 import {
   commitIn,
@@ -37,8 +41,9 @@ import {
   gitEnv,
   initRepository,
 } from "../../support/git-fixture.ts";
-import { siblingKernel } from "../../support/kernel-sibling.ts";
+import { siblingKernel, trialBase } from "../../support/kernel-sibling.ts";
 import { streamWrites } from "../../support/stream-writes.ts";
+import { cloneTemplateAtHead } from "../../support/template-upgrade-fixture.ts";
 
 const folder = ownedFolders();
 const captureStream = streamWrites();
@@ -69,21 +74,20 @@ function captureCliError(run: () => unknown): CliError {
   throw new Error("Expected a CliError refusal.");
 }
 
+const DEFAULT_KERNEL_PIN = `github:nathanvale/agent-cli-kernel#${trialBase}`;
+
 function makeTemplateHistory() {
-  const templateRoot = folder("upgrade-template-");
-  initRepository(templateRoot);
-  const first = commitIn(templateRoot, "base commit", {
-    "README.md": "v1\n",
-  });
-  const second = commitIn(templateRoot, "target commit", {
-    "README.md": "v2\n",
-  });
-  return { templateRoot, baseCommit: first.sha, targetCommit: second.sha };
+  return {
+    templateRoot: ROOT,
+    baseCommit: TEMPLATE_UPGRADE_FLOOR,
+    targetCommit: git(ROOT, "rev-parse", "HEAD"),
+  };
 }
 
 function makeStampedRepository(
   stamp: Record<string, unknown>,
   packageName?: string,
+  kernelPinSpecifier: string | null = DEFAULT_KERNEL_PIN,
 ) {
   const repository = folder("upgrade-repo-");
   initRepository(repository);
@@ -91,8 +95,11 @@ function makeStampedRepository(
     ".cli-design-template.json": `${JSON.stringify(stamp, null, 2)}\n`,
   };
   if (packageName !== undefined) {
-    files["package.json"] =
-      `${JSON.stringify({ name: packageName }, null, 2)}\n`;
+    const manifest: Record<string, unknown> = { name: packageName };
+    if (kernelPinSpecifier !== null) {
+      manifest.dependencies = { "agent-cli-kernel": kernelPinSpecifier };
+    }
+    files["package.json"] = `${JSON.stringify(manifest, null, 2)}\n`;
   }
   const initial = commitIn(repository, "initial", files);
   return { repository, head: initial.sha };
@@ -350,15 +357,110 @@ test("refuses when the template upgrade branch already exists from another HEAD"
   );
 });
 
-test("withTemplateUpgradeTrees refuses a failing bootstrap, quotes its error, and cleans up", async () => {
-  const templateRoot = folder("broken-template-");
-  initRepository(templateRoot);
+test("refuses a base commit older than the template upgrade floor before regenerating", () => {
+  const { templateRoot, targetCommit } = makeTemplateHistory();
+  const preFloorCommit = git(
+    templateRoot,
+    "rev-parse",
+    `${TEMPLATE_UPGRADE_FLOOR}~1`,
+  );
+  const oldRepo = makeStampedRepository(
+    {
+      name: "demo",
+      templateRevision: preFloorCommit,
+      templateDirty: false,
+      sourcePacket: "/abs/packet",
+    },
+    "demo",
+  );
+  const refusal = captureCliError(() =>
+    resolveTemplateUpgradeInputs({
+      templateRoot,
+      repository: oldRepo.repository,
+      targetRef: targetCommit,
+      env: gitEnv,
+    }),
+  );
+  expect(refusal.code).toBe("base_commit_unsupported");
+  expect(refusal.message).toContain(TEMPLATE_UPGRADE_FLOOR.slice(0, 7));
+  expect(refusal.message).toContain("--profile");
+  expect(refusal.repair).toContain("newer template");
+  expect(refusal.repair).toContain("by hand");
+});
+
+test("refuses when HEAD:package.json has a missing or non-full agent-cli-kernel Pin", () => {
+  const { templateRoot, baseCommit, targetCommit } = makeTemplateHistory();
+  const baseStamp = {
+    name: "demo",
+    templateRevision: baseCommit,
+    templateDirty: false,
+    sourcePacket: "/abs/packet",
+  };
+  const noPackage = makeStampedRepository(baseStamp, undefined, null);
+  const missingPackage = captureCliError(() =>
+    resolveTemplateUpgradeInputs({
+      templateRoot,
+      repository: noPackage.repository,
+      targetRef: targetCommit,
+      env: gitEnv,
+    }),
+  );
+  expect(missingPackage.code).toBe("repository_pin_missing");
+  expect(missingPackage.repair).toContain("package.json");
+
+  const noKernelDep = makeStampedRepository(baseStamp, "demo", null);
+  const missingKernel = captureCliError(() =>
+    resolveTemplateUpgradeInputs({
+      templateRoot,
+      repository: noKernelDep.repository,
+      targetRef: targetCommit,
+      env: gitEnv,
+    }),
+  );
+  expect(missingKernel.code).toBe("repository_pin_missing");
+  expect(missingKernel.repair).toContain("agent-cli-kernel");
+
+  const shortPinRepo = makeStampedRepository(
+    baseStamp,
+    "demo",
+    "github:nathanvale/agent-cli-kernel#c084594",
+  );
+  const shortPin = captureCliError(() =>
+    resolveTemplateUpgradeInputs({
+      templateRoot,
+      repository: shortPinRepo.repository,
+      targetRef: targetCommit,
+      env: gitEnv,
+    }),
+  );
+  expect(shortPin.code).toBe("repository_pin_invalid");
+  expect(shortPin.repair).toContain("40-character");
+
+  const branchPinRepo = makeStampedRepository(
+    baseStamp,
+    "demo",
+    "github:nathanvale/agent-cli-kernel#main",
+  );
+  expect(
+    captureCliError(() =>
+      resolveTemplateUpgradeInputs({
+        templateRoot,
+        repository: branchPinRepo.repository,
+        targetRef: targetCommit,
+        env: gitEnv,
+      }),
+    ).code,
+  ).toBe("repository_pin_invalid");
+});
+
+test("withTemplateUpgradeTrees refuses a failing bootstrap, quotes its error, names moving the Pin in repair, and cleans up", async () => {
+  const { templateClone } = cloneTemplateAtHead(folder);
   const failingBootstrap =
     'process.stderr.write(JSON.stringify({error:{message:"planted boom",repair:"fix it"}})); process.exit(1);\n';
-  const first = commitIn(templateRoot, "broken base", {
+  const first = commitIn(templateClone, "broken base", {
     "src/bootstrap.ts": failingBootstrap,
   });
-  const second = commitIn(templateRoot, "broken target", {
+  const second = commitIn(templateClone, "broken target", {
     "README.md": "next\n",
   });
   const { repository } = makeStampedRepository(
@@ -371,7 +473,7 @@ test("withTemplateUpgradeTrees refuses a failing bootstrap, quotes its error, an
     "demo",
   );
   const inputs = resolveTemplateUpgradeInputs({
-    templateRoot,
+    templateRoot: templateClone,
     repository,
     targetRef: second.sha,
     env: gitEnv,
@@ -385,6 +487,7 @@ test("withTemplateUpgradeTrees refuses a failing bootstrap, quotes its error, an
   );
   expect(refusal.code).toBe("regeneration_failed");
   expect(refusal.message).toContain("planted boom");
+  expect(refusal.repair).toContain("Pin");
 });
 
 test("template upgrade environment, UTF-8 decoding, merge-file, and diff helpers enforce strictness", async () => {
@@ -446,8 +549,22 @@ test("template upgrade tree comparison, conflict scanning, and git worktree help
   expect(readCommittedBytes(repo, "a.txt", gitEnv)).toEqual(
     new Uint8Array(Buffer.from("1\n")),
   );
+  expect(readCommittedBytesAt(repo, sha, "a.txt", gitEnv)).toEqual(
+    new Uint8Array(Buffer.from("1\n")),
+  );
   expect(readCommittedBytes(repo, "absent.txt", gitEnv)).toBeUndefined();
-  verifyTemplateAncestry(repo, sha, sha, gitEnv);
+  expect(
+    gitCommitIdentityArgs(repo, {
+      GIT_AUTHOR_NAME: "author",
+      GIT_AUTHOR_EMAIL: "author@example.com",
+    }),
+  ).toEqual([]);
+  verifyTemplateAncestry(
+    ROOT,
+    TEMPLATE_UPGRADE_FLOOR,
+    git(ROOT, "rev-parse", "HEAD"),
+    gitEnv,
+  );
   expect(
     runGitText(
       repo,

@@ -1,7 +1,9 @@
 import { CliError } from "./cli-error.ts";
+import { kernelPinFile, parseKernelPin } from "./kernel-pin.ts";
 import {
   decodeUtf8Strict,
   readCommittedBytes,
+  readCommittedBytesAt,
   resolveTemplateCommit,
   verifyGitRepository,
   verifyTemplateAncestry,
@@ -9,7 +11,9 @@ import {
 
 const STAMP_FILE = ".cli-design-template.json";
 const PACKAGE_FILE = "package.json";
+const KERNEL_PACKAGE_NAME = "agent-cli-kernel";
 const FULL_COMMIT_PATTERN = /^[0-9a-f]{40}$/;
+const KERNEL_PIN_SPECIFIER_PATTERN = /^[^#]+#([0-9a-f]{40})$/;
 
 export interface TemplateUpgradeInputs {
   readonly templateRoot: string;
@@ -19,6 +23,8 @@ export interface TemplateUpgradeInputs {
   readonly targetCommit: string;
   readonly repositoryName: string;
   readonly sourcePacket: string;
+  readonly repositoryPinnedCommit: string;
+  readonly templatePinnedCommit: string;
 }
 
 export interface TemplateUpgradeInputRequest {
@@ -76,16 +82,14 @@ function readStampFields(
 }
 
 function readCommittedRepositoryName(
-  repository: string,
   stampFields: ReadonlyMap<string, unknown>,
-  env: Readonly<Record<string, string | undefined>>,
+  packageFields: ReadonlyMap<string, unknown> | undefined,
 ): string {
   const stampName = stampFields.get("name");
   if (typeof stampName === "string" && stampName.trim() !== "") {
     return stampName;
   }
-  const packageBytes = readCommittedBytes(repository, PACKAGE_FILE, env);
-  if (packageBytes === undefined) {
+  if (packageFields === undefined) {
     throw new CliError(
       "repository_name_missing",
       `cannot determine repository name: HEAD:${STAMP_FILE} has no name and HEAD:${PACKAGE_FILE} is missing`,
@@ -94,12 +98,6 @@ function readCommittedRepositoryName(
       true,
     );
   }
-  const packageFields = parseJsonObject(
-    packageBytes,
-    `HEAD:${PACKAGE_FILE}`,
-    "repository_name_missing",
-    `fix HEAD:${PACKAGE_FILE} so it is a valid JSON object with a non-empty "name"`,
-  );
   const packageName = packageFields.get("name");
   if (typeof packageName !== "string" || packageName.trim() === "") {
     throw new CliError(
@@ -111,6 +109,112 @@ function readCommittedRepositoryName(
     );
   }
   return packageName;
+}
+
+function readRepositoryPinnedCommit(
+  repository: string,
+  packageFields: ReadonlyMap<string, unknown> | undefined,
+): string {
+  if (packageFields === undefined) {
+    throw new CliError(
+      "repository_pin_missing",
+      `${repository} has no committed ${PACKAGE_FILE} at HEAD, so its kernel Pin cannot be read`,
+      `commit ${PACKAGE_FILE} with "${KERNEL_PACKAGE_NAME}" pinned to a full 40-character commit (#<40-hex>)`,
+      2,
+      true,
+    );
+  }
+  const dependencies = packageFields.get("dependencies");
+  const dependencyMap =
+    typeof dependencies === "object" &&
+    dependencies !== null &&
+    !Array.isArray(dependencies)
+      ? new Map<string, unknown>(Object.entries(dependencies))
+      : undefined;
+  const specifier = dependencyMap?.get(KERNEL_PACKAGE_NAME);
+  if (specifier === undefined) {
+    throw new CliError(
+      "repository_pin_missing",
+      `HEAD:${PACKAGE_FILE} has no dependencies.${KERNEL_PACKAGE_NAME} Pin`,
+      `add "${KERNEL_PACKAGE_NAME}" pinned to a full 40-character commit (#<40-hex>) in ${PACKAGE_FILE} and commit it`,
+      2,
+      true,
+    );
+  }
+  const match =
+    typeof specifier === "string"
+      ? KERNEL_PIN_SPECIFIER_PATTERN.exec(specifier)
+      : null;
+  if (match?.[1] === undefined) {
+    throw new CliError(
+      "repository_pin_invalid",
+      `HEAD:${PACKAGE_FILE} dependency "${KERNEL_PACKAGE_NAME}" (${JSON.stringify(specifier)}) is not pinned to a full 40-character commit`,
+      `pin "${KERNEL_PACKAGE_NAME}" to a full 40-character commit (#<40-hex>) in ${PACKAGE_FILE} and commit it`,
+      2,
+      true,
+    );
+  }
+  return match[1];
+}
+
+function readTemplatePinnedCommit(
+  templateRoot: string,
+  targetCommit: string,
+  env: Readonly<Record<string, string | undefined>>,
+): string {
+  const bytes = readCommittedBytesAt(
+    templateRoot,
+    targetCommit,
+    kernelPinFile,
+    env,
+  );
+  if (bytes === undefined) {
+    throw new CliError(
+      "template_pin_missing",
+      `template commit ${targetCommit.slice(0, 7)} has no ${kernelPinFile}`,
+      `verify ${kernelPinFile} exists at template commit ${targetCommit.slice(0, 7)}`,
+      1,
+      false,
+    );
+  }
+  const text = decodeUtf8Strict(
+    bytes,
+    `${targetCommit.slice(0, 7)}:${kernelPinFile}`,
+  );
+  try {
+    return parseKernelPin(text).commit;
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new CliError(
+      "template_pin_invalid",
+      `template commit ${targetCommit.slice(0, 7)} has an invalid ${kernelPinFile}: ${detail}`,
+      `restore a valid ${kernelPinFile} at template commit ${targetCommit.slice(0, 7)}`,
+      1,
+      false,
+    );
+  }
+}
+
+function readCommittedPackageFields(
+  repository: string,
+  stampFields: ReadonlyMap<string, unknown>,
+  env: Readonly<Record<string, string | undefined>>,
+): Map<string, unknown> | undefined {
+  const packageBytes = readCommittedBytes(repository, PACKAGE_FILE, env);
+  if (packageBytes === undefined) {
+    return undefined;
+  }
+  const stampName = stampFields.get("name");
+  const needsPackageName =
+    typeof stampName !== "string" || stampName.trim() === "";
+  return parseJsonObject(
+    packageBytes,
+    `HEAD:${PACKAGE_FILE}`,
+    needsPackageName ? "repository_name_missing" : "repository_pin_invalid",
+    needsPackageName
+      ? `fix HEAD:${PACKAGE_FILE} so it is a valid JSON object with a non-empty "name"`
+      : `fix HEAD:${PACKAGE_FILE} so it is a valid JSON object with a pinned "${KERNEL_PACKAGE_NAME}" dependency`,
+  );
 }
 
 export function resolveTemplateUpgradeInputs(
@@ -153,13 +257,26 @@ export function resolveTemplateUpgradeInputs(
     );
   }
 
-  const repositoryName = readCommittedRepositoryName(
+  const targetCommit = resolveTemplateCommit(templateRoot, targetRef, env);
+  verifyTemplateAncestry(templateRoot, baseCommit, targetCommit, env);
+  const packageFields = readCommittedPackageFields(
     repository,
     stampFields,
     env,
   );
-  const targetCommit = resolveTemplateCommit(templateRoot, targetRef, env);
-  verifyTemplateAncestry(templateRoot, baseCommit, targetCommit, env);
+  const repositoryName = readCommittedRepositoryName(
+    stampFields,
+    packageFields,
+  );
+  const repositoryPinnedCommit = readRepositoryPinnedCommit(
+    repository,
+    packageFields,
+  );
+  const templatePinnedCommit = readTemplatePinnedCommit(
+    templateRoot,
+    targetCommit,
+    env,
+  );
 
   return Object.freeze({
     templateRoot,
@@ -169,5 +286,7 @@ export function resolveTemplateUpgradeInputs(
     targetCommit,
     repositoryName,
     sourcePacket,
+    repositoryPinnedCommit,
+    templatePinnedCommit,
   });
 }

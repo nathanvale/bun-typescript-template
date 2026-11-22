@@ -21,6 +21,7 @@ import { tryMergeJsonText } from "./template-upgrade-json-merge.ts";
 
 const STAMP_FILE = ".cli-design-template.json";
 const LOCK_FILE = "bun.lock";
+const PACKAGE_FILE = "package.json";
 const REPOSITORY_COPIES = new Set(REPOSITORY_RECIPE_COPIES);
 const STRICT_UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
@@ -301,9 +302,6 @@ async function mergeDivergentPath(options: {
 }): Promise<TemplateUpgradeOutcome> {
   const { relativePath, oursPath, oldPath, newPath, env } = options;
   const { oursEntry, oldEntry, newEntry } = options;
-  if (relativePath === LOCK_FILE) {
-    return "regenerate";
-  }
   if (oldEntry.kind === "absent") {
     if (oursEntry.kind === "file" && newEntry.kind === "file") {
       await mergeAddedConflictFile(oursPath, newPath, env);
@@ -393,8 +391,11 @@ export async function mergeTemplateUpgradeTrees(
   const allPaths = [...new Set([...oldPaths, ...newPaths])].sort(
     compareCodeUnits,
   );
-  const rows: TemplateUpgradeRow[] = [];
+  const rowByPath = new Map<string, TemplateUpgradeRow>();
   for (const relativePath of allPaths) {
+    if (relativePath === LOCK_FILE) {
+      continue;
+    }
     const ownerLabel = classifyTemplateUpgradeFileOwner(relativePath);
     const outcome = await mergeSinglePath({
       relativePath,
@@ -404,7 +405,8 @@ export async function mergeTemplateUpgradeTrees(
       targetFolder,
       env,
     });
-    rows.push(
+    rowByPath.set(
+      relativePath,
       Object.freeze({
         path: relativePath,
         ownerLabel,
@@ -412,7 +414,27 @@ export async function mergeTemplateUpgradeTrees(
       }),
     );
   }
-  return Object.freeze(rows);
+  if (allPaths.includes(LOCK_FILE)) {
+    const packageRow = rowByPath.get(PACKAGE_FILE);
+    const packageChanged =
+      packageRow !== undefined &&
+      packageRow.outcome !== "untouched" &&
+      packageRow.outcome !== "already";
+    rowByPath.set(
+      LOCK_FILE,
+      Object.freeze({
+        path: LOCK_FILE,
+        ownerLabel: "generated",
+        outcome: packageChanged ? "regenerate" : "untouched",
+      }),
+    );
+  }
+  return Object.freeze(
+    allPaths.flatMap((relativePath) => {
+      const row = rowByPath.get(relativePath);
+      return row === undefined ? [] : [row];
+    }),
+  );
 }
 
 export async function diffTemplateUpgradeCopyChanges(

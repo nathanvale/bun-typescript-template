@@ -5,18 +5,18 @@ import { ownedFolders } from "../../support/fixture-files.ts";
 import {
   commitIn,
   git,
-  gitEnv,
   gitOutput,
   worktrees,
 } from "../../support/git-fixture.ts";
-import { siblingKernel } from "../../support/kernel-sibling.ts";
 import { processWatchdog } from "../../support/process.ts";
 import { streamWrites } from "../../support/stream-writes.ts";
 import {
+  applyNoCheckJsonArgs,
   bootstrapGeneratedRepository,
   cloneTemplateAtHead,
   commitTemplateUpgradeChanges,
   invokeTemplateUpgradeMain,
+  templateUpgradeEnv,
 } from "../../support/template-upgrade-fixture.ts";
 
 const folder = ownedFolders();
@@ -33,14 +33,7 @@ interface PlanJson {
     after: string | null;
   }[];
   templateCopyChanges: { path: string; diff: string }[];
-}
-
-function templateUpgradeEnv() {
-  return {
-    ...process.env,
-    ...gitEnv,
-    KERNEL_REPOSITORY: siblingKernel(),
-  };
+  pinMoveNotice?: string;
 }
 
 async function makeOwnerEditedRepository() {
@@ -100,6 +93,11 @@ function assertPlanRows(planJson: PlanJson): void {
     path: "package.json",
     ownerLabel: "shared",
     outcome: "merge",
+  });
+  expect(rowByPath.get("bun.lock")).toEqual({
+    path: "bun.lock",
+    ownerLabel: "generated",
+    outcome: "regenerate",
   });
   expect(rowByPath.get("bunfig.toml")).toEqual({
     path: "bunfig.toml",
@@ -281,18 +279,6 @@ test(
   },
   processWatchdog(4),
 );
-
-function applyNoCheckJsonArgs(repo: string, targetCommit: string): string[] {
-  return [
-    "apply",
-    "--repository",
-    repo,
-    "--to",
-    targetCommit,
-    "--no-check",
-    "--json",
-  ];
-}
 
 function seedLeftoverWorktree(
   targetRepo: string,
