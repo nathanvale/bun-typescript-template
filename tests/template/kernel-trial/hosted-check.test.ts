@@ -83,8 +83,10 @@ describe("the hosted check", () => {
       "test",
       "commits",
       "fault-replay",
+      "upgrade-gate",
     ]);
     expect(Object.values(workflow.jobs).map(({ name }) => name)).toEqual([
+      undefined,
       undefined,
       undefined,
       undefined,
@@ -96,6 +98,7 @@ describe("the hosted check", () => {
   test.each([
     ["ci.yml", "test", "bun run test"],
     ["ci.yml", "fault-replay", "bun run fault-replay"],
+    ["ci.yml", "upgrade-gate", "bun run upgrade-gate"],
     ["macos-nightly.yml", "check", "bun run check"],
     ["pin-verification.yml", "pin-verification", "bun run pin-verification"],
   ])(
@@ -118,6 +121,18 @@ describe("the hosted check", () => {
     expect(jobOf("ci.yml", "fault-replay").env).toEqual({
       KERNEL_REPOSITORY: "${{ github.workspace }}/../agent-cli-kernel",
     });
+  });
+
+  test("the upgrade gate job fetches full history, names the kernel repository in KERNEL_REPOSITORY, and stops within ten minutes", () => {
+    const job = jobOf("ci.yml", "upgrade-gate");
+    const checkout = job.steps.find(({ uses }) =>
+      uses?.startsWith("actions/checkout"),
+    );
+    expect([job["timeout-minutes"], job.env, checkout?.with]).toEqual([
+      10,
+      { KERNEL_REPOSITORY: "${{ github.workspace }}/../agent-cli-kernel" },
+      { "fetch-depth": 0 },
+    ]);
   });
 
   test("the pin verification workflow runs on every pull request, on every push to main, by hand, and once a week", () => {
