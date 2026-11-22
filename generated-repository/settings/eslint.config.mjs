@@ -24,7 +24,7 @@ const noLooseSourceWithSubjects = {
     const file = context.filename;
     if (file === "<input>" || file === "<text>") return {};
     const folder = dirname(file);
-    if (resolve(folder) !== resolve(context.cwd, "src")) return {};
+    if (resolve(folder) !== resolve(import.meta.dirname, "src")) return {};
     const name = basename(file);
     if (entrySourceFiles.has(name)) return {};
     const hasSubjectFolder = readdirSync(folder, { withFileTypes: true }).some(

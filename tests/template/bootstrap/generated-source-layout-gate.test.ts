@@ -1,12 +1,18 @@
 import { expect, test } from "bun:test";
+import { mkdirSync, readdirSync, symlinkSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { ESLint } from "eslint";
+import { readKernelPin } from "../../../src/kernel-pin.ts";
 import {
   bootstrapCliFixture,
-  invoke,
   requireSuccess,
+  ROOT,
+  runCommand,
   runIn,
 } from "../../support/bootstrap-cli-fixture.ts";
+import { gitEnv, inherited } from "../../support/git-fixture.ts";
+import { kernelCheckout } from "../../support/kernel-sibling.ts";
 import { processWatchdog } from "../../support/process.ts";
 
 const temporaryRoot = bootstrapCliFixture();
@@ -20,24 +26,49 @@ interface BoundaryCoverageViolation {
   readonly path: string;
 }
 
-interface CombinedFallowReport {
+interface FallowReport {
+  readonly boundary_violations?: readonly BoundaryViolation[];
+  readonly boundary_coverage_violations?: readonly BoundaryCoverageViolation[];
   readonly check?: {
     readonly boundary_violations?: readonly BoundaryViolation[];
     readonly boundary_coverage_violations?: readonly BoundaryCoverageViolation[];
   };
 }
 
-function parseCombinedReport(
-  stdout: string,
-  stderr: string,
-): CombinedFallowReport {
+function bootstrapIsolated(destination: string) {
+  return runCommand(
+    ROOT,
+    [
+      process.execPath,
+      "run",
+      "src/bootstrap.ts",
+      "--destination",
+      destination,
+      "--source-packet",
+      "https://example.test/spec",
+      "--json",
+    ],
+    { ...inherited(), ...gitEnv },
+  );
+}
+
+function linkTemplatePackagesAndKernel(destination: string): void {
+  const modules = join(destination, "node_modules");
+  mkdirSync(modules);
+  for (const name of readdirSync(join(ROOT, "node_modules"))) {
+    symlinkSync(join(ROOT, "node_modules", name), join(modules, name));
+  }
+  kernelCheckout(join(modules, readKernelPin(ROOT).repository));
+}
+
+function parseFallowReport(stdout: string, stderr: string): FallowReport {
   const start = stdout.indexOf("{");
   if (start < 0) {
     throw new Error(
       `Expected Fallow JSON output, got stdout=${JSON.stringify(stdout)} stderr=${JSON.stringify(stderr)}`,
     );
   }
-  return JSON.parse(stdout.slice(start)) as CombinedFallowReport;
+  return JSON.parse(stdout.slice(start)) as FallowReport;
 }
 
 async function expectBoundaryRefusal(
@@ -47,12 +78,132 @@ async function expectBoundaryRefusal(
 ): Promise<void> {
   const result = await runIn(destination, ["run", "quality:fallow"], {});
   expect(result.exitCode).toBe(1);
-  const report = parseCombinedReport(result.stdout, result.stderr);
+  const report = parseFallowReport(result.stdout, result.stderr);
   const pairs = (report.check?.boundary_violations ?? []).map(
     (entry) => `${entry.from_zone}->${entry.to_zone}`,
   );
   expect(pairs).toContain(`${expectedFrom}->${expectedTo}`);
 }
+
+async function writeTwoSubjectTree(destination: string): Promise<void> {
+  await mkdir(join(destination, "src/alpha"), { recursive: true });
+  await mkdir(join(destination, "src/beta"), { recursive: true });
+  await mkdir(join(destination, "src/shared"), { recursive: true });
+  await writeFile(
+    join(destination, "src/alpha/rules.ts"),
+    "export function alphaRule(value: string): string {\n  return value.trim();\n}\n",
+  );
+  await writeFile(
+    join(destination, "src/shared/edge.ts"),
+    'import { alphaRule } from "../alpha/rules.ts";\n\nexport function sharedEdge(value: string): string {\n  return alphaRule(value);\n}\n',
+  );
+  await writeFile(
+    join(destination, "src/alpha/run.ts"),
+    'import { sharedEdge } from "../shared/edge.ts";\nimport { alphaRule } from "./rules.ts";\n\nexport function runAlpha(value: string): string {\n  return sharedEdge(alphaRule(value));\n}\n',
+  );
+  await writeFile(
+    join(destination, "src/beta/run.ts"),
+    'import { alphaRule } from "../alpha/rules.ts";\nimport { sharedEdge } from "../shared/edge.ts";\n\nexport function runBeta(value: string): string {\n  return sharedEdge(alphaRule(value));\n}\n',
+  );
+}
+
+test(
+  "bootstrapped .fallowrc.json enforces source layout boundaries with Fallow directly",
+  async () => {
+    const destination = join(temporaryRoot(), "fast-boundaries");
+    requireSuccess(
+      await bootstrapIsolated(destination),
+      "bootstrap fast boundaries specimen",
+    );
+    linkTemplatePackagesAndKernel(destination);
+    await writeTwoSubjectTree(destination);
+
+    const fallowBin = join(ROOT, "node_modules/.bin/fallow");
+    const clean = await runCommand(destination, [
+      fallowBin,
+      "architecture",
+      "--boundaries",
+      "--format",
+      "json",
+      "--quiet",
+      "--fail-on-issues",
+    ]);
+    expect(clean.exitCode).toBe(0);
+
+    const betaPath = join(destination, "src/beta/run.ts");
+    const originalBeta = await readFile(betaPath, "utf8");
+    await writeFile(
+      betaPath,
+      `import { runAlpha } from "../alpha/run.ts";\n${originalBeta}\nvoid runAlpha;\n`,
+    );
+    const broken = await runCommand(destination, [
+      fallowBin,
+      "architecture",
+      "--boundaries",
+      "--format",
+      "json",
+      "--quiet",
+      "--fail-on-issues",
+    ]);
+    expect(broken.exitCode).toBe(1);
+    const report = parseFallowReport(broken.stdout, broken.stderr);
+    const pairs = (report.boundary_violations ?? []).map(
+      (entry) => `${entry.from_zone}->${entry.to_zone}`,
+    );
+    expect(pairs).toContain("subject/beta->subject/alpha");
+  },
+  processWatchdog(5),
+);
+
+test(
+  "bootstrapped eslint.config.mjs refuses loose src files when subject folders exist",
+  async () => {
+    const destination = join(temporaryRoot(), "fast-loose-lint");
+    requireSuccess(
+      await bootstrapIsolated(destination),
+      "bootstrap fast loose lint specimen",
+    );
+    linkTemplatePackagesAndKernel(destination);
+
+    const ruleId = "repository/no-loose-source-with-subjects";
+    const loosePath = join(destination, "src/loose.ts");
+    const looseRulesPath = join(destination, "src/rules.ts");
+    await writeFile(loosePath, 'export const looseValue = "loose";\n');
+
+    const rootEslint = new ESLint({ cwd: destination });
+    const [flatResult] = await rootEslint.lintFiles([loosePath]);
+    expect(
+      (flatResult?.messages ?? []).filter((item) => item.ruleId === ruleId),
+    ).toEqual([]);
+
+    await mkdir(join(destination, "src/.hidden"), { recursive: true });
+    const [hiddenDirResult] = await rootEslint.lintFiles([loosePath]);
+    expect(
+      (hiddenDirResult?.messages ?? []).filter(
+        (item) => item.ruleId === ruleId,
+      ),
+    ).toEqual([]);
+
+    await mkdir(join(destination, "src/alpha"), { recursive: true });
+    await writeFile(looseRulesPath, 'export const ruleValue = "rule";\n');
+
+    const [rootLoose, rootRules, rootCommands] = await rootEslint.lintFiles([
+      loosePath,
+      looseRulesPath,
+      join(destination, "src/commands.ts"),
+    ]);
+    expect((rootLoose?.messages ?? []).map((item) => item.ruleId)).toContain(
+      ruleId,
+    );
+    expect((rootRules?.messages ?? []).map((item) => item.ruleId)).toContain(
+      ruleId,
+    );
+    expect(
+      (rootCommands?.messages ?? []).filter((item) => item.ruleId === ruleId),
+    ).toEqual([]);
+  },
+  processWatchdog(5),
+);
 
 test(
   "a fresh Bootstrap passes flat and subject-folder checks and refuses every planted source layout violation",
@@ -60,13 +211,7 @@ test(
     const root = temporaryRoot();
     const destination = join(root, "source-layout-guard");
     requireSuccess(
-      await invoke(
-        "--destination",
-        destination,
-        "--source-packet",
-        "https://example.test/spec",
-        "--json",
-      ),
+      await bootstrapIsolated(destination),
       "bootstrap source layout guard specimen",
     );
     requireSuccess(
@@ -102,32 +247,20 @@ test(
     );
 
     await rm(flatHelperPath, { force: true });
-    await mkdir(join(destination, "src/alpha"), { recursive: true });
-    await mkdir(join(destination, "src/beta"), { recursive: true });
-    await mkdir(join(destination, "src/shared"), { recursive: true });
+    await writeTwoSubjectTree(destination);
 
     const alphaRulesPath = join(destination, "src/alpha/rules.ts");
     const sharedEdgePath = join(destination, "src/shared/edge.ts");
-    const alphaRunPath = join(destination, "src/alpha/run.ts");
     const betaRunPath = join(destination, "src/beta/run.ts");
 
-    const alphaRulesSource =
-      "export function alphaRule(value: string): string {\n  return value.trim();\n}\n";
-    const sharedEdgeSource =
-      'import { alphaRule } from "../alpha/rules.ts";\n\nexport function sharedEdge(value: string): string {\n  return alphaRule(value);\n}\n';
-    const alphaRunSource =
-      'import { sharedEdge } from "../shared/edge.ts";\nimport { alphaRule } from "./rules.ts";\n\nexport function runAlpha(value: string): string {\n  return sharedEdge(alphaRule(value));\n}\n';
-    const betaRunSource =
-      'import { alphaRule } from "../alpha/rules.ts";\nimport { sharedEdge } from "../shared/edge.ts";\n\nexport function runBeta(value: string): string {\n  return sharedEdge(alphaRule(value));\n}\n';
-    const subjectCommandsSource = `import { runAlpha } from "./alpha/run.ts";\nimport { runBeta } from "./beta/run.ts";\n${originalCommands}\nexport const wiredSubjects = [runAlpha, runBeta];\n`;
-    const subjectCliSource = `${originalCli}\nimport { wiredSubjects } from "./commands.ts";\nvoid wiredSubjects;\n`;
-
-    await writeFile(alphaRulesPath, alphaRulesSource);
-    await writeFile(sharedEdgePath, sharedEdgeSource);
-    await writeFile(alphaRunPath, alphaRunSource);
-    await writeFile(betaRunPath, betaRunSource);
-    await writeFile(commandsPath, subjectCommandsSource);
-    await writeFile(cliPath, subjectCliSource);
+    await writeFile(
+      commandsPath,
+      `import { runAlpha } from "./alpha/run.ts";\nimport { runBeta } from "./beta/run.ts";\n${originalCommands}\nexport const wiredSubjects = [runAlpha, runBeta];\n`,
+    );
+    await writeFile(
+      cliPath,
+      `${originalCli}\nimport { wiredSubjects } from "./commands.ts";\nvoid wiredSubjects;\n`,
+    );
     requireSuccess(
       await runIn(destination, ["run", "format"], {}),
       "format two-subject specimen",
@@ -218,7 +351,7 @@ test(
         {},
       );
       expect(fallowResult.exitCode).toBe(1);
-      const report = parseCombinedReport(
+      const report = parseFallowReport(
         fallowResult.stdout,
         fallowResult.stderr,
       );
