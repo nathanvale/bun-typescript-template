@@ -54,6 +54,9 @@ const ownFiles = [
   "config/platform-rules.mjs",
   "config/template-rules.mjs",
   "eslint.config.mjs",
+  "fallow-dead-code-recorded-hits.json",
+  "fallow-duplicates-recorded-hits.json",
+  "fallow-health-recorded-hits.json",
   "package.json",
   "src/cli.ts",
   "src/commands.ts",
@@ -173,21 +176,106 @@ describe("the kernel row", () => {
     expect(settings.match(/addons: [^,\n]*,/g)).toEqual(["addons: [],"]);
   });
 
-  test("gives a check command with no stamp check step", async () => {
+  test("gives a check command with no stamp check step, combined Fallow quality check with recorded hits, and a recording script", async () => {
     const { destination, request } = run();
     await bootstrapRow(request);
     const { scripts } = generatedJson(destination, "package.json") as {
       scripts: Record<string, string>;
     };
+    const { audit, health, rules } = generatedJson(
+      destination,
+      ".fallowrc.json",
+    ) as {
+      audit: {
+        deadCodeBaseline?: string;
+        dupesBaseline?: string;
+        healthBaseline?: string;
+      };
+      health: { maxFileLines?: number };
+      rules: Record<string, string>;
+    };
+    const recordedHits = {
+      deadCode: generatedJson(
+        destination,
+        "fallow-dead-code-recorded-hits.json",
+      ),
+      duplicates: generatedJson(
+        destination,
+        "fallow-duplicates-recorded-hits.json",
+      ),
+      health: generatedJson(destination, "fallow-health-recorded-hits.json"),
+    };
     expect({
       check: scripts.check,
+      qualityFallow: scripts["quality:fallow"],
+      recordHits: scripts["quality:fallow:record-hits"],
       stampScripts: Object.keys(scripts).filter((name) =>
         name.includes("stamp"),
       ),
+      fallowSettings: {
+        deadCodeBaseline: audit.deadCodeBaseline,
+        dupesBaseline: audit.dupesBaseline,
+        healthBaseline: audit.healthBaseline,
+        typeOnlyDependencies: rules["type-only-dependencies"],
+        cyclomatic: rules["complexity-cyclomatic"],
+        cognitive: rules["complexity-cognitive"],
+        crap: rules["complexity-crap"],
+        fileLines: rules["complexity-file-lines"],
+        maxFileLines: health.maxFileLines,
+      },
+      recordedHits,
     }).toEqual({
       check:
         "bun run lint && bun run format:check && bun run typecheck && bun run test && bun run --silent quality:fallow",
+      qualityFallow:
+        "node_modules/.bin/fallow --format json --quiet --type-aware --type-aware-require complete --fail-on-issues --baseline-mode identity --baseline fallow-dead-code-recorded-hits.json --dupes-baseline fallow-duplicates-recorded-hits.json --health-baseline fallow-health-recorded-hits.json",
+      recordHits:
+        "node_modules/.bin/fallow --format json --quiet --type-aware --type-aware-require complete --save-baseline fallow-dead-code-recorded-hits.json && node_modules/.bin/fallow dupes --format json --quiet --save-baseline fallow-duplicates-recorded-hits.json && node_modules/.bin/fallow health --report-only --format json --quiet --baseline-mode identity --save-baseline fallow-health-recorded-hits.json && biome format --write fallow-dead-code-recorded-hits.json fallow-duplicates-recorded-hits.json fallow-health-recorded-hits.json",
       stampScripts: [],
+      fallowSettings: {
+        deadCodeBaseline: "fallow-dead-code-recorded-hits.json",
+        dupesBaseline: "fallow-duplicates-recorded-hits.json",
+        healthBaseline: "fallow-health-recorded-hits.json",
+        typeOnlyDependencies: "off",
+        cyclomatic: "error",
+        cognitive: "error",
+        crap: "off",
+        fileLines: "error",
+        maxFileLines: 500,
+      },
+      recordedHits: {
+        deadCode: {
+          kind: "dead-code",
+          analysis_identity: {
+            mode: "type-aware",
+            semantic_schema_version: 3,
+            capabilities: ["symbol-use", "type-coupling"],
+            project_config_hash: "deferred:no-semantic-queries",
+            backend_family: "typescript-go",
+            completeness: "complete",
+            node_modules: "present",
+          },
+          identity: "dc1",
+          unused_files: [],
+          unused_exports: [],
+          unused_types: [],
+          unused_dependencies: [],
+          unused_dev_dependencies: [],
+        },
+        duplicates: {
+          kind: "dupes",
+          clone_groups: [],
+          clone_fingerprints: [],
+          normalized_clone_fingerprints: [],
+        },
+        health: {
+          kind: "health",
+          finding_counts: {},
+          identity_finding_counts: {},
+          runtime_coverage_findings: [],
+          target_keys: [],
+        },
+      },
     });
   });
 

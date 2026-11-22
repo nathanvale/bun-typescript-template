@@ -127,3 +127,11 @@ Add `--force` to `git worktree remove` if the worktree contains uncommitted chan
 3. Because the worktree differs from a fresh merge (including when a resolution deletes a conflicted file) and has no remaining markers, `apply` uses your resolved tree (without re-merging or nesting markers), runs `bun install` and `bun run check` (unless `--no-check`), stages only the changed paths by name (including `bun.lock` if `bun install` updated it), commits, creates `template-upgrade/<base7>-<target7>`, and removes the worktree.
 4. Rerunning `apply` after completion reports `already-done` and exits `0`.
 5. If a run is interrupted at any step before completion, rerunning the same `apply` command converges to the same branch and tree. If `.worktrees/template-upgrade-<target7>` is left over from an older `HEAD`, `apply` refuses and leaves it untouched so your edits are never lost.
+
+### Recording existing Fallow findings
+
+The first Template upgrade that brings the recorded-hits files (`fallow-dead-code-recorded-hits.json`, `fallow-duplicates-recorded-hits.json`, `fallow-health-recorded-hits.json`) runs `bun run quality:fallow:record-hits` itself, after `bun install` and before `bun run check`, and reports it as a step. The repository's existing findings are recorded, so the check fails only on new ones. A repository that already has the files keeps its own records.
+
+With `--no-check`, the upgrade does not record the findings and commits the upgrade branch with empty recorded-hits files; a later upgrade will not repeat the recording step because the files already exist in `HEAD`. Before merging, run `bun install` and `bun run quality:fallow:record-hits` in the upgrade worktree (or on the upgrade branch) and commit the updated recorded-hits files.
+
+Limit: a recorded complex function that gets more complex is not caught. Re-running `bun run quality:fallow:record-hits` after fixing a recorded finding is fine (the file shrinks); recording a new finding is refused by the hosted check on a pull request.

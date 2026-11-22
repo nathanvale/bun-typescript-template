@@ -1,0 +1,10 @@
+diff --git a/generated-repository/settings/fallow-duplicates-recorded-hits.json b/generated-repository/settings/fallow-duplicates-recorded-hits.json
+--- a/generated-repository/settings/fallow-duplicates-recorded-hits.json
++++ b/generated-repository/settings/fallow-duplicates-recorded-hits.json
+@@ -1,6 +1,5 @@
+ {
+   "kind": "dupes",
+   "clone_groups": [],
+-  "clone_fingerprints": [],
+   "normalized_clone_fingerprints": []
+ }

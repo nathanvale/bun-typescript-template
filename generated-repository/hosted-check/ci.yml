@@ -14,8 +14,19 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.4
       - run: bun install --frozen-lockfile
       - run: bun run check
+      - name: Check Fallow recorded hits did not grow
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -z "${BASE:-}" ] || ! git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
+            echo "Skipping Fallow recorded-hits growth check: no base commit ${BASE:-} in this checkout."
+            exit 0
+          fi
+          bun run --silent quality:fallow -- --fail-on-baseline-growth --baseline-base "$BASE"
