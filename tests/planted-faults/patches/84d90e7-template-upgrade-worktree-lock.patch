@@ -1,0 +1,12 @@
+diff --git a/src/template-upgrade-worktree-lock.ts b/src/template-upgrade-worktree-lock.ts
+--- a/src/template-upgrade-worktree-lock.ts
++++ b/src/template-upgrade-worktree-lock.ts
+@@ -355,7 +355,7 @@ export async function assertWorktreePathAvailableForTemplateUpgrade(
+   if (stats === undefined && record === undefined) {
+     return undefined;
+   }
+-  if (record !== undefined && isTemplateUpgradeLockedWorktree(record)) {
++  if (record !== undefined) {
+     return record;
+   }
+   throw unownedWorktreePathError(repository, worktreePath, record, stats);

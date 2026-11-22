@@ -2175,5 +2175,33 @@
     "testFile": "tests/template/bootstrap/kernel-row.test.ts",
     "title": "leaves Markdown with front matter and plain Markdown byte-identical when formatting a generated repository, while still checking TypeScript$",
     "source": "4da63bc fix(generated-repository): stop Biome rewriting Markdown and its front matter"
+  },
+  {
+    "id": "3de4a8a-template-upgrade-floor",
+    "patch": "tests/planted-faults/patches/3de4a8a-template-upgrade-floor.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-inputs.test.ts",
+    "title": "^refuses a base commit older than the template upgrade floor before regenerating$",
+    "source": "3de4a8a fix(template-upgrade): never move the kernel Pin, and refuse bases older than 46e0f66"
+  },
+  {
+    "id": "f116191-template-upgrade-symlink",
+    "patch": "tests/planted-faults/patches/f116191-template-upgrade-symlink.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-worktrees.test.ts",
+    "title": "^refuses a committed symbolic link ancestor folder in both plan and apply without touching external files$",
+    "source": "f116191 fix(template-upgrade): refuse symbolic link folders, keep owner work, make every conflict resolvable"
+  },
+  {
+    "id": "84d90e7-template-upgrade-worktree-lock",
+    "patch": "tests/planted-faults/patches/84d90e7-template-upgrade-worktree-lock.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-worktree-lock.test.ts",
+    "title": "^refuses and preserves an unlocked owner worktree at the temporary worktree path$",
+    "source": "84d90e7 fix(template-upgrade): only remove worktrees this command made"
+  },
+  {
+    "id": "f116191-template-upgrade-worktree-head",
+    "patch": "tests/planted-faults/patches/f116191-template-upgrade-worktree-head.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-worktrees.test.ts",
+    "title": "^refuses and preserves an existing upgrade worktree whose HEAD is older than the repository HEAD$",
+    "source": "f116191 fix(template-upgrade): refuse symbolic link folders, keep owner work, make every conflict resolvable"
   }
 ]

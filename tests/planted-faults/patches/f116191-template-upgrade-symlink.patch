@@ -1,0 +1,19 @@
+diff --git a/src/template-upgrade-worktree.ts b/src/template-upgrade-worktree.ts
+--- a/src/template-upgrade-worktree.ts
++++ b/src/template-upgrade-worktree.ts
+@@ -55,15 +55,6 @@ export async function assertNoSymlinkAncestors(
+     if (stats === undefined) {
+       return;
+     }
+-    if (stats.isSymbolicLink()) {
+-      throw new CliError(
+-        "symlink_ancestor",
+-        `symbolic link ancestor "${ancestor}" blocks path "${relativePath}"`,
+-        `replace symbolic link "${ancestor}" with a regular folder (or remove it), commit the change if tracked, then rerun`,
+-        2,
+-        true,
+-      );
+-    }
+     if (!stats.isDirectory()) {
+       return;
+     }

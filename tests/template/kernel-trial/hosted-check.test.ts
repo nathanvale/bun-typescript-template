@@ -24,6 +24,8 @@ type Step = {
 };
 type Job = {
   readonly name?: string;
+  readonly if?: string;
+  readonly "runs-on"?: string;
   readonly strategy?: {
     readonly matrix: { readonly shard: readonly number[] };
   };
@@ -83,8 +85,10 @@ describe("the hosted check", () => {
       "test",
       "commits",
       "fault-replay",
+      "upgrade-gate",
     ]);
     expect(Object.values(workflow.jobs).map(({ name }) => name)).toEqual([
+      undefined,
       undefined,
       undefined,
       undefined,
@@ -96,6 +100,7 @@ describe("the hosted check", () => {
   test.each([
     ["ci.yml", "test", "bun run test"],
     ["ci.yml", "fault-replay", "bun run fault-replay"],
+    ["ci.yml", "upgrade-gate", "bun run upgrade-gate"],
     ["macos-nightly.yml", "check", "bun run check"],
     ["pin-verification.yml", "pin-verification", "bun run pin-verification"],
   ])(
@@ -114,10 +119,50 @@ describe("the hosted check", () => {
     },
   );
 
-  test("the fault replay job names the kernel repository in KERNEL_REPOSITORY, because it runs each test in a temporary worktree that has no sibling", () => {
-    expect(jobOf("ci.yml", "fault-replay").env).toEqual({
-      KERNEL_REPOSITORY: "${{ github.workspace }}/../agent-cli-kernel",
-    });
+  test("the fault replay job fetches full history and names the kernel repository in KERNEL_REPOSITORY, because it runs each test in a temporary worktree that has no sibling", () => {
+    const job = jobOf("ci.yml", "fault-replay");
+    const checkout = job.steps.find(
+      ({ uses }) => uses === "actions/checkout@v4",
+    );
+    expect([job.env, checkout?.with]).toEqual([
+      { KERNEL_REPOSITORY: "${{ github.workspace }}/../agent-cli-kernel" },
+      { "fetch-depth": 0 },
+    ]);
+  });
+
+  test("the upgrade gate job runs on pull requests on ubuntu-latest with full history, pinned Bun, frozen install, KERNEL_REPOSITORY, and a ten-minute bound", () => {
+    const job = jobOf("ci.yml", "upgrade-gate");
+    const checkout = job.steps.find(
+      ({ uses }) => uses === "actions/checkout@v4",
+    );
+    const setupBunIndex = job.steps.findIndex(
+      ({ uses }) => uses === "oven-sh/setup-bun@v2",
+    );
+    const installIndex = job.steps.findIndex(
+      ({ run }) => run === "bun install --frozen-lockfile",
+    );
+    const gateIndex = job.steps.findIndex(
+      ({ run }) => run === "bun run upgrade-gate",
+    );
+    expect([
+      job.if,
+      job["runs-on"],
+      job["timeout-minutes"],
+      job.env,
+      checkout?.with,
+      job.steps[setupBunIndex]?.with,
+      setupBunIndex >= 0 &&
+        installIndex > setupBunIndex &&
+        gateIndex > installIndex,
+    ]).toEqual([
+      "github.event_name == 'pull_request'",
+      "ubuntu-latest",
+      10,
+      { KERNEL_REPOSITORY: "${{ github.workspace }}/../agent-cli-kernel" },
+      { "fetch-depth": 0 },
+      { "bun-version": "1.4.4" },
+      true,
+    ]);
   });
 
   test("the pin verification workflow runs on every pull request, on every push to main, by hand, and once a week", () => {
