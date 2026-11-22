@@ -5,9 +5,9 @@ import {
   CHANGE_NOTES_FOLDER,
   compareText,
   formatChangeNoteLines,
-  isValidChangeNoteFile,
+  isChangeNoteFile,
   parseChangeNote,
-} from "../../../scripts/change-notes.ts";
+} from "../../../src/change-notes.ts";
 import {
   checkChangeNotes,
   isShippedTemplatePath,
@@ -84,7 +84,7 @@ describe("change note parsing and formatting", () => {
 
   test("validates this pull request's own first change note", () => {
     const file = "2026-11-22-template-change-notes.json";
-    expect(isValidChangeNoteFile(file)).toBe(true);
+    expect(isChangeNoteFile(file)).toBe(true);
     const raw = readFileSync(join(ROOT, CHANGE_NOTES_FOLDER, file), "utf8");
     const parsed = parseChangeNote(
       `${CHANGE_NOTES_FOLDER}/${file}`,
@@ -191,13 +191,13 @@ describe("change note parsing and formatting", () => {
   });
 
   test("validates YYYY-MM-DD-<kebab-slug>.json filenames and calendar dates", () => {
-    expect(isValidChangeNoteFile("2026-11-22-template-change-notes.json")).toBe(
+    expect(isChangeNoteFile("2026-11-22-template-change-notes.json")).toBe(
       true,
     );
-    expect(isValidChangeNoteFile("2026-02-29-not-leap.json")).toBe(false);
-    expect(isValidChangeNoteFile("2026-13-01-bad-month.json")).toBe(false);
-    expect(isValidChangeNoteFile("2026-11-22-Upper.json")).toBe(false);
-    expect(isValidChangeNoteFile("note.json")).toBe(false);
+    expect(isChangeNoteFile("2026-02-29-not-leap.json")).toBe(false);
+    expect(isChangeNoteFile("2026-13-01-bad-month.json")).toBe(false);
+    expect(isChangeNoteFile("2026-11-22-Upper.json")).toBe(false);
+    expect(isChangeNoteFile("note.json")).toBe(false);
     expect(compareText("a", "b")).toBe(-1);
     expect(compareText("b", "a")).toBe(1);
     expect(compareText("a", "a")).toBe(0);

@@ -1,4 +1,4 @@
-import { CHANGE_NOTES_FOLDER } from "../src/recipe.ts";
+import { CHANGE_NOTES_FOLDER } from "./recipe.ts";
 
 export { CHANGE_NOTES_FOLDER };
 
@@ -15,14 +15,14 @@ const surfacePattern = /^[a-z0-9]+(?:[/-][a-z0-9]+)*$/;
 const noteFilePattern =
   /^(\d{4})-(\d{2})-(\d{2})-[a-z0-9]+(?:-[a-z0-9]+)*\.json$/;
 
-export type ChangeNoteKind = (typeof kinds)[number];
 export type ChangeNote = {
-  readonly kind: ChangeNoteKind;
+  readonly kind: "added" | "changed" | "fixed" | "removed" | "none";
   readonly breaking: boolean;
   readonly affects: readonly string[];
   readonly summary: string;
   readonly action: string | null;
 };
+type ChangeNoteKind = ChangeNote["kind"];
 export type ChangeNoteEntry = {
   readonly file: string;
   readonly note: ChangeNote;
@@ -37,7 +37,7 @@ export function compareText(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
-export function isValidChangeNoteFile(file: string): boolean {
+export function isChangeNoteFile(file: string): boolean {
   const match = noteFilePattern.exec(file);
   if (match === null) return false;
   const [year, month, day] = [

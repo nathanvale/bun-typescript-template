@@ -1,7 +1,9 @@
 import { rmdir } from "node:fs/promises";
 import { join } from "node:path";
+import type { ChangeNoteEntry } from "./change-notes.ts";
 import { CliError } from "./cli-error.ts";
 import { withTemplateUpgradeTrees } from "./template-upgrade-bootstrap.ts";
+import { readTemplateUpgradeChangeNotes } from "./template-upgrade-change-notes.ts";
 import {
   lstatIfPresent,
   type ProcessEnvMap,
@@ -19,6 +21,14 @@ import {
   type TemplateUpgradeCopyChange,
   type TemplateUpgradeRow,
 } from "./template-upgrade-merge.ts";
+import {
+  createTemplateUpgradeApplyRun,
+  createTemplateUpgradePlanResult,
+  skipTemplateUpgradeSteps,
+  type TemplateUpgradeApplyRun,
+  type TemplateUpgradeApplyStep,
+  type TemplateUpgradePlanResult,
+} from "./template-upgrade-report.ts";
 import {
   assertTargetWorktreeMatchesHead,
   assertWorktreePathAvailableForTemplateUpgrade,
@@ -44,59 +54,15 @@ import {
   treesEqual,
 } from "./template-upgrade-worktree.ts";
 
-const SCHEMA_VERSION = 1;
 const INSTALL_TIMEOUT_MS = 120_000;
 const CHECK_TIMEOUT_MS = 240_000;
-
-export interface TemplateUpgradePlanResult {
-  readonly schemaVersion: 1;
-  readonly action: "plan";
-  readonly status: "up-to-date" | "planned" | "conflicts";
-  readonly baseCommit: string;
-  readonly targetCommit: string;
-  readonly rows: readonly TemplateUpgradeRow[];
-  readonly conflicts: readonly string[];
-  readonly dependencyChanges: readonly PackageDependencyChange[];
-  readonly templateCopyChanges: readonly TemplateUpgradeCopyChange[];
-  readonly pinMoveNotice?: string;
-}
-
-export type TemplateUpgradeApplyStatus =
-  | "up-to-date"
-  | "already-done"
-  | "applied"
-  | "conflicts"
-  | "resolution-in-progress"
-  | "check-failed";
-
-export interface TemplateUpgradeApplyResult {
-  readonly schemaVersion: 1;
-  readonly action: "apply";
-  readonly status: TemplateUpgradeApplyStatus;
-  readonly baseCommit: string;
-  readonly targetCommit: string;
-  readonly branch: string;
-  readonly commit?: string;
-  readonly worktree?: string;
-  readonly rows: readonly TemplateUpgradeRow[];
-  readonly conflicts: readonly string[];
-  readonly dependencyChanges: readonly PackageDependencyChange[];
-  readonly templateCopyChanges: readonly TemplateUpgradeCopyChange[];
-  readonly pinMoveNotice?: string;
-  readonly leftoverWorktreeNotice?: string;
-  readonly failedStep?: string;
-  readonly checkCommandOutput?: string;
-}
-
-export interface TemplateUpgradeApplyRun {
-  readonly result: TemplateUpgradeApplyResult;
-  readonly exitCode: number;
-}
 
 interface ApplySession {
   readonly inputs: TemplateUpgradeInputs;
   readonly branch: string;
+  readonly commitSubject: string;
   readonly commitMessage: string;
+  readonly changeNotes: readonly ChangeNoteEntry[];
   readonly worktreesRoot: string;
   readonly temporaryWorktree: string;
   readonly targetWorktree: string;
@@ -110,72 +76,10 @@ interface ApplyMergeData {
   readonly templateCopyChanges: readonly TemplateUpgradeCopyChange[];
 }
 
-function pinMoveNoticeFor(inputs: TemplateUpgradeInputs): string | undefined {
-  if (inputs.repositoryPinnedCommit === inputs.templatePinnedCommit) {
-    return undefined;
-  }
-  return `The template's Pin moved from ${inputs.repositoryPinnedCommit.slice(0, 7)} to ${inputs.templatePinnedCommit.slice(0, 7)}; a Template upgrade does not move it. Move yours separately.`;
-}
-
-interface ApplyRunOptions {
-  readonly exitCode: number;
-  readonly inputs: TemplateUpgradeInputs;
-  readonly branch: string;
-  readonly status: TemplateUpgradeApplyStatus;
-  readonly commit?: string;
-  readonly worktree?: string;
-  readonly leftoverWorktreeNotice?: string;
-  readonly rows?: readonly TemplateUpgradeRow[];
-  readonly conflicts?: readonly string[];
-  readonly dependencyChanges?: readonly PackageDependencyChange[];
-  readonly templateCopyChanges?: readonly TemplateUpgradeCopyChange[];
-  readonly failedStep?: string;
-  readonly checkCommandOutput?: string;
-}
-
-function definedApplyFields(
-  options: ApplyRunOptions,
-  pinMoveNotice: string | undefined,
-): Partial<TemplateUpgradeApplyResult> {
-  const pairs: readonly (readonly [string, string | undefined])[] = [
-    ["commit", options.commit],
-    ["worktree", options.worktree],
-    ["pinMoveNotice", pinMoveNotice],
-    ["leftoverWorktreeNotice", options.leftoverWorktreeNotice],
-    ["failedStep", options.failedStep],
-    ["checkCommandOutput", options.checkCommandOutput],
-  ];
-  return Object.fromEntries(
-    pairs.filter(
-      (pair): pair is readonly [string, string] => pair[1] !== undefined,
-    ),
-  );
-}
-
-function buildTemplateUpgradeApplyRun(
-  options: ApplyRunOptions,
-): TemplateUpgradeApplyRun {
-  const pinMoveNotice = pinMoveNoticeFor(options.inputs);
-  const result: TemplateUpgradeApplyResult = {
-    schemaVersion: SCHEMA_VERSION,
-    action: "apply",
-    status: options.status,
-    baseCommit: options.inputs.baseCommit,
-    targetCommit: options.inputs.targetCommit,
-    branch: options.branch,
-    rows: options.rows ?? Object.freeze([]),
-    conflicts: options.conflicts ?? Object.freeze([]),
-    dependencyChanges: options.dependencyChanges ?? Object.freeze([]),
-    templateCopyChanges: options.templateCopyChanges ?? Object.freeze([]),
-    ...definedApplyFields(options, pinMoveNotice),
-  };
-  return { exitCode: options.exitCode, result: Object.freeze(result) };
-}
-
 async function findCommittedWorktreeHead(
   session: ApplySession,
 ): Promise<string | undefined> {
-  const { inputs, commitMessage, targetWorktree, env } = session;
+  const { inputs, commitSubject, targetWorktree, env } = session;
   const stats = await lstatIfPresent(targetWorktree);
   if (stats === undefined || !stats.isDirectory()) {
     return undefined;
@@ -198,13 +102,20 @@ async function findCommittedWorktreeHead(
     ["log", "-1", "--format=%s", worktreeHead],
     env,
   );
-  return subject === commitMessage ? worktreeHead : undefined;
+  return subject === commitSubject ? worktreeHead : undefined;
 }
 
 async function tryFinishCommittedWorktree(
   session: ApplySession,
 ): Promise<TemplateUpgradeApplyRun | undefined> {
-  const { inputs, branch, targetWorktree, temporaryWorktree, env } = session;
+  const {
+    inputs,
+    branch,
+    changeNotes,
+    targetWorktree,
+    temporaryWorktree,
+    env,
+  } = session;
   const worktreeHead = await findCommittedWorktreeHead(session);
   if (worktreeHead === undefined) {
     return undefined;
@@ -225,22 +136,27 @@ async function tryFinishCommittedWorktree(
     temporaryWorktree,
     env,
   );
-  return buildTemplateUpgradeApplyRun({
+  return createTemplateUpgradeApplyRun({
     exitCode: 0,
     inputs,
     branch,
     status: "applied",
     commit: worktreeHead,
+    changeNotes,
+    steps: skipTemplateUpgradeSteps("recovered committed worktree"),
   });
 }
 
-async function executePlanInWorktree(
-  inputs: TemplateUpgradeInputs,
-  oldFolder: string,
-  newFolder: string,
-  planWorktree: string,
-  env: ProcessEnvMap,
-): Promise<TemplateUpgradePlanResult> {
+async function executePlanInWorktree(options: {
+  readonly inputs: TemplateUpgradeInputs;
+  readonly changeNotes: readonly ChangeNoteEntry[];
+  readonly oldFolder: string;
+  readonly newFolder: string;
+  readonly planWorktree: string;
+  readonly env: ProcessEnvMap;
+}): Promise<TemplateUpgradePlanResult> {
+  const { inputs, changeNotes, oldFolder, newFolder, planWorktree, env } =
+    options;
   const beforePackage = await readTextIfFile(
     join(planWorktree, "package.json"),
   );
@@ -264,18 +180,18 @@ async function executePlanInWorktree(
   const conflicts = rows
     .filter((row) => isTemplateUpgradeConflict(row.outcome))
     .map((row) => row.path);
-  const pinMoveNotice = pinMoveNoticeFor(inputs);
-  return Object.freeze({
-    schemaVersion: SCHEMA_VERSION,
-    action: "plan",
+  const sharedMerges = rows
+    .filter((row) => row.ownerLabel === "shared" && row.outcome === "merge")
+    .map((row) => row.path);
+  return createTemplateUpgradePlanResult({
+    inputs,
     status: conflicts.length > 0 ? "conflicts" : "planned",
-    baseCommit: inputs.baseCommit,
-    targetCommit: inputs.targetCommit,
     rows,
     conflicts: Object.freeze(conflicts),
+    sharedMerges: Object.freeze(sharedMerges),
     dependencyChanges,
     templateCopyChanges,
-    ...(pinMoveNotice === undefined ? {} : { pinMoveNotice }),
+    changeNotes,
   });
 }
 
@@ -284,20 +200,23 @@ export async function templateUpgradePlan(
   env: ProcessEnvMap = process.env,
 ): Promise<TemplateUpgradePlanResult> {
   if (inputs.baseCommit === inputs.targetCommit) {
-    const pinMoveNotice = pinMoveNoticeFor(inputs);
-    return Object.freeze({
-      schemaVersion: SCHEMA_VERSION,
-      action: "plan",
+    return createTemplateUpgradePlanResult({
+      inputs,
       status: "up-to-date",
-      baseCommit: inputs.baseCommit,
-      targetCommit: inputs.targetCommit,
       rows: Object.freeze([]),
       conflicts: Object.freeze([]),
+      sharedMerges: Object.freeze([]),
       dependencyChanges: Object.freeze([]),
       templateCopyChanges: Object.freeze([]),
-      ...(pinMoveNotice === undefined ? {} : { pinMoveNotice }),
+      changeNotes: Object.freeze([]),
     });
   }
+  const changeNotes = readTemplateUpgradeChangeNotes(
+    inputs.templateRoot,
+    inputs.baseCommit,
+    inputs.targetCommit,
+    env,
+  );
   await assertNotSymlinkPath(
     join(inputs.repository, ".worktrees"),
     ".worktrees",
@@ -312,73 +231,126 @@ export async function templateUpgradePlan(
       env,
     });
     try {
-      return await executePlanInWorktree(
+      return await executePlanInWorktree({
         inputs,
-        trees.oldFolder,
-        trees.newFolder,
+        changeNotes,
+        oldFolder: trees.oldFolder,
+        newFolder: trees.newFolder,
         planWorktree,
         env,
-      );
+      });
     } finally {
       await removeTemplateUpgradeWorktree(inputs.repository, planWorktree, env);
     }
   });
 }
 
-function runSingleCheckCommandStep(
-  session: ApplySession,
-  mergeData: ApplyMergeData,
-  args: readonly string[],
-  failedStep: string,
-  timeoutMilliseconds: number,
-): TemplateUpgradeApplyRun | undefined {
-  const stepResult = runBunStep({
-    worktree: session.targetWorktree,
-    args,
-    timeoutMilliseconds,
-    env: session.env,
+function createApplyStep(
+  command: "bun install" | "bun run check",
+  ran: boolean,
+  outcome: "passed" | "failed" | "skipped",
+  reason?: string,
+): TemplateUpgradeApplyStep {
+  return Object.freeze({
+    command,
+    ran,
+    outcome,
+    ...(reason === undefined ? {} : { reason }),
   });
-  if (stepResult.ok) {
-    return undefined;
-  }
-  return buildTemplateUpgradeApplyRun({
+}
+
+function checkFailedRun(options: {
+  readonly session: ApplySession;
+  readonly mergeData: ApplyMergeData;
+  readonly failedStep: "bun install" | "bun run check";
+  readonly steps: readonly TemplateUpgradeApplyStep[];
+  readonly output: string;
+}): TemplateUpgradeApplyRun {
+  const { session, mergeData, failedStep, steps, output } = options;
+  return createTemplateUpgradeApplyRun({
     exitCode: 1,
     inputs: session.inputs,
     branch: session.branch,
     status: "check-failed",
     worktree: session.targetWorktree,
+    changeNotes: session.changeNotes,
+    steps,
     ...mergeData,
     failedStep,
-    checkCommandOutput: stepResult.output,
+    checkCommandOutput: output,
   });
 }
 
 function runCheckCommandSteps(
   session: ApplySession,
   mergeData: ApplyMergeData,
-): TemplateUpgradeApplyRun | undefined {
-  return (
-    runSingleCheckCommandStep(
-      session,
-      mergeData,
-      ["install"],
-      "bun install",
-      INSTALL_TIMEOUT_MS,
-    ) ??
-    runSingleCheckCommandStep(
-      session,
-      mergeData,
-      ["run", "check"],
-      "bun run check",
-      CHECK_TIMEOUT_MS,
-    )
-  );
+):
+  | { readonly ok: true; readonly steps: readonly TemplateUpgradeApplyStep[] }
+  | { readonly ok: false; readonly run: TemplateUpgradeApplyRun } {
+  const install = runBunStep({
+    worktree: session.targetWorktree,
+    args: ["install"],
+    timeoutMilliseconds: INSTALL_TIMEOUT_MS,
+    env: session.env,
+  });
+  if (!install.ok) {
+    const steps = Object.freeze([
+      createApplyStep("bun install", true, "failed"),
+      createApplyStep("bun run check", false, "skipped", "bun install failed"),
+    ]);
+    return {
+      ok: false,
+      run: checkFailedRun({
+        session,
+        mergeData,
+        failedStep: "bun install",
+        steps,
+        output: install.output,
+      }),
+    };
+  }
+  const check = runBunStep({
+    worktree: session.targetWorktree,
+    args: ["run", "check"],
+    timeoutMilliseconds: CHECK_TIMEOUT_MS,
+    env: session.env,
+  });
+  if (!check.ok) {
+    const steps = Object.freeze([
+      createApplyStep("bun install", true, "passed"),
+      createApplyStep("bun run check", true, "failed"),
+    ]);
+    return {
+      ok: false,
+      run: checkFailedRun({
+        session,
+        mergeData,
+        failedStep: "bun run check",
+        steps,
+        output: check.output,
+      }),
+    };
+  }
+  return {
+    ok: true,
+    steps: Object.freeze([
+      createApplyStep("bun install", true, "passed"),
+      createApplyStep("bun run check", true, "passed"),
+    ]),
+  };
 }
 
 async function inspectExistingTemplateUpgradeBranch(
   session: ApplySession,
 ): Promise<TemplateUpgradeApplyRun | undefined> {
-  const { inputs, branch, targetWorktree, temporaryWorktree, env } = session;
+  const {
+    inputs,
+    branch,
+    changeNotes,
+    targetWorktree,
+    temporaryWorktree,
+    env,
+  } = session;
   const existingTip = resolveRefIfPresent(
     inputs.repository,
     `refs/heads/${branch}`,
@@ -414,12 +386,14 @@ async function inspectExistingTemplateUpgradeBranch(
     const leftoverWorktreeNotice = [targetNotice, temporaryNotice]
       .filter((notice): notice is string => notice !== undefined)
       .join(" ");
-    return buildTemplateUpgradeApplyRun({
+    return createTemplateUpgradeApplyRun({
       exitCode: 0,
       inputs,
       branch,
       status: "already-done",
       commit: existingTip,
+      changeNotes,
+      steps: skipTemplateUpgradeSteps("already-done"),
       ...(leftoverWorktree === undefined
         ? {}
         : { worktree: leftoverWorktree, leftoverWorktreeNotice }),
@@ -458,7 +432,14 @@ async function prepareTemplateUpgradeWorktree(
   | { readonly kind: "stopped"; readonly run: TemplateUpgradeApplyRun }
   | { readonly kind: "ready"; readonly usingResolved: boolean }
 > {
-  const { inputs, branch, temporaryWorktree, targetWorktree, env } = session;
+  const {
+    inputs,
+    branch,
+    changeNotes,
+    temporaryWorktree,
+    targetWorktree,
+    env,
+  } = session;
   await assertTargetWorktreeMatchesHead({
     repository: inputs.repository,
     repositoryHead: inputs.repositoryHead,
@@ -481,12 +462,14 @@ async function prepareTemplateUpgradeWorktree(
     );
     return {
       kind: "stopped",
-      run: buildTemplateUpgradeApplyRun({
+      run: createTemplateUpgradeApplyRun({
         exitCode: 5,
         inputs,
         branch,
         status: "resolution-in-progress",
         worktree: targetWorktree,
+        changeNotes,
+        steps: skipTemplateUpgradeSteps("resolution-in-progress"),
         rows,
         conflicts: markerFiles,
         dependencyChanges: diffPackageDependencies(beforePackage, afterPackage),
@@ -519,8 +502,10 @@ async function collectTemplateUpgradeConflicts(
 async function publishTemplateUpgradeBranch(
   session: ApplySession,
   mergeData: ApplyMergeData,
+  steps: readonly TemplateUpgradeApplyStep[],
 ): Promise<TemplateUpgradeApplyRun> {
-  const { inputs, branch, commitMessage, targetWorktree, env } = session;
+  const { inputs, branch, commitMessage, changeNotes, targetWorktree, env } =
+    session;
   const commitSha = await stageAndCommitWorktree({
     worktree: targetWorktree,
     message: commitMessage,
@@ -537,12 +522,14 @@ async function publishTemplateUpgradeBranch(
     { env },
   );
   await removeTemplateUpgradeWorktree(inputs.repository, targetWorktree, env);
-  return buildTemplateUpgradeApplyRun({
+  return createTemplateUpgradeApplyRun({
     exitCode: 0,
     inputs,
     branch,
     status: "applied",
     commit: commitSha,
+    changeNotes,
+    steps,
     ...mergeData,
   });
 }
@@ -567,7 +554,8 @@ async function finalizeTemplateUpgradeWorktree(
   rows: readonly TemplateUpgradeRow[],
   templateCopyChanges: readonly TemplateUpgradeCopyChange[],
 ): Promise<TemplateUpgradeApplyRun> {
-  const { inputs, branch, targetWorktree, skipCheckCommand } = session;
+  const { inputs, branch, changeNotes, targetWorktree, skipCheckCommand } =
+    session;
   const afterPackage = await readTextIfFile(
     join(targetWorktree, "package.json"),
   );
@@ -582,24 +570,28 @@ async function finalizeTemplateUpgradeWorktree(
       targetWorktree,
     );
     if (conflicts.length > 0) {
-      return buildTemplateUpgradeApplyRun({
+      return createTemplateUpgradeApplyRun({
         exitCode: 2,
         inputs,
         branch,
         status: "conflicts",
         worktree: targetWorktree,
+        changeNotes,
+        steps: skipTemplateUpgradeSteps("conflicts"),
         ...mergeData,
         conflicts,
       });
     }
   }
+  let steps = skipTemplateUpgradeSteps("--no-check");
   if (!skipCheckCommand) {
-    const failure = runCheckCommandSteps(session, mergeData);
-    if (failure !== undefined) {
-      return failure;
+    const checked = runCheckCommandSteps(session, mergeData);
+    if (!checked.ok) {
+      return checked.run;
     }
+    steps = checked.steps;
   }
-  return await publishTemplateUpgradeBranch(session, mergeData);
+  return await publishTemplateUpgradeBranch(session, mergeData, steps);
 }
 
 async function applyTemplateUpgradeInTrees(
@@ -671,13 +663,21 @@ export async function templateUpgradeApply(
     inputs.targetCommit,
   );
   if (inputs.baseCommit === inputs.targetCommit) {
-    return buildTemplateUpgradeApplyRun({
+    return createTemplateUpgradeApplyRun({
       exitCode: 0,
       inputs,
       branch,
       status: "up-to-date",
+      changeNotes: Object.freeze([]),
+      steps: skipTemplateUpgradeSteps("up-to-date"),
     });
   }
+  const changeNotes = readTemplateUpgradeChangeNotes(
+    inputs.templateRoot,
+    inputs.baseCommit,
+    inputs.targetCommit,
+    env,
+  );
   const paths = templateUpgradeWorktreePaths(
     inputs.repository,
     inputs.targetCommit,
@@ -685,10 +685,16 @@ export async function templateUpgradeApply(
   const session: ApplySession = {
     inputs,
     branch,
-    commitMessage: templateUpgradeCommitMessage(
+    commitSubject: templateUpgradeCommitMessage(
       inputs.baseCommit,
       inputs.targetCommit,
     ),
+    commitMessage: templateUpgradeCommitMessage(
+      inputs.baseCommit,
+      inputs.targetCommit,
+      changeNotes,
+    ),
+    changeNotes,
     ...paths,
     skipCheckCommand: options.skipCheckCommand,
     env,

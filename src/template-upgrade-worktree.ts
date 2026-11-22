@@ -2,6 +2,7 @@ import type { Dirent } from "node:fs";
 import { constants, realpathSync } from "node:fs";
 import { open, readdir, readlink } from "node:fs/promises";
 import { join } from "node:path";
+import { type ChangeNoteEntry, formatChangeNoteLines } from "./change-notes.ts";
 import { CliError } from "./cli-error.ts";
 import {
   gitCommitIdentityArgs,
@@ -107,8 +108,14 @@ export function templateUpgradeBranchName(
 export function templateUpgradeCommitMessage(
   baseCommit: string,
   targetCommit: string,
+  changeNotes: readonly ChangeNoteEntry[] = [],
 ): string {
-  return `Upgrade template ${baseCommit.slice(0, 7)} to ${targetCommit.slice(0, 7)}`;
+  const subject = `Upgrade template ${baseCommit.slice(0, 7)} to ${targetCommit.slice(0, 7)}`;
+  if (changeNotes.length === 0) {
+    return subject;
+  }
+  const lines = formatChangeNoteLines(changeNotes);
+  return `${subject}\n\nChange notes (${changeNotes.length}):\n${lines.join("\n")}`;
 }
 
 export function templateUpgradeWorktreePaths(
