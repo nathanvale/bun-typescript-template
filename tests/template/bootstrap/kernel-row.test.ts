@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, readFileSync, statSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
 import {
@@ -315,6 +321,109 @@ describe("the kernel row", () => {
       },
     });
   });
+
+  test(
+    "leaves Markdown with front matter and plain Markdown byte-identical when formatting a generated repository, while still checking TypeScript",
+    async () => {
+      const { destination, request } = run();
+      await bootstrapRow(request);
+      initRepository(destination);
+      const biome = join(ROOT, "node_modules/.bin/biome");
+      const frontmatterNote = [
+        "---",
+        "name: example-note",
+        "title: 'Single quoted'",
+        "placeholder: {{title}}",
+        "tags:",
+        "  - template",
+        "  - markdown",
+        "---",
+        "",
+        "# Example Note",
+        "",
+        "* Keep approved template formatting",
+        "",
+        "| Key | Value |",
+        "| --- | --- |",
+        "| a | 1 |",
+        "",
+      ].join("\n");
+      const plainNote = [
+        "# Plain Markdown",
+        "",
+        "* bullet one",
+        "* bullet two",
+        "",
+        "Paragraph with   preserved spacing.",
+        "",
+      ].join("\n");
+      mkdirSync(join(destination, "notes"), { recursive: true });
+      writeFileSync(join(destination, "notes/frontmatter.md"), frontmatterNote);
+      writeFileSync(join(destination, "notes/plain.md"), plainNote);
+
+      const markdownPaths = [
+        ".agents/skills/agent-cli-kernel/SKILL.md",
+        ".agents/skills/verify-cli/SKILL.md",
+        "notes/frontmatter.md",
+        "notes/plain.md",
+      ];
+      const before = Object.fromEntries(
+        markdownPaths.map((file) => [
+          file,
+          readFileSync(join(destination, file), "utf8"),
+        ]),
+      );
+      expect(before[".agents/skills/agent-cli-kernel/SKILL.md"]).toMatch(
+        /^---\nname: agent-cli-kernel\n/,
+      );
+      expect(before[".agents/skills/verify-cli/SKILL.md"]).toMatch(
+        /^---\nname: verify-cli\n/,
+      );
+
+      const check = await spawnBounded([biome, "format", "."], {
+        cwd: destination,
+        processGroup: true,
+      });
+      const write = await spawnBounded([biome, "format", "--write", "."], {
+        cwd: destination,
+        processGroup: true,
+      });
+      const after = Object.fromEntries(
+        markdownPaths.map((file) => [
+          file,
+          readFileSync(join(destination, file), "utf8"),
+        ]),
+      );
+      expect({
+        checkExit: check.exit,
+        writeExit: write.exit,
+        after,
+      }).toEqual({
+        checkExit: 0,
+        writeExit: 0,
+        after: before,
+      });
+
+      writeFileSync(
+        join(destination, "src/unformatted.ts"),
+        "export const answer=42\n",
+      );
+      const control = await spawnBounded([biome, "format", "."], {
+        cwd: destination,
+        processGroup: true,
+      });
+      expect({
+        exit: control.exit,
+        namesFile: control.stderr.includes("src/unformatted.ts"),
+        reportsFormat: control.stderr.includes("Formatter would have printed"),
+      }).toEqual({
+        exit: 1,
+        namesFile: true,
+        reportsFormat: true,
+      });
+    },
+    processWatchdog(3),
+  );
 });
 
 function kernelFoldersNamedIn(paths: readonly string[]): string[] {

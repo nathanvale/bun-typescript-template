@@ -2168,5 +2168,12 @@
     "testFile": "tests/template/toolchain/generated-hosted-check-recorded-hits.test.ts",
     "title": "^refuses a head commit that adds a complex function and records it in recorded-hits files$",
     "source": "78a67e1 fix(generated-repository): the hosted check refuses a pull request that grows the recorded Fallow findings"
+  },
+  {
+    "id": "4da63bc-generated-biome",
+    "patch": "tests/planted-faults/patches/4da63bc-generated-biome.patch",
+    "testFile": "tests/template/bootstrap/kernel-row.test.ts",
+    "title": "leaves Markdown with front matter and plain Markdown byte-identical when formatting a generated repository, while still checking TypeScript$",
+    "source": "4da63bc fix(generated-repository): stop Biome rewriting Markdown and its front matter"
   }
 ]

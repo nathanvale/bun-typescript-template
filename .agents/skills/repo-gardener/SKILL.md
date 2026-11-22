@@ -1,5 +1,4 @@
 ---
-
 name: repo-gardener
 description: Keep the rule table in `CODING_STANDARDS.md` in step with its witnesses and gates, and file and folder names on the glossary's words. Use after an operator correction or a review finding, to give a Review only or Partial row a gate, to weed what nothing uses any more, or to fix a name the names check refuses.
 ---
