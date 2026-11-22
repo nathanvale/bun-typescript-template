@@ -284,14 +284,22 @@ function seedLeftoverWorktree(
   targetRepo: string,
   sourceRepo: string,
   branch: string,
-  target7: string,
+  targetCommit: string,
 ): string {
   const leftover = join(
     targetRepo,
     ".worktrees",
-    `template-upgrade-${target7}`,
+    `template-upgrade-${targetCommit.slice(0, 7)}`,
   );
   git(targetRepo, "worktree", "add", "--quiet", "--detach", leftover, "HEAD");
+  git(
+    targetRepo,
+    "worktree",
+    "lock",
+    "--reason",
+    `template-upgrade ${targetCommit}`,
+    leftover,
+  );
   git(
     leftover,
     "fetch",
@@ -468,7 +476,7 @@ test(
       cleanRepo2,
       cleanRepo1,
       branch,
-      target7,
+      targetCommit,
     );
     const convergeRun = await invokeTemplateUpgradeMain(
       stdout,

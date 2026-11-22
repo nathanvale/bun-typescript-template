@@ -1,4 +1,4 @@
-import { mkdir, rmdir } from "node:fs/promises";
+import { rmdir } from "node:fs/promises";
 import { join } from "node:path";
 import { CliError } from "./cli-error.ts";
 import { withTemplateUpgradeTrees } from "./template-upgrade-bootstrap.ts";
@@ -20,16 +20,21 @@ import {
   type TemplateUpgradeRow,
 } from "./template-upgrade-merge.ts";
 import {
-  assertNotSymlinkPath,
   assertTargetWorktreeMatchesHead,
+  assertWorktreePathAvailableForTemplateUpgrade,
   assertWorktreePathsNotSymlinks,
+  createLockedTemplateUpgradeWorktree,
+  moveLockedTemplateUpgradeWorktree,
+  removeTemplateUpgradeLeftoverWorktree,
+  removeTemplateUpgradeWorktree,
+} from "./template-upgrade-worktree-lock.ts";
+import {
+  assertNotSymlinkPath,
   compareCodeUnits,
   findConflictMarkerFiles,
   readGitOutput,
   readTextIfFile,
   readWorktreeOwnHead,
-  removeTemplateUpgradeLeftoverWorktree,
-  removeWorktreeIfPresent,
   resolveRefIfPresent,
   runBunStep,
   stageAndCommitWorktree,
@@ -40,7 +45,6 @@ import {
 } from "./template-upgrade-worktree.ts";
 
 const SCHEMA_VERSION = 1;
-const WORKTREE_TIMEOUT_MS = 30_000;
 const INSTALL_TIMEOUT_MS = 120_000;
 const CHECK_TIMEOUT_MS = 240_000;
 
@@ -215,8 +219,12 @@ async function tryFinishCommittedWorktree(
     },
     { env },
   );
-  await removeWorktreeIfPresent(inputs.repository, targetWorktree, env);
-  await removeWorktreeIfPresent(inputs.repository, temporaryWorktree, env);
+  await removeTemplateUpgradeWorktree(inputs.repository, targetWorktree, env);
+  await removeTemplateUpgradeWorktree(
+    inputs.repository,
+    temporaryWorktree,
+    env,
+  );
   return buildTemplateUpgradeApplyRun({
     exitCode: 0,
     inputs,
@@ -296,23 +304,13 @@ export async function templateUpgradePlan(
   );
   return await withTemplateUpgradeTrees(inputs, env, async (trees) => {
     const planWorktree = join(trees.scratchFolder, "plan-worktree");
-    runGitText(
-      inputs.repository,
-      [
-        "worktree",
-        "add",
-        "--quiet",
-        "--detach",
-        planWorktree,
-        inputs.repositoryHead,
-      ],
-      {
-        code: "worktree_create_failed",
-        message: `cannot create temporary worktree for ${inputs.repository}`,
-        repair: `run git worktree prune in ${inputs.repository}, then rerun`,
-      },
-      { env, timeoutMilliseconds: WORKTREE_TIMEOUT_MS },
-    );
+    await createLockedTemplateUpgradeWorktree({
+      repository: inputs.repository,
+      worktreePath: planWorktree,
+      commit: inputs.repositoryHead,
+      targetCommit: inputs.targetCommit,
+      env,
+    });
     try {
       return await executePlanInWorktree(
         inputs,
@@ -322,7 +320,7 @@ export async function templateUpgradePlan(
         env,
       );
     } finally {
-      await removeWorktreeIfPresent(inputs.repository, planWorktree, env);
+      await removeTemplateUpgradeWorktree(inputs.repository, planWorktree, env);
     }
   });
 }
@@ -395,27 +393,36 @@ async function inspectExistingTemplateUpgradeBranch(
     env,
   );
   if (existingParent === inputs.repositoryHead) {
-    const leftoverWorktreeNotice = await removeTemplateUpgradeLeftoverWorktree({
+    const targetNotice = await removeTemplateUpgradeLeftoverWorktree({
       repository: inputs.repository,
       worktreePath: targetWorktree,
       expectedHead: existingTip,
       env,
     });
-    await removeTemplateUpgradeLeftoverWorktree({
+    const temporaryNotice = await removeTemplateUpgradeLeftoverWorktree({
       repository: inputs.repository,
       worktreePath: temporaryWorktree,
       expectedHead: inputs.repositoryHead,
       env,
     });
+    const leftoverWorktree =
+      targetNotice !== undefined
+        ? targetWorktree
+        : temporaryNotice !== undefined
+          ? temporaryWorktree
+          : undefined;
+    const leftoverWorktreeNotice = [targetNotice, temporaryNotice]
+      .filter((notice): notice is string => notice !== undefined)
+      .join(" ");
     return buildTemplateUpgradeApplyRun({
       exitCode: 0,
       inputs,
       branch,
       status: "already-done",
       commit: existingTip,
-      ...(leftoverWorktreeNotice === undefined
+      ...(leftoverWorktree === undefined
         ? {}
-        : { worktree: targetWorktree, leftoverWorktreeNotice }),
+        : { worktree: leftoverWorktree, leftoverWorktreeNotice }),
     });
   }
   throw new CliError(
@@ -460,7 +467,11 @@ async function prepareTemplateUpgradeWorktree(
     env,
   });
   if (await hasModifiedTargetWorktree(session)) {
-    await removeWorktreeIfPresent(inputs.repository, temporaryWorktree, env);
+    await removeTemplateUpgradeWorktree(
+      inputs.repository,
+      temporaryWorktree,
+      env,
+    );
     const markerFiles = await findConflictMarkerFiles(targetWorktree);
     if (markerFiles.length === 0) {
       return { kind: "ready", usingResolved: true };
@@ -483,17 +494,12 @@ async function prepareTemplateUpgradeWorktree(
       }),
     };
   }
-  await removeWorktreeIfPresent(inputs.repository, targetWorktree, env);
-  runGitText(
-    inputs.repository,
-    ["worktree", "move", temporaryWorktree, targetWorktree],
-    {
-      code: "worktree_move_failed",
-      message: `cannot move merge worktree into ${targetWorktree}`,
-      repair: `remove leftover worktrees with git worktree prune in ${inputs.repository}, then rerun`,
-    },
-    { env, timeoutMilliseconds: WORKTREE_TIMEOUT_MS },
-  );
+  await moveLockedTemplateUpgradeWorktree({
+    repository: inputs.repository,
+    sourceWorktree: temporaryWorktree,
+    targetWorktree,
+    env,
+  });
   return { kind: "ready", usingResolved: false };
 }
 
@@ -530,7 +536,7 @@ async function publishTemplateUpgradeBranch(
     },
     { env },
   );
-  await removeWorktreeIfPresent(inputs.repository, targetWorktree, env);
+  await removeTemplateUpgradeWorktree(inputs.repository, targetWorktree, env);
   return buildTemplateUpgradeApplyRun({
     exitCode: 0,
     inputs,
@@ -544,26 +550,14 @@ async function publishTemplateUpgradeBranch(
 async function createTemporaryTemplateUpgradeWorktree(
   session: ApplySession,
 ): Promise<void> {
-  const { inputs, worktreesRoot, temporaryWorktree, env } = session;
-  await removeWorktreeIfPresent(inputs.repository, temporaryWorktree, env);
-  await mkdir(worktreesRoot, { recursive: true });
-  runGitText(
-    inputs.repository,
-    [
-      "worktree",
-      "add",
-      "--quiet",
-      "--detach",
-      temporaryWorktree,
-      inputs.repositoryHead,
-    ],
-    {
-      code: "worktree_create_failed",
-      message: `cannot create temporary worktree at ${temporaryWorktree}`,
-      repair: `run git worktree prune in ${inputs.repository}, then rerun`,
-    },
-    { env, timeoutMilliseconds: WORKTREE_TIMEOUT_MS },
-  );
+  const { inputs, temporaryWorktree, env } = session;
+  await createLockedTemplateUpgradeWorktree({
+    repository: inputs.repository,
+    worktreePath: temporaryWorktree,
+    commit: inputs.repositoryHead,
+    targetCommit: inputs.targetCommit,
+    env,
+  });
 }
 
 async function finalizeTemplateUpgradeWorktree(
@@ -652,7 +646,11 @@ async function applyTemplateUpgradeInTrees(
     );
   } finally {
     if (!temporaryMoved) {
-      await removeWorktreeIfPresent(inputs.repository, temporaryWorktree, env);
+      await removeTemplateUpgradeWorktree(
+        inputs.repository,
+        temporaryWorktree,
+        env,
+      );
       if (!worktreesExisted) {
         await rmdir(worktreesRoot).catch(() => {});
       }
@@ -703,6 +701,16 @@ export async function templateUpgradeApply(
   if (existing !== undefined) {
     return existing;
   }
+  await assertWorktreePathAvailableForTemplateUpgrade(
+    inputs.repository,
+    paths.temporaryWorktree,
+    env,
+  );
+  await assertWorktreePathAvailableForTemplateUpgrade(
+    inputs.repository,
+    paths.targetWorktree,
+    env,
+  );
   const recovered = await tryFinishCommittedWorktree(session);
   if (recovered !== undefined) {
     return recovered;

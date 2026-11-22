@@ -25,9 +25,9 @@ import {
   withoutGitLocation,
 } from "../../../src/template-upgrade-git.ts";
 import { resolveTemplateUpgradeInputs } from "../../../src/template-upgrade-inputs.ts";
+import { removeTemplateUpgradeWorktree } from "../../../src/template-upgrade-worktree-lock.ts";
 import {
   findConflictMarkerFiles,
-  removeWorktreeIfPresent,
   templateUpgradeBranchName,
   templateUpgradeCommitMessage,
   treesEqual,
@@ -579,7 +579,8 @@ test("template upgrade tree comparison, conflict scanning, and git worktree help
   const wt = join(repo, ".worktrees", "sample");
   mkdirSync(join(repo, ".worktrees"), { recursive: true });
   git(repo, "worktree", "add", "--quiet", "--detach", wt, sha);
-  await removeWorktreeIfPresent(repo, wt, gitEnv);
+  git(repo, "worktree", "lock", "--reason", `template-upgrade ${sha}`, wt);
+  await removeTemplateUpgradeWorktree(repo, wt, gitEnv);
   expect(existsSync(wt)).toBe(false);
   expect(templateUpgradeCommitMessage("1234567890", "abcdef0123")).toBe(
     "Upgrade template 1234567 to abcdef0",

@@ -39,7 +39,8 @@ The command reads only committed state (`HEAD:.cli-design-template.json` and `HE
 - Regenerating either tree with the repository's Pin fails (quoting the bootstrap error and naming moving the Pin as a possible cause).
 - The target branch `template-upgrade/<base7>-<target7>` already exists from a different `HEAD`.
 - Any ancestor folder of an upgraded path (in the old tree, new tree, or worktree), or `.worktrees` itself, is a symbolic link (`symlink_ancestor`).
-- The active upgrade worktree `.worktrees/template-upgrade-<target7>` already exists at a different `HEAD` (`worktree_exists_other_head`); copy what you need out of it, remove it with `git worktree remove --force`, and rerun.
+- The active upgrade worktree `.worktrees/template-upgrade-<target7>` already exists at a different `HEAD` (`worktree_exists_other_head`); copy what you need out of it, unlock it with `git worktree unlock`, remove it with `git worktree remove --force`, and rerun.
+- Either `.worktrees/template-upgrade-tmp` or `.worktrees/template-upgrade-<target7>` holds anything not locked by this command with a reason starting `template-upgrade ` (`worktree_not_owned`), such as an unlocked worktree, a worktree locked for another reason, or a plain folder or file; move or remove it after saving any work you need, then rerun.
 
 If `templateRevision` equals the resolved target commit, both `plan` and `apply` exit `0` with status `up-to-date` and write nothing. When the template's own Pin at the target (`kernel-pin.json`) differs from the repository's Pin, both `plan` and `apply` print one notice (and include `pinMoveNotice` in `--json` output) reminding you that a Template upgrade does not move the Pin and to move yours separately.
 
@@ -88,16 +89,31 @@ Every file or symbolic link present in the regenerated old or new tree receives 
 - Active upgrade worktree: `.worktrees/template-upgrade-<target7>`
 - Published branch: `template-upgrade/<base7>-<target7>`
 
+### Worktree lock and manual removal
+
+Right after this command creates a worktree (`git worktree add`), it locks it with `git worktree lock --reason "template-upgrade <target commit>" <path>`. Both `.worktrees/template-upgrade-tmp` and `.worktrees/template-upgrade-<target7>` carry that lock (kept through `git worktree move`).
+
+Before removing anything at `.worktrees/template-upgrade-tmp` or `.worktrees/template-upgrade-<target7>`, the command inspects `git worktree list --porcelain` and removes a worktree only when it is locked with a reason starting `template-upgrade `. Anything else at either path (an unlocked worktree, a worktree locked for another reason, or a plain folder or file) is refused (`worktree_not_owned`) and left untouched.
+
+To remove a leftover upgrade worktree by hand, unlock it first and then remove it:
+
+```bash
+git worktree unlock .worktrees/template-upgrade-<target7>
+git worktree remove .worktrees/template-upgrade-<target7>
+```
+
+Add `--force` to `git worktree remove` if the worktree contains uncommitted changes you no longer need.
+
 ### Apply statuses and exit codes
 
-| Status                   | Exit | Meaning                                                                                                                                                                                                                                                    |
-| ------------------------ | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `up-to-date`             | `0`  | Base and target commits match; nothing written.                                                                                                                                                                                                            |
-| `already-done`           | `0`  | `template-upgrade/<base7>-<target7>` already exists with `HEAD` as its parent; a leftover upgrade worktree is removed only when it is this command's own clean worktree at the published commit, otherwise it is left untouched and one line explains why. |
-| `applied`                | `0`  | Merged, installed and checked (unless `--no-check`), committed as `Upgrade template <base7> to <target7>`, branch created, worktree removed.                                                                                                               |
-| `conflicts`              | `2`  | Conflicts remain in `.worktrees/template-upgrade-<target7>`.                                                                                                                                                                                               |
-| `resolution-in-progress` | `5`  | You started editing `.worktrees/template-upgrade-<target7>` but `<<<<<<< ours` markers remain.                                                                                                                                                             |
-| `check-failed`           | `1`  | `bun install` or `bun run check` failed in `.worktrees/template-upgrade-<target7>`; worktree kept.                                                                                                                                                         |
+| Status                   | Exit | Meaning                                                                                                                                                                                                                                                                         |
+| ------------------------ | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `up-to-date`             | `0`  | Base and target commits match; nothing written.                                                                                                                                                                                                                                 |
+| `already-done`           | `0`  | `template-upgrade/<base7>-<target7>` already exists with `HEAD` as its parent; a leftover upgrade worktree is removed only when it is locked by this command (`template-upgrade `) and clean at the published commit, otherwise it is left untouched and one line explains why. |
+| `applied`                | `0`  | Merged, installed and checked (unless `--no-check`), committed as `Upgrade template <base7> to <target7>`, branch created, worktree removed.                                                                                                                                    |
+| `conflicts`              | `2`  | Conflicts remain in `.worktrees/template-upgrade-<target7>`.                                                                                                                                                                                                                    |
+| `resolution-in-progress` | `5`  | You started editing `.worktrees/template-upgrade-<target7>` but `<<<<<<< ours` markers remain.                                                                                                                                                                                  |
+| `check-failed`           | `1`  | `bun install` or `bun run check` failed in `.worktrees/template-upgrade-<target7>`; worktree kept.                                                                                                                                                                              |
 
 ### Resolving conflicts and rerunning
 

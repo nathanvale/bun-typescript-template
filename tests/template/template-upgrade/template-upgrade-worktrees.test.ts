@@ -11,7 +11,7 @@ import {
 import { join } from "node:path";
 import { CliError } from "../../../src/cli-error.ts";
 import { mergeTemplateUpgradeTrees } from "../../../src/template-upgrade-merge.ts";
-import { removeWorktreeIfPresent } from "../../../src/template-upgrade-worktree.ts";
+import { removeTemplateUpgradeWorktree } from "../../../src/template-upgrade-worktree-lock.ts";
 import { ownedFolders, write } from "../../support/fixture-files.ts";
 import {
   commitIn,
@@ -265,8 +265,16 @@ test(
 
     const ownedWorktree = join(repo, ".worktrees", "template-upgrade-tmp");
     git(repo, "worktree", "add", "--quiet", "--detach", ownedWorktree, "HEAD");
+    git(
+      repo,
+      "worktree",
+      "lock",
+      "--reason",
+      `template-upgrade ${targetCommit}`,
+      ownedWorktree,
+    );
     rmSync(ownedWorktree, { recursive: true, force: true });
-    await removeWorktreeIfPresent(repo, ownedWorktree, gitEnv);
+    await removeTemplateUpgradeWorktree(repo, ownedWorktree, gitEnv);
     expect(gitOutput(repo, "worktree", "list", "--porcelain")).toBe(listBefore);
   },
   processWatchdog(4),
@@ -370,7 +378,7 @@ test(
     expect(run.exitCode).toBe(4);
     expect(JSON.parse(run.stderr)).toMatchObject({
       status: "refused",
-      error: { code: "worktree_exists_other_head" },
+      error: { code: "worktree_not_owned" },
     });
     expect(readFileSync(join(plainDir, "keep-me.txt"), "utf8")).toBe(
       "do not delete\n",
@@ -494,6 +502,14 @@ test(
       "--detach",
       setup.targetWorktree,
       setup.branch,
+    );
+    git(
+      setup.repo,
+      "worktree",
+      "lock",
+      "--reason",
+      `template-upgrade ${setup.targetCommit}`,
+      setup.targetWorktree,
     );
     const ownerFile = join(setup.targetWorktree, "owner-edit.txt");
     writeFileSync(ownerFile, "owner edit on published commit\n");
