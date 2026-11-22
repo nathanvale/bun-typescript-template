@@ -3,5 +3,5 @@
   "breaking": false,
   "affects": ["generated-repository"],
   "summary": "Changed generated repositories' quality:fallow script to check dead code, duplication, and complexity against recorded hits in fallow-dead-code-recorded-hits.json, fallow-duplicates-recorded-hits.json, and fallow-health-recorded-hits.json (identity-matched for complexity), added quality:fallow:record-hits, and enabled complexity-cyclomatic, complexity-cognitive, and complexity-file-lines as errors in .fallowrc.json (limit: a recorded complex function that gets more complex is not caught).",
-  "action": "After a Template upgrade, run bun run quality:fallow:record-hits once to record existing dead-code, duplication, and complexity findings in fallow-dead-code-recorded-hits.json, fallow-duplicates-recorded-hits.json, and fallow-health-recorded-hits.json; bun run check then passes on existing findings and fails on new ones."
+  "action": "Nothing to do by hand: the first Template upgrade that brings the recorded-hits files runs bun run quality:fallow:record-hits itself, after bun install and before bun run check, so the repository's existing dead code, duplication and complexity findings are recorded and the check fails only on new ones."
 }

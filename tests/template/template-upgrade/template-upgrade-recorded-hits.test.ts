@@ -1,0 +1,429 @@
+import { expect, test } from "bun:test";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import {} from "../../support/bootstrap-cli-fixture.ts";
+import { ownedFolders } from "../../support/fixture-files.ts";
+import { commitIn, git } from "../../support/git-fixture.ts";
+import {} from "../../support/kernel-sibling.ts";
+import { processWatchdog } from "../../support/process.ts";
+import { streamWrites } from "../../support/stream-writes.ts";
+import {
+  bootstrapGeneratedRepository,
+  cloneTemplateAtHead,
+  commitTemplateLintChange,
+  invokeTemplateUpgradeMain,
+  writeScriptedBun,
+} from "../../support/template-upgrade-fixture.ts";
+
+const folder = ownedFolders();
+const captureStream = streamWrites();
+
+const RECORDED_HITS_FILES = [
+  "fallow-dead-code-recorded-hits.json",
+  "fallow-duplicates-recorded-hits.json",
+  "fallow-health-recorded-hits.json",
+] as const;
+
+function createRecordedHitsUpgradeFixture(options?: {
+  readonly omitRecordScriptInTarget?: boolean;
+}) {
+  const { templateClone } = cloneTemplateAtHead(folder);
+  const savedFiles = RECORDED_HITS_FILES.map((file) => {
+    const path = join(templateClone, "generated-repository/settings", file);
+    return { file, path, content: readFileSync(path, "utf8") };
+  });
+  const settingsPackagePath = join(
+    templateClone,
+    "generated-repository/settings/package.json",
+  );
+  const targetPackageText = readFileSync(settingsPackagePath, "utf8");
+  const parsedPackage = JSON.parse(targetPackageText) as {
+    scripts: Record<string, string>;
+    [key: string]: unknown;
+  };
+  const withoutRecordScript = `${JSON.stringify(
+    {
+      ...parsedPackage,
+      scripts: Object.fromEntries(
+        Object.entries(parsedPackage.scripts).filter(
+          ([name]) => name !== "quality:fallow:record-hits",
+        ),
+      ),
+    },
+    null,
+    2,
+  )}\n`;
+  writeFileSync(settingsPackagePath, withoutRecordScript);
+  git(
+    templateClone,
+    "rm",
+    "--quiet",
+    "--",
+    ...RECORDED_HITS_FILES.map(
+      (file) => `generated-repository/settings/${file}`,
+    ),
+  );
+  git(templateClone, "add", "--", "generated-repository/settings/package.json");
+  git(
+    templateClone,
+    "commit",
+    "--quiet",
+    "-m",
+    "template before recorded-hits files",
+  );
+  const baseCommit = git(templateClone, "rev-parse", "HEAD");
+
+  for (const { path, content } of savedFiles) {
+    writeFileSync(path, content);
+  }
+  writeFileSync(
+    settingsPackagePath,
+    options?.omitRecordScriptInTarget === true
+      ? withoutRecordScript
+      : targetPackageText,
+  );
+  git(
+    templateClone,
+    "add",
+    "--",
+    "generated-repository/settings/package.json",
+    ...RECORDED_HITS_FILES.map(
+      (file) => `generated-repository/settings/${file}`,
+    ),
+  );
+  git(
+    templateClone,
+    "commit",
+    "--quiet",
+    "-m",
+    "template adding recorded-hits files",
+  );
+  const targetCommit = git(templateClone, "rev-parse", "HEAD");
+  return {
+    templateClone,
+    baseCommit,
+    targetCommit,
+    branch: `template-upgrade/${baseCommit.slice(0, 7)}-${targetCommit.slice(0, 7)}`,
+  };
+}
+
+test(
+  "runs the recorded-hits script after bun install and before bun run check when an upgrade adds new recorded-hits files, commits them, and reports the step",
+  async () => {
+    const { templateClone, baseCommit, targetCommit, branch } =
+      createRecordedHitsUpgradeFixture();
+    const repo = await bootstrapGeneratedRepository(
+      folder,
+      templateClone,
+      baseCommit,
+      "new-recorded-hits-app",
+    );
+    const { ledger, env } = writeScriptedBun(
+      folder,
+      "scripted-bun-record-hits-",
+      `#!/bin/sh
+echo "$*" >> __LEDGER__
+if [ "$1" = "run" ] && [ "$2" = "quality:fallow:record-hits" ]; then
+  printf '{"recorded":true,"file":"dead-code"}\\n' > fallow-dead-code-recorded-hits.json
+  printf '{"recorded":true,"file":"duplicates"}\\n' > fallow-duplicates-recorded-hits.json
+  printf '{"recorded":true,"file":"health"}\\n' > fallow-health-recorded-hits.json
+  exit 0
+fi
+if [ "$1" = "run" ] && [ "$2" = "check" ]; then
+  if ! grep -q '"recorded":true' fallow-dead-code-recorded-hits.json; then
+    echo "existing findings were not recorded before check" >&2
+    exit 1
+  fi
+  exit 0
+fi
+exit 0
+`,
+    );
+    const stdout = captureStream(process.stdout);
+    const stderr = captureStream(process.stderr);
+
+    const jsonRun = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      ["apply", "--repository", repo, "--to", targetCommit, "--json"],
+      { templateRoot: templateClone, env },
+    );
+    expect(jsonRun.exitCode).toBe(0);
+    expect(JSON.parse(jsonRun.stdout)).toMatchObject({
+      status: "applied",
+      branch,
+      steps: [
+        { command: "bun install", ran: true, outcome: "passed" },
+        {
+          command: "bun run quality:fallow:record-hits",
+          ran: true,
+          outcome: "passed",
+        },
+        { command: "bun run check", ran: true, outcome: "passed" },
+      ],
+    });
+    expect(readFileSync(ledger, "utf8").trim().split("\n")).toEqual([
+      "install",
+      "run quality:fallow:record-hits",
+      "run check",
+    ]);
+    expect(
+      git(repo, "show", `${branch}:fallow-dead-code-recorded-hits.json`),
+    ).toContain('"recorded":true');
+    expect(
+      git(repo, "show", `${branch}:fallow-duplicates-recorded-hits.json`),
+    ).toContain('"recorded":true');
+    expect(
+      git(repo, "show", `${branch}:fallow-health-recorded-hits.json`),
+    ).toContain('"recorded":true');
+
+    const textRepo = await bootstrapGeneratedRepository(
+      folder,
+      templateClone,
+      baseCommit,
+      "new-recorded-hits-text-app",
+    );
+    const textRun = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      ["apply", "--repository", textRepo, "--to", targetCommit],
+      { templateRoot: templateClone, env },
+    );
+    expect(textRun.exitCode).toBe(0);
+    expect(textRun.stdout).toContain("bun install: passed");
+    expect(textRun.stdout).toContain(
+      "bun run quality:fallow:record-hits: passed",
+    );
+    expect(textRun.stdout).toContain("bun run check: passed");
+
+    const failRepo = await bootstrapGeneratedRepository(
+      folder,
+      templateClone,
+      baseCommit,
+      "record-hits-fail-app",
+    );
+    const failingBun = writeScriptedBun(
+      folder,
+      "scripted-bun-record-fail-",
+      `#!/bin/sh
+echo "$*" >> __LEDGER__
+if [ "$1" = "run" ] && [ "$2" = "quality:fallow:record-hits" ]; then
+  echo "planted record-hits failure" >&2
+  exit 1
+fi
+exit 0
+`,
+    );
+    const failRun = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      ["apply", "--repository", failRepo, "--to", targetCommit, "--json"],
+      { templateRoot: templateClone, env: failingBun.env },
+    );
+    expect(failRun.exitCode).toBe(1);
+    expect(JSON.parse(failRun.stdout)).toMatchObject({
+      status: "check-failed",
+      failedStep: "bun run quality:fallow:record-hits",
+      steps: [
+        { command: "bun install", ran: true, outcome: "passed" },
+        {
+          command: "bun run quality:fallow:record-hits",
+          ran: true,
+          outcome: "failed",
+        },
+        {
+          command: "bun run check",
+          ran: false,
+          outcome: "skipped",
+          reason: "bun run quality:fallow:record-hits failed",
+        },
+      ],
+    });
+    expect(readFileSync(failingBun.ledger, "utf8").trim().split("\n")).toEqual([
+      "install",
+      "run quality:fallow:record-hits",
+    ]);
+  },
+  processWatchdog(4),
+);
+
+test(
+  "does not run the recorded-hits script when the repository already has the recorded-hits files, when the script is absent, or when --no-check is passed",
+  async () => {
+    const { templateClone: existingTemplate, baseCommit: existingBase } =
+      cloneTemplateAtHead(folder);
+    const existingRepo = await bootstrapGeneratedRepository(
+      folder,
+      existingTemplate,
+      existingBase,
+      "existing-recorded-hits-app",
+    );
+    const customDeadCodeRecord = '{"custom":"owner-record"}\n';
+    commitIn(existingRepo, "owner recorded hit", {
+      "fallow-dead-code-recorded-hits.json": customDeadCodeRecord,
+    });
+    const existingTarget = commitTemplateLintChange(existingTemplate);
+    const existingBranch = `template-upgrade/${existingBase.slice(0, 7)}-${existingTarget.slice(0, 7)}`;
+    const existingBun = writeScriptedBun(
+      folder,
+      "scripted-bun-existing-records-",
+      `#!/bin/sh
+echo "$*" >> __LEDGER__
+if [ "$1" = "run" ] && [ "$2" = "quality:fallow:record-hits" ]; then
+  echo "record-hits must not overwrite existing repository records" >&2
+  exit 1
+fi
+exit 0
+`,
+    );
+    const stdout = captureStream(process.stdout);
+    const stderr = captureStream(process.stderr);
+
+    const existingRun = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      ["apply", "--repository", existingRepo, "--to", existingTarget, "--json"],
+      { templateRoot: existingTemplate, env: existingBun.env },
+    );
+    expect(existingRun.exitCode).toBe(0);
+    expect(JSON.parse(existingRun.stdout)).toMatchObject({
+      status: "applied",
+      branch: existingBranch,
+      steps: [
+        { command: "bun install", ran: true, outcome: "passed" },
+        { command: "bun run check", ran: true, outcome: "passed" },
+      ],
+    });
+    expect(readFileSync(existingBun.ledger, "utf8").trim().split("\n")).toEqual(
+      ["install", "run check"],
+    );
+    expect(
+      `${git(existingRepo, "show", `${existingBranch}:fallow-dead-code-recorded-hits.json`)}\n`,
+    ).toBe(customDeadCodeRecord);
+
+    const newFilesFixture = createRecordedHitsUpgradeFixture();
+    const skippedRepo = await bootstrapGeneratedRepository(
+      folder,
+      newFilesFixture.templateClone,
+      newFilesFixture.baseCommit,
+      "no-check-record-hits-app",
+    );
+    const noCheckBun = writeScriptedBun(
+      folder,
+      "scripted-bun-no-check-record-",
+      `#!/bin/sh
+echo "$*" >> __LEDGER__
+exit 0
+`,
+    );
+    const skippedJsonRun = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      [
+        "apply",
+        "--repository",
+        skippedRepo,
+        "--to",
+        newFilesFixture.targetCommit,
+        "--no-check",
+        "--json",
+      ],
+      { templateRoot: newFilesFixture.templateClone, env: noCheckBun.env },
+    );
+    expect(skippedJsonRun.exitCode).toBe(0);
+    expect(JSON.parse(skippedJsonRun.stdout)).toMatchObject({
+      status: "applied",
+      steps: [
+        {
+          command: "bun install",
+          ran: false,
+          outcome: "skipped",
+          reason: "--no-check",
+        },
+        {
+          command: "bun run quality:fallow:record-hits",
+          ran: false,
+          outcome: "skipped",
+          reason: "--no-check",
+        },
+        {
+          command: "bun run check",
+          ran: false,
+          outcome: "skipped",
+          reason: "--no-check",
+        },
+      ],
+    });
+    expect(existsSync(noCheckBun.ledger)).toBe(false);
+
+    const skippedTextRepo = await bootstrapGeneratedRepository(
+      folder,
+      newFilesFixture.templateClone,
+      newFilesFixture.baseCommit,
+      "no-check-record-hits-text-app",
+    );
+    const skippedTextRun = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      [
+        "apply",
+        "--repository",
+        skippedTextRepo,
+        "--to",
+        newFilesFixture.targetCommit,
+        "--no-check",
+      ],
+      { templateRoot: newFilesFixture.templateClone, env: noCheckBun.env },
+    );
+    expect(skippedTextRun.exitCode).toBe(0);
+    expect(skippedTextRun.stdout).toContain(
+      "bun run quality:fallow:record-hits: skipped (--no-check)",
+    );
+
+    const withoutScriptFixture = createRecordedHitsUpgradeFixture({
+      omitRecordScriptInTarget: true,
+    });
+    const withoutScriptRepo = await bootstrapGeneratedRepository(
+      folder,
+      withoutScriptFixture.templateClone,
+      withoutScriptFixture.baseCommit,
+      "missing-record-script-app",
+    );
+    const withoutScriptBun = writeScriptedBun(
+      folder,
+      "scripted-bun-missing-script-",
+      `#!/bin/sh
+echo "$*" >> __LEDGER__
+exit 0
+`,
+    );
+    const withoutScriptRun = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      [
+        "apply",
+        "--repository",
+        withoutScriptRepo,
+        "--to",
+        withoutScriptFixture.targetCommit,
+        "--json",
+      ],
+      {
+        templateRoot: withoutScriptFixture.templateClone,
+        env: withoutScriptBun.env,
+      },
+    );
+    expect(withoutScriptRun.exitCode).toBe(0);
+    expect(JSON.parse(withoutScriptRun.stdout)).toMatchObject({
+      status: "applied",
+      steps: [
+        { command: "bun install", ran: true, outcome: "passed" },
+        { command: "bun run check", ran: true, outcome: "passed" },
+      ],
+    });
+    expect(
+      readFileSync(withoutScriptBun.ledger, "utf8").trim().split("\n"),
+    ).toEqual(["install", "run check"]);
+  },
+  processWatchdog(4),
+);

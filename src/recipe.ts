@@ -55,6 +55,12 @@ export const KERNEL_RECIPE: Recipe = {
 
 export const KERNEL_LOCKFILE = "generated-repository/bun.lock";
 export const TEMPLATE_JSON_FILE = ".template.json";
+export const RECORDED_HITS_FILES: readonly string[] = [
+  "fallow-dead-code-recorded-hits.json",
+  "fallow-duplicates-recorded-hits.json",
+  "fallow-health-recorded-hits.json",
+];
+export const RECORDED_HITS_SCRIPT = "quality:fallow:record-hits";
 
 export const REPOSITORY_RECIPE_COPIES: readonly string[] = [
   "README.md",

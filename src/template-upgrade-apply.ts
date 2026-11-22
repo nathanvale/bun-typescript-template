@@ -2,6 +2,12 @@ import { rmdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { ChangeNoteEntry } from "./change-notes.ts";
 import { CliError } from "./cli-error.ts";
+import {
+  noCheckTemplateUpgradeSteps,
+  recordedHitsRequestFor,
+  runRecordedHitsStep,
+  RECORDED_HITS_STEP,
+} from "./template-upgrade-recorded-hits.ts";
 import { withTemplateUpgradeTrees } from "./template-upgrade-bootstrap.ts";
 import { readTemplateUpgradeChangeNotes } from "./template-upgrade-change-notes.ts";
 import {
@@ -26,7 +32,9 @@ import {
   createTemplateUpgradePlanResult,
   skipTemplateUpgradeSteps,
   type TemplateUpgradeApplyRun,
+  createTemplateUpgradeApplyStep as createApplyStep,
   type TemplateUpgradeApplyStep,
+  type TemplateUpgradeStepCommand,
   type TemplateUpgradePlanResult,
 } from "./template-upgrade-report.ts";
 import {
@@ -245,24 +253,10 @@ export async function templateUpgradePlan(
   });
 }
 
-function createApplyStep(
-  command: "bun install" | "bun run check",
-  ran: boolean,
-  outcome: "passed" | "failed" | "skipped",
-  reason?: string,
-): TemplateUpgradeApplyStep {
-  return Object.freeze({
-    command,
-    ran,
-    outcome,
-    ...(reason === undefined ? {} : { reason }),
-  });
-}
-
 function checkFailedRun(options: {
   readonly session: ApplySession;
   readonly mergeData: ApplyMergeData;
-  readonly failedStep: "bun install" | "bun run check";
+  readonly failedStep: TemplateUpgradeStepCommand;
   readonly steps: readonly TemplateUpgradeApplyStep[];
   readonly output: string;
 }): TemplateUpgradeApplyRun {
@@ -279,6 +273,31 @@ function checkFailedRun(options: {
     failedStep,
     checkCommandOutput: output,
   });
+}
+
+function recordNewRecordedHits(
+  session: ApplySession,
+  mergeData: ApplyMergeData,
+):
+  | { readonly ok: true; readonly steps: readonly TemplateUpgradeApplyStep[] }
+  | { readonly ok: false; readonly run: TemplateUpgradeApplyRun } {
+  const request = recordedHitsRequestFor(
+    session.targetWorktree,
+    session.inputs,
+    session.env,
+  );
+  const recorded = runRecordedHitsStep(request, CHECK_TIMEOUT_MS);
+  if (recorded.ok) return recorded;
+  return {
+    ok: false,
+    run: checkFailedRun({
+      session,
+      mergeData,
+      failedStep: RECORDED_HITS_STEP,
+      steps: recorded.steps,
+      output: recorded.output,
+    }),
+  };
 }
 
 function runCheckCommandSteps(
@@ -309,6 +328,8 @@ function runCheckCommandSteps(
       }),
     };
   }
+  const recorded = recordNewRecordedHits(session, mergeData);
+  if (!recorded.ok) return recorded;
   const check = runBunStep({
     worktree: session.targetWorktree,
     args: ["run", "check"],
@@ -318,6 +339,7 @@ function runCheckCommandSteps(
   if (!check.ok) {
     const steps = Object.freeze([
       createApplyStep("bun install", true, "passed"),
+      ...recorded.steps,
       createApplyStep("bun run check", true, "failed"),
     ]);
     return {
@@ -335,6 +357,7 @@ function runCheckCommandSteps(
     ok: true,
     steps: Object.freeze([
       createApplyStep("bun install", true, "passed"),
+      ...recorded.steps,
       createApplyStep("bun run check", true, "passed"),
     ]),
   };
@@ -583,7 +606,9 @@ async function finalizeTemplateUpgradeWorktree(
       });
     }
   }
-  let steps = skipTemplateUpgradeSteps("--no-check");
+  let steps = noCheckTemplateUpgradeSteps(
+    recordedHitsRequestFor(session.targetWorktree, session.inputs, session.env),
+  );
   if (!skipCheckCommand) {
     const checked = runCheckCommandSteps(session, mergeData);
     if (!checked.ok) {
