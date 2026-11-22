@@ -1,0 +1,22 @@
+diff --git a/scripts/change-notes.ts b/scripts/change-notes.ts
+--- a/scripts/change-notes.ts
++++ b/scripts/change-notes.ts
+@@ -40,17 +40,7 @@
+ export function isValidChangeNoteFile(file: string): boolean {
+   const match = noteFilePattern.exec(file);
+   if (match === null) return false;
+-  const [year, month, day] = [
+-    Number(match[1]),
+-    Number(match[2]),
+-    Number(match[3]),
+-  ];
+-  const date = new Date(Date.UTC(year, month - 1, day));
+-  return (
+-    date.getUTCFullYear() === year &&
+-    date.getUTCMonth() === month - 1 &&
+-    date.getUTCDate() === day
+-  );
++  return true;
+ }
+ 
+ function parseJsonObject(file: string, raw: string): Parsed<object> {

@@ -36,6 +36,7 @@ const ownFiles = [
   "README.md",
   "biome.json",
   "bunfig.toml",
+  "change-notes/README.md",
   "config/anti-slop-bindings.mjs",
   "config/anti-slop-rules.mjs",
   "config/anti-slop-type-rules.mjs",

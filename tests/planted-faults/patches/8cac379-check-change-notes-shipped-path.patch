@@ -1,0 +1,16 @@
+diff --git a/scripts/check-change-notes.ts b/scripts/check-change-notes.ts
+--- a/scripts/check-change-notes.ts
++++ b/scripts/check-change-notes.ts
+@@ -192,12 +192,6 @@ export function checkChangeNotes(
+     .filter((problem): problem is string => problem !== undefined);
+ 
+   const shippedChanged = entries.filter(isShippedEntry);
+-  if (shippedChanged.length > 0 && addedNotes.length === 0) {
+-    const first = shippedChanged[0];
+-    problems.push(
+-      `This branch changes ${shippedChanged.length} shipped file(s) (first: ${first === undefined ? "" : entryLabel(first)}) without adding a change note under ${CHANGE_NOTES_FOLDER}/. Repair: add ${CHANGE_NOTES_FOLDER}/YYYY-MM-DD-<slug>.json (use "kind": "none" if there is no consumer effect).`,
+-    );
+-  }
+   if (problems.length > 0)
+     return {
+       stdout: "",

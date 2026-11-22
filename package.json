@@ -9,6 +9,7 @@
     "check": "bun run check:file-size && bun run lint && bun run format:check && bun run typecheck && bun run test && bun run --silent quality:fallow",
     "quality:fallow": "node_modules/.bin/fallow audit --baseline-mode identity --format json --quiet",
     "doctor": "bun run scripts/doctor.ts",
+    "check:change-notes": "bun run scripts/check-change-notes.ts",
     "check:commits": "bun run scripts/check-commits.ts",
     "check:file-size": "bun --no-install scripts/check-file-size.ts",
     "check:names": "bun run scripts/check-names.ts",
