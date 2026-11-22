@@ -68,6 +68,13 @@ _Avoid_: stub, copy (for a pointer skill)
 One released state of the template, named by a git tag.
 _Avoid_: version (unqualified); release, pin (for a template version)
 
+**Template upgrade**:
+Carrying the template's changes between the commit a generated repository's
+stamp records and a newer template commit into that repository, keeping the
+repository's own edits. `bun run upgrade plan` previews the per-file merge;
+`bun run upgrade apply` writes the merged result onto a branch without touching
+the repository's working tree. It does not move a pin on its own.
+
 ### The kernel split
 
 **Kernel split**:

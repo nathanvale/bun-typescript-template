@@ -82,6 +82,7 @@ describe("the kernel row", () => {
     await bootstrapRow(request);
     const provenance = generatedJson(destination, ".cli-design-template.json");
     expect(provenance).toMatchObject({
+      name: "demo-app",
       sourcePacket: "/abs/packets/demo",
       entryPoint: "src/cli.ts",
       commandOwner: "src/commands.ts",
@@ -89,6 +90,7 @@ describe("the kernel row", () => {
     expect(Object.keys(provenance as object).toSorted()).toEqual([
       "commandOwner",
       "entryPoint",
+      "name",
       "registrationVersion",
       "sourcePacket",
       "specRevision",
