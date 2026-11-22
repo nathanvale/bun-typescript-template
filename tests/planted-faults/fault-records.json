@@ -2163,10 +2163,10 @@
     "source": "7b430d4 feat(generated-repository): record existing complexity findings so an upgrade fails only on new ones"
   },
   {
-    "id": "f85f93c-generated-fallow-growth",
-    "patch": "tests/planted-faults/patches/f85f93c-generated-fallow-growth.patch",
+    "id": "78a67e1-generated-fallow-growth",
+    "patch": "tests/planted-faults/patches/78a67e1-generated-fallow-growth.patch",
     "testFile": "tests/template/toolchain/generated-hosted-check-recorded-hits.test.ts",
     "title": "^refuses a head commit that adds a complex function and records it in recorded-hits files$",
-    "source": "f85f93c feat(hosted-check): refuse Fallow recorded-hits growth in generated hosted check"
+    "source": "78a67e1 fix(generated-repository): the hosted check refuses a pull request that grows the recorded Fallow findings"
   }
 ]
