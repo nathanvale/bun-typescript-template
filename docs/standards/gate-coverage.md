@@ -167,7 +167,9 @@ file extensions in those directories.
   - `Interface:` on its first line: a public contract the types cannot
     state.
   - The phrase "accepted decision" or "accepted decisions" anywhere in
-    the block.
+    the block, followed by the decision's citation: an ID such as `N4a`
+    or `BN-03`, or a parenthesis that holds an ID, a ruling date such as
+    `19 November 2026`, or a question number such as `question 4`.
   - A lint or compiler directive, such as `eslint-disable-next-line` or
     `@ts-expect-error`. A suppression gives its reason after it:
     `-- reason` after an `eslint-disable` directive, an ESLint
@@ -188,8 +190,8 @@ file extensions in those directories.
   whether it names something outside this repository. Witnessed: [47e2ec3]
   (a `Platform:` claim said token substitution refuses every entry that is
   not a regular file; it walks folders).
-- In review, verify each accepted decision citation. Require a Command
-  Contract 3 question number, an ID such as `N4a`, or the ruling date.
+- In review, verify that each accepted decision citation names a ruling
+  that exists. The lint checks only the citation's form.
   Consult the [CLI kernel authority](../agents/cli-kernel.md).
 - A generated repository gets these lint rules too: see
   [Generated repositories](#generated-repositories).

@@ -8,6 +8,11 @@ const safetyMarker = "SAFETY";
 const commentMarker = new RegExp(`^(?:${plainMarkers.join("|")}):`);
 const safetyJustification = new RegExp(`^${safetyMarker}:\\s*\\S`);
 const acceptedDecision = /accepted decisions?\b/i;
+const decisionId = String.raw`\b[A-Z][A-Z0-9]*-?\d+[a-z]?\b`;
+const rulingDate = String.raw`\b\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\b`;
+const decisionCitation = new RegExp(
+  String.raw`[Aa]ccepted\s+decisions?\s+(?:${decisionId}|\([^)]*?(?:${decisionId}|${rulingDate}|\bquestion\s+\d+\b))`,
+);
 const suppressionReasons = [
   [
     /^(?:eslint-disable(?:-next-line|-line)?|eslint|fallow-ignore(?:-next-line|-file)?)(?=\s|$)/,
@@ -26,6 +31,12 @@ const refusals = {
       "This suppression gives no reason, so the next agent cannot tell whether it still holds.",
     repair:
       "give the reason after the directive (eslint-disable-next-line rule -- reason, fallow-ignore-next-line kind -- reason, @ts-expect-error reason, biome-ignore lint/group/rule: reason), or fix what it suppresses and ",
+  },
+  decision: {
+    problem:
+      "This comment names an accepted decision but cites none, so nobody can find the ruling it claims.",
+    repair:
+      "cite the decision by its id or ruling date right after the words (accepted decision N4a, or Accepted decision (Nathan, 19 November 2026, 12:08 AEDT), or Accepted decision (Command Contract 3 question 4)); if no ruling exists, ",
   },
 };
 const castOwners = new Set([
@@ -301,8 +312,9 @@ function givesReason(directive) {
   return found === undefined || found[1].test(directive);
 }
 
-function refusalOf(first) {
-  if (commentDirective.test(first)) return refusals.reason;
+function refusalOf(lines) {
+  if (commentDirective.test(lines[0])) return refusals.reason;
+  if (acceptedDecision.test(lines.join(" "))) return refusals.decision;
   return refusals.comment;
 }
 
@@ -313,7 +325,7 @@ function isAdmitted(source, block, placed) {
   return (
     (commentDirective.test(first) && givesReason(first)) ||
     commentMarker.test(first) ||
-    acceptedDecision.test(lines.join(" ")) ||
+    decisionCitation.test(lines.join(" ")) ||
     (safetyJustification.test(first) &&
       source.lines[start.line - 1].slice(0, start.column).trim() === "" &&
       placed.has(block[block.length - 1]))
@@ -328,7 +340,7 @@ export default {
         schema: [],
         messages: {
           comment:
-            "{{problem}} Keep a comment only when its first word is Platform: (behaviour of a runtime, operating system or tool this repository cannot change) or Interface: (a public contract the types cannot state), or when it cites an accepted decision (AGENTS.md, Authority), or when it is a lint or compiler directive that gives its reason, or when it opens with SAFETY: and a justification, on its own lines directly above the statement that holds a type cast (as T, not as const). Repair: {{repair}}say this in code (a clearer name, a type, a test title, or a lint rule whose message states the constraint), then delete the comment.",
+            "{{problem}} Keep a comment only when its first word is Platform: (behaviour of a runtime, operating system or tool this repository cannot change) or Interface: (a public contract the types cannot state), or when it cites an accepted decision (AGENTS.md, Authority) by its id or ruling date, or when it is a lint or compiler directive that gives its reason, or when it opens with SAFETY: and a justification, on its own lines directly above the statement that holds a type cast (as T, not as const). Repair: {{repair}}say this in code (a clearer name, a type, a test title, or a lint rule whose message states the constraint), then delete the comment.",
         },
       },
       create(context) {
@@ -351,7 +363,7 @@ export default {
                   end: block[block.length - 1].loc.end,
                 },
                 messageId: "comment",
-                data: refusalOf(block[0].value.trim()),
+                data: refusalOf(block.map((comment) => comment.value.trim())),
               });
             }
           },

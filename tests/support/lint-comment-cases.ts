@@ -57,6 +57,21 @@ export const commentCases = [
   ],
   [
     templateSourceFile,
+    "// This follows an accepted decision.\nexport const a = 1;",
+    [1],
+  ],
+  [
+    templateSourceFile,
+    "// The station (accepted decisions of 17:06 and 17:24, form H)\n// declares the ruled words.\nexport const a = 1;",
+    [1],
+  ],
+  [
+    templateSourceFile,
+    "// Accepted decision (Nathan, in chat): keep the loop.\nexport const a = 1;",
+    [1],
+  ],
+  [
+    templateSourceFile,
     "// eslint-disable-next-line no-console\nconsole.log(1);",
     [1],
   ],
@@ -94,6 +109,21 @@ export const commentCases = [
   [
     "tests/template/doctor/doctor.test.ts",
     "// The accepted\n// decision N4a keeps the line on stdout.\nexport const a = 1;",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// Accepted decision (Nathan, 19 November 2026, 12:08 AEDT): at most\n// 64 moves per hold.\nexport const a = 1;",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// Accepted decision (Command Contract 3 question 4): the summary is\n// any proof the add-on issued.\nexport const a = 1;",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// O_CLOEXEC is set here (accepted decision BN-03).\nexport const a = 1;",
     [],
   ],
   [
@@ -159,5 +189,9 @@ export const commentRepairs = [
   [
     "// eslint-disable-next-line no-console\nconsole.log(1);",
     "give the reason after the directive",
+  ],
+  [
+    "// This follows an accepted decision.\nexport const a = 1;",
+    "cite the decision by its id or ruling date",
   ],
 ] as const;
