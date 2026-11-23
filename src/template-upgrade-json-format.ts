@@ -74,13 +74,13 @@ function changedWhileFormatting(
   return undefined;
 }
 
-export function runJsonFormatStep(
+function admitPaths(
   worktree: string,
   keyMergedPaths: readonly string[],
-  env: ProcessEnvMap,
-):
-  | { readonly ok: true; readonly steps: readonly TemplateUpgradeApplyStep[] }
-  | { readonly ok: false; readonly result: TemplateUpgradeBunResult } {
+): {
+  readonly admitted: ReadonlyMap<string, Stats>;
+  readonly refused: readonly TemplateUpgradeApplyStep[];
+} {
   const admitted = new Map<string, Stats>();
   const refused: TemplateUpgradeApplyStep[] = [];
   for (const path of keyMergedPaths) {
@@ -97,6 +97,17 @@ export function runJsonFormatStep(
       );
     } else admitted.set(path, admission);
   }
+  return { admitted, refused };
+}
+
+export function runJsonFormatStep(
+  worktree: string,
+  keyMergedPaths: readonly string[],
+  env: ProcessEnvMap,
+):
+  | { readonly ok: true; readonly steps: readonly TemplateUpgradeApplyStep[] }
+  | { readonly ok: false; readonly result: TemplateUpgradeBunResult } {
+  const { admitted, refused } = admitPaths(worktree, keyMergedPaths);
   const paths = [...admitted.keys()];
   if (paths.length === 0) return { ok: true, steps: refused };
   const biome = join(worktree, BIOME_BIN);
