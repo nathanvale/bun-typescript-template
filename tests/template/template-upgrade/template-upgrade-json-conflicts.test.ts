@@ -32,9 +32,9 @@ const NEW_BOUNDARIES = OLD_JSON.replace(
   '  "rules": {"r": "error"},\n  "boundaries": {"zones": ["template"]}\n',
 );
 
-function markedJsonShape(ours: string, next: string) {
+function markedJsonShape(ours: string, next: string, old = OLD_JSON) {
   return {
-    old: OLD_JSON,
+    old,
     ours,
     next,
     marked: `<<<<<<< ours\n${ours}=======\n${next}>>>>>>> new\n`,
@@ -49,6 +49,22 @@ const textConflictShape = markedJsonShape(
 const commentedShape = markedJsonShape(
   OURS_BOUNDARIES.replace(ENTRY_LINE, '  "entry": ["a"], // owner note\n'),
   NEW_BOUNDARIES,
+);
+
+const X6_TO_X10 = [6, 7, 8, 9, 10].map((n) => `  "x${n}": ${n},\n`).join("");
+const withX6ToX10 = (text: string) =>
+  text.replace('  "rules"', `${X6_TO_X10}  "rules"`);
+const X5_HUNK =
+  /<{7} ours\n( {2}"x5": "OURS",\n)(?:\|{7} old\n {2}"x5": 5,\n)?={7}\n {2}"x5": "NEW",\n>{7} new\n/;
+const commentedHunkShape = markedJsonShape(
+  withX6ToX10(
+    textConflictShape.ours.replace(
+      ENTRY_LINE,
+      '  "entry": ["a"], // owner note\n',
+    ),
+  ),
+  withX6ToX10(textConflictShape.next),
+  withX6ToX10(OLD_JSON),
 );
 
 async function expectWholeFileMarked(
@@ -87,6 +103,10 @@ test("a JSON key conflict beside a text conflict is written as one marked confli
 
 test("a JSON file that does not parse and whose clean text merge repeats a member is written as one marked conflict", async () => {
   await expectWholeFileMarked(commentedShape);
+});
+
+test("a JSON file that does not parse and whose text conflict leaves a repeated member outside git's markers is written as one marked conflict", async () => {
+  await expectWholeFileMarked(commentedHunkShape);
 });
 
 test("a JSON file that does not parse and whose clean text merge repeats no member is still a clean merge", async () => {
@@ -148,6 +168,7 @@ test("a JSON text conflict with no key conflict keeps git merge-file's markers a
 async function expectRerunHoldsMarkers(
   shape: ReturnType<typeof markedJsonShape>,
   appName: string,
+  resolveVisibleHunk: (text: string) => string = (text) => text,
 ): Promise<void> {
   const { templateClone } = cloneTemplateAtHead(folder);
   const settingsPath = "generated-repository/settings/.fallowrc.json";
@@ -182,6 +203,11 @@ async function expectRerunHoldsMarkers(
     conflicts: [".fallowrc.json"],
   });
   const worktree = firstPayload.worktree;
+  const settingsFile = join(worktree, ".fallowrc.json");
+  writeFileSync(
+    settingsFile,
+    resolveVisibleHunk(readFileSync(settingsFile, "utf8")),
+  );
 
   writeFileSync(
     join(worktree, "README.md"),
@@ -225,6 +251,18 @@ test(
   "rerunning apply after editing another file reports a JSON file that does not parse and repeats a member as resolution-in-progress and commits nothing",
   async () => {
     await expectRerunHoldsMarkers(commentedShape, "json-commented-app");
+  },
+  processWatchdog(4),
+);
+
+test(
+  "rerunning apply after resolving git's visible hunk in a JSON file that does not parse and repeats a member outside it reports resolution-in-progress and commits nothing",
+  async () => {
+    await expectRerunHoldsMarkers(
+      commentedHunkShape,
+      "json-commented-hunk-app",
+      (text) => text.replace(X5_HUNK, "$1"),
+    );
   },
   processWatchdog(4),
 );

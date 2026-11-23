@@ -19,6 +19,7 @@ import {
   lstatIfPresent,
 } from "./template-upgrade-git.ts";
 import { OLD_TEMPLATE_JSON_FILE } from "./template-upgrade-inputs.ts";
+import { mergeDuplicatesMember } from "./template-upgrade-json-members.ts";
 import { tryMergeJsonText } from "./template-upgrade-json-merge.ts";
 import {
   assertNoSymlinkAncestors,
@@ -355,11 +356,9 @@ async function mergeJsonFile(options: {
     return "merge";
   }
   if (json === undefined) {
-    if (gitMergeFile(oursPath, oldPath, newPath, env) === "conflict") {
-      return "conflict";
-    }
-    if (!repeatsMember(await readFile(oursPath, "utf8"))) {
-      return "merge";
+    const textResult = gitMergeFile(oursPath, oldPath, newPath, env);
+    if (!mergeDuplicatesMember(await readFile(oursPath, "utf8"))) {
+      return textResult === "clean" ? "merge" : "conflict";
     }
   }
   await writeFile(
@@ -371,27 +370,6 @@ async function mergeJsonFile(options: {
       `>>>>>>> new\n`,
   );
   return "conflict";
-}
-
-const JSON_TOKEN =
-  /("(?:[^"\\]|\\.)*")(\s*:)?|\/\/.*|\/\*[\s\S]*?\*\/|[[\]{}]/g;
-
-function repeatsMember(text: string): boolean {
-  const scopes: Set<string>[] = [];
-  for (const [token, name, colon] of text.matchAll(JSON_TOKEN)) {
-    const names = scopes.at(-1);
-    if (name !== undefined && colon !== undefined) {
-      if (names?.has(name)) {
-        return true;
-      }
-      names?.add(name);
-    } else if (token === "{" || token === "[") {
-      scopes.push(new Set());
-    } else if (token === "}" || token === "]") {
-      scopes.pop();
-    }
-  }
-  return false;
 }
 
 async function applyUnchangedPathUpdate(
