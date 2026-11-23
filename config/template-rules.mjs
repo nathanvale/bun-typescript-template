@@ -1,8 +1,6 @@
 const localeNames = new Set(["localeCompare", "Collator"]);
 const folding = new Set(["TemplateLiteral", "BinaryExpression"]);
 const comma = { type: "Literal", value: "," };
-const eslintInline =
-  /^(?:eslint(?:-enable|-disable(?:(?:-next)?-line)?)?|exported|globals?)(?:\s|$)/;
 const plainMarkers = ["Platform", "Interface"];
 const safetyMarker = "SAFETY";
 const commentMarker = new RegExp(`^(?:${plainMarkers.join("|")}):`);
@@ -40,10 +38,8 @@ const directives = [
   [/^fallow-ignore(?:-next-line|-file)?(?![\w-])/, /\s-{2,}\s.*\p{L}/u],
   [/^biome-ignore(?:-all)?\s+format:/, /:.*\p{L}/u],
 ];
-const candidate = new RegExp(
-  String.raw`^[\s/*]*(?:(@ts-|biome-ignore|fallow-ignore)|${eslintInline.source.slice(1)})`,
-  "m",
-);
+const candidate =
+  /^[\s/*]*(?:(@ts-|(?:biome|fallow)-ignore)|(?:eslint(?:-enable|-disable(?:(?:-next)?-line)?)?|exported|globals?)(?:\s|$))/m;
 const refusals = {
   comment: {
     problem: "A comment reads as permission, and the next agent builds on it.",
@@ -51,9 +47,9 @@ const refusals = {
   },
   reason: {
     problem:
-      "This directive needs its exact form, a line of its own and a reason in words, or nobody can tell whether it still holds.",
+      "Without its exact form, its own line and a reason in words, nobody can tell whether this directive holds.",
     repair:
-      "give the reason after the directive, alone on its line (fallow-ignore-next-line kind -- reason, @ts-expect-error reason, biome-ignore format: reason; Biome's linter is off here, so delete biome-ignore lint), or fix what it suppresses and ",
+      "give the reason after the directive, alone on its line (fallow-ignore-next-line kind -- reason, @ts-expect-error reason, biome-ignore format: reason; Biome's linter is off here, so delete biome-ignore lint) or fix what it suppresses and ",
   },
   eslint: {
     problem:
@@ -294,7 +290,7 @@ const namesNothing = (wrapped) => {
 function commentBlocks(source) {
   const blocks = [];
   for (const comment of source.getAllComments()) {
-    const block = blocks[blocks.length - 1];
+    const block = blocks.at(-1);
     const last = block?.at(-1);
     if (
       last?.type === "Line" &&
@@ -343,8 +339,7 @@ function castPlacements(source, assertion) {
 
 function directiveKind(source, comment) {
   const match = candidate.exec(comment.value);
-  if (!match) return "text";
-  if (!match[1]) return "eslint";
+  if (!match?.[1]) return match ? "eslint" : "text";
   const text = comment.value.trimStart();
   const found = directives.find(([form]) => form.test(text));
   return source.lines[comment.loc.start.line - 1].trim() ===
@@ -353,34 +348,36 @@ function directiveKind(source, comment) {
     : "reason";
 }
 
-function namesItsPlatform(lines) {
-  const text = lines.join(" ");
+function refusalOf(source, block, placed) {
+  const kinds = block.map((comment) => directiveKind(source, comment));
+  if (kinds.every((kind) => kind === "text"))
+    return labelRefusal(source, block, placed);
+  if (kinds.every((kind) => kind === "admitted")) return undefined;
+  return refusals[kinds.includes("eslint") ? "eslint" : "reason"];
+}
+
+function opensAbove(source, block, placed) {
+  const { start } = block[0].loc;
   return (
-    !lines[0].startsWith("Platform:") ||
-    platformForms.some((form) => form.test(text))
+    source.lines[start.line - 1].slice(0, start.column).trim() === "" &&
+    placed.has(block.at(-1))
   );
 }
 
-function refusalOf(source, block, placed) {
-  const kinds = block.map((comment) => directiveKind(source, comment));
-  if (kinds.some((kind) => kind !== "text"))
-    return kinds.every((kind) => kind === "admitted")
-      ? undefined
-      : refusals[kinds.includes("eslint") ? "eslint" : "reason"];
+function labelRefusal(source, block, placed) {
   const lines = block.map((comment) => comment.value.trim());
-  const first = lines[0];
-  const { start } = block[0].loc;
+  const [first] = lines;
+  const text = lines.join(" ");
+  const platform = first.startsWith("Platform:");
   if (
-    (commentMarker.test(first) && namesItsPlatform(lines)) ||
-    decisionCitation.test(lines.join(" ")) ||
-    (safetyJustification.test(first) &&
-      source.lines[start.line - 1].slice(0, start.column).trim() === "" &&
-      placed.has(block.at(-1)))
+    (commentMarker.test(first) &&
+      (!platform || platformForms.some((form) => form.test(text)))) ||
+    decisionCitation.test(text) ||
+    (safetyJustification.test(first) && opensAbove(source, block, placed))
   )
     return undefined;
-  if (first.startsWith("Platform:")) return refusals.platform;
-  if (acceptedDecision.test(lines.join(" "))) return refusals.decision;
-  return refusals.comment;
+  if (platform) return refusals.platform;
+  return acceptedDecision.test(text) ? refusals.decision : refusals.comment;
 }
 
 export default {
