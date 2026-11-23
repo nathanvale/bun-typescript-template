@@ -25,10 +25,3 @@ change the kernel in the kernel repository.
 
 A command gets an add-on's capability only when `installedAddons` in
 `src/cli.ts` lists it. The add-ons ship under `agent-cli-kernel/addons/`.
-
-To move the Pin to another kernel commit, run from the template repository:
-
-```sh
-bun run pin-move <full kernel commit> --repository <path to this repository> --plan
-bun run pin-move <full kernel commit> --repository <path to this repository>
-```
