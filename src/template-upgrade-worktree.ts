@@ -426,19 +426,17 @@ export interface TemplateUpgradeBunResult {
   readonly output: string;
 }
 
-export function runBunStep(options: {
+export function runWorktreeStep(options: {
   readonly worktree: string;
-  readonly args: readonly string[];
+  readonly command: readonly [string, ...string[]];
+  readonly label: string;
   readonly timeoutMilliseconds: number;
   readonly env: ProcessEnvMap;
 }): TemplateUpgradeBunResult {
-  const { worktree, args, timeoutMilliseconds, env } = options;
-  const toolEnv = toolchainEnvironment(env);
-  const bunExecutable =
-    Bun.which("bun", { PATH: toolEnv.PATH ?? "" }) ?? process.execPath;
-  const child = Bun.spawnSync([bunExecutable, ...args], {
+  const { worktree, command, label, timeoutMilliseconds, env } = options;
+  const child = Bun.spawnSync([...command], {
     cwd: worktree,
-    env: toolEnv,
+    env: toolchainEnvironment(env),
     stdout: "pipe",
     stderr: "pipe",
     timeout: timeoutMilliseconds,
@@ -454,7 +452,7 @@ export function runBunStep(options: {
       exitCode: null,
       timedOut: true,
       signalCode: signalCode ?? "SIGKILL",
-      output: `bun ${args.join(" ")} did not finish within ${timeoutMilliseconds} ms${combined === "" ? "" : `\n${combined}`}`,
+      output: `${label} did not finish within ${timeoutMilliseconds} ms${combined === "" ? "" : `\n${combined}`}`,
     };
   }
   const exitCode = typeof child.exitCode === "number" ? child.exitCode : null;
@@ -465,4 +463,23 @@ export function runBunStep(options: {
     signalCode,
     output: combined,
   };
+}
+
+export function runBunStep(options: {
+  readonly worktree: string;
+  readonly args: readonly string[];
+  readonly timeoutMilliseconds: number;
+  readonly env: ProcessEnvMap;
+}): TemplateUpgradeBunResult {
+  const { worktree, args, timeoutMilliseconds, env } = options;
+  const toolEnv = toolchainEnvironment(env);
+  const bunExecutable =
+    Bun.which("bun", { PATH: toolEnv.PATH ?? "" }) ?? process.execPath;
+  return runWorktreeStep({
+    worktree,
+    command: [bunExecutable, ...args],
+    label: `bun ${args.join(" ")}`,
+    timeoutMilliseconds,
+    env,
+  });
 }

@@ -12,11 +12,12 @@ import {
   writeFileSync,
 } from "node:fs";
 import { delimiter, dirname, join } from "node:path";
+import { readKernelPin } from "../../src/kernel-pin.ts";
 import { RECORDED_HITS_FILES } from "../../src/recipe.ts";
 import { main } from "../../src/template-upgrade.ts";
 import { ROOT } from "./bootstrap-cli-fixture.ts";
 import { git, gitEnv, gitOutput, initRepository } from "./git-fixture.ts";
-import { siblingKernel } from "./kernel-sibling.ts";
+import { kernelCheckout, siblingKernel } from "./kernel-sibling.ts";
 import { spawnBounded } from "./process.ts";
 
 export function templateUpgradeEnv() {
@@ -339,6 +340,36 @@ export function writeScriptedBun(
       PATH: `${binFolder}${delimiter}${process.env.PATH ?? ""}`,
     },
   };
+}
+
+export function prepareFastInstallBun(
+  folder: (prefix: string) => string,
+  prefix: string,
+) {
+  const kernelDir = join(folder(`${prefix}kernel-`), "agent-cli-kernel");
+  kernelCheckout(kernelDir);
+  const templateModules = join(ROOT, "node_modules");
+  const kernelPackage = readKernelPin(ROOT).repository;
+  return writeScriptedBun(
+    folder,
+    prefix,
+    `#!/bin/sh
+echo "$*" >> __LEDGER__
+if [ "$1" = "install" ]; then
+  rm -rf node_modules
+  mkdir -p node_modules
+  for entry in ${JSON.stringify(templateModules)}/* ${JSON.stringify(templateModules)}/.bin; do
+    [ -e "$entry" ] || continue
+    name=$(basename "$entry")
+    ln -s "$entry" "node_modules/$name"
+  done
+  rm -rf "node_modules/${kernelPackage}"
+  cp -R ${JSON.stringify(kernelDir)} "node_modules/${kernelPackage}"
+  exit 0
+fi
+exec ${JSON.stringify(process.execPath)} "$@"
+`,
+  );
 }
 
 export function commitTemplateLintChange(templateClone: string): string {

@@ -1,0 +1,25 @@
+diff --git a/src/template-upgrade-json-format.ts b/src/template-upgrade-json-format.ts
+index de57640..1d80a97 100644
+--- a/src/template-upgrade-json-format.ts
++++ b/src/template-upgrade-json-format.ts
+@@ -40,19 +40,7 @@ function formatAdmission(
+   worktree: string,
+   path: string,
+ ): Stats | "absent" | { readonly skipped: string } {
+-  const segments = path.split("/");
+-  for (let index = 1; index < segments.length; index += 1) {
+-    const ancestor = segments.slice(0, index).join("/");
+-    if (lstatIfPresent(join(worktree, ancestor))?.isSymbolicLink()) {
+-      return { skipped: `${path} is below symbolic link ${ancestor}` };
+-    }
+-  }
+-  const stats = lstatIfPresent(join(worktree, path));
+-  if (stats === undefined) return "absent";
+-  if (stats.isSymbolicLink()) return { skipped: `${path} is a symbolic link` };
+-  if (!stats.isFile()) return { skipped: `${path} is not a regular file` };
+-  if (stats.nlink !== 1) return { skipped: `${path} is a hard link` };
+-  return stats;
++  return lstatIfPresent(join(worktree, path)) ?? "absent";
+ }
+ 
+ function changedWhileFormatting(

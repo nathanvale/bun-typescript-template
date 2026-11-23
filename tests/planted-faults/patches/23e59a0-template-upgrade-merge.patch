@@ -1,9 +1,9 @@
 diff --git a/src/template-upgrade-merge.ts b/src/template-upgrade-merge.ts
-index 65a104a..b18030f 100644
+index 00ca953..0b9bc94 100644
 --- a/src/template-upgrade-merge.ts
 +++ b/src/template-upgrade-merge.ts
-@@ -355,6 +355,11 @@ async function mergeJsonFile(options: {
-     await writeFile(oursPath, json.mergedText);
+@@ -357,6 +357,11 @@ async function mergeJsonFile(options: {
+     options.keyMergedPaths.add(relativePath);
      return "merge";
    }
 +  if (json !== undefined) {

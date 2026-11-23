@@ -230,15 +230,23 @@ function parseFormatProblems(
     : undefined;
 }
 
+const LOOSE_SOURCE_RULE = "repository/no-loose-source-with-subjects";
+
 function repairForGate(
   gate: TemplateUpgradeGateName,
   worktree: string,
+  problems: readonly TemplateUpgradeGateProblem[],
 ): string {
   if (gate === "fallow") {
     return `Fix the listed problems in ${worktree} so existing code satisfies the gate, then rerun the same upgrade apply command. Only if you intentionally choose to defer paying down pre-existing Fallow findings (never to hide new mistakes), run bun run quality:fallow:record-hits in ${worktree} to record every current Fallow finding into fallow-*-recorded-hits.json so only newer findings fail; the hosted baseline-growth check will still require those recorded hits to be explicitly accepted or paid down on the upgrade pull request.`;
   }
   if (gate === "lint") {
-    return `Fix the listed lint problems in ${worktree} (recording Fallow hits does not silence ESLint), then rerun the same upgrade apply command.`;
+    const looseSource = problems.some(
+      (problem) => problem.code === LOOSE_SOURCE_RULE,
+    )
+      ? " Move each loose file in src/ into a subject folder (src/<subject>/) or src/shared/."
+      : "";
+    return `Fix the listed lint problems in ${worktree} (recording Fallow hits does not silence ESLint), then rerun the same upgrade apply command.${looseSource}`;
   }
   if (gate === "typecheck") {
     return `Fix the listed TypeScript errors in ${worktree}, then rerun the same upgrade apply command.`;
@@ -535,6 +543,6 @@ export function classifyTemplateUpgradeGateFailure(options: {
     gate: matched.gate,
     gateFiles: matched.gateFiles,
     problems: matched.problems,
-    repair: repairForGate(matched.gate, options.worktree),
+    repair: repairForGate(matched.gate, options.worktree, matched.problems),
   });
 }
