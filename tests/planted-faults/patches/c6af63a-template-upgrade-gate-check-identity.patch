@@ -1,0 +1,17 @@
+diff --git a/src/template-upgrade-gate-check.ts b/src/template-upgrade-gate-check.ts
+index 3bb00ce..1d871b5 100644
+--- a/src/template-upgrade-gate-check.ts
++++ b/src/template-upgrade-gate-check.ts
+@@ -225,12 +225,6 @@ function runGateAtHead(
+     timeoutMilliseconds: options.timeoutMilliseconds,
+     env: options.env,
+   });
+-  const changed = plainFileIdentityChange(scratch, written);
+-  if (changed !== undefined) {
+-    return {
+-      refused: `${changed} is no longer the regular file with one link that this check wrote at HEAD`,
+-    };
+-  }
+   if (run.ok) return {};
+   const problems = parseTemplateUpgradeGateRun({
+     gate: options.gate,
