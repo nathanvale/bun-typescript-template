@@ -6,8 +6,8 @@ create a remote, or modify agent/plugin configuration.
 
 The generated repository's `package.json` names the kernel by the template's
 pin, and it gets the kernel lockfile and a pointer skill for each kernel skill.
-Bootstrap reads the kernel repository beside this checkout, or at
-`KERNEL_REPOSITORY`.
+Bootstrap reads the kernel repository at `KERNEL_REPOSITORY`, beside this
+checkout, or from the kernel cache, which it fills from GitHub the first time.
 
 ## Bootstrap
 
