@@ -14,11 +14,12 @@ import {
   openCommit,
   readKernel,
 } from "../src/kernel-reader.ts";
-import { SKILL_FOLDER } from "../src/recipe.ts";
+import { REGENERATE_SCRIPT, SKILL_FOLDER } from "../src/recipe.ts";
 import { type TrialActive, TrialRefusal, trialStep } from "./kernel-trial.ts";
 import { pinMoveReport, pinMoveReportText } from "./pin-move-report.ts";
 import {
   attemptPaths,
+  changedPaths,
   commitPinMoveBranch,
   failedAttempt,
   type PinMoveAttempt,
@@ -40,7 +41,7 @@ function requireCleanWorkTree(repository: string): void {
     throw new RepositoryPinRefusal(
       "repository_dirty",
       `Repository at ${repository} has uncommitted or untracked changes.`,
-      `Commit, stash, or remove local changes in ${repository} so git status is clean, then run pin-move again.`,
+      `Commit or remove local changes in ${repository} so git status is clean, then run pin-move again.`,
     );
 }
 
@@ -331,20 +332,53 @@ function planRepositoryEdits(
   ];
 }
 
+function declaresRegenerate(packageText: string): boolean {
+  const scripts = ownPropertyValue(JSON.parse(packageText), "scripts");
+  return typeof ownPropertyValue(scripts, REGENERATE_SCRIPT) === "string";
+}
+
+type CheckStep = readonly [string, readonly string[], number];
+
+const installSteps: readonly CheckStep[] = [
+  ["install", ["install"], repositoryInstallMilliseconds],
+  [
+    "frozen install",
+    ["install", "--frozen-lockfile"],
+    repositoryInstallMilliseconds,
+  ],
+];
+
 async function runRepositoryCheckSteps(
   repository: string,
   branch: string,
   active: TrialActive,
-): Promise<void> {
-  const steps: readonly (readonly [string, readonly string[], number])[] = [
-    ["install", ["install"], repositoryInstallMilliseconds],
-    [
-      "frozen install",
-      ["install", "--frozen-lockfile"],
-      repositoryInstallMilliseconds,
-    ],
+  regenerate: boolean,
+): Promise<readonly string[]> {
+  await runCheckSteps(repository, branch, active, [
+    ...installSteps,
+    ...(regenerate
+      ? [
+          [
+            REGENERATE_SCRIPT,
+            ["run", REGENERATE_SCRIPT],
+            repositoryCheckMilliseconds,
+          ] as const,
+        ]
+      : []),
+  ]);
+  const regenerated = regenerate ? changedPaths(repository) : [];
+  await runCheckSteps(repository, branch, active, [
     ["check command", ["run", "check"], repositoryCheckMilliseconds],
-  ];
+  ]);
+  return regenerated;
+}
+
+async function runCheckSteps(
+  repository: string,
+  branch: string,
+  active: TrialActive,
+  steps: readonly CheckStep[],
+): Promise<void> {
   for (const [name, args, limit] of steps) {
     try {
       await trialStep(repository, name, args, limit, active);
@@ -382,7 +416,7 @@ function createPinMoveBranch(repository: string, kernelCommit: string): string {
     throw new RepositoryPinRefusal(
       "repository_branch_exists",
       `Branch ${branch} already exists in ${repository}.`,
-      `Inspect or remove branch ${branch} in ${repository} (git branch -D ${branch}), then run pin-move again.`,
+      `Inspect branch ${branch} in ${repository}: merge it if it holds the Pin move you want, or rename it with git branch -m ${branch} <an unused branch name>, then run pin-move again.`,
     );
   requireRepositoryGit(
     repository,
@@ -411,6 +445,7 @@ async function applyRepositoryPinMove(
     edited: edits.map((edit) => edit.path),
     kernelPackage,
     startingPin: current.oldCommit,
+    regenerate: declaresRegenerate(current.packageText),
     active,
   };
   let installRan = false;
@@ -419,8 +454,13 @@ async function applyRepositoryPinMove(
     for (const edit of edits)
       writeFileSync(join(repository, edit.path), edit.text);
     installRan = true;
-    await runRepositoryCheckSteps(repository, branch, active);
-    const written = attemptPaths(repository, attempt.edited);
+    const regenerated = await runRepositoryCheckSteps(
+      repository,
+      branch,
+      active,
+      attempt.regenerate,
+    );
+    const written = attemptPaths(repository, attempt.edited, regenerated);
     const commit = commitPinMoveBranch(
       repository,
       branch,

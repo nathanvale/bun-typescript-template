@@ -24,6 +24,19 @@ import {
 import { processWatchdog } from "../../support/process.ts";
 
 const fixture = pinMoveRepositoryFixture();
+
+function keptAttempt(repo: string, branch: string): string {
+  const kept = git(
+    repo,
+    "for-each-ref",
+    "--format=%(refname:short)",
+    "refs/heads/pin-move",
+  );
+  expect(kept).toBe(
+    `${branch}-failed-${git(repo, "rev-parse", "--short", kept)}`,
+  );
+  return kept;
+}
 const { folder, freshRepository, installedRepository, runPinMove } = fixture;
 
 describe("pin-move --repository", () => {
@@ -100,6 +113,15 @@ describe("pin-move --repository", () => {
     expect(
       gitOutput(repo, "status", "--porcelain", "--untracked-files=all"),
     ).toBe("");
+    expect(
+      gitOutput(repo, "show", "--name-only", "--format=", "HEAD").split("\n"),
+    ).toEqual([
+      ".agents/skills/agent-cli-kernel/SKILL.md",
+      ".agents/skills/verify-cli/SKILL.md",
+      "bun.lock",
+      "package.json",
+      "",
+    ]);
     const updatedManifest: unknown = JSON.parse(
       readFileSync(join(repo, "package.json"), "utf8"),
     );
@@ -233,24 +255,24 @@ describe("pin-move --repository", () => {
     expect(run.exit).toBe(1);
     expect(run.stdout).toContain("Kernel change notes (1):");
     expect(run.stderr).toContain("repository_check_failed:");
+    const kept = keptAttempt(repo, expectedBranch);
     expect(run.stderr).toContain(
-      `The failed attempt is kept on branch ${expectedBranch} for inspection; main is checked out again and was not changed.`,
+      `The failed attempt is kept on branch ${kept} for inspection; main is checked out again and was not changed.`,
     );
     expect(run.stderr).toContain(
-      `Repair: Delete the failed attempt with git branch -D ${expectedBranch} in ${realpathSync(repo)} before running pin-move again.`,
+      "Repair: Fix the failure check command reports, then run pin-move again.",
     );
+    expect(run.stderr).not.toContain("branch -D");
     expect(git(repo, "rev-parse", "--abbrev-ref", "HEAD")).toBe("main");
     expect(git(repo, "rev-parse", "main")).toBe(mainBefore);
     expect(
       gitOutput(repo, "status", "--porcelain", "--untracked-files=all"),
     ).toBe("");
-    expect(git(repo, "rev-list", "--count", `main..${expectedBranch}`)).toBe(
-      "1",
-    );
-    expect(git(repo, "log", "-1", "--format=%s", expectedBranch)).toBe(
+    expect(git(repo, "rev-list", "--count", `main..${kept}`)).toBe("1");
+    expect(git(repo, "log", "-1", "--format=%s", kept)).toBe(
       `chore(kernel): failed Pin move from ${trialBase.slice(0, 7)} to ${fixture.targetCommit.slice(0, 7)} (repository_check_failed)`,
     );
-    expect(git(repo, "show", `${expectedBranch}:package.json`)).toContain(
+    expect(git(repo, "show", `${kept}:package.json`)).toContain(
       cloneSpecifier(fixture.kernelRepo, fixture.targetCommit),
     );
     expect(trialBase).toStartWith(installedKernelCommit(repo));
@@ -280,13 +302,15 @@ describe("pin-move --repository", () => {
     ]);
     expect(run.exit).toBe(1);
     expect(run.stderr).toContain("repository_check_failed:");
+    const kept = keptAttempt(repo, expectedBranch);
     expect(run.stderr).toContain(
-      `The failed attempt is kept on branch ${expectedBranch} for inspection and main is checked out again, but its installed packages may still hold the failed attempt's kernel: bun install --frozen-lockfile on main failed:`,
+      `The failed attempt is kept on branch ${kept} for inspection and main is checked out again, but its installed packages may still hold the failed attempt's kernel: bun install --frozen-lockfile on main failed:`,
     );
     expect(run.stderr).not.toContain("was not changed");
     expect(run.stderr).toContain(
-      `Repair: Run bun install --frozen-lockfile in ${realpathSync(repo)}, then delete the failed attempt with git branch -D ${expectedBranch} before running pin-move again.`,
+      `Repair: Run bun install --frozen-lockfile in ${realpathSync(repo)} before running pin-move again.`,
     );
+    expect(run.stderr).not.toContain("branch -D");
     expect(git(repo, "rev-parse", "--abbrev-ref", "HEAD")).toBe("main");
     expect(fixture.targetCommit).toStartWith(installedKernelCommit(repo));
   }, 180_000);
@@ -352,7 +376,11 @@ describe("pin-move --repository", () => {
         repo,
       ]);
       expectRefused(branchExists, "repository_branch_exists");
-      git(repo, "branch", "-D", existingBranch);
+      expect(branchExists.stderr).toContain(
+        `rename it with git branch -m ${existingBranch} <an unused branch name>`,
+      );
+      expect(branchExists.stderr).not.toContain("branch -D");
+      git(repo, "branch", "-d", existingBranch);
 
       commitIn(repo, "use foreign kernel remote", {
         "package.json": `${JSON.stringify(

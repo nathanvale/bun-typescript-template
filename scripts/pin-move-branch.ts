@@ -97,14 +97,67 @@ export type PinMoveAttempt = {
   readonly edited: readonly string[];
   readonly kernelPackage: string;
   readonly startingPin: string;
+  readonly regenerate: boolean;
   readonly active: TrialActive;
 };
 
-export function attemptPaths(repository: string, edited: readonly string[]) {
-  const paths = [...edited];
+export function attemptPaths(
+  repository: string,
+  edited: readonly string[],
+  regenerated: readonly string[] = [],
+) {
+  const paths = new Set([...edited, ...regenerated]);
   if (lstatSync(join(repository, "bun.lock"), { throwIfNoEntry: false }))
-    paths.push("bun.lock");
-  return paths.sort();
+    paths.add("bun.lock");
+  return [...paths].sort();
+}
+
+function statusPaths(stdout: string): readonly string[] {
+  return stdout
+    .split("\0")
+    .filter((entry) => entry !== "")
+    .map((entry) => entry.slice(3));
+}
+
+export function changedPaths(repository: string): readonly string[] {
+  const status = requireRepositoryGit(
+    repository,
+    ["status", "--porcelain", "-z", "--untracked-files=all"],
+    `Run git status in ${repository} and resolve any git error before running pin-move again.`,
+  );
+  return statusPaths(status);
+}
+
+function failedAttemptPaths(attempt: PinMoveAttempt): readonly string[] {
+  const status = attempt.regenerate
+    ? repositoryGit(attempt.repository, [
+        "status",
+        "--porcelain",
+        "-z",
+        "--untracked-files=all",
+      ])
+    : undefined;
+  return attemptPaths(
+    attempt.repository,
+    attempt.edited,
+    status?.ok === true ? statusPaths(status.stdout) : [],
+  );
+}
+
+function keepFailedAttempt(
+  repository: string,
+  branch: string,
+): { readonly kept: string; readonly unrenamed: string } {
+  const head = repositoryGit(repository, ["rev-parse", "--short", "HEAD"]);
+  const wanted = `${branch}-failed-${head.stdout.trim()}`;
+  const renamed = head.ok
+    ? repositoryGit(repository, ["branch", "-m", branch, wanted])
+    : head;
+  if (renamed.ok) return { kept: wanted, unrenamed: "" };
+  return {
+    kept: branch,
+    unrenamed: ` pin-move could not rename branch ${branch} to ${wanted}: git says "${renamed.said}". Rename it with git branch -m ${branch} <an unused branch name> in ${repository} before running pin-move again.`,
+  };
 }
 
 function leftOver(repository: string): string {
@@ -167,13 +220,14 @@ async function keptAttemptRefusal(
   attempt: PinMoveAttempt,
   code: string,
   reason: string,
+  repair: string,
   installRan: boolean,
 ): Promise<RepositoryPinRefusal> {
   const { repository, startingRef, branch } = attempt;
   const reinstall = installRan
     ? ` Run bun install --frozen-lockfile in ${repository} once ${startingRef} is checked out.`
     : "";
-  const paths = attemptPaths(repository, attempt.edited);
+  const paths = failedAttemptPaths(attempt);
   const staged = repositoryGit(repository, ["add", "--", ...paths]);
   const committed = staged.ok
     ? repositoryGit(repository, [
@@ -193,14 +247,15 @@ async function keptAttemptRefusal(
     return new RepositoryPinRefusal(
       code,
       `${reason} pin-move could not commit the failed attempt on branch ${branch}: git says "${committed.said}". Branch ${branch} is still checked out with uncommitted edits to ${paths.join(", ")}; ${startingRef} was not changed.`,
-      `In ${repository}, set the edits aside (git stash --include-untracked) or discard them, then git checkout ${startingRef} && git branch -D ${branch}, and run pin-move again.${reinstall}`,
+      `In ${repository}, discard pin-move's edits to ${paths.join(", ")} until git status is clean, then git checkout ${startingRef} && git branch -d ${branch}, and run pin-move again.${reinstall}`,
     );
+  const { kept, unrenamed } = keepFailedAttempt(repository, branch);
   const back = repositoryGit(repository, ["checkout", startingRef]);
   if (!back.ok)
     return new RepositoryPinRefusal(
       code,
-      `${reason} The failed attempt is committed on branch ${branch}, but git checkout ${startingRef} failed: git says "${back.said}". Branch ${branch} is still checked out; ${startingRef} was not changed.`,
-      `Run git checkout ${startingRef} in ${repository}, delete the failed attempt with git branch -D ${branch}, then run pin-move again.${reinstall}`,
+      `${reason} The failed attempt is committed on branch ${kept}, but git checkout ${startingRef} failed: git says "${back.said}". Branch ${kept} is still checked out; ${startingRef} was not changed.`,
+      `Run git checkout ${startingRef} in ${repository}, then run pin-move again.${unrenamed}${reinstall}`,
     );
   const unrestored = installRan
     ? await restoreInstalledKernel(attempt)
@@ -208,13 +263,13 @@ async function keptAttemptRefusal(
   if (unrestored !== undefined)
     return new RepositoryPinRefusal(
       code,
-      `${reason} The failed attempt is kept on branch ${branch} for inspection and ${startingRef} is checked out again, but its installed packages may still hold the failed attempt's kernel: ${unrestored}`,
-      `Run bun install --frozen-lockfile in ${repository}, then delete the failed attempt with git branch -D ${branch} before running pin-move again.${leftOver(repository)}`,
+      `${reason} The failed attempt is kept on branch ${kept} for inspection and ${startingRef} is checked out again, but its installed packages may still hold the failed attempt's kernel: ${unrestored}`,
+      `Run bun install --frozen-lockfile in ${repository} before running pin-move again.${unrenamed}${leftOver(repository)}`,
     );
   return new RepositoryPinRefusal(
     code,
-    `${reason} The failed attempt is kept on branch ${branch} for inspection; ${startingRef} is checked out again and was not changed.`,
-    `Delete the failed attempt with git branch -D ${branch} in ${repository} before running pin-move again.${leftOver(repository)}`,
+    `${reason} The failed attempt is kept on branch ${kept} for inspection; ${startingRef} is checked out again and was not changed.`,
+    `${repair}${unrenamed}${leftOver(repository)}`,
   );
 }
 
@@ -224,11 +279,18 @@ export async function failedAttempt(
   installRan: boolean,
 ): Promise<Error> {
   if (error instanceof RepositoryPinRefusal)
-    return keptAttemptRefusal(attempt, error.code, error.reason, installRan);
+    return keptAttemptRefusal(
+      attempt,
+      error.code,
+      error.reason,
+      error.repair,
+      installRan,
+    );
   const kept = await keptAttemptRefusal(
     attempt,
     "error",
     error instanceof Error ? error.message : String(error),
+    "Fix the error above, then run pin-move again.",
     installRan,
   );
   return new Error(kept.message, { cause: error });
