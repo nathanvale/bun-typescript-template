@@ -2469,5 +2469,19 @@
     "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
     "title": "refuses a symbolic link pointer skill or bun\\.lock before creating the branch and leaves main checked out and clean$",
     "source": "9348aa5 fix(pin-move): leave the owner's checkout clean after a refused repository Pin move"
+  },
+  {
+    "id": "03da5f1-pin-move-repository-reinstall",
+    "patch": "tests/planted-faults/patches/03da5f1-pin-move-repository-reinstall.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses when the generated repository check fails after the move, keeps the failed attempt as one commit on the pin-move branch, and leaves main checked out and clean$",
+    "source": "03da5f1 fix(pin-move): reinstall the starting branch's kernel after a refused repository Pin move"
+  },
+  {
+    "id": "03da5f1-pin-move-repository-restore-refusal",
+    "patch": "tests/planted-faults/patches/03da5f1-pin-move-repository-restore-refusal.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses when the generated repository check fails, and says the installed kernel was not restored when the starting branch's frozen install fails$",
+    "source": "03da5f1 fix(pin-move): reinstall the starting branch's kernel after a refused repository Pin move"
   }
 ]

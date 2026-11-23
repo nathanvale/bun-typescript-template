@@ -1,0 +1,18 @@
+diff --git a/scripts/pin-move-branch.ts b/scripts/pin-move-branch.ts
+index 785d9cb..586f1ec 100644
+--- a/scripts/pin-move-branch.ts
++++ b/scripts/pin-move-branch.ts
+@@ -146,13 +146,6 @@ async function restoreInstalledKernel(
+ ): Promise<string | undefined> {
+   const { repository, startingRef, startingPin, kernelPackage } = attempt;
+   try {
+-    await trialStep(
+-      repository,
+-      "frozen install",
+-      ["install", "--frozen-lockfile"],
+-      restoreInstallMilliseconds,
+-      attempt.active,
+-    );
+   } catch (error) {
+     const said = error instanceof Error ? error.message : String(error);
+     return `bun install --frozen-lockfile on ${startingRef} failed: ${said.split(" Repair: ")[0]}`;
