@@ -34,7 +34,7 @@ index 1308961..9f6555a 100644
 @@ -114,7 +103,6 @@ export function siblingKernelPath(root: string, { repository }: KernelPin) {
  }
  
- const kernelCacheFolder = "bun-typescript-template/agent-cli-kernel.git";
+ const kernelCacheFolder = "my-agent-dojo/bun-typescript-template/agent-cli-kernel.git";
 -const networkMilliseconds = 300_000;
  
  export function kernelCachePath(
