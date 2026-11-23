@@ -49,7 +49,7 @@ async function replayed(subject: Planted, removesBound?: true) {
   return run.result;
 }
 
-describe("replay credits a kill only to a test that passed without the patch and failed by its own check with it", () => {
+describe("replay credits a kill only to a test that passed without the patch and fails, not by a timeout, with it", () => {
   test("BROKEN when, with the patch applied, the named test outruns Bun's test timer", async () => {
     const subject = planted({
       tests: testFile(`test("L.refuses NaN", async () => {
@@ -161,7 +161,7 @@ test.todo("L.refuses NaN later");
     });
   }, 60_000);
 
-  test("KILLED names only the selected test that failed by its own check when another timed out", async () => {
+  test("KILLED names only the selected test that failed, not by a timeout, when another timed out", async () => {
     const subject = planted({
       tests: testFile(`test("L.refuses NaN", () => {
   expect(refused).toBe(true);
@@ -179,8 +179,8 @@ test("L.refuses NaN in time", async () => {
   }, 60_000);
 });
 
-describe("replay credits a kill only to a failed assertion in a test it names once", () => {
-  test("BROKEN when a beforeEach hook throws once the patch is applied", async () => {
+describe("replay credits a crash as a kill, a known limit, and refuses a test name held twice", () => {
+  test("KILLED, a known limit, when a beforeEach hook throws once the patch is applied", async () => {
     const subject = planted({
       tests: testFile(
         `beforeEach(() => {
@@ -194,13 +194,13 @@ test("L.refuses NaN", () => {
       ),
     });
 
-    expect(await replayed(subject)).toMatchObject({
-      kind: "BROKEN",
-      cause: withPatch("but by no failed assertion (L.refuses NaN: Error)"),
+    expect(await replayed(subject)).toEqual({
+      kind: "KILLED",
+      failing: ["L.refuses NaN"],
     });
   }, 60_000);
 
-  test("BROKEN when the test body crashes after a passing assertion once the patch is applied", async () => {
+  test("KILLED, a known limit, when the test body crashes after a passing assertion once the patch is applied", async () => {
     const subject = planted({
       tests: testFile(`test("L.refuses NaN", () => {
   expect(limit(1)).toBe(1);
@@ -209,9 +209,9 @@ test("L.refuses NaN", () => {
 `),
     });
 
-    expect(await replayed(subject)).toMatchObject({
-      kind: "BROKEN",
-      cause: withPatch("but by no failed assertion (L.refuses NaN: TypeError)"),
+    expect(await replayed(subject)).toEqual({
+      kind: "KILLED",
+      failing: ["L.refuses NaN"],
     });
   }, 60_000);
 

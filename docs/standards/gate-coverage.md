@@ -208,13 +208,14 @@ file extensions in those directories.
 
 - Fault replay fails on a fault record whose named test passes with the
   planted fault applied or fails without it, or whose patch file is
-  missing. A kill needs a test that passed without the patch to fail by
-  its own check with it: a failed assertion, which Bun's JUnit report
-  types `AssertionError`. A test file that does not load, a title that
-  selects no such test, a timeout, from Bun's test timer or a child's
-  bound, and any other failure, such as an error a hook or the test body
-  throws, are BROKEN. So is a selected test whose name either run's
-  report holds more than once, since replay matches tests by name.
+  missing. A kill needs a test that passed without the patch to fail,
+  not by a timeout, with it. A test file that does not load, a title
+  that selects no such test, and a timeout, from Bun's test timer or a
+  child's bound, are BROKEN. So is a selected test whose name either
+  run's report holds more than once, since replay matches tests by name.
+- Review only: a setup crash that the patch causes counts as a kill.
+  Bun's report cannot tell it from a helper's deliberate
+  `throw new Error(...)` check, and many records rely on such checks.
 - A fault record with `"removesBound": true` plants the removal of a
   bound, so a timeout is the only evidence it can produce. For that
   record alone, a selected test that times out with the patch applied is

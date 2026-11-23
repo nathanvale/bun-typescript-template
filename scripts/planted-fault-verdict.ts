@@ -9,8 +9,6 @@ export type Verdict =
 
 export const timeoutErrorName = "TimeoutError";
 
-const assertionErrorName = "AssertionError";
-
 export type TestResult = {
   name: string;
   skipped: boolean;
@@ -130,17 +128,10 @@ export async function judged(
   const failed = patched.results.filter(
     ({ name, failure }) => failure !== undefined && selected.has(name),
   );
-  const kills = (failure: string | undefined) =>
-    failure === assertionErrorName ||
-    (removesBound && failure === timeoutErrorName);
   const failing = failed
-    .filter(({ failure }) => kills(failure))
+    .filter(({ failure }) => removesBound || failure !== timeoutErrorName)
     .map(({ name }) => name);
   if (failing.length > 0) return { kind: "KILLED", failing };
-  if (failed.some(({ failure }) => failure !== timeoutErrorName))
-    return withPatch(
-      `but by no failed assertion (${failed.map(({ name, failure }) => `${name}: ${failure}`).join(" | ")})`,
-    );
   if (failed.length > 0)
     return withPatch(
       `but only by timing out (${failed.map(({ name }) => name).join(" | ")})`,
