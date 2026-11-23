@@ -1,13 +1,13 @@
 diff --git a/config/template-rules.mjs b/config/template-rules.mjs
-index 8d673d3..ba1cc90 100644
+index 3a35494..46bf43e 100644
 --- a/config/template-rules.mjs
 +++ b/config/template-rules.mjs
-@@ -344,7 +344,7 @@ function directiveKind(line) {
-   if (eslintInline.test(line)) return "eslint";
-   const found = directives.find(([form]) => form.test(line));
-   if (!found) return "text";
--  return found[1].test(line) ? "admitted" : "reason";
-+  return "admitted";
+@@ -343,7 +343,7 @@ function directiveKind(source, comment) {
+   const text = comment.value.trimStart();
+   const found = directives.find(([form]) => form.test(text));
+   return source.lines[comment.loc.start.line - 1].trim() ===
+-    source.getText(comment).trim() && found?.[1].test(text)
++    source.getText(comment).trim() && found
+     ? "admitted"
+     : "reason";
  }
- 
- function namesItsPlatform(lines) {

@@ -1,13 +1,13 @@
 diff --git a/config/template-rules.mjs b/config/template-rules.mjs
-index 8d673d3..2619f2a 100644
+index 3a35494..ae30af2 100644
 --- a/config/template-rules.mjs
 +++ b/config/template-rules.mjs
-@@ -373,7 +373,7 @@ function isAdmitted(source, block, placed) {
-     return kinds.every((kind) => kind === "admitted");
-   return (
-     (commentMarker.test(first) && namesItsPlatform(lines)) ||
--    decisionCitation.test(lines.join(" ")) ||
-+    acceptedDecision.test(lines.join(" ")) ||
-     (safetyJustification.test(first) &&
-       source.lines[start.line - 1].slice(0, start.column).trim() === "" &&
-       placed.has(block[block.length - 1]))
+@@ -372,7 +372,7 @@ function labelRefusal(source, block, placed) {
+   if (
+     (commentMarker.test(first) &&
+       (!platform || platformForms.some((form) => form.test(text)))) ||
+-    decisionCitation.test(text) ||
++    acceptedDecision.test(text) ||
+     (safetyJustification.test(first) && opensAbove(source, block, placed))
+   )
+     return undefined;

@@ -2599,5 +2599,12 @@
     "testFile": "tests/template/lint/lint-comments.test.ts",
     "title": "^no-comments refuses \"// @ts-expect-error the fixture needs it.*clearer",
     "source": "0ebf758 fix(lint): admit a directive only in its exact form, with a reason in words, on lines of its own"
+  },
+  {
+    "id": "cc1aefc-template-rules",
+    "patch": "tests/planted-faults/patches/cc1aefc-template-rules.patch",
+    "testFile": "tests/template/lint/lint-comments.test.ts",
+    "title": "^no-comments refuses \"/\\* Platform: Bun supplies the types used here\\.\\\\n   @ts-expect-error",
+    "source": "cc1aefc fix(lint): judge every comment as a directive candidate on its own, in the one form its tool reads"
   }
 ]
