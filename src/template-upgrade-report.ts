@@ -118,7 +118,7 @@ function pinMoveNoticeFor(inputs: TemplateUpgradeInputs): string | undefined {
   if (inputs.repositoryPinnedCommit === inputs.templatePinnedCommit) {
     return undefined;
   }
-  return `The template's Pin moved from ${inputs.repositoryPinnedCommit.slice(0, 7)} to ${inputs.templatePinnedCommit.slice(0, 7)}; a Template upgrade does not move it. Move yours separately.`;
+  return `The template's Pin is ${inputs.templatePinnedCommit.slice(0, 7)} and yours is ${inputs.repositoryPinnedCommit.slice(0, 7)}; a Template upgrade does not move a Pin. Move yours separately if you need the template's.`;
 }
 
 export function createTemplateUpgradeApplyStep(

@@ -7,9 +7,9 @@ import ts from "typescript";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
 import {
   bootstrapCliFixture,
+  invokeIn,
   requireSuccess,
   ROOT,
-  runCommand,
   runIn,
 } from "../../support/bootstrap-cli-fixture.ts";
 import { gitEnv, inherited } from "../../support/git-fixture.ts";
@@ -25,20 +25,13 @@ import {
 const temporaryRoot = bootstrapCliFixture();
 
 function bootstrapIsolated(destination: string) {
-  return runCommand(
-    ROOT,
-    [
-      process.execPath,
-      "run",
-      "src/bootstrap.ts",
-      "--destination",
-      destination,
-      "--source-packet",
-      "https://example.test/spec",
-      "--json",
-    ],
-    { ...inherited(), ...gitEnv },
-  );
+  return invokeIn(ROOT, { ...inherited(), ...gitEnv }, [
+    "--destination",
+    destination,
+    "--source-packet",
+    "https://example.test/spec",
+    "--json",
+  ]);
 }
 
 function linkTemplatePackagesAndKernel(destination: string): void {

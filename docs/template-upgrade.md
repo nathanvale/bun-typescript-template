@@ -38,12 +38,25 @@ The command reads only committed state (`HEAD:.template.json` — or `HEAD:.cli-
 - `--to REF` cannot be resolved or is not a descendant of `templateRevision`.
 - `HEAD:package.json` is missing or its `dependencies.agent-cli-kernel` entry does not carry a full 40-character pinned commit (`#<40-hex>`).
 - Regenerating either tree with the repository's Pin fails (quoting the bootstrap error and naming moving the Pin as a possible cause).
+- No kernel repository is at `KERNEL_REPOSITORY` or beside the template, and the kernel cache cannot get the repository's Pin (`kernel_repository_missing`). The message names git's words, or names the commit when no branch of the remote reaches it. Clone the kernel repository beside the template, or name a clone's path in `KERNEL_REPOSITORY`, or rerun once git can reach the remote to fill the kernel cache at the path the repair line names.
 - The target branch `template-upgrade/<base7>-<target7>` already exists from a different `HEAD`.
 - Any ancestor folder of an upgraded path (in the old tree, new tree, or worktree), or `.worktrees` itself, is a symbolic link (`symlink_ancestor`).
 - The active upgrade worktree `.worktrees/template-upgrade-<target7>` already exists at a different `HEAD` (`worktree_exists_other_head`); copy what you need out of it, unlock it with `git worktree unlock`, remove it with `git worktree remove --force`, and rerun.
 - Either `.worktrees/template-upgrade-tmp` or `.worktrees/template-upgrade-<target7>` holds anything not locked by this command with a reason starting `template-upgrade ` (`worktree_not_owned`), such as an unlocked worktree, a worktree locked for another reason, or a plain folder or file; move or remove it after saving any work you need, then rerun.
 
-If `templateRevision` equals the resolved target commit, both `plan` and `apply` exit `0` with status `up-to-date` and write nothing. When the template's own Pin at the target (`kernel-pin.json`) differs from the repository's Pin, both `plan` and `apply` print one notice (and include `pinMoveNotice` in `--json` output) reminding you that a Template upgrade does not move the Pin and to move yours separately.
+If `templateRevision` equals the resolved target commit, both `plan` and `apply` exit `0` with status `up-to-date` and write nothing. When the template's own Pin at the target (`kernel-pin.json`) differs from the repository's Pin, both `plan` and `apply` print one notice (and include `pinMoveNotice` in `--json` output). The notice names both Pins without saying which is newer, says that a Template upgrade does not move a Pin, and tells you to move yours separately if you need the template's.
+
+### Where the kernel repository comes from
+
+Bootstrap and a Template upgrade read the kernel from the first of these places that exists:
+
+1. The path in `KERNEL_REPOSITORY`, when it is set.
+2. A clone of the kernel repository beside the template checkout. From a worktree, the clone beside the checkout that the worktree shares its objects with also counts.
+3. The kernel cache: a bare clone of the remote in `kernel-pin.json`, at `$XDG_CACHE_HOME/my-agent-dojo/bun-typescript-template/agent-cli-kernel.git`. When `XDG_CACHE_HOME` is unset, the kernel cache is at `~/.cache/my-agent-dojo/bun-typescript-template/agent-cli-kernel.git`.
+
+The first run that reaches the kernel cache clones the remote into it. A later run uses the kernel cache without the network while the kernel cache holds the pinned commit. When the pinned commit is missing, the run fetches the remote's branches into the kernel cache and looks again. A Template upgrade looks for the repository's Pin, because it regenerates both trees at that Pin.
+
+Each user has one kernel cache. Every checkout of the template that you run shares your kernel cache, because its path depends only on your `XDG_CACHE_HOME` or your home folder. The kernel repository is public, so the clone and the fetch need no login. The kernel reader checks the kernel cache's content by commit identity, as it checks a clone you name.
 
 ### Oldest supported base
 

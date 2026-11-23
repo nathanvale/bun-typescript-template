@@ -149,6 +149,14 @@ roots and each add-on's root.
 The Seam at the kernel reader's Interface, where a kernel repository at one
 commit is supplied. A test can supply a stand-in.
 
+**Kernel cache**:
+The one bare clone of the kernel repository that Bootstrap and a Template
+upgrade keep under the machine's cache folder, for when neither
+`KERNEL_REPOSITORY` nor a sibling repository supplies the kernel. They clone it
+from the pin's remote the first time and fetch its branches when the pinned
+commit is missing.
+_Avoid_: cache (unqualified)
+
 ### Coding standards
 
 **Rule table**:

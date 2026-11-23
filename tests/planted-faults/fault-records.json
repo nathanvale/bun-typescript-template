@@ -1466,7 +1466,7 @@
     "id": "0352f0d-kernel-sibling-refusal",
     "patch": "tests/planted-faults/patches/0352f0d-kernel-sibling-refusal.patch",
     "testFile": "tests/template/kernel-trial/kernel-sibling.test.ts",
-    "title": "nowhere, and refuses naming KERNEL_REPOSITORY$",
+    "title": "nowhere, the kernel cache included, when the remote is unreachable, and refuses naming both manual routes and the cache it tried$",
     "source": "0352f0d test(kernel-trial): find the kernel repository from a worktree, or refuse naming KERNEL_REPOSITORY"
   },
   {
@@ -2364,6 +2364,20 @@
     "testFile": "tests/template/template-upgrade/template-upgrade-json-conflicts.test.ts",
     "title": "^rerunning apply after resolving git's visible CRLF hunk at a nested object's closing brace, with a member repeated outside it, reports resolution-in-progress and commits nothing$",
     "source": "9556769 fix(template-upgrade): read CRLF conflict hunks in a JSON text merge as their LF twins"
+  },
+  {
+    "id": "319c6de-kernel-pin",
+    "patch": "tests/planted-faults/patches/319c6de-kernel-pin.patch",
+    "testFile": "tests/template/kernel-trial/kernel-cache.test.ts",
+    "title": "an empty cache is filled with a bare clone of the pin's remote that holds the pinned commit$",
+    "source": "319c6de feat(kernel-pin): fetch the kernel into the kernel cache when no clone is named or beside the template"
+  },
+  {
+    "id": "319c6de-kernel-cache-identity",
+    "patch": "tests/planted-faults/patches/319c6de-kernel-cache-identity.patch",
+    "testFile": "tests/template/kernel-trial/kernel-cache.test.ts",
+    "title": "the kernel reader refuses a kernel cache whose pinned commit is replaced by another commit's bytes, as git finds the hash mismatch$",
+    "source": "319c6de feat(kernel-pin): fetch the kernel into the kernel cache when no clone is named or beside the template"
   },
   {
     "id": "8652a6f-template-upgrade-gate-check",
