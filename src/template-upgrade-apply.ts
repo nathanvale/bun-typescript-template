@@ -2,14 +2,9 @@ import { rmdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { ChangeNoteEntry } from "./change-notes.ts";
 import { CliError } from "./cli-error.ts";
-import {
-  noCheckTemplateUpgradeSteps,
-  recordedHitsRequestFor,
-  runRecordedHitsStep,
-  RECORDED_HITS_STEP,
-} from "./template-upgrade-recorded-hits.ts";
 import { withTemplateUpgradeTrees } from "./template-upgrade-bootstrap.ts";
 import { readTemplateUpgradeChangeNotes } from "./template-upgrade-change-notes.ts";
+import { runTemplateUpgradeCheckSteps } from "./template-upgrade-gate-check.ts";
 import {
   lstatIfPresent,
   type ProcessEnvMap,
@@ -28,13 +23,15 @@ import {
   type TemplateUpgradeRow,
 } from "./template-upgrade-merge.ts";
 import {
+  noCheckTemplateUpgradeSteps,
+  recordedHitsRequestFor,
+} from "./template-upgrade-recorded-hits.ts";
+import {
   createTemplateUpgradeApplyRun,
   createTemplateUpgradePlanResult,
   skipTemplateUpgradeSteps,
   type TemplateUpgradeApplyRun,
-  createTemplateUpgradeApplyStep as createApplyStep,
   type TemplateUpgradeApplyStep,
-  type TemplateUpgradeStepCommand,
   type TemplateUpgradePlanResult,
 } from "./template-upgrade-report.ts";
 import {
@@ -54,16 +51,12 @@ import {
   readTextIfFile,
   readWorktreeOwnHead,
   resolveRefIfPresent,
-  runBunStep,
   stageAndCommitWorktree,
   templateUpgradeBranchName,
   templateUpgradeCommitMessage,
   templateUpgradeWorktreePaths,
   treesEqual,
 } from "./template-upgrade-worktree.ts";
-
-const INSTALL_TIMEOUT_MS = 120_000;
-const CHECK_TIMEOUT_MS = 240_000;
 
 interface ApplySession {
   readonly inputs: TemplateUpgradeInputs;
@@ -82,6 +75,8 @@ interface ApplyMergeData {
   readonly rows: readonly TemplateUpgradeRow[];
   readonly dependencyChanges: readonly PackageDependencyChange[];
   readonly templateCopyChanges: readonly TemplateUpgradeCopyChange[];
+  readonly beforePackage: string | undefined;
+  readonly afterPackage: string | undefined;
 }
 
 async function findCommittedWorktreeHead(
@@ -251,116 +246,6 @@ export async function templateUpgradePlan(
       await removeTemplateUpgradeWorktree(inputs.repository, planWorktree, env);
     }
   });
-}
-
-function checkFailedRun(options: {
-  readonly session: ApplySession;
-  readonly mergeData: ApplyMergeData;
-  readonly failedStep: TemplateUpgradeStepCommand;
-  readonly steps: readonly TemplateUpgradeApplyStep[];
-  readonly output: string;
-}): TemplateUpgradeApplyRun {
-  const { session, mergeData, failedStep, steps, output } = options;
-  return createTemplateUpgradeApplyRun({
-    exitCode: 1,
-    inputs: session.inputs,
-    branch: session.branch,
-    status: "check-failed",
-    worktree: session.targetWorktree,
-    changeNotes: session.changeNotes,
-    steps,
-    ...mergeData,
-    failedStep,
-    checkCommandOutput: output,
-  });
-}
-
-function recordNewRecordedHits(
-  session: ApplySession,
-  mergeData: ApplyMergeData,
-):
-  | { readonly ok: true; readonly steps: readonly TemplateUpgradeApplyStep[] }
-  | { readonly ok: false; readonly run: TemplateUpgradeApplyRun } {
-  const request = recordedHitsRequestFor(
-    session.targetWorktree,
-    session.inputs,
-    session.env,
-  );
-  const recorded = runRecordedHitsStep(request, CHECK_TIMEOUT_MS);
-  if (recorded.ok) return recorded;
-  return {
-    ok: false,
-    run: checkFailedRun({
-      session,
-      mergeData,
-      failedStep: RECORDED_HITS_STEP,
-      steps: recorded.steps,
-      output: recorded.output,
-    }),
-  };
-}
-
-function runCheckCommandSteps(
-  session: ApplySession,
-  mergeData: ApplyMergeData,
-):
-  | { readonly ok: true; readonly steps: readonly TemplateUpgradeApplyStep[] }
-  | { readonly ok: false; readonly run: TemplateUpgradeApplyRun } {
-  const install = runBunStep({
-    worktree: session.targetWorktree,
-    args: ["install"],
-    timeoutMilliseconds: INSTALL_TIMEOUT_MS,
-    env: session.env,
-  });
-  if (!install.ok) {
-    const steps = Object.freeze([
-      createApplyStep("bun install", true, "failed"),
-      createApplyStep("bun run check", false, "skipped", "bun install failed"),
-    ]);
-    return {
-      ok: false,
-      run: checkFailedRun({
-        session,
-        mergeData,
-        failedStep: "bun install",
-        steps,
-        output: install.output,
-      }),
-    };
-  }
-  const recorded = recordNewRecordedHits(session, mergeData);
-  if (!recorded.ok) return recorded;
-  const check = runBunStep({
-    worktree: session.targetWorktree,
-    args: ["run", "check"],
-    timeoutMilliseconds: CHECK_TIMEOUT_MS,
-    env: session.env,
-  });
-  if (!check.ok) {
-    const steps = Object.freeze([
-      createApplyStep("bun install", true, "passed"),
-      ...recorded.steps,
-      createApplyStep("bun run check", true, "failed"),
-    ]);
-    return {
-      ok: false,
-      run: checkFailedRun({
-        session,
-        mergeData,
-        failedStep: "bun run check",
-        steps,
-        output: check.output,
-      }),
-    };
-  }
-  return {
-    ok: true,
-    steps: Object.freeze([
-      createApplyStep("bun install", true, "passed"),
-      ...recorded.steps,
-      createApplyStep("bun run check", true, "passed"),
-    ]),
-  };
 }
 
 async function inspectExistingTemplateUpgradeBranch(
@@ -586,6 +471,8 @@ async function finalizeTemplateUpgradeWorktree(
     rows,
     dependencyChanges: diffPackageDependencies(beforePackage, afterPackage),
     templateCopyChanges,
+    beforePackage,
+    afterPackage,
   };
   if (!usingResolved) {
     const conflicts = await collectTemplateUpgradeConflicts(
@@ -613,10 +500,18 @@ async function finalizeTemplateUpgradeWorktree(
         session.targetWorktree,
         session.inputs,
         session.env,
+        mergeData,
       ),
     );
   } else {
-    const checked = runCheckCommandSteps(session, mergeData);
+    const checked = runTemplateUpgradeCheckSteps({
+      inputs,
+      branch,
+      worktree: targetWorktree,
+      changeNotes,
+      env: session.env,
+      ...mergeData,
+    });
     if (!checked.ok) {
       return checked.run;
     }

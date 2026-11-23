@@ -1,0 +1,17 @@
+diff --git a/src/template-upgrade-gates.ts b/src/template-upgrade-gates.ts
+--- a/src/template-upgrade-gates.ts
++++ b/src/template-upgrade-gates.ts
+@@ -498,13 +498,6 @@ export function matchTemplateUpgradeGateFailure(options: {
+       signalCode: options.signalCode,
+     });
+     if (parsed === undefined) continue;
+-    if (
+-      parsed.some((entry) =>
+-        entry.paths.some((path) => excludedPaths.has(path)),
+-      )
+-    ) {
+-      return undefined;
+-    }
+     return {
+       gate,
+       gateFiles: Object.freeze([...changedFiles]),

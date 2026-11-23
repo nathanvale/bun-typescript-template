@@ -1,0 +1,12 @@
+diff --git a/src/template-upgrade-gate-check.ts b/src/template-upgrade-gate-check.ts
+--- a/src/template-upgrade-gate-check.ts
++++ b/src/template-upgrade-gate-check.ts
+@@ -210,7 +210,7 @@ function createTemplateUpgradeCheckFailureRun(options: {
+     ...shared
+   } = options;
+   let gateResult: TemplateUpgradeGateResult | undefined;
+-  if (shared.failedStep === "bun run check") {
++  if (shared.failedStep === "bun run check" && shared.worktree === "") {
+     const matched = matchTemplateUpgradeGateFailure({
+       rows: shared.rows,
+       dependencyChanges: shared.dependencyChanges,

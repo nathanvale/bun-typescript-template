@@ -1,4 +1,8 @@
 import type { ChangeNoteEntry } from "./change-notes.ts";
+import type {
+  TemplateUpgradeGateName,
+  TemplateUpgradeGateProblem,
+} from "./template-upgrade-gates.ts";
 import type { TemplateUpgradeInputs } from "./template-upgrade-inputs.ts";
 import type { PackageDependencyChange } from "./template-upgrade-json-merge.ts";
 import type {
@@ -47,6 +51,7 @@ export interface TemplateUpgradeApplyResult {
     | "applied"
     | "conflicts"
     | "resolution-in-progress"
+    | "gate-adoption-required"
     | "check-failed";
   readonly baseCommit: string;
   readonly targetCommit: string;
@@ -64,6 +69,10 @@ export interface TemplateUpgradeApplyResult {
   readonly leftoverWorktreeNotice?: string;
   readonly failedStep?: string;
   readonly checkCommandOutput?: string;
+  readonly gate?: TemplateUpgradeGateName;
+  readonly gateFiles?: readonly string[];
+  readonly gateProblems?: readonly TemplateUpgradeGateProblem[];
+  readonly gateRepair?: string;
 }
 
 export interface TemplateUpgradeApplyRun {
@@ -87,6 +96,10 @@ export interface TemplateUpgradeApplyReportOptions {
   readonly templateCopyChanges?: readonly TemplateUpgradeCopyChange[];
   readonly failedStep?: string;
   readonly checkCommandOutput?: string;
+  readonly gate?: TemplateUpgradeGateName;
+  readonly gateFiles?: readonly string[];
+  readonly gateProblems?: readonly TemplateUpgradeGateProblem[];
+  readonly gateRepair?: string;
 }
 
 export interface TemplateUpgradePlanReportOptions {
@@ -166,7 +179,7 @@ function definedApplyFields(
   options: TemplateUpgradeApplyReportOptions,
   pinMoveNotice: string | undefined,
 ): Partial<TemplateUpgradeApplyResult> {
-  const pairs: readonly (readonly [string, string | undefined])[] = [
+  const pairs: readonly (readonly [string, unknown])[] = [
     ["commit", options.commit],
     ["worktree", options.worktree],
     ["pinMoveNotice", pinMoveNotice],
@@ -174,12 +187,12 @@ function definedApplyFields(
     ["leftoverWorktreeNotice", options.leftoverWorktreeNotice],
     ["failedStep", options.failedStep],
     ["checkCommandOutput", options.checkCommandOutput],
+    ["gate", options.gate],
+    ["gateFiles", options.gateFiles],
+    ["gateProblems", options.gateProblems],
+    ["gateRepair", options.gateRepair],
   ];
-  return Object.fromEntries(
-    pairs.filter(
-      (pair): pair is readonly [string, string] => pair[1] !== undefined,
-    ),
-  );
+  return Object.fromEntries(pairs.filter((pair) => pair[1] !== undefined));
 }
 
 export function createTemplateUpgradeApplyRun(

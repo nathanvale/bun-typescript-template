@@ -12,6 +12,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { delimiter, dirname, join } from "node:path";
+import { RECORDED_HITS_FILES } from "../../src/recipe.ts";
 import { main } from "../../src/template-upgrade.ts";
 import { ROOT } from "./bootstrap-cli-fixture.ts";
 import { git, gitEnv, gitOutput, initRepository } from "./git-fixture.ts";
@@ -366,4 +367,90 @@ export function commitTemplateLintChange(templateClone: string): string {
     "template change without package.json change",
   );
   return git(templateClone, "rev-parse", "HEAD");
+}
+
+export function createRecordedHitsUpgradeFixture(
+  folder: (prefix: string) => string,
+  options?: {
+    readonly omitRecordScriptInTarget?: boolean;
+  },
+) {
+  const { templateClone } = cloneTemplateAtHead(folder);
+  const savedFiles = RECORDED_HITS_FILES.map((file) => {
+    const path = join(templateClone, "generated-repository/settings", file);
+    return { file, path, content: readFileSync(path, "utf8") };
+  });
+  const settingsPackagePath = join(
+    templateClone,
+    "generated-repository/settings/package.json",
+  );
+  const targetPackageText = readFileSync(settingsPackagePath, "utf8");
+  const parsedPackage = JSON.parse(targetPackageText) as {
+    scripts: Record<string, string>;
+    [key: string]: unknown;
+  };
+  const withoutRecordScript = `${JSON.stringify(
+    {
+      ...parsedPackage,
+      scripts: Object.fromEntries(
+        Object.entries(parsedPackage.scripts).filter(
+          ([name]) => name !== "quality:fallow:record-hits",
+        ),
+      ),
+    },
+    null,
+    2,
+  )}\n`;
+  writeFileSync(settingsPackagePath, withoutRecordScript);
+  git(
+    templateClone,
+    "rm",
+    "--quiet",
+    "--",
+    ...RECORDED_HITS_FILES.map(
+      (file) => `generated-repository/settings/${file}`,
+    ),
+  );
+  git(templateClone, "add", "--", "generated-repository/settings/package.json");
+  git(
+    templateClone,
+    "commit",
+    "--quiet",
+    "-m",
+    "template before recorded-hits files",
+  );
+  const baseCommit = git(templateClone, "rev-parse", "HEAD");
+
+  for (const { path, content } of savedFiles) {
+    writeFileSync(path, content);
+  }
+  writeFileSync(
+    settingsPackagePath,
+    options?.omitRecordScriptInTarget === true
+      ? withoutRecordScript
+      : targetPackageText,
+  );
+  git(
+    templateClone,
+    "add",
+    "--",
+    "generated-repository/settings/package.json",
+    ...RECORDED_HITS_FILES.map(
+      (file) => `generated-repository/settings/${file}`,
+    ),
+  );
+  git(
+    templateClone,
+    "commit",
+    "--quiet",
+    "-m",
+    "template adding recorded-hits files",
+  );
+  const targetCommit = git(templateClone, "rev-parse", "HEAD");
+  return {
+    templateClone,
+    baseCommit,
+    targetCommit,
+    branch: `template-upgrade/${baseCommit.slice(0, 7)}-${targetCommit.slice(0, 7)}`,
+  };
 }

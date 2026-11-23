@@ -418,12 +418,20 @@ export async function stageAndCommitWorktree(options: {
   );
 }
 
+export interface TemplateUpgradeBunResult {
+  readonly ok: boolean;
+  readonly exitCode: number | null;
+  readonly timedOut: boolean;
+  readonly signalCode: string | null;
+  readonly output: string;
+}
+
 export function runBunStep(options: {
   readonly worktree: string;
   readonly args: readonly string[];
   readonly timeoutMilliseconds: number;
   readonly env: ProcessEnvMap;
-}): { readonly ok: boolean; readonly output: string } {
+}): TemplateUpgradeBunResult {
   const { worktree, args, timeoutMilliseconds, env } = options;
   const toolEnv = toolchainEnvironment(env);
   const bunExecutable =
@@ -438,11 +446,23 @@ export function runBunStep(options: {
   });
   const combined =
     `${UTF8.decode(child.stdout)}${UTF8.decode(child.stderr)}`.trim();
+  const signalCode =
+    typeof child.signalCode === "string" ? child.signalCode : null;
   if (child.exitedDueToTimeout) {
     return {
       ok: false,
+      exitCode: null,
+      timedOut: true,
+      signalCode: signalCode ?? "SIGKILL",
       output: `bun ${args.join(" ")} did not finish within ${timeoutMilliseconds} ms${combined === "" ? "" : `\n${combined}`}`,
     };
   }
-  return { ok: child.exitCode === 0, output: combined };
+  const exitCode = typeof child.exitCode === "number" ? child.exitCode : null;
+  return {
+    ok: exitCode === 0 && signalCode === null,
+    exitCode,
+    timedOut: false,
+    signalCode,
+    output: combined,
+  };
 }

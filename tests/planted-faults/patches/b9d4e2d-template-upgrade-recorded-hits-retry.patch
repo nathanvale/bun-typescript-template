@@ -1,0 +1,22 @@
+diff --git a/src/template-upgrade-recorded-hits.ts b/src/template-upgrade-recorded-hits.ts
+--- a/src/template-upgrade-recorded-hits.ts
++++ b/src/template-upgrade-recorded-hits.ts
+@@ -329,7 +329,6 @@ function fallowSettingsChanged(options: RecordedHitsRequest): boolean {
+ function recordedHitsAction(options: RecordedHitsRequest): RecordedHitsAction {
+   const { worktree, repository, repositoryHead, env } = options;
+   if (!definesRecordedHitsScript(worktree)) return "none";
+-  if (recordingDone(options)) return "none";
+   const missingInRepositoryHead = RECORDED_HITS_FILES.some(
+     (file) =>
+       resolveRefIfPresent(repository, `${repositoryHead}:${file}`, env) ===
+@@ -547,10 +546,6 @@ export function runRecordedHitsStep(
+       readonly output: string;
+     } {
+   const pendingDir = recordingPendingDirPath(request);
+-  if (recordingDone(request)) {
+-    rmSync(pendingDir, { force: true, recursive: true });
+-    return { ok: true, steps: [] };
+-  }
+   const pending = preparePendingRecording(request, pendingDir);
+   if (pending === undefined) return { ok: true, steps: [] };
+   const record = runBunStep({

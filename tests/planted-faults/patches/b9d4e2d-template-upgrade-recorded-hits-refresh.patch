@@ -1,0 +1,10 @@
+diff --git a/src/template-upgrade-recorded-hits.ts b/src/template-upgrade-recorded-hits.ts
+--- a/src/template-upgrade-recorded-hits.ts
++++ b/src/template-upgrade-recorded-hits.ts
+@@ -345,5 +345,5 @@ function recordedHitsAction(options: RecordedHitsRequest): RecordedHitsAction {
+     (file) => readWorktreeRegularFileBytes(join(worktree, file)) !== undefined,
+   );
+   if (!allPresentInWorktree) return "none";
+-  return fallowSettingsChanged(options) ? "refresh-changed" : "none";
++  return "none";
+ }

@@ -1,0 +1,21 @@
+diff --git a/src/template-upgrade-gates.ts b/src/template-upgrade-gates.ts
+--- a/src/template-upgrade-gates.ts
++++ b/src/template-upgrade-gates.ts
+@@ -435,17 +435,6 @@ export function parseTemplateUpgradeGateRun(options: {
+   readonly timedOut: boolean;
+   readonly signalCode: string | null;
+ }): readonly TemplateUpgradeGateProblemEntry[] | undefined {
+-  if (hasCrashOrNonGateFailure(options.output)) return undefined;
+-  if (
+-    !validGateExit(
+-      options.gate,
+-      options.exitCode,
+-      options.timedOut,
+-      options.signalCode,
+-    )
+-  ) {
+-    return undefined;
+-  }
+   return parseGateProblemsByKind(
+     options.gate,
+     options.output,
