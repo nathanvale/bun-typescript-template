@@ -1,0 +1,12 @@
+diff --git a/src/template-upgrade-json-format.ts b/src/template-upgrade-json-format.ts
+index de57640..e7733ab 100644
+--- a/src/template-upgrade-json-format.ts
++++ b/src/template-upgrade-json-format.ts
+@@ -51,7 +51,6 @@ function formatAdmission(
+   if (stats === undefined) return "absent";
+   if (stats.isSymbolicLink()) return { skipped: `${path} is a symbolic link` };
+   if (!stats.isFile()) return { skipped: `${path} is not a regular file` };
+-  if (stats.nlink !== 1) return { skipped: `${path} is a hard link` };
+   return stats;
+ }
+ 
