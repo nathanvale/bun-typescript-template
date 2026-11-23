@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import {
+  linkSync,
   mkdirSync,
   readFileSync,
   rmSync,
@@ -411,6 +412,33 @@ test(
 );
 
 test(
+  "apply skips a key-merged .fallowrc.json the owner replaced with a hard link to a tracked JSON file, so the original repository keeps its bytes",
+  async () => {
+    const { exitCode, payload, repo } =
+      await rerunAfterOwnerReplacesMergedFallow(
+        "hard-linked-app",
+        { "data/settings.json": SPLIT_ITEMS },
+        (mergedPath, original) => {
+          linkSync(join(original, "data/settings.json"), mergedPath);
+        },
+      );
+
+    expect(readFileSync(join(repo, "data/settings.json"), "utf8")).toBe(
+      SPLIT_ITEMS,
+    );
+    expect(git(repo, "status", "--porcelain=v1")).toBe("");
+    expect(exitCode).toBe(0);
+    expect(payload.steps).toContainEqual({
+      command: "biome format --write",
+      ran: false,
+      outcome: "skipped",
+      reason: ".fallowrc.json is a hard link",
+    });
+  },
+  processWatchdog(6),
+);
+
+test(
   "apply skips a key-merged .fallowrc.json the owner replaced with a folder, so the JSON files in it keep their bytes",
   async () => {
     const { exitCode, payload, repo } =
@@ -455,5 +483,30 @@ test("the JSON format step skips a key-merged path below a linked folder", () =>
         reason: "config/settings.json is below symbolic link config",
       },
     ],
+  });
+});
+
+test("the JSON format step stops when a path it formatted became a hard link while Biome ran", () => {
+  const worktree = folder("relinked-worktree-");
+  const outside = join(folder("relinked-outside-"), "shared.json");
+  writeFileSync(outside, SPLIT_ITEMS);
+  writeFileSync(join(worktree, "settings.json"), SPLIT_ITEMS);
+  mkdirSync(join(worktree, "node_modules/.bin"), { recursive: true });
+  writeFileSync(
+    join(worktree, "node_modules/.bin/biome"),
+    `#!/bin/sh\nrm "$4"\nln ${JSON.stringify(outside)} "$4"\n`,
+    { mode: 0o755 },
+  );
+
+  expect(runJsonFormatStep(worktree, ["settings.json"], process.env)).toEqual({
+    ok: false,
+    result: {
+      ok: false,
+      exitCode: 0,
+      timedOut: false,
+      signalCode: null,
+      output:
+        "settings.json is no longer the regular file with one link that biome format --write was given",
+    },
   });
 });

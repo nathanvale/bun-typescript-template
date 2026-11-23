@@ -1,4 +1,4 @@
-import { existsSync, lstatSync } from "node:fs";
+import { existsSync, lstatSync, type Stats } from "node:fs";
 import { join } from "node:path";
 import type { ProcessEnvMap } from "./template-upgrade-git.ts";
 import {
@@ -25,9 +25,7 @@ export function skipJsonFormatSteps(
   ];
 }
 
-function lstatIfPresent(
-  fullPath: string,
-): ReturnType<typeof lstatSync> | undefined {
+function lstatIfPresent(fullPath: string): Stats | undefined {
   try {
     return lstatSync(fullPath);
   } catch (error) {
@@ -37,11 +35,11 @@ function lstatIfPresent(
   }
 }
 
-// Platform: Biome writes through a symbolic link and formats a folder's files.
+// Platform: Biome writes through a symbolic or hard link and formats a folder's files.
 function formatAdmission(
   worktree: string,
   path: string,
-): "admitted" | "absent" | { readonly skipped: string } {
+): Stats | "absent" | { readonly skipped: string } {
   const segments = path.split("/");
   for (let index = 1; index < segments.length; index += 1) {
     const ancestor = segments.slice(0, index).join("/");
@@ -53,7 +51,27 @@ function formatAdmission(
   if (stats === undefined) return "absent";
   if (stats.isSymbolicLink()) return { skipped: `${path} is a symbolic link` };
   if (!stats.isFile()) return { skipped: `${path} is not a regular file` };
-  return "admitted";
+  if (stats.nlink !== 1) return { skipped: `${path} is a hard link` };
+  return stats;
+}
+
+function changedWhileFormatting(
+  worktree: string,
+  admitted: ReadonlyMap<string, Stats>,
+): string | undefined {
+  for (const [path, before] of admitted) {
+    const after = lstatIfPresent(join(worktree, path));
+    if (
+      after === undefined ||
+      !after.isFile() ||
+      after.nlink !== 1 ||
+      after.dev !== before.dev ||
+      after.ino !== before.ino
+    ) {
+      return path;
+    }
+  }
+  return undefined;
 }
 
 export function runJsonFormatStep(
@@ -63,12 +81,12 @@ export function runJsonFormatStep(
 ):
   | { readonly ok: true; readonly steps: readonly TemplateUpgradeApplyStep[] }
   | { readonly ok: false; readonly result: TemplateUpgradeBunResult } {
-  const paths: string[] = [];
+  const admitted = new Map<string, Stats>();
   const refused: TemplateUpgradeApplyStep[] = [];
   for (const path of keyMergedPaths) {
     const admission = formatAdmission(worktree, path);
-    if (admission === "admitted") paths.push(path);
-    else if (admission !== "absent") {
+    if (admission === "absent") continue;
+    if ("skipped" in admission) {
       refused.push(
         createTemplateUpgradeApplyStep(
           JSON_FORMAT_STEP,
@@ -77,8 +95,9 @@ export function runJsonFormatStep(
           admission.skipped,
         ),
       );
-    }
+    } else admitted.set(path, admission);
   }
+  const paths = [...admitted.keys()];
   if (paths.length === 0) return { ok: true, steps: refused };
   const biome = join(worktree, BIOME_BIN);
   if (!existsSync(biome)) {
@@ -104,6 +123,11 @@ export function runJsonFormatStep(
     env,
   });
   if (!result.ok) return { ok: false, result };
+  const changed = changedWhileFormatting(worktree, admitted);
+  if (changed !== undefined) {
+    const output = `${changed} is no longer the regular file with one link that ${JSON_FORMAT_STEP} was given`;
+    return { ok: false, result: { ...result, ok: false, output } };
+  }
   return {
     ok: true,
     steps: [
