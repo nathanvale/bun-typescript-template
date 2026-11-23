@@ -395,13 +395,13 @@ function createPinMoveBranch(repository: string, kernelCommit: string): string {
 async function applyRepositoryPinMove(
   repository: string,
   startingRef: string,
+  branch: string,
   kernelCommit: string,
   current: RepositoryPinRecord,
   edits: readonly PlannedEdit[],
   reportText: string,
   active: TrialActive,
 ): Promise<number> {
-  const branch = createPinMoveBranch(repository, kernelCommit);
   const attempt: PinMoveAttempt = {
     repository,
     startingRef,
@@ -474,9 +474,11 @@ export async function moveRepositoryPin(
     pin,
     current,
   );
+  const branch = createPinMoveBranch(repository, kernel.commit);
   return applyRepositoryPinMove(
     repository,
     startingRef,
+    branch,
     kernel.commit,
     current,
     edits,
