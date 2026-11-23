@@ -158,8 +158,9 @@ file extensions in those directories.
 ## Comments
 
 - Lint `repository/no-comments` refuses every comment block in a file
-  `eslint.config.mjs` lints: `src/`, `scripts/`, `tests/`, `config/` and the
-  root `.mjs` files. Consecutive line comments are one block.
+  `eslint.config.mjs` lints: `src/`, `scripts/`, `tests/`, `config/`
+  (declaration files included), the root `.mjs` files and any `.ts.txt`
+  fixture. Consecutive line comments are one block.
 - A block stays only when it is one of these:
   - `Platform:` on its first line: behaviour of a runtime, operating system
     or tool this repository cannot change, such as an errno meaning or a Bun
@@ -192,6 +193,11 @@ file extensions in those directories.
   lint test that refuses `Platform:` on a second line kills it.
 - Fault `bbfce9a-template-rules` admits a `SAFETY:` block anywhere; the lint
   test that refuses one above a statement with no cast kills it.
+- Fault `66ec838-template-rules` admits a suppression with no reason,
+  fault `938cab2-template-rules` admits any mention of an accepted
+  decision, and fault `7e6536a-template-rules` admits a `Platform:`
+  comment that names nothing; the lint test that checks each refusal's
+  repair kills it.
 - In review, verify what a `Platform:` or `Interface:` comment claims and
   whether the platform it names is what the claim is about; the lint only
   checks that a `Platform:` comment names one. Witnessed: [47e2ec3]
@@ -203,7 +209,7 @@ file extensions in those directories.
 - A generated repository gets these lint rules too: see
   [Generated repositories](#generated-repositories).
 - Not covered: `generated-repository/`, which ESLint skips here and a
-  generated repository lints, the `.ts.txt` fixtures, YAML and Markdown.
+  generated repository lints, YAML and Markdown.
 
 ## Host path lint
 

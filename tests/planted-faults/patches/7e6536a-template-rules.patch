@@ -1,0 +1,13 @@
+diff --git a/config/template-rules.mjs b/config/template-rules.mjs
+index 97edd62..e58b8f3 100644
+--- a/config/template-rules.mjs
++++ b/config/template-rules.mjs
+@@ -415,7 +415,7 @@ function isAdmitted(source, block, placed) {
+   const { start } = block[0].loc;
+   return (
+     (commentDirective.test(first) && givesReason(first)) ||
+-    (commentMarker.test(first) && namesItsPlatform(lines)) ||
++    commentMarker.test(first) ||
+     decisionCitation.test(lines.join(" ")) ||
+     (safetyJustification.test(first) &&
+       source.lines[start.line - 1].slice(0, start.column).trim() === "" &&
