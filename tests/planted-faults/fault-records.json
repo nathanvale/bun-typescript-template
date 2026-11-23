@@ -389,7 +389,8 @@
     "patch": "tests/planted-faults/patches/7623343-glossary.patch",
     "testFile": "tests/template/names-check/names-check-in-process.test.ts",
     "title": "^in process: --staged with a git that never answers",
-    "source": "7623343 fix(glossary): bound the staged git readers and the fixture's git calls"
+    "source": "7623343 fix(glossary): bound the staged git readers and the fixture's git calls",
+    "removesBound": true
   },
   {
     "id": "7623343-git-fixture",
@@ -508,7 +509,8 @@
     "patch": "tests/planted-faults/patches/ddd9e83-planted-faults.patch",
     "testFile": "tests/template/fault-replay/planted-fault-changes-in-process.test.ts",
     "title": "faultsTouchedSince refuses a git read that outlasts its bound",
-    "source": "ddd9e83 fix(faults): end each synchronous git read of the fault tool at 4 s (GREEN)"
+    "source": "ddd9e83 fix(faults): end each synchronous git read of the fault tool at 4 s (GREEN)",
+    "removesBound": true
   },
   {
     "id": "ea215c9-pre-commit",
@@ -578,7 +580,8 @@
     "patch": "tests/planted-faults/patches/64b57bc-planted-faults.patch",
     "testFile": "tests/template/fault-replay/planted-fault-process.test.ts",
     "title": "FR\\.y ",
-    "source": "64b57bc fix(faults): stop a worktree removal at the step limit (GREEN)"
+    "source": "64b57bc fix(faults): stop a worktree removal at the step limit (GREEN)",
+    "removesBound": true
   },
   {
     "id": "9609e5c-planted-faults",
@@ -1257,7 +1260,8 @@
     "patch": "tests/planted-faults/patches/5e9351a-bootstrap-git-bound.patch",
     "testFile": "tests/template/bootstrap/template-revision.test.ts",
     "title": "refuses within its bound when git does not answer, naming the git command and its repair, and publishes nothing$",
-    "source": "5e9351a fix(bootstrap): bound the git reads for Template provenance"
+    "source": "5e9351a fix(bootstrap): bound the git reads for Template provenance",
+    "removesBound": true
   },
   {
     "id": "b41475d-generated-lint-addons",
