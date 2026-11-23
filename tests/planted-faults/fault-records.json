@@ -2357,5 +2357,12 @@
     "testFile": "tests/template/template-upgrade/template-upgrade-json-conflicts.test.ts",
     "title": "^a JSON file that does not parse and whose text conflict leaves a repeated member outside git's markers is written as one marked conflict$",
     "source": "b61398f fix(template-upgrade): mark the whole JSON file when a text conflict repeats a member on either side"
+  },
+  {
+    "id": "9556769-template-upgrade-json-members",
+    "patch": "tests/planted-faults/patches/9556769-template-upgrade-json-members.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-json-conflicts.test.ts",
+    "title": "^rerunning apply after resolving git's visible CRLF hunk at a nested object's closing brace, with a member repeated outside it, reports resolution-in-progress and commits nothing$",
+    "source": "9556769 fix(template-upgrade): read CRLF conflict hunks in a JSON text merge as their LF twins"
   }
 ]
