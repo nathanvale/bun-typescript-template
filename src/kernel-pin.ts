@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { homedir } from "node:os";
+import { dirname, isAbsolute, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { CliError } from "./cli-error.ts";
 import { git, type KernelSeam } from "./kernel-reader.ts";
@@ -99,6 +100,19 @@ export function readKernelPin(root: string): KernelPin {
 
 export function siblingKernelPath(root: string, { repository }: KernelPin) {
   return join(dirname(root), repository);
+}
+
+const kernelCacheFolder = "bun-typescript-template/agent-cli-kernel.git";
+
+export function kernelCachePath(
+  environment: Readonly<Record<string, string | undefined>>,
+): string {
+  const named = environment.XDG_CACHE_HOME;
+  const home =
+    named !== undefined && isAbsolute(named)
+      ? named
+      : join(environment.HOME ?? homedir(), ".cache");
+  return join(home, kernelCacheFolder);
 }
 
 export function findSiblingKernel(
