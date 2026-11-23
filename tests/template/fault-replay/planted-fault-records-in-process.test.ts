@@ -41,12 +41,35 @@ describe("readRecords", () => {
     expect(readRecords(root)).toEqual([sample, other]);
   });
 
-  test("keeps only the five named fields of a record", () => {
+  test("keeps only the named fields of a record", () => {
     const root = recordsIn(JSON.stringify([{ ...sample, extra: "ignored" }]), [
       "tests/limit.test.ts",
     ]);
 
     expect(readRecords(root)).toEqual([sample]);
+  });
+
+  test("reads removesBound true for a fault whose only symptom is a timeout", () => {
+    const root = recordsIn(
+      JSON.stringify([{ ...sample, removesBound: true }]),
+      ["tests/limit.test.ts"],
+    );
+
+    expect(readRecords(root)).toEqual([{ ...sample, removesBound: true }]);
+  });
+
+  test.each([
+    ["false", false],
+    ['"yes"', "yes"],
+  ])("refuses removesBound %s and gives its repair", (shown, value) => {
+    const root = recordsIn(
+      JSON.stringify([{ ...sample, removesBound: value }]),
+      ["tests/limit.test.ts"],
+    );
+
+    expect(() => readRecords(root)).toThrow(
+      `${recordsPath} record 0 has removesBound ${shown}. Repair: write true for a fault whose only symptom is a timeout, or leave it out.`,
+    );
   });
 
   test("refuses a file whose top level is not an array", () => {
@@ -86,7 +109,7 @@ describe("readRecords", () => {
     ],
     ["source", "name it <fix short sha> <fix subject>."],
   ])("refuses a record with no %s and gives its repair", (field, repair) => {
-    const record: Record<string, string> = { ...sample };
+    const record: Record<string, unknown> = { ...sample };
     delete record[field];
     const root = recordsIn(JSON.stringify([sample, record]), [
       "tests/limit.test.ts",

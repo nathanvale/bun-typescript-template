@@ -33,6 +33,7 @@ export type Fault = {
   testFile: string;
   title: string;
   source: string;
+  removesBound?: true;
 };
 
 const signals = ["SIGHUP", "SIGINT", "SIGTERM"] as const;
@@ -95,6 +96,8 @@ const repairFor: { readonly [name in keyof Fault]: string } = {
   title:
     "name the bun test -t pattern that selects the test that kills the planted fault.",
   source: "name it <fix short sha> <fix subject>.",
+  removesBound:
+    "write true for a fault whose only symptom is a timeout, or leave it out.",
 };
 
 function parseFault(entry: unknown, where: string, root: string): Fault {
@@ -116,11 +119,16 @@ function parseFault(entry: unknown, where: string, root: string): Fault {
     title: field("title"),
     source: field("source"),
   };
+  const removesBound = own.get("removesBound");
+  if (removesBound !== undefined && removesBound !== true)
+    throw new Error(
+      `${where} has removesBound ${JSON.stringify(removesBound)}. Repair: ${repairFor.removesBound}`,
+    );
   if (!existsSync(join(root, fault.testFile)))
     throw new Error(
       `${where} names testFile ${fault.testFile}, which does not exist. Repair: ${repairFor.testFile}`,
     );
-  return fault;
+  return removesBound === true ? { ...fault, removesBound } : fault;
 }
 
 export function readRecords(root: string): Fault[] {
@@ -289,11 +297,12 @@ export async function replay(
       const args = ["--reporter=junit", `--reporter-outfile=${report}`];
       return testRun(await bunInTree([...testArgs(fault), ...args]), report);
     };
-    return await judged(await tested("clean"), () => {
+    const faulted = () => {
       for (const [path, text] of placement.files)
         writeFileSync(join(dir, path), text);
       return tested("patched");
-    });
+    };
+    return await judged(await tested("clean"), faulted, fault.removesBound);
   } catch (error) {
     if (error instanceof StepTimedOut)
       return { kind: "TIMEOUT", step: error.step };
@@ -351,7 +360,14 @@ export function report(
   }
 }
 
-const recordFields = ["id", "patch", "testFile", "title", "source"] as const;
+const recordFields = [
+  "id",
+  "patch",
+  "testFile",
+  "title",
+  "source",
+  "removesBound",
+] as const;
 
 function recordKey(entry: unknown): string {
   const own = new Map<string, unknown>(

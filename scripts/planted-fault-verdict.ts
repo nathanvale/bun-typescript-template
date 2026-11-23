@@ -91,6 +91,7 @@ export function testRun(
 export async function judged(
   clean: TestRun,
   faulted: () => Promise<TestRun>,
+  removesBound = false,
 ): Promise<Verdict> {
   const broken = (cause: string, { output }: TestRun): Verdict => ({
     kind: "BROKEN",
@@ -115,7 +116,7 @@ export async function judged(
     ({ name, failure }) => failure !== undefined && selected.has(name),
   );
   const failing = failed
-    .filter(({ failure }) => failure !== timeoutErrorName)
+    .filter(({ failure }) => removesBound || failure !== timeoutErrorName)
     .map(({ name }) => name);
   if (failing.length > 0) return { kind: "KILLED", failing };
   if (failed.length > 0)

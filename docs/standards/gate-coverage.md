@@ -211,7 +211,14 @@ file extensions in those directories.
   missing. A kill needs a test that passed without the patch to fail by
   its own check with it. A test file that does not load, a title that
   selects no such test, and a timeout, from Bun's test timer or a
-  child's bound, are BROKEN. A patch also fails replay when it creates or deletes a whole
+  child's bound, are BROKEN.
+- A fault record with `"removesBound": true` plants the removal of a
+  bound, so a timeout is the only evidence it can produce. For that
+  record alone, a selected test that times out with the patch applied is
+  a kill. A test file that does not load and a title that selects no
+  such test stay BROKEN. Four records carry it:
+  `ddd9e83-planted-faults`, `7623343-glossary`,
+  `64b57bc-planted-faults` and `5e9351a-bootstrap-git-bound`. A patch also fails replay when it creates or deletes a whole
   file, or when a changed region's anchor is in no file replay searches, or
   is at more than one place and its context lines do not choose one.
   Witnessed: [50dbf8e] (a new line took the semicolon a fault's anchor

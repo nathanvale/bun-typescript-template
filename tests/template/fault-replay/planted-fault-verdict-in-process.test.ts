@@ -37,9 +37,13 @@ function withPatch(cause: string): string {
   return `fails with the patch applied, ${cause}, so the planted fault shows nothing.`;
 }
 
-async function replayed(subject: Planted) {
+async function replayed(subject: Planted, removesBound?: true) {
+  const fault =
+    removesBound === undefined
+      ? subject.fault
+      : { ...subject.fault, removesBound };
   const run = await isolated(() =>
-    replay(subject.root, subject.fault, headOf(subject.root), 120_000),
+    replay(subject.root, fault, headOf(subject.root), 120_000),
   );
   expect(run.leftovers).toEqual([]);
   return run.result;
@@ -172,5 +176,58 @@ test("L.refuses NaN in time", async () => {
       kind: "KILLED",
       failing: ["L.refuses NaN"],
     });
+  }, 60_000);
+});
+
+describe("replay credits a timeout as a kill only for a record whose fault removes a bound", () => {
+  const timesOut = testFile(`test("L.refuses NaN", async () => {
+  if (!refused) ${hangs}
+}, 100);
+`);
+
+  test("KILLED when the record has removesBound and the named test outruns Bun's test timer with the patch applied", async () => {
+    const subject = planted({ tests: timesOut });
+
+    expect(await replayed(subject, true)).toEqual({
+      kind: "KILLED",
+      failing: ["L.refuses NaN"],
+    });
+  }, 60_000);
+
+  test("KILLED when the record has removesBound and a child the named test starts outruns its bound", async () => {
+    const subject = planted({
+      tests: testFile(
+        `test("L.refuses NaN", async () => {
+  if (!refused) await spawnBounded(["sleep", "5"], { boundMilliseconds: 100 });
+}, 30_000);
+`,
+        `import { spawnBounded } from ${JSON.stringify(boundedRunner)};\n`,
+      ),
+    });
+
+    expect(await replayed(subject, true)).toEqual({
+      kind: "KILLED",
+      failing: ["L.refuses NaN"],
+    });
+  }, 60_000);
+
+  test("BROKEN when the record has removesBound but the test file fails to load with the patch applied", async () => {
+    const subject = planted({
+      tests:
+        testFile(`if (!refused) throw new Error("does not load with the patch");
+test("L.refuses NaN", () => {});
+`),
+    });
+
+    expect(await replayed(subject, true)).toMatchObject({
+      kind: "BROKEN",
+      cause: withPatch("but its test file did not load"),
+    });
+  }, 60_000);
+
+  test("SURVIVED when the record has removesBound and the named test still passes with the patch applied", async () => {
+    const subject = planted({ title: "^L\\.weak " });
+
+    expect(await replayed(subject, true)).toEqual({ kind: "SURVIVED" });
   }, 60_000);
 });
