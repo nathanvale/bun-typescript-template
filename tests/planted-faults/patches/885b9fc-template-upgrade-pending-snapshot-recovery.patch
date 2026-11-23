@@ -1,0 +1,15 @@
+diff --git a/src/template-upgrade-recorded-hits.ts b/src/template-upgrade-recorded-hits.ts
+--- a/src/template-upgrade-recorded-hits.ts
++++ b/src/template-upgrade-recorded-hits.ts
+@@ -524,11 +524,6 @@ function preparePendingRecording(
+   request: RecordedHitsRequest,
+   pendingDir: string,
+ ): PendingSnapshotState | undefined {
+-  const recovered = readPendingSnapshots(pendingDir);
+-  if (recovered !== undefined) {
+-    restoreSnapshots(request.worktree, recovered.snapshots);
+-    return recovered;
+-  }
+   const action = recordedHitsAction(request);
+   if (action === "none") return undefined;
+   const snapshots = captureWorktreeSnapshots(request.worktree);

@@ -2301,5 +2301,26 @@
     "testFile": "tests/template/template-upgrade/template-upgrade-gate-check.test.ts",
     "title": "^classifyTemplateUpgradeGateFailure stays check-failed for Fallow errors, ESLint crashes, template-owned file failures, and upgrades without gate changes, and check-failed text prints unlock steps$",
     "source": "b9d4e2d fix(template-upgrade): refresh stale Fallow hits and report gate adoption"
+  },
+  {
+    "id": "885b9fc-template-upgrade-pending-snapshot-recovery",
+    "patch": "tests/planted-faults/patches/885b9fc-template-upgrade-pending-snapshot-recovery.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-retry.test.ts",
+    "title": "^recovers durable pre-record snapshots after an interrupted identity-only restoration or failed-recording rollback without absorbing new findings on retry$",
+    "source": "885b9fc fix(template-upgrade): harden snapshot recovery, gate classification, and operator wording"
+  },
+  {
+    "id": "885b9fc-template-upgrade-predated-gate-check",
+    "patch": "tests/planted-faults/patches/885b9fc-template-upgrade-predated-gate-check.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-gate-check.test.ts",
+    "title": "^refuses gate-adoption-required on timeout, crash after findings, unchanged template file failing a new gate, or unestablished predating findings$",
+    "source": "885b9fc fix(template-upgrade): harden snapshot recovery, gate classification, and operator wording"
+  },
+  {
+    "id": "885b9fc-template-upgrade-gate-exit-check",
+    "patch": "tests/planted-faults/patches/885b9fc-template-upgrade-gate-exit-check.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-gate-check.test.ts",
+    "title": "^refuses gate-adoption-required on timeout, crash after findings, unchanged template file failing a new gate, or unestablished predating findings$",
+    "source": "885b9fc fix(template-upgrade): harden snapshot recovery, gate classification, and operator wording"
   }
 ]

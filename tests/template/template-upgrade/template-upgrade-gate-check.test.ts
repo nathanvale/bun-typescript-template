@@ -72,9 +72,9 @@ test(
         predatedProblems: [
           {
             gate: "fallow",
-            code: "unused-file",
+            code: "unused-files",
             path: "tests/git-fixture.test.ts",
-            message: "unused file",
+            message: "unused-files in tests/git-fixture.test.ts",
           },
         ],
       }),
@@ -219,10 +219,9 @@ test(
         predatedProblems: [
           {
             gate: "fallow",
-            code: "duplication",
+            code: "duplicate-code",
             path: "src/records.ts",
-            message:
-              "duplicate code across src/records.ts, tests/git-fixture.test.ts",
+            message: "duplicate code group in src/records.ts",
           },
         ],
       }),
@@ -419,6 +418,24 @@ test(
         predatedProblems: predatedFallow,
       }),
     ).toBeUndefined();
+
+    for (const exit of [
+      { exitCode: null, timedOut: true, signalCode: "SIGKILL" },
+      { exitCode: null, timedOut: false, signalCode: "SIGTERM" },
+      { exitCode: 137, timedOut: false, signalCode: null },
+      { exitCode: 2, timedOut: false, signalCode: null },
+    ]) {
+      expect(
+        classifyTemplateUpgradeGateFailure({
+          rows: fallowRows,
+          dependencyChanges: [],
+          checkCommandOutput: `${fallowCombined}\n`,
+          worktree,
+          ...exit,
+          predatedProblems: predatedFallow,
+        }),
+      ).toBeUndefined();
+    }
 
     expect(
       classifyTemplateUpgradeGateFailure({
