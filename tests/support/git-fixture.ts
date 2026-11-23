@@ -1,4 +1,5 @@
 import { mkdirSync } from "node:fs";
+import { timeoutErrorName } from "../../scripts/planted-fault-verdict.ts";
 import { withoutRepositoryLocation } from "../../scripts/process-runner.ts";
 import { write } from "./fixture-files.ts";
 
@@ -33,8 +34,11 @@ export function gitResult(root: string, ...args: string[]) {
     killSignal: "SIGKILL",
   });
   if (result.exitedDueToTimeout)
-    throw new Error(
-      `git ${args.join(" ")} did not exit within ${gitMilliseconds} ms.`,
+    throw Object.assign(
+      new Error(
+        `git ${args.join(" ")} did not exit within ${gitMilliseconds} ms.`,
+      ),
+      { name: timeoutErrorName },
     );
   return result;
 }

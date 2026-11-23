@@ -208,7 +208,10 @@ file extensions in those directories.
 
 - Fault replay fails on a fault record whose named test passes with the
   planted fault applied or fails without it, or whose patch file is
-  missing. A patch also fails replay when it creates or deletes a whole
+  missing. A kill needs a test that passed without the patch to fail by
+  its own check with it. A test file that does not load, a title that
+  selects no such test, and a timeout, from Bun's test timer or a
+  child's bound, are BROKEN. A patch also fails replay when it creates or deletes a whole
   file, or when a changed region's anchor is in no file replay searches, or
   is at more than one place and its context lines do not choose one.
   Witnessed: [50dbf8e] (a new line took the semicolon a fault's anchor

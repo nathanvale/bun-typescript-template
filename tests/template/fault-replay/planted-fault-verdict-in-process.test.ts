@@ -1,0 +1,162 @@
+import { describe, expect, test } from "bun:test";
+import { join } from "node:path";
+import { replay } from "../../../scripts/planted-faults.ts";
+import { write } from "../../support/fixture-files.ts";
+import {
+  createPlantedFaultFixture,
+  headOf,
+  type Planted,
+} from "../../support/planted-fault-in-process-fixture.ts";
+
+const { isolated, planted } = createPlantedFaultFixture();
+
+const boundedRunner = join(import.meta.dir, "../../support/process.ts");
+
+const testFile = (
+  body: string,
+  imports = "",
+) => `import { expect, test } from "bun:test";
+import { limit } from "../src/limit.ts";
+${imports}
+const refused = (() => {
+  try {
+    limit(Number.NaN);
+    return false;
+  } catch {
+    return true;
+  }
+})();
+
+${body}`;
+
+const hangs = "await new Promise(() => {});";
+
+const untested = "no test that passed without it failed";
+
+function withPatch(cause: string): string {
+  return `fails with the patch applied, ${cause}, so the planted fault shows nothing.`;
+}
+
+async function replayed(subject: Planted) {
+  const run = await isolated(() =>
+    replay(subject.root, subject.fault, headOf(subject.root), 120_000),
+  );
+  expect(run.leftovers).toEqual([]);
+  return run.result;
+}
+
+describe("replay credits a kill only to a test that passed without the patch and failed by its own check with it", () => {
+  test("BROKEN when, with the patch applied, the named test outruns Bun's test timer", async () => {
+    const subject = planted({
+      tests: testFile(`test("L.refuses NaN", async () => {
+  if (!refused) ${hangs}
+}, 100);
+`),
+    });
+
+    expect(await replayed(subject)).toMatchObject({
+      kind: "BROKEN",
+      cause: withPatch("but only by timing out (L.refuses NaN)"),
+    });
+  }, 60_000);
+
+  test("BROKEN when, with the patch applied, a child the named test starts outruns its bound", async () => {
+    const subject = planted({
+      tests: testFile(
+        `test("L.refuses NaN", async () => {
+  if (!refused) await spawnBounded(["sleep", "5"], { boundMilliseconds: 100 });
+}, 30_000);
+`,
+        `import { spawnBounded } from ${JSON.stringify(boundedRunner)};\n`,
+      ),
+    });
+
+    expect(await replayed(subject)).toMatchObject({
+      kind: "BROKEN",
+      cause: withPatch("but only by timing out (L.refuses NaN)"),
+    });
+  }, 60_000);
+
+  test("BROKEN when, with the patch applied, the test file fails to import its module", async () => {
+    const subject = planted();
+    write(
+      subject.root,
+      subject.fault.patch,
+      `diff --git a/src/limit.ts b/src/limit.ts
+--- a/src/limit.ts
++++ b/src/limit.ts
+@@ -1,3 +1,3 @@
+-export function limit(value: number): number {
++export function bound(value: number): number {
+   if (Number.isNaN(value)) throw new TypeError("limit must be a number");
+   return value;
+`,
+    );
+
+    expect(await replayed(subject)).toMatchObject({
+      kind: "BROKEN",
+      cause: withPatch("but its test file did not load"),
+    });
+  }, 60_000);
+
+  test("BROKEN when, with the patch applied, the title selects no test", async () => {
+    const subject = planted({
+      tests: testFile(`if (refused) test("L.refuses NaN", () => {});
+test("L.weak keeps a number", () => {
+  expect(limit(1)).toBe(1);
+});
+`),
+    });
+
+    expect(await replayed(subject)).toMatchObject({
+      kind: "BROKEN",
+      cause: withPatch(`but ${untested}`),
+    });
+  }, 60_000);
+
+  test("BROKEN when, with the patch applied, only a test the clean run did not run fails", async () => {
+    const subject = planted({
+      tests:
+        testFile(`test(refused ? "L.refuses NaN" : "L.refuses another", () => {
+  expect(refused).toBe(true);
+});
+`),
+    });
+
+    expect(await replayed(subject)).toMatchObject({
+      kind: "BROKEN",
+      cause: withPatch(`but ${untested}`),
+    });
+  }, 60_000);
+
+  test("BROKEN when the named test outruns Bun's test timer without the patch", async () => {
+    const subject = planted({
+      tests: testFile(`test("L.refuses NaN", async () => {
+  if (refused) ${hangs}
+}, 100);
+`),
+    });
+
+    expect(await replayed(subject)).toMatchObject({
+      kind: "BROKEN",
+      cause: "fails without the patch, so the planted fault shows nothing.",
+    });
+  }, 60_000);
+
+  test("KILLED names only the selected test that failed by its own check when another timed out", async () => {
+    const subject = planted({
+      tests: testFile(`test("L.refuses NaN", () => {
+  expect(refused).toBe(true);
+});
+test("L.refuses NaN in time", async () => {
+  if (!refused) ${hangs}
+}, 100);
+`),
+    });
+
+    expect(await replayed(subject)).toEqual({
+      kind: "KILLED",
+      failing: ["L.refuses NaN"],
+    });
+  }, 60_000);
+});
