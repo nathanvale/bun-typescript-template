@@ -174,7 +174,7 @@ type PredatedGateProbe =
   | { readonly problems?: readonly TemplateUpgradeGateProblem[] }
   | { readonly refused: string };
 
-function probePredatedGateProblems(options: {
+type PredatedGateProbeOptions = {
   readonly repository: string;
   readonly repositoryHead: string;
   readonly worktree: string;
@@ -182,7 +182,70 @@ function probePredatedGateProblems(options: {
   readonly gateFiles: readonly string[];
   readonly env: ProcessEnvMap;
   readonly timeoutMilliseconds: number;
-}): PredatedGateProbe {
+};
+
+function checkOutHead(
+  scratchParent: string,
+  scratch: string,
+  options: PredatedGateProbeOptions,
+): boolean {
+  const limits = {
+    env: options.env,
+    timeoutMilliseconds: options.timeoutMilliseconds,
+  };
+  const cloned = runGitCommand(
+    scratchParent,
+    [
+      "clone",
+      "--quiet",
+      "--shared",
+      "--no-checkout",
+      options.repository,
+      scratch,
+    ],
+    limits,
+  );
+  if (cloned.timedOut || cloned.exitCode !== 0) return false;
+  const checkedOut = runGitCommand(
+    scratch,
+    ["checkout", "--quiet", "--detach", options.repositoryHead],
+    limits,
+  );
+  return !checkedOut.timedOut && checkedOut.exitCode === 0;
+}
+
+function runGateAtHead(
+  scratch: string,
+  written: ReadonlyMap<string, Stats>,
+  options: PredatedGateProbeOptions,
+): PredatedGateProbe {
+  const run = runBunStep({
+    worktree: scratch,
+    args: GATE_SCRIPT_ARGS[options.gate],
+    timeoutMilliseconds: options.timeoutMilliseconds,
+    env: options.env,
+  });
+  const changed = plainFileIdentityChange(scratch, written);
+  if (changed !== undefined) {
+    return {
+      refused: `${changed} is no longer the regular file with one link that this check wrote at HEAD`,
+    };
+  }
+  if (run.ok) return {};
+  const problems = parseTemplateUpgradeGateRun({
+    gate: options.gate,
+    output: run.output,
+    worktree: scratch,
+    exitCode: run.exitCode,
+    timedOut: run.timedOut,
+    signalCode: run.signalCode,
+  })?.map((entry) => entry.problem);
+  return problems === undefined ? {} : { problems };
+}
+
+function probePredatedGateProblems(
+  options: PredatedGateProbeOptions,
+): PredatedGateProbe {
   const modulesPath = join(options.worktree, "node_modules");
   if (!existsSync(modulesPath)) return {};
   const scratchParent = mkdtempSync(
@@ -190,25 +253,7 @@ function probePredatedGateProblems(options: {
   );
   const scratch = join(scratchParent, "repo");
   try {
-    const cloned = runGitCommand(
-      scratchParent,
-      [
-        "clone",
-        "--quiet",
-        "--shared",
-        "--no-checkout",
-        options.repository,
-        scratch,
-      ],
-      { env: options.env, timeoutMilliseconds: options.timeoutMilliseconds },
-    );
-    if (cloned.timedOut || cloned.exitCode !== 0) return {};
-    const checkedOut = runGitCommand(
-      scratch,
-      ["checkout", "--quiet", "--detach", options.repositoryHead],
-      { env: options.env, timeoutMilliseconds: options.timeoutMilliseconds },
-    );
-    if (checkedOut.timedOut || checkedOut.exitCode !== 0) return {};
+    if (!checkOutHead(scratchParent, scratch, options)) return {};
     symlinkSync(modulesPath, join(scratch, "node_modules"));
     const written = copyGateFilesToScratch(
       scratch,
@@ -217,28 +262,7 @@ function probePredatedGateProblems(options: {
       options.gateFiles,
     );
     if ("refused" in written) return written;
-    const run = runBunStep({
-      worktree: scratch,
-      args: GATE_SCRIPT_ARGS[options.gate],
-      timeoutMilliseconds: options.timeoutMilliseconds,
-      env: options.env,
-    });
-    const changed = plainFileIdentityChange(scratch, written);
-    if (changed !== undefined) {
-      return {
-        refused: `${changed} is no longer the regular file with one link that this check wrote at HEAD`,
-      };
-    }
-    if (run.ok) return {};
-    const problems = parseTemplateUpgradeGateRun({
-      gate: options.gate,
-      output: run.output,
-      worktree: scratch,
-      exitCode: run.exitCode,
-      timedOut: run.timedOut,
-      signalCode: run.signalCode,
-    })?.map((entry) => entry.problem);
-    return problems === undefined ? {} : { problems };
+    return runGateAtHead(scratch, written, options);
   } finally {
     rmSync(scratchParent, { force: true, recursive: true });
   }
