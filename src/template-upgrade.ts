@@ -171,6 +171,19 @@ function formatPlan(result: TemplateUpgradePlanResult): string {
   return `${lines.join("\n")}\n`;
 }
 
+const MAX_DISPLAYED_GATE_PROBLEMS = 50;
+
+function formatWorktreeDiscardLines(worktree: string | undefined): string[] {
+  if (worktree === undefined || worktree === "") {
+    return [];
+  }
+  return [
+    "To discard the locked worktree instead, run:",
+    `  git worktree unlock ${worktree}`,
+    `  git worktree remove --force ${worktree}`,
+  ];
+}
+
 function formatConflictApply(
   result: TemplateUpgradeApplyResult,
   headerDetails: readonly string[],
@@ -190,6 +203,39 @@ function formatConflictApply(
     ...result.conflicts.map((path) => `  ${path}`),
     ...notices,
     instruction,
+    ...formatWorktreeDiscardLines(result.worktree),
+  ];
+  return `${lines.join("\n")}\n`;
+}
+
+function formatGateAdoptionApply(
+  result: TemplateUpgradeApplyResult,
+  headerDetails: readonly string[],
+  notices: readonly string[],
+): string {
+  const worktree = result.worktree ?? "";
+  const problems = result.gateProblems ?? [];
+  const changedFiles = result.gateFiles ?? [];
+  const shown = problems.slice(0, MAX_DISPLAYED_GATE_PROBLEMS);
+  const remaining = problems.length - shown.length;
+  const gateSummary =
+    changedFiles.length === 0
+      ? `Gate: ${result.gate ?? "check"} (${problems.length} existing problem(s))`
+      : `Gate: ${result.gate ?? "check"} (${problems.length} existing problem(s) after changing ${changedFiles.join(", ")})`;
+  const lines = [
+    `Template upgrade: existing code needs gate adoption in ${worktree}`,
+    ...headerDetails,
+    "",
+    gateSummary,
+    ...shown.map(
+      (problem) => `  - [${problem.code}] ${problem.path}: ${problem.message}`,
+    ),
+    ...(remaining > 0 ? [`  ... and ${remaining} more problem(s)`] : []),
+    ...notices,
+    ...(result.gateRepair === undefined
+      ? []
+      : [`Repair: ${result.gateRepair}`]),
+    ...formatWorktreeDiscardLines(result.worktree),
   ];
   return `${lines.join("\n")}\n`;
 }
@@ -212,6 +258,7 @@ function formatCheckCommandFailureApply(
   lines.push(
     ...notices,
     "Repair the failure in that worktree, then rerun the same upgrade apply command.",
+    ...formatWorktreeDiscardLines(result.worktree),
   );
   return `${lines.join("\n")}\n`;
 }
@@ -255,6 +302,9 @@ function formatApply(result: TemplateUpgradeApplyResult): string {
     result.status === "resolution-in-progress"
   ) {
     return formatConflictApply(result, headerDetails, notices);
+  }
+  if (result.status === "gate-adoption-required") {
+    return formatGateAdoptionApply(result, headerDetails, notices);
   }
   return formatCheckCommandFailureApply(result, headerDetails, notices);
 }

@@ -116,7 +116,8 @@ Add `--force` to `git worktree remove` if the worktree contains uncommitted chan
 | `applied`                | `0`  | Merged, installed and checked (unless `--no-check`), committed as `Upgrade template <base7> to <target7>`, branch created, worktree removed.                                                                                                                                    |
 | `conflicts`              | `2`  | Conflicts remain in `.worktrees/template-upgrade-<target7>`.                                                                                                                                                                                                                    |
 | `resolution-in-progress` | `5`  | You started editing `.worktrees/template-upgrade-<target7>` but `<<<<<<< ours` markers remain.                                                                                                                                                                                  |
-| `check-failed`           | `1`  | `bun install` or `bun run check` failed in `.worktrees/template-upgrade-<target7>`; worktree kept.                                                                                                                                                                              |
+| `gate-adoption-required` | `6`  | Existing repository code violates a gate added or changed by this upgrade (Fallow, ESLint, TypeScript, or Biome); worktree kept with the listed problems, changed gate files, repair steps, and unlock/remove commands.                                                         |
+| `check-failed`           | `1`  | `bun install`, `bun run quality:fallow:record-hits`, or `bun run check` failed because the upgrade or tool run broke (not existing code against a newly changed gate); worktree kept with resume and unlock/remove commands.                                                    |
 
 ### Resolving conflicts and rerunning
 
@@ -130,8 +131,19 @@ Add `--force` to `git worktree remove` if the worktree contains uncommitted chan
 
 ### Recording existing Fallow findings
 
-The first Template upgrade that brings the recorded-hits files (`fallow-dead-code-recorded-hits.json`, `fallow-duplicates-recorded-hits.json`, `fallow-health-recorded-hits.json`) runs `bun run quality:fallow:record-hits` itself, after `bun install` and before `bun run check`, and reports it as a step. The repository's existing findings are recorded, so the check fails only on new ones. A repository that already has the files keeps its own records.
+The first Template upgrade that brings the recorded-hits files (`fallow-dead-code-recorded-hits.json`, `fallow-duplicates-recorded-hits.json`, `fallow-health-recorded-hits.json`) runs `bun run quality:fallow:record-hits` itself, after `bun install` and before `bun run check`, and reports it as a step. The repository's existing findings are recorded, so the check fails only on new ones.
 
-With `--no-check`, the upgrade does not record the findings and commits the upgrade branch with empty recorded-hits files; a later upgrade will not repeat the recording step because the files already exist in `HEAD`. Before merging, run `bun install` and `bun run quality:fallow:record-hits` in the upgrade worktree (or on the upgrade branch) and commit the updated recorded-hits files.
+When a repository already has committed recorded-hits files and a later Template upgrade changes Fallow or TypeScript settings (`.fallowrc.json`, `tsconfig*.json`, Fallow or TypeScript dependencies, or the Fallow scripts in `package.json`), `apply` runs `bun run quality:fallow:record-hits` once in the worktree:
+
+- If no new finding entries are added (for example, only `analysis_identity.project_config_hash` changed after a `tsconfig.base.json` update), the refreshed recorded-hits files are kept and `bun run check` proceeds normally.
+- If new finding entries would be added (for example, `.fallowrc.json` enabled a new gate such as `boundary-violation`), `apply` updates only `analysis_identity` and preserves the repository's previously recorded hits without silently absorbing the new findings. `bun run check` then surfaces the exact existing problems under `gate-adoption-required` (exit `6`) instead of failing on `project_config_hash`.
+
+The recording step runs at most once per upgrade worktree. When it passes, the upgrade leaves a mark in the worktree's own Git folder (`git rev-parse --git-path template-upgrade-recorded-hits-done`), and a rerun of `apply` after `check-failed` or `gate-adoption-required` never runs it again, whatever the recorded-hits files then hold. A finding added during repair therefore still fails `bun run check`. Removing the upgrade worktree removes the mark, and the next `apply` starts from a fresh worktree.
+
+With `--no-check`, the upgrade does not record the findings and commits the upgrade branch with empty or unrefreshed recorded-hits files. Before merging, run `bun install` and `bun run quality:fallow:record-hits` in the upgrade worktree (or on the upgrade branch) and commit the updated recorded-hits files.
+
+### Adopting a gate added or changed by an upgrade
+
+When `bun run check` fails only on existing repository code (never on a template-owned file modified by the upgrade, and never on a tool crash or Fallow configuration error) for a gate whose configuration file this upgrade changed (`.fallowrc.json`, `eslint.config.mjs`, `config/*.mjs`, `tsconfig*.json`, or `biome.json`), `apply` stops with status `gate-adoption-required` and exit code `6`, distinct from `check-failed` (exit `1`). It keeps the locked worktree, lists the changed gate files and existing problems, prints the gate-specific repair (fixing the code in the worktree or, for Fallow gates, running `bun run quality:fallow:record-hits` in the worktree), and prints both the resume instruction and the `git worktree unlock` / `git worktree remove --force` commands to discard the worktree instead.
 
 Limit: a recorded complex function that gets more complex is not caught. Re-running `bun run quality:fallow:record-hits` after fixing a recorded finding is fine (the file shrinks); recording a new finding is refused by the hosted check on a pull request.

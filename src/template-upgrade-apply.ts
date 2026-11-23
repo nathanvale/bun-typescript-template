@@ -10,6 +10,7 @@ import {
 } from "./template-upgrade-recorded-hits.ts";
 import { withTemplateUpgradeTrees } from "./template-upgrade-bootstrap.ts";
 import { readTemplateUpgradeChangeNotes } from "./template-upgrade-change-notes.ts";
+import { createTemplateUpgradeCheckFailureRun } from "./template-upgrade-gates.ts";
 import {
   lstatIfPresent,
   type ProcessEnvMap,
@@ -261,17 +262,15 @@ function checkFailedRun(options: {
   readonly output: string;
 }): TemplateUpgradeApplyRun {
   const { session, mergeData, failedStep, steps, output } = options;
-  return createTemplateUpgradeApplyRun({
-    exitCode: 1,
+  return createTemplateUpgradeCheckFailureRun({
     inputs: session.inputs,
     branch: session.branch,
-    status: "check-failed",
     worktree: session.targetWorktree,
     changeNotes: session.changeNotes,
-    steps,
     ...mergeData,
     failedStep,
-    checkCommandOutput: output,
+    steps,
+    output,
   });
 }
 
@@ -285,6 +284,7 @@ function recordNewRecordedHits(
     session.targetWorktree,
     session.inputs,
     session.env,
+    mergeData,
   );
   const recorded = runRecordedHitsStep(request, CHECK_TIMEOUT_MS);
   if (recorded.ok) return recorded;
@@ -613,6 +613,7 @@ async function finalizeTemplateUpgradeWorktree(
         session.targetWorktree,
         session.inputs,
         session.env,
+        mergeData,
       ),
     );
   } else {
