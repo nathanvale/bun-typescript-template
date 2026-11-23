@@ -220,6 +220,62 @@ exit 0
 );
 
 test(
+  "apply stops as check-failed with Biome's output when the JSON format step fails",
+  async () => {
+    const { templateClone } = cloneTemplateAtHead(folder);
+    const { baseCommit, targetCommit } = commitSettingsUpgrade(
+      templateClone,
+      {},
+    );
+    const repo = await addSkillsEntry(templateClone, baseCommit, "refused-app");
+    const { ledger, env } = writeScriptedBun(
+      folder,
+      "refused-bun-",
+      `#!/bin/sh
+echo "$*" >> __LEDGER__
+if [ "$1" = "install" ]; then
+  mkdir -p node_modules/.bin
+  printf '#!/bin/sh\\necho "biome refused $*"\\nexit 1\\n' > node_modules/.bin/biome
+  chmod +x node_modules/.bin/biome
+fi
+exit 0
+`,
+    );
+    const stdout = captureStream(process.stdout);
+    const stderr = captureStream(process.stderr);
+
+    const run = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      ["apply", "--repository", repo, "--to", targetCommit, "--json"],
+      { templateRoot: templateClone, env },
+    );
+
+    expect(run.exitCode).toBe(1);
+    const payload = JSON.parse(run.stdout) as TemplateUpgradeApplyResult;
+    expect(payload.status).toBe("check-failed");
+    expect(payload.failedStep).toBe("biome format --write");
+    expect(payload.checkCommandOutput).toBe(
+      "biome refused format --write --no-errors-on-unmatched ./.fallowrc.json",
+    );
+    expect(payload.steps).toEqual([
+      { command: "bun install", ran: true, outcome: "passed" },
+      { command: "biome format --write", ran: true, outcome: "failed" },
+      {
+        command: "bun run check",
+        ran: false,
+        outcome: "skipped",
+        reason: "biome format --write failed",
+      },
+    ]);
+    expect(readFileSync(ledger, "utf8").trim().split("\n")).toEqual([
+      "install",
+    ]);
+  },
+  processWatchdog(3),
+);
+
+test(
   "apply --no-check reports the JSON format step as skipped with bun install",
   async () => {
     const { templateClone } = cloneTemplateAtHead(folder);
