@@ -52,11 +52,11 @@ Bootstrap and a Template upgrade read the kernel from the first of these places 
 
 1. The path in `KERNEL_REPOSITORY`, when it is set.
 2. A clone of the kernel repository beside the template checkout. From a worktree, the clone beside the checkout that the worktree shares its objects with also counts.
-3. The kernel cache: a bare clone of the remote in `kernel-pin.json`, at `$XDG_CACHE_HOME/my-agent-dojo/bun-typescript-template/agent-cli-kernel.git`. When `XDG_CACHE_HOME` is unset, the cache is at `~/.cache/my-agent-dojo/bun-typescript-template/agent-cli-kernel.git`.
+3. The kernel cache: a bare clone of the remote in `kernel-pin.json`, at `$XDG_CACHE_HOME/my-agent-dojo/bun-typescript-template/agent-cli-kernel.git`. When `XDG_CACHE_HOME` is unset, the kernel cache is at `~/.cache/my-agent-dojo/bun-typescript-template/agent-cli-kernel.git`.
 
-The first run that reaches the cache clones the remote into it. A later run uses the cache without the network while the cache holds the pinned commit. When the pinned commit is missing, the run fetches the remote's branches into the cache and looks again. A Template upgrade looks for the repository's Pin, because it regenerates both trees at that Pin.
+The first run that reaches the kernel cache clones the remote into it. A later run uses the kernel cache without the network while the kernel cache holds the pinned commit. When the pinned commit is missing, the run fetches the remote's branches into the kernel cache and looks again. A Template upgrade looks for the repository's Pin, because it regenerates both trees at that Pin.
 
-Every checkout of the template and every home folder on the machine shares one cache, because the cache path depends only on `XDG_CACHE_HOME` or the home folder. The kernel repository is public, so the clone and the fetch need no login. The kernel reader checks the cache's content by commit identity, as it checks a clone you name.
+Each user has one kernel cache. Every checkout of the template that you run shares your kernel cache, because its path depends only on your `XDG_CACHE_HOME` or your home folder. The kernel repository is public, so the clone and the fetch need no login. The kernel reader checks the kernel cache's content by commit identity, as it checks a clone you name.
 
 ### Oldest supported base
 
