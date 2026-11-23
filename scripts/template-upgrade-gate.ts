@@ -527,9 +527,9 @@ export async function main(
     return 2;
   }
   try {
-    const kernelRepository = findSiblingKernel(root, process.env);
     const { targetCommit, belowFloorCommit, bases } =
       await resolveUpgradeGateBases(root, parsed.targetRevision);
+    const kernelRepository = findSiblingKernel(root, process.env);
     const totalStart = performance.now();
     const targetShort = targetCommit.slice(0, 7);
     const belowFloor = await runBelowFloorRefusalCheck({
