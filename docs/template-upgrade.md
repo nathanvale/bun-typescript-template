@@ -132,7 +132,7 @@ Add `--force` to `git worktree remove` if the worktree contains uncommitted chan
 | `conflicts`              | `2`  | Conflicts remain in `.worktrees/template-upgrade-<target7>`.                                                                                                                                                                                                                    |
 | `resolution-in-progress` | `5`  | You started editing `.worktrees/template-upgrade-<target7>` but `<<<<<<< ours` markers remain.                                                                                                                                                                                  |
 | `gate-adoption-required` | `6`  | Existing repository code violates a gate added or changed by this upgrade (Fallow, ESLint, TypeScript, or Biome); worktree kept with the listed problems, changed gate files, repair steps, and unlock/remove commands.                                                         |
-| `check-failed`           | `1`  | `bun install`, `biome format --write`, `bun run quality:fallow:record-hits`, or `bun run check` failed because the upgrade or tool run broke (not existing code against a newly changed gate); worktree kept with resume and unlock/remove commands.                            |
+| `check-failed`           | `1`  | `bun install`, `biome format --write`, `bun run quality:fallow:record-hits`, `bun run check`, or `fallow audit` failed because the upgrade or tool run broke (not existing code against a newly changed gate); worktree kept with resume and unlock/remove commands.            |
 
 ### Resolving conflicts and rerunning
 
@@ -153,9 +153,11 @@ When a repository already has committed recorded-hits files and a later Template
 - If no new finding entries are added (for example, only `analysis_identity.project_config_hash` changed after a `tsconfig.base.json` update), the refreshed recorded-hits files are kept and `bun run check` proceeds normally.
 - If new finding entries would be added (for example, `.fallowrc.json` enabled a new gate such as `boundary-violation`), `apply` updates only `analysis_identity` and preserves the repository's previously recorded hits without silently absorbing the new findings. `bun run check` then surfaces the exact existing problems under `gate-adoption-required` (exit `6`) instead of failing on `project_config_hash`.
 
-The recording step runs at most once per upgrade worktree. When it passes, the upgrade leaves a mark in the worktree's own Git folder (`git rev-parse --git-path template-upgrade-recorded-hits-done`), and a rerun of `apply` after `check-failed` or `gate-adoption-required` never runs it again, whatever the recorded-hits files then hold. A finding added during repair therefore still fails `bun run check`. Removing the upgrade worktree removes the mark, and the next `apply` starts from a fresh worktree.
+The recording step runs at most once per upgrade worktree. When it passes, the upgrade marks the worktree's Git folder (`git rev-parse --git-path template-upgrade-recorded-hits-done`), and a rerun of `apply` after `check-failed` or `gate-adoption-required` never runs it again. A finding added during the repair therefore still fails `bun run check`. Removing the worktree removes the mark.
 
-With `--no-check`, the upgrade does not record the findings and commits the upgrade branch with empty or unrefreshed recorded-hits files. Before merging, run `bun install` and `bun run quality:fallow:record-hits` in the upgrade worktree (or on the upgrade branch) and commit the updated recorded-hits files.
+After `bun run check` passes, `apply` runs a push's Fallow audit (`fallow audit --base <HEAD> --quiet`) and stops as `check-failed` with its output when the audit fails.
+
+With `--no-check`, the upgrade records no findings and commits the upgrade branch with empty or unrefreshed recorded-hits files. Before merging, run `bun install` and `bun run quality:fallow:record-hits` in the upgrade worktree or on the upgrade branch and commit the updated recorded-hits files.
 
 ### Adopting a gate added or changed by an upgrade
 

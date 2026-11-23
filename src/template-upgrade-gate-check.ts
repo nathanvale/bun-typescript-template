@@ -47,9 +47,12 @@ import {
 } from "./template-upgrade-recorded-hits.ts";
 import {
   runBunStep,
+  runWorktreeStep,
   type TemplateUpgradeBunResult,
 } from "./template-upgrade-worktree.ts";
 
+const FALLOW_AUDIT_STEP = "fallow audit";
+const FALLOW_BIN = "node_modules/.bin/fallow";
 const INSTALL_TIMEOUT_MS = 120_000;
 const CHECK_TIMEOUT_MS = 240_000;
 
@@ -271,6 +274,39 @@ function createTemplateUpgradeCheckFailureRun(options: {
   });
 }
 
+function runPushFallowAuditStep(
+  worktree: string,
+  base: string,
+  env: ProcessEnvMap,
+):
+  | { readonly ok: true; readonly step: TemplateUpgradeApplyStep }
+  | { readonly ok: false; readonly result: TemplateUpgradeBunResult } {
+  const fallow = join(worktree, FALLOW_BIN);
+  if (!existsSync(fallow)) {
+    return {
+      ok: true,
+      step: createTemplateUpgradeApplyStep(
+        FALLOW_AUDIT_STEP,
+        false,
+        "skipped",
+        `${FALLOW_BIN} not found`,
+      ),
+    };
+  }
+  const result = runWorktreeStep({
+    worktree,
+    command: [fallow, "audit", "--base", base, "--quiet"],
+    label: FALLOW_AUDIT_STEP,
+    timeoutMilliseconds: CHECK_TIMEOUT_MS,
+    env,
+  });
+  if (!result.ok) return { ok: false, result };
+  return {
+    ok: true,
+    step: createTemplateUpgradeApplyStep(FALLOW_AUDIT_STEP, true, "passed"),
+  };
+}
+
 export function runTemplateUpgradeCheckSteps(options: {
   readonly inputs: TemplateUpgradeInputs;
   readonly branch: string;
@@ -343,13 +379,13 @@ export function runTemplateUpgradeCheckSteps(options: {
     createTemplateUpgradeApplyStep("bun install", true, "passed"),
     ...formatted.steps,
   ];
-  const recorded = runRecordedHitsStep(
-    recordedHitsRequestFor(options.worktree, options.inputs, options.env, {
-      rows: options.rows,
-      dependencyChanges: options.dependencyChanges,
-    }),
-    CHECK_TIMEOUT_MS,
+  const recordedHitsRequest = recordedHitsRequestFor(
+    options.worktree,
+    options.inputs,
+    options.env,
+    { rows: options.rows, dependencyChanges: options.dependencyChanges },
   );
+  const recorded = runRecordedHitsStep(recordedHitsRequest, CHECK_TIMEOUT_MS);
   if (!recorded.ok) {
     return {
       ok: false,
@@ -389,12 +425,30 @@ export function runTemplateUpgradeCheckSteps(options: {
       }),
     };
   }
-  return {
-    ok: true,
-    steps: Object.freeze([
-      ...installed,
-      ...recorded.steps,
-      createTemplateUpgradeApplyStep("bun run check", true, "passed"),
-    ]),
-  };
+  const checked = [
+    ...installed,
+    ...recorded.steps,
+    createTemplateUpgradeApplyStep("bun run check", true, "passed"),
+  ];
+  const audit = runPushFallowAuditStep(
+    options.worktree,
+    options.inputs.repositoryHead,
+    options.env,
+  );
+  if (!audit.ok) {
+    return {
+      ok: false,
+      run: createTemplateUpgradeCheckFailureRun({
+        ...options,
+        failedStep: FALLOW_AUDIT_STEP,
+        steps: Object.freeze([
+          ...checked,
+          createTemplateUpgradeApplyStep(FALLOW_AUDIT_STEP, true, "failed"),
+        ]),
+        stepResult: audit.result,
+        timeoutMilliseconds: CHECK_TIMEOUT_MS,
+      }),
+    };
+  }
+  return { ok: true, steps: Object.freeze([...checked, audit.step]) };
 }

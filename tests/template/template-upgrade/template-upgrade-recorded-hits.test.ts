@@ -83,6 +83,12 @@ exit 0
           outcome: "passed",
         },
         { command: "bun run check", ran: true, outcome: "passed" },
+        {
+          command: "fallow audit",
+          ran: false,
+          outcome: "skipped",
+          reason: "node_modules/.bin/fallow not found",
+        },
       ],
     });
     expect(readFileSync(ledger, "utf8").trim().split("\n")).toEqual([
@@ -215,6 +221,12 @@ exit 0
       steps: [
         { command: "bun install", ran: true, outcome: "passed" },
         { command: "bun run check", ran: true, outcome: "passed" },
+        {
+          command: "fallow audit",
+          ran: false,
+          outcome: "skipped",
+          reason: "node_modules/.bin/fallow not found",
+        },
       ],
     });
     expect(readFileSync(existingBun.ledger, "utf8").trim().split("\n")).toEqual(
@@ -342,6 +354,12 @@ exit 0
       steps: [
         { command: "bun install", ran: true, outcome: "passed" },
         { command: "bun run check", ran: true, outcome: "passed" },
+        {
+          command: "fallow audit",
+          ran: false,
+          outcome: "skipped",
+          reason: "node_modules/.bin/fallow not found",
+        },
       ],
     });
     expect(
@@ -443,6 +461,12 @@ exit 0
       steps: [
         { command: "bun install", ran: true, outcome: "passed" },
         { command: "bun run check", ran: true, outcome: "passed" },
+        {
+          command: "fallow audit",
+          ran: false,
+          outcome: "skipped",
+          reason: "node_modules/.bin/fallow not found",
+        },
       ],
     });
     expect(readFileSync(ledger, "utf8").trim().split("\n")).toEqual([

@@ -345,6 +345,7 @@ test(
           outcome: "passed",
         },
         { command: "bun run check", ran: true, outcome: "passed" },
+        { command: "fallow audit", ran: true, outcome: "passed" },
       ],
     });
     expect(topLevelUpgradeCalls(ledger)).toEqual([
