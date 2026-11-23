@@ -1,0 +1,17 @@
+diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
+--- a/scripts/pin-move-repository.ts
++++ b/scripts/pin-move-repository.ts
+@@ -161,12 +161,7 @@ function requirePlainEntry(
+     current = join(current, segment);
+     const stats = lstatSync(current);
+     const isLast = index === segments.length - 1;
+-    if (stats.isSymbolicLink())
+-      throw new RepositoryPinRefusal(
+-        "repository_invalid",
+-        `${relativePath} in ${repository} traverses a symbolic link.`,
+-        `Replace the symbolic link at ${relativePath} in ${repository} with a plain ${kind}, commit it, and run pin-move again.`,
+-      );
++    if (stats.isSymbolicLink()) continue;
+     const expectedDirectory = !isLast || kind === "directory";
+     if (expectedDirectory ? !stats.isDirectory() : !stats.isFile())
+       throw new RepositoryPinRefusal(

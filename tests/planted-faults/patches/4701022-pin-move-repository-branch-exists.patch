@@ -1,0 +1,28 @@
+diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
+index 5622413..7647d95 100644
+--- a/scripts/pin-move-repository.ts
++++ b/scripts/pin-move-repository.ts
+@@ -399,22 +399,9 @@ async function runRepositoryCheckSteps(
+ 
+ function createPinMoveBranch(repository: string, kernelCommit: string): string {
+   const branch = `pin-move/${kernelCommit.slice(0, 7)}`;
+-  if (
+-    repositoryGit(repository, [
+-      "show-ref",
+-      "--verify",
+-      "--quiet",
+-      `refs/heads/${branch}`,
+-    ]).ok
+-  )
+-    throw new RepositoryPinRefusal(
+-      "repository_branch_exists",
+-      `Branch ${branch} already exists in ${repository}.`,
+-      `Inspect or remove branch ${branch} in ${repository} (git branch -D ${branch}), then run pin-move again.`,
+-    );
+   requireRepositoryGit(
+     repository,
+-    ["checkout", "-b", branch],
++    ["checkout", "-B", branch],
+     `Resolve why git could not create branch ${branch} in ${repository}, then run pin-move again.`,
+   );
+   return branch;

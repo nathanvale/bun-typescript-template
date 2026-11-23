@@ -1,0 +1,12 @@
+diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
+--- a/scripts/pin-move-repository.ts
++++ b/scripts/pin-move-repository.ts
+@@ -98,8 +98,6 @@ function requireGitWorkTreeRoot(
+   if (!inside.ok || inside.stdout.trim() !== "true")
+     throw invalid("it is not a git working tree.");
+   const prefix = repositoryGit(repository, ["rev-parse", "--show-prefix"]);
+-  if (!prefix.ok || prefix.stdout.slice(0, -1) !== "")
+-    throw invalid("that folder is inside the repository above it.");
+   if (!repositoryGit(repository, ["rev-parse", "--verify", "HEAD"]).ok)
+     throw invalid("HEAD has no commit yet.");
+ }

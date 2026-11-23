@@ -1,0 +1,19 @@
+diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
+--- a/scripts/pin-move-repository.ts
++++ b/scripts/pin-move-repository.ts
+@@ -234,9 +234,12 @@ function readRepositoryPin(
+       nextSpecifier: clonePin(kernel),
+       packageText,
+     };
+-  throw missing(
+-    `"${specifier}" does not match ${generatedPin(pin, oldCommit)} or the given kernel clone.`,
+-  );
++  return {
++    oldCommit,
++    currentSpecifier: specifier,
++    nextSpecifier: generatedPin(pin, kernel.commit),
++    packageText,
++  };
+ }
+ 
+ function writeRepositoryPackagePin(

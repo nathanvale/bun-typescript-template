@@ -1,0 +1,16 @@
+diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
+--- a/scripts/pin-move-repository.ts
++++ b/scripts/pin-move-repository.ts
+@@ -454,12 +454,6 @@ export async function moveRepositoryPin(
+     );
+     return 0;
+   }
+-  if (current.oldCommit === kernel.commit)
+-    throw new RepositoryPinRefusal(
+-      "repository_pin_unchanged",
+-      `Repository at ${repository} already pins ${kernel.commit}.`,
+-      "Give a different kernel commit to move the pin.",
+-    );
+   return applyRepositoryPinMove(
+     repository,
+     startingRef,

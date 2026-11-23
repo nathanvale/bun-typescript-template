@@ -1,0 +1,12 @@
+diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
+--- a/scripts/pin-move-repository.ts
++++ b/scripts/pin-move-repository.ts
+@@ -436,7 +436,7 @@ export async function moveRepositoryPin(
+     givenRepository,
+     !planOnly,
+   );
+-  const kernelRepository = verifyTarget(kernel, pin);
++  const kernelRepository = kernel.repository;
+   readKernel(kernel);
+   const current = readRepositoryPin(
+     repository,

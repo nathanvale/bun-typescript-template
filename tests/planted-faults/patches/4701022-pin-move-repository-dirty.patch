@@ -1,0 +1,11 @@
+diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
+--- a/scripts/pin-move-repository.ts
++++ b/scripts/pin-move-repository.ts
+@@ -137,7 +137,6 @@ function openGeneratedRepository(
+   const repository = realpathSync(givenPath);
+   requireGitWorkTreeRoot(repository, invalid);
+   const startingRef = requireStartingBranch(repository, requireClean);
+-  if (requireClean) requireCleanWorkTree(repository);
+   return { repository, startingRef };
+ }
+ 

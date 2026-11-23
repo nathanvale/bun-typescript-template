@@ -2399,5 +2399,110 @@
     "testFile": "tests/template/template-upgrade/template-upgrade-json-format.test.ts",
     "title": "^apply skips a key-merged \\.fallowrc\\.json the owner replaced with a hard link to a tracked JSON file, so the original repository keeps its bytes$",
     "source": "20e1190 fix(template-upgrade): skip a hard-linked key-merged path and stop when a formatted file changed identity"
+  },
+  {
+    "id": "4701022-pin-move-repository-dirty",
+    "patch": "tests/planted-faults/patches/4701022-pin-move-repository-dirty.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses when the generated repository working tree is dirty and creates no branch$",
+    "source": "4701022 feat(pin-move): move a generated repository kernel Pin onto a new branch"
+  },
+  {
+    "id": "4701022-pin-move-repository-kernel-commit",
+    "patch": "tests/planted-faults/patches/4701022-pin-move-repository-kernel-commit.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses when the target commit is not a kernel commit$",
+    "source": "4701022 feat(pin-move): move a generated repository kernel Pin onto a new branch"
+  },
+  {
+    "id": "4701022-pin-move-repository-pin-verify",
+    "patch": "tests/planted-faults/patches/4701022-pin-move-repository-pin-verify.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses when kernel Pin verification fails for an unpushed commit or a commit before carry-out$",
+    "source": "4701022 feat(pin-move): move a generated repository kernel Pin onto a new branch"
+  },
+  {
+    "id": "4701022-pin-move-repository-check-failed",
+    "patch": "tests/planted-faults/patches/4701022-pin-move-repository-check-failed.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses when the generated repository check fails after the move, keeps the failed attempt as one commit on the pin-move branch, and leaves main checked out and clean$",
+    "source": "4701022 feat(pin-move): move a generated repository kernel Pin onto a new branch"
+  },
+  {
+    "id": "4701022-pin-move-repository-unchanged",
+    "patch": "tests/planted-faults/patches/4701022-pin-move-repository-unchanged.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses when the generated repository Pin is missing, already at the target commit, or the target branch already exists$",
+    "source": "4701022 feat(pin-move): move a generated repository kernel Pin onto a new branch"
+  },
+  {
+    "id": "4701022-pin-move-repository-branch-exists",
+    "patch": "tests/planted-faults/patches/4701022-pin-move-repository-branch-exists.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses when the generated repository Pin is missing, already at the target commit, or the target branch already exists$",
+    "source": "4701022 feat(pin-move): move a generated repository kernel Pin onto a new branch"
+  },
+  {
+    "id": "4701022-pin-move-repository-pin-missing",
+    "patch": "tests/planted-faults/patches/4701022-pin-move-repository-pin-missing.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses when the generated repository Pin is missing, already at the target commit, or the target branch already exists$",
+    "source": "4701022 feat(pin-move): move a generated repository kernel Pin onto a new branch"
+  },
+  {
+    "id": "bdf08d9-pin-move-repository-root",
+    "patch": "tests/planted-faults/patches/bdf08d9-pin-move-repository-root.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses a non-root repository path, detached HEAD, or symlinked package\\.json before changing anything$",
+    "source": "bdf08d9 fix(pin-move): harden manifest edit, symlink guards, detached HEAD, and isolated commit"
+  },
+  {
+    "id": "bdf08d9-pin-move-repository-detached-head",
+    "patch": "tests/planted-faults/patches/bdf08d9-pin-move-repository-detached-head.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses a non-root repository path, detached HEAD, or symlinked package\\.json before changing anything$",
+    "source": "bdf08d9 fix(pin-move): harden manifest edit, symlink guards, detached HEAD, and isolated commit"
+  },
+  {
+    "id": "bdf08d9-pin-move-repository-symlink",
+    "patch": "tests/planted-faults/patches/bdf08d9-pin-move-repository-symlink.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses a non-root repository path, detached HEAD, or symlinked package\\.json before changing anything$",
+    "source": "bdf08d9 fix(pin-move): harden manifest edit, symlink guards, detached HEAD, and isolated commit"
+  },
+  {
+    "id": "9348aa5-pin-move-repository-plan-before-branch",
+    "patch": "tests/planted-faults/patches/9348aa5-pin-move-repository-plan-before-branch.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses a symbolic link pointer skill or bun\\.lock before creating the branch and leaves main checked out and clean$",
+    "source": "9348aa5 fix(pin-move): leave the owner's checkout clean after a refused repository Pin move"
+  },
+  {
+    "id": "9348aa5-pin-move-repository-failed-attempt",
+    "patch": "tests/planted-faults/patches/9348aa5-pin-move-repository-failed-attempt.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses when the generated repository check fails after the move, keeps the failed attempt as one commit on the pin-move branch, and leaves main checked out and clean$",
+    "source": "9348aa5 fix(pin-move): leave the owner's checkout clean after a refused repository Pin move"
+  },
+  {
+    "id": "9348aa5-pin-move-repository-lockfile-link",
+    "patch": "tests/planted-faults/patches/9348aa5-pin-move-repository-lockfile-link.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses a symbolic link pointer skill or bun\\.lock before creating the branch and leaves main checked out and clean$",
+    "source": "9348aa5 fix(pin-move): leave the owner's checkout clean after a refused repository Pin move"
+  },
+  {
+    "id": "03da5f1-pin-move-repository-reinstall",
+    "patch": "tests/planted-faults/patches/03da5f1-pin-move-repository-reinstall.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses when the generated repository check fails after the move, keeps the failed attempt as one commit on the pin-move branch, and leaves main checked out and clean$",
+    "source": "03da5f1 fix(pin-move): reinstall the starting branch's kernel after a refused repository Pin move"
+  },
+  {
+    "id": "03da5f1-pin-move-repository-restore-refusal",
+    "patch": "tests/planted-faults/patches/03da5f1-pin-move-repository-restore-refusal.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "refuses when the generated repository check fails, and says the installed kernel was not restored when the starting branch's frozen install fails$",
+    "source": "03da5f1 fix(pin-move): reinstall the starting branch's kernel after a refused repository Pin move"
   }
 ]
