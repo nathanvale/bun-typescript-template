@@ -2350,5 +2350,12 @@
     "testFile": "tests/template/template-upgrade/template-upgrade-json-conflicts.test.ts",
     "title": "^a JSON file that does not parse and whose clean text merge repeats a member is written as one marked conflict$",
     "source": "d557802 fix(template-upgrade): mark the whole JSON file for any key conflict or repeated member"
+  },
+  {
+    "id": "b61398f-template-upgrade-merge-text-conflict",
+    "patch": "tests/planted-faults/patches/b61398f-template-upgrade-merge-text-conflict.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-json-conflicts.test.ts",
+    "title": "^a JSON file that does not parse and whose text conflict leaves a repeated member outside git's markers is written as one marked conflict$",
+    "source": "b61398f fix(template-upgrade): mark the whole JSON file when a text conflict repeats a member on either side"
   }
 ]
