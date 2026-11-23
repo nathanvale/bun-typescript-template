@@ -34,10 +34,8 @@ import {
   pinMoveReport,
   pinMoveReportText,
 } from "./pin-move-report.ts";
-import {
-  moveRepositoryPin,
-  RepositoryPinRefusal,
-} from "./pin-move-repository.ts";
+import { RepositoryPinRefusal } from "./pin-move-branch.ts";
+import { moveRepositoryPin } from "./pin-move-repository.ts";
 import { KERNEL_LOCKFILE } from "../src/recipe.ts";
 
 const templateRoot = resolve(import.meta.dir, "..");

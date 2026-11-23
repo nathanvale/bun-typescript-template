@@ -92,6 +92,18 @@ function runPinMove(
   );
 }
 
+function expectRefused(
+  run: Awaited<ReturnType<typeof runPinMove>>,
+  code: string,
+): void {
+  expect({ exit: run.exit, stdout: run.stdout }).toEqual({
+    exit: 1,
+    stdout: "",
+  });
+  expect(run.stderr).toContain(`${code}:`);
+  expect(run.stderr).toContain("Repair:");
+}
+
 function freshRepository(prefix: string): string {
   const destination = join(folder(prefix), "generated");
   cpSync(baseGenerated, destination, {
@@ -317,12 +329,7 @@ describe("pin-move --repository", () => {
         "--repository",
         repo,
       ]);
-      expect({ exit: run.exit, stdout: run.stdout }).toEqual({
-        exit: 1,
-        stdout: "",
-      });
-      expect(run.stderr).toContain("repository_dirty:");
-      expect(run.stderr).toContain("Repair:");
+      expectRefused(run, "repository_dirty");
       expect(git(repo, "rev-parse", "--abbrev-ref", "HEAD")).toBe("main");
       expect(gitOutput(repo, "branch", "--list", "pin-move/*")).toBe("");
     },
@@ -337,12 +344,7 @@ describe("pin-move --repository", () => {
         [nonKernelCommit, "--kernel", nonKernelRepo, "--repository", repo],
         nonKernelBin,
       );
-      expect({ exit: noDecl.exit, stdout: noDecl.stdout }).toEqual({
-        exit: 1,
-        stdout: "",
-      });
-      expect(noDecl.stderr).toContain("kernel_declaration_missing:");
-      expect(noDecl.stderr).toContain("Repair:");
+      expectRefused(noDecl, "kernel_declaration_missing");
 
       const missing = await runPinMove([
         absentCommit,
@@ -351,12 +353,7 @@ describe("pin-move --repository", () => {
         "--repository",
         repo,
       ]);
-      expect({ exit: missing.exit, stdout: missing.stdout }).toEqual({
-        exit: 1,
-        stdout: "",
-      });
-      expect(missing.stderr).toContain("kernel_commit_missing:");
-      expect(missing.stderr).toContain("Repair:");
+      expectRefused(missing, "kernel_commit_missing");
 
       const short = await runPinMove([
         targetCommit.slice(0, 10),
@@ -365,11 +362,7 @@ describe("pin-move --repository", () => {
         "--repository",
         repo,
       ]);
-      expect({ exit: short.exit, stdout: short.stdout }).toEqual({
-        exit: 1,
-        stdout: "",
-      });
-      expect(short.stderr).toContain("kernel_commit_abbreviated:");
+      expectRefused(short, "kernel_commit_abbreviated");
       expect(git(repo, "rev-parse", "--abbrev-ref", "HEAD")).toBe("main");
       expect(gitOutput(repo, "branch", "--list", "pin-move/*")).toBe("");
     },
@@ -387,12 +380,7 @@ describe("pin-move --repository", () => {
         "--repository",
         repo,
       ]);
-      expect({ exit: unpushed.exit, stdout: unpushed.stdout }).toEqual({
-        exit: 1,
-        stdout: "",
-      });
-      expect(unpushed.stderr).toContain("kernel_commit_unreachable:");
-      expect(unpushed.stderr).toContain("Repair:");
+      expectRefused(unpushed, "kernel_commit_unreachable");
 
       const beforeCarryOut = await runPinMove([
         templateCommitHoldingS5,
@@ -401,24 +389,14 @@ describe("pin-move --repository", () => {
         "--repository",
         repo,
       ]);
-      expect({
-        exit: beforeCarryOut.exit,
-        stdout: beforeCarryOut.stdout,
-      }).toEqual({
-        exit: 1,
-        stdout: "",
-      });
-      expect(beforeCarryOut.stderr).toContain(
-        "kernel_commit_before_carry_out:",
-      );
-      expect(beforeCarryOut.stderr).toContain("Repair:");
+      expectRefused(beforeCarryOut, "kernel_commit_before_carry_out");
       expect(git(repo, "rev-parse", "--abbrev-ref", "HEAD")).toBe("main");
       expect(gitOutput(repo, "branch", "--list", "pin-move/*")).toBe("");
     },
     processWatchdog(3),
   );
 
-  test("refuses when the generated repository check fails after the move, leaves the pin-move branch checked out for inspection, and leaves main untouched", async () => {
+  test("refuses when the generated repository check fails after the move, keeps the failed attempt as one commit on the pin-move branch, and leaves main checked out and clean", async () => {
     const repo = freshRepository("pin-move-check-fail-");
     commitIn(repo, "add test that fails once the Pin moves", {
       "tests/check-failure.test.ts": `import { expect, test } from "bun:test";
@@ -444,15 +422,64 @@ test("pins only the older commit", () => {
     expect(run.stdout).toContain("Kernel change notes (1):");
     expect(run.stderr).toContain("repository_check_failed:");
     expect(run.stderr).toContain(
-      `Branch ${expectedBranch} was left checked out for inspection; main was not changed.`,
+      `The failed attempt is kept on branch ${expectedBranch} for inspection; main is checked out again and was not changed.`,
     );
-    expect(run.stderr).toContain("Repair:");
-    expect(git(repo, "rev-parse", "--abbrev-ref", "HEAD")).toBe(expectedBranch);
+    expect(run.stderr).toContain(
+      `Repair: Delete the failed attempt with git branch -D ${expectedBranch} in ${realpathSync(repo)} before running pin-move again.`,
+    );
+    expect(git(repo, "rev-parse", "--abbrev-ref", "HEAD")).toBe("main");
     expect(git(repo, "rev-parse", "main")).toBe(mainBefore);
-    expect(readFileSync(join(repo, "package.json"), "utf8")).toContain(
+    expect(
+      gitOutput(repo, "status", "--porcelain", "--untracked-files=all"),
+    ).toBe("");
+    expect(git(repo, "rev-list", "--count", `main..${expectedBranch}`)).toBe(
+      "1",
+    );
+    expect(git(repo, "log", "-1", "--format=%s", expectedBranch)).toBe(
+      `chore(kernel): failed Pin move from ${trialBase.slice(0, 7)} to ${targetCommit.slice(0, 7)} (repository_check_failed)`,
+    );
+    expect(git(repo, "show", `${expectedBranch}:package.json`)).toContain(
       cloneSpecifier(kernelRepo, targetCommit),
     );
   }, 180_000);
+
+  test(
+    "refuses a symbolic link pointer skill or bun.lock before creating the branch and leaves main checked out and clean",
+    async () => {
+      const outside = folder("pin-move-linked-outside-");
+      for (const [prefix, linkedPath] of [
+        ["pin-move-linked-skill-", ".agents/skills/verify-cli/SKILL.md"],
+        ["pin-move-linked-lock-", "bun.lock"],
+      ] as const) {
+        const repo = freshRepository(prefix);
+        const target = join(outside, `${prefix}target`);
+        writeFileSync(target, "linked content\n");
+        rmSync(join(repo, linkedPath), { force: true });
+        symlinkSync(target, join(repo, linkedPath));
+        git(repo, "add", "--", linkedPath);
+        git(repo, "commit", "--quiet", "-m", `link ${linkedPath}`);
+        const mainBefore = git(repo, "rev-parse", "main");
+        const run = await runPinMove([
+          targetCommit,
+          "--kernel",
+          kernelRepo,
+          "--repository",
+          repo,
+        ]);
+        expectRefused(run, "repository_invalid");
+        expect(run.stderr).toContain(`${linkedPath} in`);
+        expect(run.stderr).toContain("symbolic link");
+        expect(git(repo, "rev-parse", "--abbrev-ref", "HEAD")).toBe("main");
+        expect(git(repo, "rev-parse", "main")).toBe(mainBefore);
+        expect(gitOutput(repo, "branch", "--list", "pin-move/*")).toBe("");
+        expect(
+          gitOutput(repo, "status", "--porcelain", "--untracked-files=all"),
+        ).toBe("");
+        expect(readFileSync(target, "utf8")).toBe("linked content\n");
+      }
+    },
+    processWatchdog(3),
+  );
 
   test(
     "refuses when the generated repository Pin is missing, already at the target commit, or the target branch already exists",
@@ -465,12 +492,7 @@ test("pins only the older commit", () => {
         "--repository",
         repo,
       ]);
-      expect({ exit: unchanged.exit, stdout: unchanged.stdout }).toEqual({
-        exit: 1,
-        stdout: "",
-      });
-      expect(unchanged.stderr).toContain("repository_pin_unchanged:");
-      expect(unchanged.stderr).toContain("Repair:");
+      expectRefused(unchanged, "repository_pin_unchanged");
 
       const existingBranch = `pin-move/${targetCommit.slice(0, 7)}`;
       git(repo, "branch", existingBranch);
@@ -481,12 +503,7 @@ test("pins only the older commit", () => {
         "--repository",
         repo,
       ]);
-      expect({ exit: branchExists.exit, stdout: branchExists.stdout }).toEqual({
-        exit: 1,
-        stdout: "",
-      });
-      expect(branchExists.stderr).toContain("repository_branch_exists:");
-      expect(branchExists.stderr).toContain("Repair:");
+      expectRefused(branchExists, "repository_branch_exists");
       git(repo, "branch", "-D", existingBranch);
 
       commitIn(repo, "use foreign kernel remote", {
@@ -508,12 +525,7 @@ test("pins only the older commit", () => {
         "--repository",
         repo,
       ]);
-      expect({ exit: foreignPin.exit, stdout: foreignPin.stdout }).toEqual({
-        exit: 1,
-        stdout: "",
-      });
-      expect(foreignPin.stderr).toContain("repository_pin_missing:");
-      expect(foreignPin.stderr).toContain("Repair:");
+      expectRefused(foreignPin, "repository_pin_missing");
 
       commitIn(repo, "drop kernel dependency", {
         "package.json": `${JSON.stringify({ name: "broken", dependencies: {} }, null, 2)}\n`,
@@ -525,12 +537,7 @@ test("pins only the older commit", () => {
         "--repository",
         repo,
       ]);
-      expect({ exit: missingPin.exit, stdout: missingPin.stdout }).toEqual({
-        exit: 1,
-        stdout: "",
-      });
-      expect(missingPin.stderr).toContain("repository_pin_missing:");
-      expect(missingPin.stderr).toContain("Repair:");
+      expectRefused(missingPin, "repository_pin_missing");
     },
     processWatchdog(3),
   );
@@ -546,11 +553,7 @@ test("pins only the older commit", () => {
         "--repository",
         join(repo, "src"),
       ]);
-      expect({ exit: subdir.exit, stdout: subdir.stdout }).toEqual({
-        exit: 1,
-        stdout: "",
-      });
-      expect(subdir.stderr).toContain("repository_invalid:");
+      expectRefused(subdir, "repository_invalid");
       expect(subdir.stderr).toContain("inside the repository above it");
 
       const detached = freshRepository("pin-move-detached-");
@@ -562,11 +565,7 @@ test("pins only the older commit", () => {
         "--repository",
         detached,
       ]);
-      expect({ exit: detachedRun.exit, stdout: detachedRun.stdout }).toEqual({
-        exit: 1,
-        stdout: "",
-      });
-      expect(detachedRun.stderr).toContain("repository_invalid:");
+      expectRefused(detachedRun, "repository_invalid");
       expect(detachedRun.stderr).toContain("detached HEAD");
 
       const linked = freshRepository("pin-move-symlink-");
@@ -583,11 +582,7 @@ test("pins only the older commit", () => {
         "--repository",
         linked,
       ]);
-      expect({ exit: linkRun.exit, stdout: linkRun.stdout }).toEqual({
-        exit: 1,
-        stdout: "",
-      });
-      expect(linkRun.stderr).toContain("repository_invalid:");
+      expectRefused(linkRun, "repository_invalid");
       expect(linkRun.stderr).toContain("symbolic link");
     },
     processWatchdog(3),

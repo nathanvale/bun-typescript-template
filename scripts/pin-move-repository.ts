@@ -17,63 +17,18 @@ import {
 import { SKILL_FOLDER } from "../src/recipe.ts";
 import { type TrialActive, TrialRefusal, trialStep } from "./kernel-trial.ts";
 import { pinMoveReport, pinMoveReportText } from "./pin-move-report.ts";
-import { withoutRepositoryLocation } from "./process-runner.ts";
+import {
+  attemptPaths,
+  commitPinMoveBranch,
+  failedAttempt,
+  type PinMoveAttempt,
+  RepositoryPinRefusal,
+  repositoryGit,
+  requireRepositoryGit,
+} from "./pin-move-branch.ts";
 
-const repositoryGitMilliseconds = 20_000;
 const repositoryInstallMilliseconds = 120_000;
 const repositoryCheckMilliseconds = 240_000;
-
-export class RepositoryPinRefusal extends Error {
-  constructor(
-    readonly code: string,
-    cause: string,
-    readonly repair: string,
-  ) {
-    super(`${cause} Repair: ${repair}`);
-  }
-}
-
-function repositoryGit(repository: string, args: readonly string[]) {
-  const run = Bun.spawnSync(["git", "-C", repository, ...args], {
-    env: {
-      ...withoutRepositoryLocation(process.env),
-      GIT_TERMINAL_PROMPT: "0",
-      GIT_OPTIONAL_LOCKS: "0",
-    },
-    stdin: "ignore",
-    stdout: "pipe",
-    stderr: "pipe",
-    timeout: repositoryGitMilliseconds,
-    killSignal: "SIGKILL",
-  });
-  if (run.exitedDueToTimeout)
-    throw new RepositoryPinRefusal(
-      "repository_git_failed",
-      `git ${args.join(" ")} did not finish within ${repositoryGitMilliseconds} ms in ${repository}.`,
-      `Run git ${args.join(" ")} in ${repository} to see where it waits, then run pin-move again.`,
-    );
-  return {
-    ok: run.exitCode === 0,
-    code: run.exitCode,
-    stdout: run.stdout.toString(),
-    said: run.stderr.toString().trim().split("\n")[0] ?? "",
-  };
-}
-
-function requireRepositoryGit(
-  repository: string,
-  args: readonly string[],
-  repair: string,
-): string {
-  const run = repositoryGit(repository, args);
-  if (!run.ok)
-    throw new RepositoryPinRefusal(
-      "repository_git_failed",
-      `git ${args.join(" ")} failed in ${repository}: git says "${run.said}".`,
-      repair,
-    );
-  return run.stdout;
-}
 
 function requireCleanWorkTree(repository: string): void {
   const status = requireRepositoryGit(
@@ -250,11 +205,13 @@ function readRepositoryPin(
   );
 }
 
-function writeRepositoryPackagePin(
+type PlannedEdit = { readonly path: string; readonly text: string };
+
+function plannedPackagePin(
   repository: string,
   record: RepositoryPinRecord,
   packageName: string,
-): string {
+): PlannedEdit {
   const manifestPath = requirePlainEntry(repository, "package.json", "file");
   const parsed: unknown = JSON.parse(record.packageText);
   const deps = ownPropertyValue(parsed, "dependencies");
@@ -277,8 +234,7 @@ function writeRepositoryPackagePin(
       `${manifestPath} could not record dependencies["${packageName}"].`,
       `Write dependencies["${packageName}"] in ${manifestPath} by hand and run pin-move again.`,
     );
-  writeFileSync(manifestPath, updated);
-  return "package.json";
+  return { path: "package.json", text: updated };
 }
 
 function frontmatterLine(text: string, label: string): string | undefined {
@@ -324,17 +280,17 @@ function syncPointerSkill(
   return next;
 }
 
-function updatePointerSkills(
+function plannedPointerSkills(
   repository: string,
   kernelRepository: string,
   kernelCommit: string,
   packageName: string,
-): string[] {
+): PlannedEdit[] {
   const folder = join(repository, SKILL_FOLDER);
   if (!existsSync(folder)) return [];
   requirePlainEntry(repository, SKILL_FOLDER, "directory");
   const installedPrefix = `node_modules/${packageName}/`;
-  const written: string[] = [];
+  const planned: PlannedEdit[] = [];
   for (const name of readdirSync(folder).sort()) {
     const relativeSkill = `${SKILL_FOLDER}/${name}/SKILL.md`;
     const skillDir = join(folder, name);
@@ -350,18 +306,34 @@ function updatePointerSkills(
       kernelCommit,
       fullSkill.slice(installedPrefix.length),
     );
-    if (next !== text) {
-      writeFileSync(file, next);
-      written.push(relativeSkill);
-    }
+    if (next !== text) planned.push({ path: relativeSkill, text: next });
   }
-  return written;
+  return planned;
+}
+
+function planRepositoryEdits(
+  repository: string,
+  kernelRepository: string,
+  kernelCommit: string,
+  pin: KernelPin,
+  current: RepositoryPinRecord,
+): PlannedEdit[] {
+  if (lstatSync(join(repository, "bun.lock"), { throwIfNoEntry: false }))
+    requirePlainEntry(repository, "bun.lock", "file");
+  return [
+    plannedPackagePin(repository, current, pin.repository),
+    ...plannedPointerSkills(
+      repository,
+      kernelRepository,
+      kernelCommit,
+      pin.repository,
+    ),
+  ];
 }
 
 async function runRepositoryCheckSteps(
   repository: string,
   branch: string,
-  startingRef: string,
   active: TrialActive,
 ): Promise<void> {
   const steps: readonly (readonly [string, readonly string[], number])[] = [
@@ -381,15 +353,15 @@ async function runRepositoryCheckSteps(
         const detail = error.message.split(" Repair: ")[0] ?? error.message;
         throw new RepositoryPinRefusal(
           "repository_check_failed",
-          `${name} failed on branch ${branch} in ${repository}: ${detail} Branch ${branch} was left checked out for inspection; ${startingRef} was not changed.`,
-          `Inspect the failure on branch ${branch} in ${repository}, fix it, run bun run check, and commit, or switch back to ${startingRef} and delete ${branch}.`,
+          `${name} failed on branch ${branch} in ${repository}: ${detail}`,
+          `Fix the failure ${name} reports, then run pin-move again.`,
         );
       }
       if (error instanceof TrialRefusal && error.code === "trial_stopped") {
         throw new RepositoryPinRefusal(
           "trial_stopped",
-          `Pin move in ${repository} was stopped by ${active.stoppedBy ?? "a signal"} during ${name} on branch ${branch}. Branch ${branch} and its partial edits were left in place; ${startingRef} was not changed.`,
-          `Switch back to ${startingRef} and delete ${branch} (git checkout ${startingRef} && git branch -D ${branch}), then run pin-move again.`,
+          `Pin move in ${repository} was stopped by ${active.stoppedBy ?? "a signal"} during ${name} on branch ${branch}.`,
+          "Run pin-move again when it can run to its end.",
         );
       }
       throw error;
@@ -420,72 +392,43 @@ function createPinMoveBranch(repository: string, kernelCommit: string): string {
   return branch;
 }
 
-function commitPinMoveBranch(
-  repository: string,
-  branch: string,
-  oldCommit: string,
-  kernelCommit: string,
-  written: readonly string[],
-): string {
-  requireRepositoryGit(
-    repository,
-    ["add", "--", ...written],
-    `Stage ${written.join(", ")} on branch ${branch} in ${repository} and commit the pin move.`,
-  );
-  requireRepositoryGit(
-    repository,
-    [
-      "commit",
-      "--only",
-      "-m",
-      `chore(kernel): move kernel Pin from ${oldCommit.slice(0, 7)} to ${kernelCommit.slice(0, 7)}`,
-      "--",
-      ...written,
-    ],
-    `Commit the staged pin move on branch ${branch} in ${repository}.`,
-  );
-  return requireRepositoryGit(
-    repository,
-    ["rev-parse", "--short", "HEAD"],
-    `Check git log on branch ${branch} in ${repository}.`,
-  ).trim();
-}
-
 async function applyRepositoryPinMove(
   repository: string,
   startingRef: string,
-  kernelRepository: string,
   kernelCommit: string,
-  pin: KernelPin,
   current: RepositoryPinRecord,
+  edits: readonly PlannedEdit[],
   reportText: string,
   active: TrialActive,
 ): Promise<number> {
   const branch = createPinMoveBranch(repository, kernelCommit);
-  process.stdout.write(reportText);
-  const written = [
-    writeRepositoryPackagePin(repository, current, pin.repository),
-    ...updatePointerSkills(
-      repository,
-      kernelRepository,
-      kernelCommit,
-      pin.repository,
-    ),
-  ];
-  await runRepositoryCheckSteps(repository, branch, startingRef, active);
-  if (existsSync(join(repository, "bun.lock"))) written.push("bun.lock");
-  written.sort();
-  const commit = commitPinMoveBranch(
+  const attempt: PinMoveAttempt = {
     repository,
+    startingRef,
     branch,
-    current.oldCommit,
-    kernelCommit,
-    written,
-  );
-  process.stdout.write(
-    `Moved kernel Pin in ${repository} on branch ${branch} (${commit}):\n${written.map((file) => `  ${file}\n`).join("")}`,
-  );
-  return 0;
+    subject: `chore(kernel): failed Pin move from ${current.oldCommit.slice(0, 7)} to ${kernelCommit.slice(0, 7)}`,
+    edited: edits.map((edit) => edit.path),
+  };
+  try {
+    process.stdout.write(reportText);
+    for (const edit of edits)
+      writeFileSync(join(repository, edit.path), edit.text);
+    await runRepositoryCheckSteps(repository, branch, active);
+    const written = attemptPaths(repository, attempt.edited);
+    const commit = commitPinMoveBranch(
+      repository,
+      branch,
+      current.oldCommit,
+      kernelCommit,
+      written,
+    );
+    process.stdout.write(
+      `Moved kernel Pin in ${repository} on branch ${branch} (${commit}):\n${written.map((file) => `  ${file}\n`).join("")}`,
+    );
+    return 0;
+  } catch (error) {
+    throw failedAttempt(attempt, error);
+  }
 }
 
 export async function moveRepositoryPin(
@@ -524,13 +467,19 @@ export async function moveRepositoryPin(
       `Repository at ${repository} already pins ${kernel.commit}.`,
       "Give a different kernel commit to move the pin.",
     );
-  return applyRepositoryPinMove(
+  const edits = planRepositoryEdits(
     repository,
-    startingRef,
     kernelRepository,
     kernel.commit,
     pin,
     current,
+  );
+  return applyRepositoryPinMove(
+    repository,
+    startingRef,
+    kernel.commit,
+    current,
+    edits,
     reportText,
     active,
   );
