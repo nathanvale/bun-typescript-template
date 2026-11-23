@@ -1,0 +1,15 @@
+diff --git a/src/template-upgrade-merge.ts b/src/template-upgrade-merge.ts
+index fac6467..d1eb0d4 100644
+--- a/src/template-upgrade-merge.ts
++++ b/src/template-upgrade-merge.ts
+@@ -358,9 +358,7 @@ async function mergeJsonFile(options: {
+     if (gitMergeFile(oursPath, oldPath, newPath, env) === "conflict") {
+       return "conflict";
+     }
+-    if (!repeatsMember(await readFile(oursPath, "utf8"))) {
+-      return "merge";
+-    }
++    return "merge";
+   }
+   await writeFile(
+     oursPath,
