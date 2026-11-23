@@ -198,6 +198,10 @@ export const commentRepairs = [
     "// Platform: Avoid collisions when the parser normalizes text.\nexport const a = 1;",
     "name the platform or tool the fact belongs to",
   ],
+  [
+    "// biome-ignore lint/style/useConst: the fixture needs it\nexport const a = 1;",
+    "Biome's linter is off here",
+  ],
 ] as const;
 
 const suppressions = [
@@ -208,12 +212,16 @@ const suppressions = [
   "// @ts-nocheck",
   "// @ts-nocheck:",
   "// @ts-ignore-me",
+  "// biome-ignore format:",
+  "// biome-ignore-all format:",
+].map((open) => [templateSourceFile, open, " ", "", true] as const);
+const biomeLint = [
   "// biome-ignore lint/style/useConst:",
   "// biome-ignore lint:",
   "// biome-ignore-all lint/style/useConst:",
-  "// biome-ignore-start lint/style/useConst:",
+  "// biome-ignore-start format:",
   "// biome-ignore-end lint/style/useConst:",
-].map((open) => [templateSourceFile, open, " ", "", true] as const);
+].map((open) => [templateSourceFile, open, " ", "", false] as const);
 const fallow = [
   "// fallow-ignore-next-line unused-export",
   "// fallow-ignore-file unused-export",
@@ -237,7 +245,7 @@ const reasons = ["", ".", "the fixture needs it"];
 const narration = "\n// Loop over the names because it is clearer.";
 
 export const directiveCases = [
-  ...[...suppressions, ...fallow, ...eslintInline].flatMap(
+  ...[...suppressions, ...biomeLint, ...fallow, ...eslintInline].flatMap(
     ([path, open, separator, close, admits]) =>
       reasons.flatMap((reason) =>
         ["", narration].map((after) => {
@@ -277,4 +285,41 @@ export const directiveCases = [
     '/// <reference types="bun" />\nexport const a = 1;',
     [1],
   ],
+  ...shapeCases(),
 ] as const;
+
+function shapeCases() {
+  const platform = "Platform: Bun supplies the types used here.";
+  const shapes = [
+    [(d: string) => `// ${d}`, true],
+    [(d: string) => `/* ${d} */`, true],
+    [
+      (d: string) =>
+        `/* ${d}\n   Loop over the names because it is clearer. */`,
+    ],
+    [(d: string) => `/* ${platform}\n   ${d} */`],
+    [(d: string) => `/**\n * ${d}\n */`],
+    [(d: string) => `/// ${d}`],
+    [(d: string) => `// ${platform}\n/// ${d}`],
+    [(d: string) => `// ${platform}\n// ${d}`],
+    [(d: string) => `export const b = 1; // ${d}`],
+    [(d: string) => `/* ${d} */ export const b = 1;`],
+  ] as const;
+  const read = [
+    "@ts-expect-error the fixture needs it",
+    "@ts-ignore the fixture needs it",
+    "biome-ignore format: the fixture needs it",
+    "fallow-ignore-next-line unused-export -- the fixture needs it",
+  ].map((directive) => [directive, true] as const);
+  const unread = [
+    "biome-ignore lint/style/useConst: the fixture needs it",
+    "@ts-skip the fixture needs it",
+  ].map((directive) => [directive, false] as const);
+  return [...read, ...unread].flatMap(([directive, readHere]) =>
+    shapes.map(([shape, alone]) => {
+      const admitted = readHere && alone === true;
+      const code = `${shape(directive)}\nexport const a = 1;`;
+      return [templateSourceFile, code, admitted ? [] : [1]] as const;
+    }),
+  );
+}

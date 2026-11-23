@@ -38,11 +38,12 @@ const directives = [
   [/^@ts-check$/, /^/],
   [/^@ts-(?:expect-error|ignore|nocheck)/, /^@ts-[\w-]+(?![\w-]).*\p{L}/u],
   [/^fallow-ignore(?:-next-line|-file)?(?![\w-])/, /\s-{2,}\s.*\p{L}/u],
-  [
-    /^biome-ignore(?:-all|-start|-end)?(?![\w-])/,
-    /^biome-ignore\S*\s+[^\s:]+:.*\p{L}/u,
-  ],
+  [/^biome-ignore(?:-all)?\s+format:/, /:.*\p{L}/u],
 ];
+const candidate = new RegExp(
+  String.raw`^[\s/*]*(?:(@ts-|biome-ignore|fallow-ignore)|${eslintInline.source.slice(1)})`,
+  "m",
+);
 const refusals = {
   comment: {
     problem: "A comment reads as permission, and the next agent builds on it.",
@@ -50,9 +51,9 @@ const refusals = {
   },
   reason: {
     problem:
-      "This directive needs a reason in words and lines of its own, or nobody can tell whether it still holds.",
+      "This directive needs its exact form, a line of its own and a reason in words, or nobody can tell whether it still holds.",
     repair:
-      "give the reason after the directive, in words (fallow-ignore-next-line kind -- reason, @ts-expect-error reason, biome-ignore lint/group/rule: reason), and delete any comment beside it, or fix what it suppresses and ",
+      "give the reason after the directive, alone on its line (fallow-ignore-next-line kind -- reason, @ts-expect-error reason, biome-ignore format: reason; Biome's linter is off here, so delete biome-ignore lint), or fix what it suppresses and ",
   },
   eslint: {
     problem:
@@ -294,7 +295,7 @@ function commentBlocks(source) {
   const blocks = [];
   for (const comment of source.getAllComments()) {
     const block = blocks[blocks.length - 1];
-    const last = block?.[block.length - 1];
+    const last = block?.at(-1);
     if (
       last?.type === "Line" &&
       comment.type === "Line" &&
@@ -340,11 +341,16 @@ function castPlacements(source, assertion) {
   return placements;
 }
 
-function directiveKind(line) {
-  if (eslintInline.test(line)) return "eslint";
-  const found = directives.find(([form]) => form.test(line));
-  if (!found) return "text";
-  return found[1].test(line) ? "admitted" : "reason";
+function directiveKind(source, comment) {
+  const match = candidate.exec(comment.value);
+  if (!match) return "text";
+  if (!match[1]) return "eslint";
+  const text = comment.value.trimStart();
+  const found = directives.find(([form]) => form.test(text));
+  return source.lines[comment.loc.start.line - 1].trim() ===
+    source.getText(comment).trim() && found?.[1].test(text)
+    ? "admitted"
+    : "reason";
 }
 
 function namesItsPlatform(lines) {
@@ -355,29 +361,26 @@ function namesItsPlatform(lines) {
   );
 }
 
-function refusalOf(lines) {
-  const kinds = lines.map(directiveKind);
-  if (kinds.includes("eslint")) return refusals.eslint;
-  if (kinds.some((kind) => kind !== "text")) return refusals.reason;
-  if (lines[0].startsWith("Platform:")) return refusals.platform;
-  if (acceptedDecision.test(lines.join(" "))) return refusals.decision;
-  return refusals.comment;
-}
-
-function isAdmitted(source, block, placed) {
-  const lines = block.map((comment) => comment.value.trim());
-  const [first = ""] = lines;
-  const { start } = block[0].loc;
-  const kinds = lines.map(directiveKind);
+function refusalOf(source, block, placed) {
+  const kinds = block.map((comment) => directiveKind(source, comment));
   if (kinds.some((kind) => kind !== "text"))
-    return kinds.every((kind) => kind === "admitted");
-  return (
+    return kinds.every((kind) => kind === "admitted")
+      ? undefined
+      : refusals[kinds.includes("eslint") ? "eslint" : "reason"];
+  const lines = block.map((comment) => comment.value.trim());
+  const first = lines[0];
+  const { start } = block[0].loc;
+  if (
     (commentMarker.test(first) && namesItsPlatform(lines)) ||
     decisionCitation.test(lines.join(" ")) ||
     (safetyJustification.test(first) &&
       source.lines[start.line - 1].slice(0, start.column).trim() === "" &&
-      placed.has(block[block.length - 1]))
-  );
+      placed.has(block.at(-1)))
+  )
+    return undefined;
+  if (first.startsWith("Platform:")) return refusals.platform;
+  if (acceptedDecision.test(lines.join(" "))) return refusals.decision;
+  return refusals.comment;
 }
 
 export default {
@@ -388,7 +391,7 @@ export default {
         schema: [],
         messages: {
           comment:
-            "{{problem}} A comment stays only when it opens with Platform: and names the platform or tool it is about, opens with Interface: (a public contract the types cannot state), cites an accepted decision by its id or ruling date, is a TypeScript, Biome or Fallow directive alone on its lines with a reason in words, or opens with SAFETY: and a justification on its own lines directly above the statement that holds a type cast (as T, not as const). Repair: {{repair}}say this in code (a clearer name, a type, a test title, or a lint rule whose message states the constraint), then delete the comment.",
+            "{{problem}} A comment stays only when it opens with Platform: and names the platform or tool it is about, opens with Interface: (a public contract the types cannot state), cites an accepted decision by its id or ruling date, is a TypeScript, Biome format or Fallow directive alone on its line with a reason in words, or opens with SAFETY: and a justification on its own lines directly above the statement that holds a type cast (as T, not as const). Repair: {{repair}}say this in code (a clearer name, a type, a test title, or a lint rule whose message states the constraint), then delete the comment.",
         },
       },
       create(context) {
@@ -404,14 +407,12 @@ export default {
           TSTypeAssertion: collect,
           "Program:exit"() {
             for (const block of commentBlocks(source)) {
-              if (isAdmitted(source, block, placed)) continue;
+              const refusal = refusalOf(source, block, placed);
+              if (!refusal) continue;
               context.report({
-                loc: {
-                  start: block[0].loc.start,
-                  end: block[block.length - 1].loc.end,
-                },
+                loc: { start: block[0].loc.start, end: block.at(-1).loc.end },
                 messageId: "comment",
-                data: refusalOf(block.map((comment) => comment.value.trim())),
+                data: refusal,
               });
             }
           },
