@@ -44,7 +44,7 @@ The command reads only committed state (`HEAD:.template.json` — or `HEAD:.cli-
 - The active upgrade worktree `.worktrees/template-upgrade-<target7>` already exists at a different `HEAD` (`worktree_exists_other_head`); copy what you need out of it, unlock it with `git worktree unlock`, remove it with `git worktree remove --force`, and rerun.
 - Either `.worktrees/template-upgrade-tmp` or `.worktrees/template-upgrade-<target7>` holds anything not locked by this command with a reason starting `template-upgrade ` (`worktree_not_owned`), such as an unlocked worktree, a worktree locked for another reason, or a plain folder or file; move or remove it after saving any work you need, then rerun.
 
-If `templateRevision` equals the resolved target commit, both `plan` and `apply` exit `0` with status `up-to-date` and write nothing. When the template's own Pin at the target (`kernel-pin.json`) differs from the repository's Pin, both `plan` and `apply` print one notice (and include `pinMoveNotice` in `--json` output) reminding you that a Template upgrade does not move the Pin and to move yours separately.
+If `templateRevision` equals the resolved target commit, both `plan` and `apply` exit `0` with status `up-to-date` and write nothing. When the template's own Pin at the target (`kernel-pin.json`) differs from the repository's Pin, both `plan` and `apply` print one notice (and include `pinMoveNotice` in `--json` output). The notice names both Pins without saying which is newer, says that a Template upgrade does not move a Pin, and tells you to move yours separately if you need the template's.
 
 ### Where the kernel repository comes from
 
