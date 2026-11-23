@@ -100,11 +100,11 @@ gates belong to its standards, not to the glossary.
   template's Pin beside it. It fails when the repository lacks a lint rule
   file, holds
   another text of one, or sets a lint rule another way for a file. It
-  judges each generated file and twelve probe paths, `scripts/probe.ts`
+  judges each generated file and thirteen probe paths, `scripts/probe.ts`
   among them, so a lint rule narrowed to today's files fails too. It also
   plants one violation of each lint rule, and every comment case.
 - The check reads every file form the template's lint rules cover: `.ts`,
-  `.mts`, `.cts`, `.tsx`, `.js`, `.mjs`, `.cjs` and `.jsx`. Fault
+  `.mts`, `.cts`, `.tsx`, `.js`, `.mjs`, `.cjs`, `.jsx` and `.ts.txt`. Fault
   `815691a-generated-lint-forms` drops the `.js`, `.cjs`, `.jsx` and `.tsx`
   probes; the case that names each file and probe path a lint rule misses
   kills it. Witnessed: [r4625491126].
@@ -118,8 +118,9 @@ gates belong to its standards, not to the glossary.
   take each away; the script case kills both through the rule's plain
   JavaScript form.
 - The comment and planted-violation cases count each refusal of the lint
-  rules they name and every fatal parse error. They leave out the kernel's
-  own notices, such as an inline directive that its `src/` settings refuse.
+  rules they name and every notice with no rule, as
+  `eslint --max-warnings 0` does: a fatal parse error, or an inline ESLint
+  directive that `noInlineConfig` switches off.
 - A generated repository's `tests/pointer-skills.test.ts` holds its pin
   to what an install resolved: `bun.lock`'s kernel line and resolved
   record, and the installed kernel's `.bun-tag`, not only `package.json`.
@@ -177,12 +178,16 @@ file extensions in those directories.
     the block, followed by the decision's citation: an ID such as `N4a`
     or `BN-03`, or a parenthesis that holds an ID, a ruling date such as
     `19 November 2026`, or a question number such as `question 4`.
-  - A lint or compiler directive, such as `eslint-disable-next-line` or
-    `@ts-expect-error`. A suppression gives its reason after it:
-    `-- reason` after an `eslint-disable` directive, an ESLint
-    configuration comment or a `fallow-ignore` directive, text after
-    `@ts-ignore`, `@ts-expect-error` or `@ts-nocheck`, and text after the
-    colon of a `biome-ignore` directive.
+  - `@ts-check`, or a TypeScript, Biome or Fallow suppression with a
+    reason in words after it: text after `@ts-ignore`, `@ts-expect-error`
+    or `@ts-nocheck` (any suffix or punctuation `tsc` accepts), after the
+    colon of a `biome-ignore` directive, or after `--` in a
+    `fallow-ignore` directive. A block that holds a directive stays only
+    when every comment in it is one of these.
+- ESLint inline configuration (`eslint-disable*`, `eslint-enable`,
+  `eslint`, `global`, `exported`) never stays: `eslint.config.mjs` sets
+  `noInlineConfig`, here and in a generated repository, so it would change
+  nothing.
   - `SAFETY:` and a justification on its first line, on its own lines
     directly above the statement that holds a type cast (`as T`, not
     `as const`).
@@ -193,6 +198,9 @@ file extensions in those directories.
   lint test that refuses `Platform:` on a second line kills it.
 - Fault `bbfce9a-template-rules` admits a `SAFETY:` block anywhere; the lint
   test that refuses one above a statement with no cast kills it.
+- Fault `26c4d94-eslint-config-inline` drops `noInlineConfig`, and fault
+  `0ebf758-template-rules` admits narration after a directive; a case of
+  the directive table in `tests/support/lint-comment-cases.ts` kills each.
 - Fault `66ec838-template-rules` admits a suppression with no reason,
   fault `938cab2-template-rules` admits any mention of an accepted
   decision, and fault `7e6536a-template-rules` admits a `Platform:`
