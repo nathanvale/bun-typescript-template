@@ -1,8 +1,10 @@
-import { lstatSync } from "node:fs";
+import { lstatSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { type TrialActive, trialStep } from "./kernel-trial.ts";
 import { withoutRepositoryLocation } from "./process-runner.ts";
 
 const repositoryGitMilliseconds = 20_000;
+const restoreInstallMilliseconds = 120_000;
 
 export class RepositoryPinRefusal extends Error {
   constructor(
@@ -93,6 +95,9 @@ export type PinMoveAttempt = {
   readonly branch: string;
   readonly subject: string;
   readonly edited: readonly string[];
+  readonly kernelPackage: string;
+  readonly startingPin: string;
+  readonly active: TrialActive;
 };
 
 export function attemptPaths(repository: string, edited: readonly string[]) {
@@ -118,12 +123,56 @@ function leftOver(repository: string): string {
     : ` git status in ${repository} still lists ${paths.join(", ")}; remove them too.`;
 }
 
-function keptAttemptRefusal(
+function installedKernelCommit(attempt: PinMoveAttempt): string {
+  const tag = join(
+    attempt.repository,
+    "node_modules",
+    attempt.kernelPackage,
+    ".bun-tag",
+  );
+  let text: string;
+  try {
+    text = readFileSync(tag, "utf8").trim();
+  } catch {
+    return "not installed";
+  }
+  return /([0-9a-f]{7,40})$/.exec(text)?.[1] ?? `"${text}"`;
+}
+
+// Platform: git does not track node_modules, so checking out the starting
+// branch leaves the kernel the attempt's bun install wrote there.
+async function restoreInstalledKernel(
+  attempt: PinMoveAttempt,
+): Promise<string | undefined> {
+  const { repository, startingRef, startingPin, kernelPackage } = attempt;
+  try {
+    await trialStep(
+      repository,
+      "frozen install",
+      ["install", "--frozen-lockfile"],
+      restoreInstallMilliseconds,
+      attempt.active,
+    );
+  } catch (error) {
+    const said = error instanceof Error ? error.message : String(error);
+    return `bun install --frozen-lockfile on ${startingRef} failed: ${said.split(" Repair: ")[0]}`;
+  }
+  const installed = installedKernelCommit(attempt);
+  return startingPin.startsWith(installed)
+    ? undefined
+    : `the installed ${kernelPackage} is ${installed}, not ${startingPin}, the Pin on ${startingRef}.`;
+}
+
+async function keptAttemptRefusal(
   attempt: PinMoveAttempt,
   code: string,
   reason: string,
-): RepositoryPinRefusal {
+  installRan: boolean,
+): Promise<RepositoryPinRefusal> {
   const { repository, startingRef, branch } = attempt;
+  const reinstall = installRan
+    ? ` Run bun install --frozen-lockfile in ${repository} once ${startingRef} is checked out.`
+    : "";
   const paths = attemptPaths(repository, attempt.edited);
   const staged = repositoryGit(repository, ["add", "--", ...paths]);
   const committed = staged.ok
@@ -144,14 +193,23 @@ function keptAttemptRefusal(
     return new RepositoryPinRefusal(
       code,
       `${reason} pin-move could not commit the failed attempt on branch ${branch}: git says "${committed.said}". Branch ${branch} is still checked out with uncommitted edits to ${paths.join(", ")}; ${startingRef} was not changed.`,
-      `In ${repository}, set the edits aside (git stash --include-untracked) or discard them, then git checkout ${startingRef} && git branch -D ${branch}, and run pin-move again.`,
+      `In ${repository}, set the edits aside (git stash --include-untracked) or discard them, then git checkout ${startingRef} && git branch -D ${branch}, and run pin-move again.${reinstall}`,
     );
   const back = repositoryGit(repository, ["checkout", startingRef]);
   if (!back.ok)
     return new RepositoryPinRefusal(
       code,
       `${reason} The failed attempt is committed on branch ${branch}, but git checkout ${startingRef} failed: git says "${back.said}". Branch ${branch} is still checked out; ${startingRef} was not changed.`,
-      `Run git checkout ${startingRef} in ${repository}, delete the failed attempt with git branch -D ${branch}, then run pin-move again.`,
+      `Run git checkout ${startingRef} in ${repository}, delete the failed attempt with git branch -D ${branch}, then run pin-move again.${reinstall}`,
+    );
+  const unrestored = installRan
+    ? await restoreInstalledKernel(attempt)
+    : undefined;
+  if (unrestored !== undefined)
+    return new RepositoryPinRefusal(
+      code,
+      `${reason} The failed attempt is kept on branch ${branch} for inspection and ${startingRef} is checked out again, but its installed packages may still hold the failed attempt's kernel: ${unrestored}`,
+      `Run bun install --frozen-lockfile in ${repository}, then delete the failed attempt with git branch -D ${branch} before running pin-move again.${leftOver(repository)}`,
     );
   return new RepositoryPinRefusal(
     code,
@@ -160,13 +218,18 @@ function keptAttemptRefusal(
   );
 }
 
-export function failedAttempt(attempt: PinMoveAttempt, error: unknown): Error {
+export async function failedAttempt(
+  attempt: PinMoveAttempt,
+  error: unknown,
+  installRan: boolean,
+): Promise<Error> {
   if (error instanceof RepositoryPinRefusal)
-    return keptAttemptRefusal(attempt, error.code, error.reason);
-  const kept = keptAttemptRefusal(
+    return keptAttemptRefusal(attempt, error.code, error.reason, installRan);
+  const kept = await keptAttemptRefusal(
     attempt,
     "error",
     error instanceof Error ? error.message : String(error),
+    installRan,
   );
   return new Error(kept.message, { cause: error });
 }

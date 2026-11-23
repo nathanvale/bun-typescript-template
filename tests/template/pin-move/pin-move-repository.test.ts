@@ -9,7 +9,6 @@ import {
   writeFileSync,
 } from "node:fs";
 import { delimiter, join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
@@ -31,6 +30,15 @@ import {
   templateCommitHoldingS5,
   trialBase,
 } from "../../support/kernel-sibling.ts";
+import {
+  checkFailureTest,
+  cloneSpecifier,
+  expectRefused,
+  installedKernelCommit,
+  installStartingKernel,
+  sampleChangeNote,
+  updatedSkillDescription,
+} from "../../support/pin-move-repository-fixture.ts";
 import { processWatchdog, spawnBounded } from "../../support/process.ts";
 import { testFolder } from "../../support/test-folder.ts";
 
@@ -48,25 +56,6 @@ let remoteBin = "";
 let nonKernelBin = "";
 let bunCache = "";
 let baseGenerated = "";
-
-const updatedSkillDescription =
-  "Write commands on agent-cli-kernel after the Pin move.";
-
-const sampleChangeNote = JSON.stringify(
-  {
-    kind: "fixed",
-    breaking: false,
-    affects: ["kernel"],
-    summary: "Stopped a hung child process group on timeout.",
-    action: null,
-  },
-  null,
-  2,
-);
-
-function cloneSpecifier(repository: string, commit: string): string {
-  return `git+${pathToFileURL(realpathSync(repository)).href}#${commit}`;
-}
 
 function pinMoveEnv(bin: string): Record<string, string | undefined> {
   return {
@@ -92,16 +81,10 @@ function runPinMove(
   );
 }
 
-function expectRefused(
-  run: Awaited<ReturnType<typeof runPinMove>>,
-  code: string,
-): void {
-  expect({ exit: run.exit, stdout: run.stdout }).toEqual({
-    exit: 1,
-    stdout: "",
-  });
-  expect(run.stderr).toContain(`${code}:`);
-  expect(run.stderr).toContain("Repair:");
+async function installedRepository(prefix: string): Promise<string> {
+  const repo = freshRepository(prefix);
+  await installStartingKernel(repo, pinMoveEnv(remoteBin));
+  return repo;
 }
 
 function freshRepository(prefix: string): string {
@@ -397,16 +380,10 @@ describe("pin-move --repository", () => {
   );
 
   test("refuses when the generated repository check fails after the move, keeps the failed attempt as one commit on the pin-move branch, and leaves main checked out and clean", async () => {
-    const repo = freshRepository("pin-move-check-fail-");
+    const repo = await installedRepository("pin-move-check-fail-");
     commitIn(repo, "add test that fails once the Pin moves", {
-      "tests/check-failure.test.ts": `import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-
-test("pins only the older commit", () => {
-  expect(readFileSync(join(import.meta.dir, "../package.json"), "utf8")).toContain(${JSON.stringify(trialBase)});
-});
-`,
+      "bun.lock": readFileSync(join(repo, "bun.lock"), "utf8"),
+      "tests/check-failure.test.ts": checkFailureTest,
     });
     const mainBefore = git(repo, "rev-parse", "main");
     const expectedBranch = `pin-move/${targetCommit.slice(0, 7)}`;
@@ -441,6 +418,42 @@ test("pins only the older commit", () => {
     expect(git(repo, "show", `${expectedBranch}:package.json`)).toContain(
       cloneSpecifier(kernelRepo, targetCommit),
     );
+    expect(trialBase).toStartWith(installedKernelCommit(repo));
+  }, 180_000);
+
+  test("refuses when the generated repository check fails, and says the installed kernel was not restored when the starting branch's frozen install fails", async () => {
+    const repo = await installedRepository("pin-move-reinstall-fail-");
+    const manifest = readFileSync(join(repo, "package.json"), "utf8");
+    const staleManifest = manifest.replace(
+      /^ {4}"@types\/bun": "[^"]*",\n/m,
+      "",
+    );
+    expect(staleManifest).not.toBe(manifest);
+    commitIn(repo, "drop a dependency without updating bun.lock", {
+      "bun.lock": readFileSync(join(repo, "bun.lock"), "utf8"),
+      "package.json": staleManifest,
+      "tests/check-failure.test.ts": checkFailureTest,
+    });
+    const expectedBranch = `pin-move/${targetCommit.slice(0, 7)}`;
+
+    const run = await runPinMove([
+      targetCommit,
+      "--kernel",
+      kernelRepo,
+      "--repository",
+      repo,
+    ]);
+    expect(run.exit).toBe(1);
+    expect(run.stderr).toContain("repository_check_failed:");
+    expect(run.stderr).toContain(
+      `The failed attempt is kept on branch ${expectedBranch} for inspection and main is checked out again, but its installed packages may still hold the failed attempt's kernel: bun install --frozen-lockfile on main failed:`,
+    );
+    expect(run.stderr).not.toContain("was not changed");
+    expect(run.stderr).toContain(
+      `Repair: Run bun install --frozen-lockfile in ${realpathSync(repo)}, then delete the failed attempt with git branch -D ${expectedBranch} before running pin-move again.`,
+    );
+    expect(git(repo, "rev-parse", "--abbrev-ref", "HEAD")).toBe("main");
+    expect(targetCommit).toStartWith(installedKernelCommit(repo));
   }, 180_000);
 
   test(

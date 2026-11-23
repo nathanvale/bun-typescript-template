@@ -401,6 +401,7 @@ async function applyRepositoryPinMove(
   edits: readonly PlannedEdit[],
   reportText: string,
   active: TrialActive,
+  kernelPackage: string,
 ): Promise<number> {
   const attempt: PinMoveAttempt = {
     repository,
@@ -408,11 +409,16 @@ async function applyRepositoryPinMove(
     branch,
     subject: `chore(kernel): failed Pin move from ${current.oldCommit.slice(0, 7)} to ${kernelCommit.slice(0, 7)}`,
     edited: edits.map((edit) => edit.path),
+    kernelPackage,
+    startingPin: current.oldCommit,
+    active,
   };
+  let installRan = false;
   try {
     process.stdout.write(reportText);
     for (const edit of edits)
       writeFileSync(join(repository, edit.path), edit.text);
+    installRan = true;
     await runRepositoryCheckSteps(repository, branch, active);
     const written = attemptPaths(repository, attempt.edited);
     const commit = commitPinMoveBranch(
@@ -427,7 +433,7 @@ async function applyRepositoryPinMove(
     );
     return 0;
   } catch (error) {
-    throw failedAttempt(attempt, error);
+    throw await failedAttempt(attempt, error, installRan);
   }
 }
 
@@ -484,5 +490,6 @@ export async function moveRepositoryPin(
     edits,
     reportText,
     active,
+    pin.repository,
   );
 }
