@@ -518,7 +518,7 @@ exit 0
     const request = recordedHitsRequestFor(worktree, inputs, env);
 
     expect(
-      noCheckTemplateUpgradeSteps(request).map((step) => step.command),
+      noCheckTemplateUpgradeSteps(request, []).map((step) => step.command),
     ).toEqual([
       "bun install",
       "bun run quality:fallow:record-hits",
@@ -555,7 +555,7 @@ exit 0
       ),
     ).toBe('{"pass":1,"file":"dead-code"}\n');
     expect(
-      noCheckTemplateUpgradeSteps(request).map((step) => step.command),
+      noCheckTemplateUpgradeSteps(request, []).map((step) => step.command),
     ).toEqual(["bun install", "bun run check"]);
   },
   processWatchdog(2),

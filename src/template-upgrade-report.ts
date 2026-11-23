@@ -17,6 +17,7 @@ export type TemplateUpgradeStepOutcome = "passed" | "failed" | "skipped";
 export type TemplateUpgradeStepCommand =
   | "bun install"
   | "bun run check"
+  | "biome format --write"
   | `bun run ${string}`;
 
 export interface TemplateUpgradeApplyStep {

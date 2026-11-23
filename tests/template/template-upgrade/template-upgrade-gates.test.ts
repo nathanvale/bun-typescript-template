@@ -21,40 +21,13 @@ import {
   bootstrapGeneratedRepository,
   cloneTemplateAtHead,
   invokeTemplateUpgradeMain,
-  writeScriptedBun,
+  prepareFastInstallBun,
 } from "../../support/template-upgrade-fixture.ts";
 
 const folder = ownedFolders();
 const captureStream = streamWrites();
 
 const PRE_GATE_TEMPLATE_COMMIT = "800ea873324c2654a80912e9c6b311fa2458ef24";
-
-function prepareFastInstallBun(prefix: string) {
-  const kernelDir = join(folder(`${prefix}kernel-`), "agent-cli-kernel");
-  kernelCheckout(kernelDir);
-  const templateModules = join(ROOT, "node_modules");
-  const kernelPackage = readKernelPin(ROOT).repository;
-  return writeScriptedBun(
-    folder,
-    prefix,
-    `#!/bin/sh
-echo "$*" >> __LEDGER__
-if [ "$1" = "install" ]; then
-  rm -rf node_modules
-  mkdir -p node_modules
-  for entry in ${JSON.stringify(templateModules)}/* ${JSON.stringify(templateModules)}/.bin; do
-    [ -e "$entry" ] || continue
-    name=$(basename "$entry")
-    ln -s "$entry" "node_modules/$name"
-  done
-  rm -rf "node_modules/${kernelPackage}"
-  cp -R ${JSON.stringify(kernelDir)} "node_modules/${kernelPackage}"
-  exit 0
-fi
-exec ${JSON.stringify(process.execPath)} "$@"
-`,
-  );
-}
 
 function linkNodeModulesTemporarily(destination: string) {
   const modules = join(destination, "node_modules");
@@ -202,7 +175,7 @@ test(
           'import { findSummary } from "../records/find.ts";\nimport { noteCount } from "../wiki/notes.ts";\n\nexport function recordsSummary(items: readonly string[]): string {\n  return `${findSummary(items)}/${noteCount(items)}`;\n}\n',
       },
     });
-    const { ledger, env } = prepareFastInstallBun("wiki-shaped-bun-");
+    const { ledger, env } = prepareFastInstallBun(folder, "wiki-shaped-bun-");
     const stdout = captureStream(process.stdout);
     const stderr = captureStream(process.stderr);
     const worktree = join(
@@ -348,7 +321,7 @@ test(
       name: "clean-refresh-app",
       files: {},
     });
-    const { ledger, env } = prepareFastInstallBun("clean-refresh-bun-");
+    const { ledger, env } = prepareFastInstallBun(folder, "clean-refresh-bun-");
     const stdout = captureStream(process.stdout);
     const stderr = captureStream(process.stderr);
     const branch = `template-upgrade/${PRE_GATE_TEMPLATE_COMMIT.slice(0, 7)}-${targetCommit.slice(0, 7)}`;
@@ -414,7 +387,7 @@ test(
           'import { countNotes } from "./notes/rules.ts";\n\nexport function helperCount(items: readonly string[]): number {\n  return countNotes(items);\n}\n',
       },
     });
-    const lintBun = prepareFastInstallBun("lint-gate-bun-");
+    const lintBun = prepareFastInstallBun(folder, "lint-gate-bun-");
     const stdout = captureStream(process.stdout);
     const stderr = captureStream(process.stderr);
 
@@ -458,7 +431,7 @@ test(
           'export function chooseLabel(): string {\n  return "ok";\n  return "unreachable";\n}\n',
       },
     });
-    const tsBun = prepareFastInstallBun("ts-gate-bun-");
+    const tsBun = prepareFastInstallBun(folder, "ts-gate-bun-");
     const tsRun = await invokeTemplateUpgradeMain(
       stdout,
       stderr,
@@ -511,7 +484,7 @@ test(
           'import { expect, test } from "bun:test";\nimport { testFolder } from "./support/test-folder.ts";\n\ntest("uses template helper", () => {\n  expect(typeof testFolder).toBe("function");\n});\n',
       },
     });
-    const brokenBun = prepareFastInstallBun("removed-export-bun-");
+    const brokenBun = prepareFastInstallBun(folder, "removed-export-bun-");
     const brokenRun = await invokeTemplateUpgradeMain(
       stdout,
       stderr,
