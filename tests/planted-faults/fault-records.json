@@ -2569,35 +2569,35 @@
     "id": "841cade-pin-move-regenerate-skipped",
     "patch": "tests/planted-faults/patches/841cade-pin-move-regenerate-skipped.patch",
     "testFile": "tests/template/pin-move/pin-move-regenerate.test.ts",
-    "title": "^commits what the regenerate step changed with the Pin change, and a second regenerate or pin-move changes nothing$",
+    "title": "commits what the regenerate step changed with the Pin change, and a second regenerate or pin-move changes nothing$",
     "source": "841cade fix(pin-move): run the regenerate step and keep a failed attempt on a renamed branch"
   },
   {
     "id": "841cade-pin-move-regenerate-uncommitted",
     "patch": "tests/planted-faults/patches/841cade-pin-move-regenerate-uncommitted.patch",
     "testFile": "tests/template/pin-move/pin-move-regenerate.test.ts",
-    "title": "^commits what the regenerate step changed with the Pin change, and a second regenerate or pin-move changes nothing$",
+    "title": "commits what the regenerate step changed with the Pin change, and a second regenerate or pin-move changes nothing$",
     "source": "841cade fix(pin-move): run the regenerate step and keep a failed attempt on a renamed branch"
   },
   {
     "id": "841cade-pin-move-failed-attempt-unrenamed",
     "patch": "tests/planted-faults/patches/841cade-pin-move-failed-attempt-unrenamed.patch",
     "testFile": "tests/template/pin-move/pin-move-regenerate.test.ts",
-    "title": "^refuses when the regenerate step exits non-zero, keeps the attempt and its partial output on a renamed branch, and a rerun after the fix moves the Pin with no force$",
+    "title": "refuses when the regenerate step exits non-zero, keeps the attempt and its partial output on a renamed branch, and a rerun after the fix moves the Pin with no force$",
     "source": "841cade fix(pin-move): run the regenerate step and keep a failed attempt on a renamed branch"
   },
   {
     "id": "841cade-pin-move-failed-attempt-partial-output",
     "patch": "tests/planted-faults/patches/841cade-pin-move-failed-attempt-partial-output.patch",
     "testFile": "tests/template/pin-move/pin-move-regenerate.test.ts",
-    "title": "^refuses when the regenerate step exits non-zero, keeps the attempt and its partial output on a renamed branch, and a rerun after the fix moves the Pin with no force$",
+    "title": "refuses when the regenerate step exits non-zero, keeps the attempt and its partial output on a renamed branch, and a rerun after the fix moves the Pin with no force$",
     "source": "841cade fix(pin-move): run the regenerate step and keep a failed attempt on a renamed branch"
   },
   {
     "id": "841cade-pin-move-failed-attempt-force-delete",
     "patch": "tests/planted-faults/patches/841cade-pin-move-failed-attempt-force-delete.patch",
     "testFile": "tests/template/pin-move/pin-move-regenerate.test.ts",
-    "title": "^refuses when the regenerate step exits non-zero, keeps the attempt and its partial output on a renamed branch, and a rerun after the fix moves the Pin with no force$",
+    "title": "refuses when the regenerate step exits non-zero, keeps the attempt and its partial output on a renamed branch, and a rerun after the fix moves the Pin with no force$",
     "source": "841cade fix(pin-move): run the regenerate step and keep a failed attempt on a renamed branch"
   }
 ]
