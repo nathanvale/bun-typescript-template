@@ -107,6 +107,42 @@ async function writeTwoSubjectTree(destination: string): Promise<void> {
   );
 }
 
+async function checkBoundaries(
+  destination: string,
+): Promise<{ readonly exitCode: number; readonly pairs: readonly string[] }> {
+  const result = await runCommand(destination, [
+    join(ROOT, "node_modules/.bin/fallow"),
+    "architecture",
+    "--boundaries",
+    "--format",
+    "json",
+    "--quiet",
+    "--fail-on-issues",
+  ]);
+  const report = parseFallowReport(result.stdout, result.stderr);
+  const pairs = (report.boundary_violations ?? []).map(
+    (entry) => `${entry.from_zone}->${entry.to_zone}`,
+  );
+  return { exitCode: result.exitCode, pairs };
+}
+
+async function expectRefusedImport(
+  destination: string,
+  path: string,
+  importLine: string,
+  expectedPair: string,
+): Promise<void> {
+  const original = await readFile(path, "utf8");
+  try {
+    await writeFile(path, `${importLine}\n${original}`);
+    const broken = await checkBoundaries(destination);
+    expect(broken.exitCode).toBe(1);
+    expect(broken.pairs).toContain(expectedPair);
+  } finally {
+    await writeFile(path, original);
+  }
+}
+
 test(
   "bootstrapped .fallowrc.json enforces source layout boundaries with Fallow directly",
   async () => {
@@ -118,39 +154,57 @@ test(
     linkTemplatePackagesAndKernel(destination);
     await writeTwoSubjectTree(destination);
 
-    const fallowBin = join(ROOT, "node_modules/.bin/fallow");
-    const clean = await runCommand(destination, [
-      fallowBin,
-      "architecture",
-      "--boundaries",
-      "--format",
-      "json",
-      "--quiet",
-      "--fail-on-issues",
-    ]);
+    const clean = await checkBoundaries(destination);
     expect(clean.exitCode).toBe(0);
 
-    const betaPath = join(destination, "src/beta/run.ts");
-    const originalBeta = await readFile(betaPath, "utf8");
+    await expectRefusedImport(
+      destination,
+      join(destination, "src/beta/run.ts"),
+      'import { runAlpha } from "../alpha/run.ts";\nvoid runAlpha;',
+      "subject/beta->subject/alpha",
+    );
+  },
+  processWatchdog(5),
+);
+
+test(
+  "bootstrapped .fallowrc.json treats src/commands/ files as entry files that wire subjects",
+  async () => {
+    const destination = join(temporaryRoot(), "fast-command-folder");
+    requireSuccess(
+      await bootstrapIsolated(destination),
+      "bootstrap fast command folder specimen",
+    );
+    linkTemplatePackagesAndKernel(destination);
+    await writeTwoSubjectTree(destination);
+    await mkdir(join(destination, "src/commands"), { recursive: true });
     await writeFile(
-      betaPath,
-      `import { runAlpha } from "../alpha/run.ts";\n${originalBeta}\nvoid runAlpha;\n`,
+      join(destination, "src/commands/alpha.ts"),
+      'import { alphaRule } from "../alpha/rules.ts";\nimport { runAlpha } from "../alpha/run.ts";\nimport { sharedEdge } from "../shared/edge.ts";\n\nexport function alphaCommand(value: string): string {\n  return runAlpha(sharedEdge(alphaRule(value)));\n}\n',
     );
-    const broken = await runCommand(destination, [
-      fallowBin,
-      "architecture",
-      "--boundaries",
-      "--format",
-      "json",
-      "--quiet",
-      "--fail-on-issues",
-    ]);
-    expect(broken.exitCode).toBe(1);
-    const report = parseFallowReport(broken.stdout, broken.stderr);
-    const pairs = (report.boundary_violations ?? []).map(
-      (entry) => `${entry.from_zone}->${entry.to_zone}`,
+
+    const clean = await checkBoundaries(destination);
+    expect(clean.pairs).toEqual([]);
+    expect(clean.exitCode).toBe(0);
+
+    await expectRefusedImport(
+      destination,
+      join(destination, "src/beta/run.ts"),
+      'import { runAlpha } from "../alpha/run.ts";\nvoid runAlpha;',
+      "subject/beta->subject/alpha",
     );
-    expect(pairs).toContain("subject/beta->subject/alpha");
+    await expectRefusedImport(
+      destination,
+      join(destination, "src/beta/run.ts"),
+      'import { alphaCommand } from "../commands/alpha.ts";\nvoid alphaCommand;',
+      "subject/beta->entry",
+    );
+    await expectRefusedImport(
+      destination,
+      join(destination, "src/shared/edge.ts"),
+      'import { alphaCommand } from "../commands/alpha.ts";\nvoid alphaCommand;',
+      "shared->entry",
+    );
   },
   processWatchdog(5),
 );

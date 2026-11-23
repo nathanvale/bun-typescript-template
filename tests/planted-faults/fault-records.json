@@ -2324,6 +2324,13 @@
     "source": "885b9fc fix(template-upgrade): harden snapshot recovery, gate classification, and operator wording"
   },
   {
+    "id": "162c665-generated-layout-commands-entry",
+    "patch": "tests/planted-faults/patches/162c665-generated-layout-commands-entry.patch",
+    "testFile": "tests/template/bootstrap/generated-source-layout-gate.test.ts",
+    "title": "^bootstrapped \\.fallowrc\\.json treats src/commands/ files as entry files that wire subjects$",
+    "source": "162c665 feat(generated-repository): put src/commands/ files in the entry zone"
+  },
+  {
     "id": "23e59a0-template-upgrade-merge",
     "patch": "tests/planted-faults/patches/23e59a0-template-upgrade-merge.patch",
     "testFile": "tests/template/template-upgrade/template-upgrade-json-conflicts.test.ts",
