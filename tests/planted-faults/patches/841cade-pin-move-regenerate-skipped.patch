@@ -1,0 +1,13 @@
+diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
+index 322de3f..3093f87 100644
+--- a/scripts/pin-move-repository.ts
++++ b/scripts/pin-move-repository.ts
+@@ -334,7 +334,7 @@ function planRepositoryEdits(
+ 
+ function declaresRegenerate(packageText: string): boolean {
+   const scripts = ownPropertyValue(JSON.parse(packageText), "scripts");
+-  return typeof ownPropertyValue(scripts, REGENERATE_SCRIPT) === "string";
++  return typeof ownPropertyValue(scripts, REGENERATE_SCRIPT) === "number";
+ }
+ 
+ type CheckStep = readonly [string, readonly string[], number];

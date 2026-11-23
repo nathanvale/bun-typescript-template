@@ -1,0 +1,13 @@
+diff --git a/scripts/pin-move-branch.ts b/scripts/pin-move-branch.ts
+index 7614d72..dd7ff67 100644
+--- a/scripts/pin-move-branch.ts
++++ b/scripts/pin-move-branch.ts
+@@ -140,7 +140,7 @@ function failedAttemptPaths(attempt: PinMoveAttempt): readonly string[] {
+   return attemptPaths(
+     attempt.repository,
+     attempt.edited,
+-    status?.ok === true ? statusPaths(status.stdout) : [],
++    [],
+   );
+ }
+ 

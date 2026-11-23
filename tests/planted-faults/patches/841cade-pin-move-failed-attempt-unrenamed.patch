@@ -1,0 +1,12 @@
+diff --git a/scripts/pin-move-branch.ts b/scripts/pin-move-branch.ts
+index 7614d72..e5266f9 100644
+--- a/scripts/pin-move-branch.ts
++++ b/scripts/pin-move-branch.ts
+@@ -149,6 +149,7 @@ function keepFailedAttempt(
+   branch: string,
+ ): { readonly kept: string; readonly unrenamed: string } {
+   const head = repositoryGit(repository, ["rev-parse", "--short", "HEAD"]);
++  if (head.ok) return { kept: branch, unrenamed: "" };
+   const wanted = `${branch}-failed-${head.stdout.trim()}`;
+   const renamed = head.ok
+     ? repositoryGit(repository, ["branch", "-m", branch, wanted])
