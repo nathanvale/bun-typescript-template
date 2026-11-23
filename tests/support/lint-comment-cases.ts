@@ -57,6 +57,21 @@ export const commentCases = [
   ],
   [
     templateSourceFile,
+    "// Platform: Avoid collisions even when the parser normalizes escaped literal text.\nexport const a = 1;",
+    [1],
+  ],
+  [
+    templateSourceFile,
+    "// Platform: Resolved, so fileSeparation judges real directories.\nexport const a = 1;",
+    [1],
+  ],
+  [
+    templateSourceFile,
+    "// Platform: the lint-view parser overflows its stack\n// on deep nesting.\nexport const a = 1;",
+    [1],
+  ],
+  [
+    templateSourceFile,
     "// This follows an accepted decision.\nexport const a = 1;",
     [1],
   ],
@@ -99,6 +114,41 @@ export const commentCases = [
   [
     templateSourceFile,
     "// Platform: Bun drains spawn pipes.\nexport const a = 1;",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// Platform: EPERM is another user's live process; only ESRCH\n// proves it is gone.\nexport const a = 1;",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// Platform: <sys/file.h> LOCK_EX LOCK_NB\nexport const a = 1;",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// Platform: A Map keeps names such as __proto__ as data.\nexport const a = 1;",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// Platform: Every object type resolves the Object.prototype members.\nexport const a = 1;",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// Platform: existsSync follows a symlink; lstatSync reads the link.\nexport const a = 1;",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// Platform: a write follows a symbolic link at the path.\nexport const a = 1;",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// Platform: Both compilers skip type checking when a file fails to parse.\nexport const a = 1;",
     [],
   ],
   [
@@ -193,5 +243,9 @@ export const commentRepairs = [
   [
     "// This follows an accepted decision.\nexport const a = 1;",
     "cite the decision by its id or ruling date",
+  ],
+  [
+    "// Platform: Avoid collisions when the parser normalizes text.\nexport const a = 1;",
+    "name the platform or tool the fact belongs to",
   ],
 ] as const;

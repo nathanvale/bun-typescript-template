@@ -13,6 +13,82 @@ const rulingDate = String.raw`\b\d{1,2}\s+(?:January|February|March|April|May|Ju
 const decisionCitation = new RegExp(
   String.raw`[Aa]ccepted\s+decisions?\s+(?:${decisionId}|\([^)]*?(?:${decisionId}|${rulingDate}|\bquestion\s+\d+\b))`,
 );
+const platformNames = [
+  "APFS",
+  "Biome",
+  "Bun",
+  "bun",
+  "bun-types",
+  "Darwin",
+  "ESLint",
+  "ext4",
+  "Fallow",
+  "git",
+  "Git",
+  "GitHub",
+  "JavaScript",
+  "launchd",
+  "libc",
+  "Linux",
+  "LogTape",
+  "macOS",
+  "Node",
+  "npm",
+  "POSIX",
+  "systemd",
+  "tsc",
+  "tsgo",
+  "TypeScript",
+  "Ubuntu",
+  "Unix",
+  "V8",
+  "Windows",
+  "AbortController",
+  "AbortSignal",
+  "ArrayBuffer",
+  "instanceof",
+  "Map",
+  "Proxy",
+  "queueMicrotask",
+  "ReadableStream",
+  "setImmediate",
+  "setInterval",
+  "setTimeout",
+  "structuredClone",
+  "TextDecoder",
+  "TextEncoder",
+  "typeof",
+  "Uint8Array",
+  "WeakMap",
+  "WeakRef",
+];
+const platformMechanisms = [
+  "compiler",
+  "decoder",
+  "event loop",
+  "file system",
+  "filesystem",
+  "fsync",
+  "hard link",
+  "promise",
+  "rename",
+  "runner",
+  "runtime",
+  "symbolic link",
+];
+const escaped = (text) => text.replace(/[.+-]/g, "\\$&");
+const platformForms = [
+  new RegExp(
+    String.raw`(?<![\w.-])(?:${platformNames.map(escaped).join("|")})(?![\w-])`,
+  ),
+  new RegExp(String.raw`\b(?:${platformMechanisms.join("|")})s?\b`, "i"),
+  /<[\w/]+\.h>/,
+  /\b(?:E[A-Z]{3,}|SIG[A-Z]{2,}|O_[A-Z]+|errno)\b/,
+  /\b[a-z_]+\(\d\)/,
+  /\/proc\b|\/dev\//,
+  /\b(?:Object|Function|Array|Math|Date|JSON|Reflect|Promise|Symbol|Intl|Number|String)\.\w/,
+  /\bnode:[a-z_/]+|\b[a-z]+Sync\b|\bprocess\.[a-z]+/,
+];
 const suppressionReasons = [
   [
     /^(?:eslint-disable(?:-next-line|-line)?|eslint|fallow-ignore(?:-next-line|-file)?)(?=\s|$)/,
@@ -31,6 +107,12 @@ const refusals = {
       "This suppression gives no reason, so the next agent cannot tell whether it still holds.",
     repair:
       "give the reason after the directive (eslint-disable-next-line rule -- reason, fallow-ignore-next-line kind -- reason, @ts-expect-error reason, biome-ignore lint/group/rule: reason), or fix what it suppresses and ",
+  },
+  platform: {
+    problem:
+      "This Platform: comment names no platform or tool, so nobody can check its claim.",
+    repair:
+      "name the platform or tool the fact belongs to (for example Bun, git, macOS, Linux, POSIX, TypeScript or a JavaScript built-in such as Map); if the fact is about this repository's own code, ",
   },
   decision: {
     problem:
@@ -312,8 +394,17 @@ function givesReason(directive) {
   return found === undefined || found[1].test(directive);
 }
 
+function namesItsPlatform(lines) {
+  const text = lines.join(" ");
+  return (
+    !lines[0].startsWith("Platform:") ||
+    platformForms.some((form) => form.test(text))
+  );
+}
+
 function refusalOf(lines) {
   if (commentDirective.test(lines[0])) return refusals.reason;
+  if (lines[0].startsWith("Platform:")) return refusals.platform;
   if (acceptedDecision.test(lines.join(" "))) return refusals.decision;
   return refusals.comment;
 }
@@ -324,7 +415,7 @@ function isAdmitted(source, block, placed) {
   const { start } = block[0].loc;
   return (
     (commentDirective.test(first) && givesReason(first)) ||
-    commentMarker.test(first) ||
+    (commentMarker.test(first) && namesItsPlatform(lines)) ||
     decisionCitation.test(lines.join(" ")) ||
     (safetyJustification.test(first) &&
       source.lines[start.line - 1].slice(0, start.column).trim() === "" &&
@@ -340,7 +431,7 @@ export default {
         schema: [],
         messages: {
           comment:
-            "{{problem}} Keep a comment only when its first word is Platform: (behaviour of a runtime, operating system or tool this repository cannot change) or Interface: (a public contract the types cannot state), or when it cites an accepted decision (AGENTS.md, Authority) by its id or ruling date, or when it is a lint or compiler directive that gives its reason, or when it opens with SAFETY: and a justification, on its own lines directly above the statement that holds a type cast (as T, not as const). Repair: {{repair}}say this in code (a clearer name, a type, a test title, or a lint rule whose message states the constraint), then delete the comment.",
+            "{{problem}} Keep a comment only when its first word is Platform: and it names the runtime, operating system or tool whose behaviour this repository cannot change or Interface: (a public contract the types cannot state), or when it cites an accepted decision (AGENTS.md, Authority) by its id or ruling date, or when it is a lint or compiler directive that gives its reason, or when it opens with SAFETY: and a justification, on its own lines directly above the statement that holds a type cast (as T, not as const). Repair: {{repair}}say this in code (a clearer name, a type, a test title, or a lint rule whose message states the constraint), then delete the comment.",
         },
       },
       create(context) {

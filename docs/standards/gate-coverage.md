@@ -163,7 +163,13 @@ file extensions in those directories.
 - A block stays only when it is one of these:
   - `Platform:` on its first line: behaviour of a runtime, operating system
     or tool this repository cannot change, such as an errno meaning or a Bun
-    limit.
+    limit. The block names that platform or tool: a name on the rule's
+    `platformNames` list (Bun, git, macOS, Linux, POSIX, TypeScript, a
+    JavaScript built-in such as `Map`), a mechanism on its
+    `platformMechanisms` list (runtime, compiler, event loop, symbolic
+    link), a C header, an errno, signal or open flag name, a manual page
+    reference such as `flock(2)`, a built-in member such as `Math.max`,
+    or a Node API such as `node:fs` or `existsSync`.
   - `Interface:` on its first line: a public contract the types cannot
     state.
   - The phrase "accepted decision" or "accepted decisions" anywhere in
@@ -187,7 +193,8 @@ file extensions in those directories.
 - Fault `bbfce9a-template-rules` admits a `SAFETY:` block anywhere; the lint
   test that refuses one above a statement with no cast kills it.
 - In review, verify what a `Platform:` or `Interface:` comment claims and
-  whether it names something outside this repository. Witnessed: [47e2ec3]
+  whether the platform it names is what the claim is about; the lint only
+  checks that a `Platform:` comment names one. Witnessed: [47e2ec3]
   (a `Platform:` claim said token substitution refuses every entry that is
   not a regular file; it walks folders).
 - In review, verify that each accepted decision citation names a ruling
