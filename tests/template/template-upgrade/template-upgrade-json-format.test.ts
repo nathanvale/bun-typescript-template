@@ -1,6 +1,13 @@
 import { expect, test } from "bun:test";
-import { readFileSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
+import { runJsonFormatStep } from "../../../src/template-upgrade-json-format.ts";
 import type { TemplateUpgradeApplyResult } from "../../../src/template-upgrade-report.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
@@ -28,6 +35,15 @@ const SKILLS_TEST =
   'import { expect, test } from "bun:test";\n\ntest("skills entry runs", () => {\n  expect([1, 2]).toHaveLength(2);\n});\n';
 const SPLIT_EXCLUDE =
   '  "exclude": [\n    "node_modules",\n    "dist"\n  ]\n}\n';
+
+const LINKED_BIOME_BUN = `#!/bin/sh
+echo "$*" >> __LEDGER__
+if [ "$1" = "install" ]; then
+  mkdir -p node_modules/.bin
+  ln -s ${JSON.stringify(join(ROOT, "node_modules/.bin/biome"))} node_modules/.bin/biome
+fi
+exit 0
+`;
 
 function replaced(text: string, from: string, to: string): string {
   if (!text.includes(from)) {
@@ -173,18 +189,7 @@ test(
         "data/items.json": repoData,
       },
     );
-    const { env } = writeScriptedBun(
-      folder,
-      "control-bun-",
-      `#!/bin/sh
-echo "$*" >> __LEDGER__
-if [ "$1" = "install" ]; then
-  mkdir -p node_modules/.bin
-  ln -s ${JSON.stringify(join(ROOT, "node_modules/.bin/biome"))} node_modules/.bin/biome
-fi
-exit 0
-`,
-    );
+    const { env } = writeScriptedBun(folder, "control-bun-", LINKED_BIOME_BUN);
     const stdout = captureStream(process.stdout);
     const stderr = captureStream(process.stderr);
 
@@ -317,3 +322,138 @@ test(
   },
   processWatchdog(3),
 );
+
+const SPLIT_ITEMS = '{\n  "items": [\n    "a"\n  ]\n}\n';
+
+async function rerunAfterOwnerReplacesMergedFallow(
+  name: string,
+  repositoryFiles: Readonly<Record<string, string>>,
+  replace: (mergedPath: string, repo: string) => void,
+): Promise<{
+  readonly exitCode: number;
+  readonly payload: TemplateUpgradeApplyResult;
+  readonly repo: string;
+}> {
+  const { templateClone } = cloneTemplateAtHead(folder);
+  const { baseCommit, targetCommit } = commitSettingsUpgrade(templateClone, {
+    "tsconfig.json": (text) =>
+      replaced(text, '"exclude": ["node_modules"]', '"exclude": ["dist"]'),
+  });
+  const tsconfig = readFileSync(join(ROOT, SETTINGS, "tsconfig.json"), "utf8");
+  const repo = await addSkillsEntry(templateClone, baseCommit, name, {
+    ...repositoryFiles,
+    "tsconfig.json": replaced(
+      tsconfig,
+      '"exclude": ["node_modules"]',
+      '"exclude": ["coverage"]',
+    ),
+  });
+  const { env } = writeScriptedBun(folder, `${name}-bun-`, LINKED_BIOME_BUN);
+  const stdout = captureStream(process.stdout);
+  const stderr = captureStream(process.stderr);
+  const argv = ["apply", "--repository", repo, "--to", targetCommit, "--json"];
+  const first = await invokeTemplateUpgradeMain(stdout, stderr, argv, {
+    templateRoot: templateClone,
+    env,
+  });
+  const stopped = JSON.parse(first.stdout) as TemplateUpgradeApplyResult;
+  expect(stopped.status).toBe("conflicts");
+  expect(stopped.conflicts).toEqual(["tsconfig.json"]);
+  expect(stopped.rows).toContainEqual({
+    path: ".fallowrc.json",
+    ownerLabel: "shared",
+    outcome: "merge",
+  });
+  const worktree = stopped.worktree ?? "";
+  writeFileSync(
+    join(worktree, "tsconfig.json"),
+    replaced(tsconfig, '"exclude": ["node_modules"]', '"exclude": ["dist"]'),
+  );
+  rmSync(join(worktree, ".fallowrc.json"));
+  replace(join(worktree, ".fallowrc.json"), repo);
+  const second = await invokeTemplateUpgradeMain(stdout, stderr, argv, {
+    templateRoot: templateClone,
+    env,
+  });
+  return {
+    exitCode: second.exitCode,
+    payload: JSON.parse(second.stdout) as TemplateUpgradeApplyResult,
+    repo,
+  };
+}
+
+test(
+  "apply skips a key-merged .fallowrc.json the owner replaced with a link to a tracked JSON file, so the original repository keeps its bytes",
+  async () => {
+    const { exitCode, payload, repo } =
+      await rerunAfterOwnerReplacesMergedFallow(
+        "linked-app",
+        { "data/settings.json": SPLIT_ITEMS },
+        (mergedPath, original) => {
+          symlinkSync(join(original, "data/settings.json"), mergedPath);
+        },
+      );
+
+    expect(readFileSync(join(repo, "data/settings.json"), "utf8")).toBe(
+      SPLIT_ITEMS,
+    );
+    expect(git(repo, "status", "--porcelain=v1")).toBe("");
+    expect(exitCode).toBe(0);
+    expect(payload.status).toBe("applied");
+    expect(payload.steps).toContainEqual({
+      command: "biome format --write",
+      ran: false,
+      outcome: "skipped",
+      reason: ".fallowrc.json is a symbolic link",
+    });
+  },
+  processWatchdog(6),
+);
+
+test(
+  "apply skips a key-merged .fallowrc.json the owner replaced with a folder, so the JSON files in it keep their bytes",
+  async () => {
+    const { exitCode, payload, repo } =
+      await rerunAfterOwnerReplacesMergedFallow(
+        "folder-app",
+        {},
+        (mergedPath) => {
+          mkdirSync(mergedPath);
+          writeFileSync(join(mergedPath, "nested.json"), SPLIT_ITEMS);
+        },
+      );
+
+    expect(
+      committedText(repo, payload.branch, ".fallowrc.json/nested.json"),
+    ).toBe(SPLIT_ITEMS);
+    expect(exitCode).toBe(0);
+    expect(payload.steps).toContainEqual({
+      command: "biome format --write",
+      ran: false,
+      outcome: "skipped",
+      reason: ".fallowrc.json is not a regular file",
+    });
+  },
+  processWatchdog(6),
+);
+
+test("the JSON format step skips a key-merged path below a linked folder", () => {
+  const worktree = folder("linked-folder-worktree-");
+  mkdirSync(join(worktree, "real"));
+  writeFileSync(join(worktree, "real/settings.json"), SPLIT_ITEMS);
+  symlinkSync(join(worktree, "real"), join(worktree, "config"));
+
+  expect(
+    runJsonFormatStep(worktree, ["config/settings.json"], process.env),
+  ).toEqual({
+    ok: true,
+    steps: [
+      {
+        command: "biome format --write",
+        ran: false,
+        outcome: "skipped",
+        reason: "config/settings.json is below symbolic link config",
+      },
+    ],
+  });
+});
