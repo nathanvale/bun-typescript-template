@@ -1,8 +1,8 @@
 const localeNames = new Set(["localeCompare", "Collator"]);
 const folding = new Set(["TemplateLiteral", "BinaryExpression"]);
 const comma = { type: "Literal", value: "," };
-const commentDirective =
-  /^(?:eslint-|eslint |global |@ts-|biome-ignore|fallow-ignore)/;
+const eslintInline =
+  /^(?:eslint(?:-enable|-disable(?:(?:-next)?-line)?)?|exported|globals?)(?:\s|$)/;
 const plainMarkers = ["Platform", "Interface"];
 const safetyMarker = "SAFETY";
 const commentMarker = new RegExp(`^(?:${plainMarkers.join("|")}):`);
@@ -13,69 +13,14 @@ const rulingDate = String.raw`\b\d{1,2}\s+(?:January|February|March|April|May|Ju
 const decisionCitation = new RegExp(
   String.raw`[Aa]ccepted\s+decisions?\s+(?:${decisionId}|\([^)]*?(?:${decisionId}|${rulingDate}|\bquestion\s+\d+\b))`,
 );
-const platformNames = [
-  "APFS",
-  "Biome",
-  "Bun",
-  "bun",
-  "bun-types",
-  "Darwin",
-  "ESLint",
-  "ext4",
-  "Fallow",
-  "git",
-  "Git",
-  "GitHub",
-  "JavaScript",
-  "launchd",
-  "libc",
-  "Linux",
-  "LogTape",
-  "macOS",
-  "Node",
-  "npm",
-  "POSIX",
-  "systemd",
-  "tsc",
-  "tsgo",
-  "TypeScript",
-  "Ubuntu",
-  "Unix",
-  "V8",
-  "Windows",
-  "AbortController",
-  "AbortSignal",
-  "ArrayBuffer",
-  "instanceof",
-  "Map",
-  "Proxy",
-  "queueMicrotask",
-  "ReadableStream",
-  "setImmediate",
-  "setInterval",
-  "setTimeout",
-  "structuredClone",
-  "TextDecoder",
-  "TextEncoder",
-  "typeof",
-  "Uint8Array",
-  "WeakMap",
-  "WeakRef",
-];
-const platformMechanisms = [
-  "compiler",
-  "decoder",
-  "event loop",
-  "file system",
-  "filesystem",
-  "fsync",
-  "hard link",
-  "promise",
-  "rename",
-  "runner",
-  "runtime",
-  "symbolic link",
-];
+const platformNames =
+  "APFS Biome Bun bun bun-types Darwin ESLint ext4 Fallow git Git GitHub JavaScript launchd libc Linux LogTape macOS Node npm POSIX systemd tsc tsgo TypeScript Ubuntu Unix V8 Windows AbortController AbortSignal ArrayBuffer instanceof Map Proxy queueMicrotask ReadableStream setImmediate setInterval setTimeout structuredClone TextDecoder TextEncoder typeof Uint8Array WeakMap WeakRef".split(
+    " ",
+  );
+const platformMechanisms =
+  "compiler, decoder, event loop, file system, filesystem, fsync, hard link, promise, rename, runner, runtime, symbolic link".split(
+    ", ",
+  );
 const escaped = (text) => text.replace(/[.+-]/g, "\\$&");
 const platformForms = [
   new RegExp(
@@ -89,13 +34,14 @@ const platformForms = [
   /\b(?:Object|Function|Array|Math|Date|JSON|Reflect|Promise|Symbol|Intl|Number|String)\.\w/,
   /\bnode:[a-z_/]+|\b[a-z]+Sync\b|\bprocess\.[a-z]+/,
 ];
-const suppressionReasons = [
+const directives = [
+  [/^@ts-check$/, /^/],
+  [/^@ts-(?:expect-error|ignore|nocheck)/, /^@ts-[\w-]+(?![\w-]).*\p{L}/u],
+  [/^fallow-ignore(?:-next-line|-file)?(?![\w-])/, /\s-{2,}\s.*\p{L}/u],
   [
-    /^(?:eslint-disable(?:-next-line|-line)?|eslint|fallow-ignore(?:-next-line|-file)?)(?=\s|$)/,
-    /\s-{2,}\s+\S/,
+    /^biome-ignore(?:-all|-start|-end)?(?![\w-])/,
+    /^biome-ignore\S*\s+[^\s:]+:.*\p{L}/u,
   ],
-  [/^@ts-(?:ignore|expect-error|nocheck)(?=\s|$)/, /^@ts-[\w-]+\s+\S/],
-  [/^biome-ignore(?:-all|-start)?(?=\s|$)/, /^biome-ignore\S*\s+[^\s:]+:\s*\S/],
 ];
 const refusals = {
   comment: {
@@ -104,19 +50,24 @@ const refusals = {
   },
   reason: {
     problem:
-      "This suppression gives no reason, so the next agent cannot tell whether it still holds.",
+      "This directive needs a reason in words and lines of its own, or nobody can tell whether it still holds.",
     repair:
-      "give the reason after the directive (eslint-disable-next-line rule -- reason, fallow-ignore-next-line kind -- reason, @ts-expect-error reason, biome-ignore lint/group/rule: reason), or fix what it suppresses and ",
+      "give the reason after the directive, in words (fallow-ignore-next-line kind -- reason, @ts-expect-error reason, biome-ignore lint/group/rule: reason), and delete any comment beside it, or fix what it suppresses and ",
+  },
+  eslint: {
+    problem:
+      "ESLint inline configuration is off here, so this changes nothing.",
+    repair:
+      "delete it and fix what ESLint reports; for anything else it says, ",
   },
   platform: {
     problem:
-      "This Platform: comment names no platform or tool, so nobody can check its claim.",
+      "This Platform: comment names no platform or tool to check it against.",
     repair:
       "name the platform or tool the fact belongs to (for example Bun, git, macOS, Linux, POSIX, TypeScript or a JavaScript built-in such as Map); if the fact is about this repository's own code, ",
   },
   decision: {
-    problem:
-      "This comment names an accepted decision but cites none, so nobody can find the ruling it claims.",
+    problem: "This comment names an accepted decision but cites none.",
     repair:
       "cite the decision by its id or ruling date right after the words (accepted decision N4a, or Accepted decision (Nathan, 19 November 2026, 12:08 AEDT), or Accepted decision (Command Contract 3 question 4)); if no ruling exists, ",
   },
@@ -389,9 +340,11 @@ function castPlacements(source, assertion) {
   return placements;
 }
 
-function givesReason(directive) {
-  const found = suppressionReasons.find(([name]) => name.test(directive));
-  return found === undefined || found[1].test(directive);
+function directiveKind(line) {
+  if (eslintInline.test(line)) return "eslint";
+  const found = directives.find(([form]) => form.test(line));
+  if (!found) return "text";
+  return found[1].test(line) ? "admitted" : "reason";
 }
 
 function namesItsPlatform(lines) {
@@ -403,7 +356,9 @@ function namesItsPlatform(lines) {
 }
 
 function refusalOf(lines) {
-  if (commentDirective.test(lines[0])) return refusals.reason;
+  const kinds = lines.map(directiveKind);
+  if (kinds.includes("eslint")) return refusals.eslint;
+  if (kinds.some((kind) => kind !== "text")) return refusals.reason;
   if (lines[0].startsWith("Platform:")) return refusals.platform;
   if (acceptedDecision.test(lines.join(" "))) return refusals.decision;
   return refusals.comment;
@@ -413,8 +368,10 @@ function isAdmitted(source, block, placed) {
   const lines = block.map((comment) => comment.value.trim());
   const [first = ""] = lines;
   const { start } = block[0].loc;
+  const kinds = lines.map(directiveKind);
+  if (kinds.some((kind) => kind !== "text"))
+    return kinds.every((kind) => kind === "admitted");
   return (
-    (commentDirective.test(first) && givesReason(first)) ||
     (commentMarker.test(first) && namesItsPlatform(lines)) ||
     decisionCitation.test(lines.join(" ")) ||
     (safetyJustification.test(first) &&
@@ -431,7 +388,7 @@ export default {
         schema: [],
         messages: {
           comment:
-            "{{problem}} Keep a comment only when its first word is Platform: and it names the runtime, operating system or tool whose behaviour this repository cannot change, or Interface: (a public contract the types cannot state), or when it cites an accepted decision (AGENTS.md, Authority) by its id or ruling date, or when it is a lint or compiler directive that gives its reason, or when it opens with SAFETY: and a justification, on its own lines directly above the statement that holds a type cast (as T, not as const). Repair: {{repair}}say this in code (a clearer name, a type, a test title, or a lint rule whose message states the constraint), then delete the comment.",
+            "{{problem}} A comment stays only when it opens with Platform: and names the platform or tool it is about, opens with Interface: (a public contract the types cannot state), cites an accepted decision by its id or ruling date, is a TypeScript, Biome or Fallow directive alone on its lines with a reason in words, or opens with SAFETY: and a justification on its own lines directly above the statement that holds a type cast (as T, not as const). Repair: {{repair}}say this in code (a clearer name, a type, a test title, or a lint rule whose message states the constraint), then delete the comment.",
         },
       },
       create(context) {

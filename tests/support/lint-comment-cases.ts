@@ -1,5 +1,7 @@
 import { templateSourceFile } from "./template-lint.ts";
 
+const testFile = "tests/template/doctor/doctor.test.ts";
+
 export const commentCases = [
   [templateSourceFile, "// Loop over the names.\nexport const a = 1;", [1]],
   [
@@ -7,11 +9,7 @@ export const commentCases = [
     "// A workaround until the parser is fixed:\n// it drops the last token.\nexport const a = 1;",
     [1],
   ],
-  [
-    "tests/template/doctor/doctor.test.ts",
-    "/* Narration */ export const a = 1;",
-    [1],
-  ],
+  [testFile, "/* Narration */ export const a = 1;", [1]],
   [
     templateSourceFile,
     "/** Adds one. */\nexport const add = (n: number) => n + 1;",
@@ -87,32 +85,6 @@ export const commentCases = [
   ],
   [
     templateSourceFile,
-    "// eslint-disable-next-line no-console\nconsole.log(1);",
-    [1],
-  ],
-  [
-    templateSourceFile,
-    "// eslint-disable-next-line no-console --\nconsole.log(1);",
-    [1],
-  ],
-  [templateSourceFile, "/* eslint no-console: off */\nconsole.log(1);", [1]],
-  [
-    templateSourceFile,
-    "// @ts-expect-error\nexport const a: number = '1';",
-    [1],
-  ],
-  [
-    templateSourceFile,
-    "// biome-ignore lint/style/useConst:\nexport let a = 1;",
-    [1],
-  ],
-  [
-    templateSourceFile,
-    "// fallow-ignore-next-line unused-export\nexport const a = 1;",
-    [1],
-  ],
-  [
-    templateSourceFile,
     "// Platform: Bun drains spawn pipes.\nexport const a = 1;",
     [],
   ],
@@ -157,7 +129,7 @@ export const commentCases = [
     [],
   ],
   [
-    "tests/template/doctor/doctor.test.ts",
+    testFile,
     "// The accepted\n// decision N4a keeps the line on stdout.\nexport const a = 1;",
     [],
   ],
@@ -176,32 +148,6 @@ export const commentCases = [
     "// O_CLOEXEC is set here (accepted decision BN-03).\nexport const a = 1;",
     [],
   ],
-  [
-    templateSourceFile,
-    "// eslint-disable-next-line no-console -- the CLI prints its result\nconsole.log(1);",
-    [],
-  ],
-  [
-    templateSourceFile,
-    "/* eslint no-console: off -- the CLI prints its result */\nconsole.log(1);",
-    [],
-  ],
-  [
-    templateSourceFile,
-    "// @ts-expect-error the fixture passes a string\nexport const a: number = '1';",
-    [],
-  ],
-  [
-    templateSourceFile,
-    "// biome-ignore lint/style/useConst: the binding is reassigned in a test\nexport let a = 1;",
-    [],
-  ],
-  [
-    templateSourceFile,
-    "// fallow-ignore-next-line unused-export -- a host imports it by name\nexport const a = 1;",
-    [],
-  ],
-  [templateSourceFile, "// eslint-enable no-console\nexport const a = 1;", []],
   [
     templateSourceFile,
     "// SAFETY: the parser checked the shape.\nconst x = y as Foo;",
@@ -237,8 +183,12 @@ export const commentCases = [
 export const commentRepairs = [
   ["// Loop over the names.\nexport const a = 1;", "Repair: say this in code"],
   [
-    "// eslint-disable-next-line no-console\nconsole.log(1);",
+    "// @ts-ignore:\nexport const a = 1;",
     "give the reason after the directive",
+  ],
+  [
+    "/* eslint-disable */\nexport const a = 1;",
+    "delete it and fix what ESLint reports",
   ],
   [
     "// This follows an accepted decision.\nexport const a = 1;",
@@ -247,5 +197,84 @@ export const commentRepairs = [
   [
     "// Platform: Avoid collisions when the parser normalizes text.\nexport const a = 1;",
     "name the platform or tool the fact belongs to",
+  ],
+] as const;
+
+const suppressions = [
+  "// @ts-expect-error",
+  "// @ts-expect-error:",
+  "// @ts-ignore",
+  "// @ts-ignore:",
+  "// @ts-nocheck",
+  "// @ts-nocheck:",
+  "// @ts-ignore-me",
+  "// biome-ignore lint/style/useConst:",
+  "// biome-ignore lint:",
+  "// biome-ignore-all lint/style/useConst:",
+  "// biome-ignore-start lint/style/useConst:",
+  "// biome-ignore-end lint/style/useConst:",
+].map((open) => [templateSourceFile, open, " ", "", true] as const);
+const fallow = [
+  "// fallow-ignore-next-line unused-export",
+  "// fallow-ignore-file unused-export",
+  "// fallow-ignore unused-export",
+].map((open) => [templateSourceFile, open, " -- ", "", true] as const);
+const eslintInline = [
+  ["/* eslint-disable", " */"],
+  ["/* eslint-disable repository/no-comments", " */"],
+  ['/* eslint "repository/no-comments": "off"', " */"],
+  ["/* global foo", " */"],
+  ["/* exported foo", " */"],
+  ["console.log(1); // eslint-disable-line", ""],
+  ["// eslint-disable-next-line no-console", ""],
+  ["// eslint-enable no-console", ""],
+].flatMap(([open, close]) =>
+  [templateSourceFile, testFile].map(
+    (path) => [path, open, " -- ", close, false] as const,
+  ),
+);
+const reasons = ["", ".", "the fixture needs it"];
+const narration = "\n// Loop over the names because it is clearer.";
+
+export const directiveCases = [
+  ...[...suppressions, ...fallow, ...eslintInline].flatMap(
+    ([path, open, separator, close, admits]) =>
+      reasons.flatMap((reason) =>
+        ["", narration].map((after) => {
+          const said = reason === "" ? "" : `${separator}${reason}`;
+          const code = `${open}${said}${close}${after}\nexport const a = 1;`;
+          const admitted = admits && reason === reasons[2] && after === "";
+          const lines = admitted ? [] : close !== "" && after ? [1, 2] : [1];
+          return [path, code, lines] as const;
+        }),
+      ),
+  ),
+  [templateSourceFile, "// @ts-check\nexport const a = 1;", []],
+  [templateSourceFile, `// @ts-check${narration}\nexport const a = 1;`, [1]],
+  [templateSourceFile, "// @ts-check\n// @ts-ignore\nexport const a = 1;", [1]],
+  [
+    templateSourceFile,
+    "// @ts-check\n// @ts-ignore the fixture needs it\nexport const a = 1;",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// Platform: Bun drains spawn pipes.\n// @ts-ignore\nexport const a = 1;",
+    [1],
+  ],
+  [
+    templateSourceFile,
+    "// global note: bump this when the schema changes\n// TODO remove after the next release\nexport const a = 1;",
+    [1],
+  ],
+  [
+    templateSourceFile,
+    "// eslint-tolerant hack: keep it\n// TODO remove after the next release\nexport const a = 1;",
+    [1],
+  ],
+  [
+    templateSourceFile,
+    '/// <reference types="bun" />\nexport const a = 1;',
+    [1],
   ],
 ] as const;
