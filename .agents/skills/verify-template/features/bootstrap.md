@@ -106,7 +106,8 @@ Preconditions:
 - Bootstrap reads the template commit with git, so a GitHub zip download or a
   `git archive` copy is refused. Always launch from a clone.
 - Without `KERNEL_REPOSITORY`, Bootstrap looks for the kernel repository
-  beside the template. From an archive copy it then refuses first with
+  beside the template, then in the kernel cache, which it clones from the
+  pin's remote when empty. From an archive copy it refuses first with
   `template_git_unreadable`, because git cannot say where the copy keeps its
   objects.
 - `bun install --frozen-lockfile` in a generated repository fetches the kernel

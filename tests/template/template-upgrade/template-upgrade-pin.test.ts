@@ -118,7 +118,7 @@ test(
   async () => {
     const setup = await setupTemplatePinMoveUpgrade();
     const { templateClone, repo, targetCommit, branch } = setup;
-    const expectedNotice = `The template's Pin moved from ${PREVIOUS_KERNEL_PIN.slice(0, 7)} to ${trialBase.slice(0, 7)}; a Template upgrade does not move it. Move yours separately.`;
+    const expectedNotice = `The template's Pin is ${trialBase.slice(0, 7)} and yours is ${PREVIOUS_KERNEL_PIN.slice(0, 7)}; a Template upgrade does not move a Pin. Move yours separately if you need the template's.`;
     const runtime = { templateRoot: templateClone, env: templateUpgradeEnv() };
     const stdout = captureStream(process.stdout);
     const stderr = captureStream(process.stderr);
