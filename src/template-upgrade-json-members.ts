@@ -1,7 +1,7 @@
 const JSON_TOKEN =
   /("(?:[^"\\]|\\.)*")(\s*:)?|\/\/.*|\/\*[\s\S]*?\*\/|[[\]{}]/g;
 const CONFLICT_HUNK =
-  /^<{7} ours\n([\s\S]*?)(?:^\|{7} old\n[\s\S]*?)?^={7}\n([\s\S]*?)^>{7} new(?:\n|$)/gm;
+  /^<{7} ours\r?\n([\s\S]*?)(?:^\|{7} old\r?\n[\s\S]*?)?^={7}\r?\n([\s\S]*?)^>{7} new(?:\r?\n|$)/gm;
 
 function repeatsMember(text: string): boolean {
   const scopes: Set<string>[] = [];

@@ -67,6 +67,30 @@ const commentedHunkShape = markedJsonShape(
   withX6ToX10(OLD_JSON),
 );
 
+const crlf = (text: string) => text.replaceAll("\n", "\r\n");
+const NESTED_CLOSE = '    "r": "error"\n  }\n}\n';
+const OLD_NESTED = OLD_JSON.replace(
+  RULES_LINE,
+  `  "rules": {\n${NESTED_CLOSE}`,
+);
+const crlfBraceHunkShape = markedJsonShape(
+  crlf(
+    OLD_NESTED.replace(
+      ENTRY_LINE,
+      '  "entry": ["a"], // owner note\n  "boundaries": {"zones": ["mine"]},\n',
+    ).replace(NESTED_CLOSE, '    "r": "error"\n  } // owner end\n}\n'),
+  ),
+  crlf(
+    OLD_NESTED.replace(
+      NESTED_CLOSE,
+      '    "r": "error"\n  },\n  "boundaries": {"zones": ["template"]}\n}\n',
+    ),
+  ),
+  crlf(OLD_NESTED),
+);
+const CRLF_BRACE_HUNK =
+  /<{7} ours\r\n( {2}\} \/\/ owner end\r\n)(?:\|{7} old\r\n {2}\}\r\n)?={7}\r\n[\s\S]*?>{7} new\r\n/;
+
 async function expectWholeFileMarked(
   shape: ReturnType<typeof markedJsonShape>,
 ): Promise<void> {
@@ -130,13 +154,25 @@ test("a JSON file that does not parse and whose clean text merge repeats no memb
   );
 });
 
-test("a JSON text conflict with no key conflict keeps git merge-file's markers and a clean JSON key merge writes the merged keys", async () => {
+async function expectGitMarkersKept(lineEnding: (text: string) => string) {
   const oldDir = folder("json-plain-old-");
   const newDir = folder("json-plain-new-");
   const oursDir = folder("json-plain-ours-");
-  write(oldDir, "biome.json", `{\n  // indent\n  "indentWidth": 2\n}\n`);
-  write(newDir, "biome.json", `{\n  // indent\n  "indentWidth": 4\n}\n`);
-  write(oursDir, "biome.json", `{\n  // indent\n  "indentWidth": 8\n}\n`);
+  write(
+    oldDir,
+    "biome.json",
+    lineEnding(`{\n  // indent\n  "indentWidth": 2\n}\n`),
+  );
+  write(
+    newDir,
+    "biome.json",
+    lineEnding(`{\n  // indent\n  "indentWidth": 4\n}\n`),
+  );
+  write(
+    oursDir,
+    "biome.json",
+    lineEnding(`{\n  // indent\n  "indentWidth": 8\n}\n`),
+  );
   write(oldDir, "tsconfig.json", '{"a": 1, "b": 1}\n');
   write(newDir, "tsconfig.json", '{"a": 1, "b": 2}\n');
   write(oursDir, "tsconfig.json", '{"a": 3, "b": 1}\n');
@@ -147,9 +183,21 @@ test("a JSON text conflict with no key conflict keeps git merge-file's markers a
     { path: "tsconfig.json", ownerLabel: "shared", outcome: "merge" },
   ]);
   const referenceDir = folder("json-plain-reference-");
-  write(referenceDir, "ours.json", `{\n  // indent\n  "indentWidth": 8\n}\n`);
-  write(referenceDir, "old.json", `{\n  // indent\n  "indentWidth": 2\n}\n`);
-  write(referenceDir, "new.json", `{\n  // indent\n  "indentWidth": 4\n}\n`);
+  write(
+    referenceDir,
+    "ours.json",
+    lineEnding(`{\n  // indent\n  "indentWidth": 8\n}\n`),
+  );
+  write(
+    referenceDir,
+    "old.json",
+    lineEnding(`{\n  // indent\n  "indentWidth": 2\n}\n`),
+  );
+  write(
+    referenceDir,
+    "new.json",
+    lineEnding(`{\n  // indent\n  "indentWidth": 4\n}\n`),
+  );
   expect(
     gitMergeFile(
       join(referenceDir, "ours.json"),
@@ -163,6 +211,14 @@ test("a JSON text conflict with no key conflict keeps git merge-file's markers a
   expect(readFileSync(join(oursDir, "tsconfig.json"), "utf8")).toBe(
     '{\n  "a": 3,\n  "b": 2\n}\n',
   );
+}
+
+test("a JSON text conflict with no key conflict keeps git merge-file's markers and a clean JSON key merge writes the merged keys", async () => {
+  await expectGitMarkersKept((text) => text);
+});
+
+test("a CRLF JSON text conflict with no repeated member keeps git merge-file's markers, as its LF twin does", async () => {
+  await expectGitMarkersKept(crlf);
 });
 
 async function expectRerunHoldsMarkers(
@@ -262,6 +318,18 @@ test(
       commentedHunkShape,
       "json-commented-hunk-app",
       (text) => text.replace(X5_HUNK, "$1"),
+    );
+  },
+  processWatchdog(4),
+);
+
+test(
+  "rerunning apply after resolving git's visible CRLF hunk at a nested object's closing brace, with a member repeated outside it, reports resolution-in-progress and commits nothing",
+  async () => {
+    await expectRerunHoldsMarkers(
+      crlfBraceHunkShape,
+      "json-crlf-brace-hunk-app",
+      (text) => text.replace(CRLF_BRACE_HUNK, "$1"),
     );
   },
   processWatchdog(4),
