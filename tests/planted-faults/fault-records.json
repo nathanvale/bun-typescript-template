@@ -2378,5 +2378,12 @@
     "testFile": "tests/template/kernel-trial/kernel-cache.test.ts",
     "title": "the kernel reader refuses a kernel cache whose pinned commit is replaced by another commit's bytes, as git finds the hash mismatch$",
     "source": "319c6de feat(kernel-pin): fetch the kernel into the kernel cache when no clone is named or beside the template"
+  },
+  {
+    "id": "012c09c-planted-fault-verdict",
+    "patch": "tests/planted-faults/patches/012c09c-planted-fault-verdict.patch",
+    "testFile": "tests/template/fault-replay/planted-fault-verdict-in-process.test.ts",
+    "title": "BROKEN when, with the patch applied, ",
+    "source": "012c09c fix(planted-faults): credit a kill only to a test that passed clean and failed by its own check"
   }
 ]
