@@ -18,7 +18,7 @@ test("spawnBounded freezes a child that is still running when its bound passes, 
   );
 
   expect(outcome).toStartWith(
-    "Error: sh -c sleep 31; true did not exit within 300 ms.\nProcesses left when the bound passed:\n",
+    "TimeoutError: sh -c sleep 31; true did not exit within 300 ms.\nProcesses left when the bound passed:\n",
   );
   expect(outcome).toMatch(
     /\n\d+ +\d+ +\d+ +T\S* +[\d:.-]+ +sh -c sleep 31; true/,
@@ -58,7 +58,7 @@ test("spawnBounded still stops the child and says why when ps cannot start", asy
     );
 
     expect(outcome).toBe(
-      "Error: /bin/sh -c /bin/sleep 33 did not exit within 300 ms.\nProcesses left when the bound passed: unknown, because ps could not start or did not answer within 10000 ms.",
+      "TimeoutError: /bin/sh -c /bin/sleep 33 did not exit within 300 ms.\nProcesses left when the bound passed: unknown, because ps could not start or did not answer within 10000 ms.",
     );
   } finally {
     process.env.PATH = path;
