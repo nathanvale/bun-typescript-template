@@ -1,6 +1,10 @@
-import { existsSync, lstatSync, type Stats } from "node:fs";
+import { existsSync, type Stats } from "node:fs";
 import { join } from "node:path";
 import type { ProcessEnvMap } from "./template-upgrade-git.ts";
+import {
+  plainFileIdentityChange,
+  plainFileEntry,
+} from "./template-upgrade-plain-file.ts";
 import {
   createTemplateUpgradeApplyStep,
   type TemplateUpgradeApplyStep,
@@ -25,55 +29,6 @@ export function skipJsonFormatSteps(
   ];
 }
 
-function lstatIfPresent(fullPath: string): Stats | undefined {
-  try {
-    return lstatSync(fullPath);
-  } catch (error) {
-    const code: unknown = Reflect.get(Object(error), "code");
-    if (code === "ENOENT" || code === "ENOTDIR") return undefined;
-    throw error;
-  }
-}
-
-// Platform: Biome writes through a symbolic or hard link and formats a folder's files.
-function formatAdmission(
-  worktree: string,
-  path: string,
-): Stats | "absent" | { readonly skipped: string } {
-  const segments = path.split("/");
-  for (let index = 1; index < segments.length; index += 1) {
-    const ancestor = segments.slice(0, index).join("/");
-    if (lstatIfPresent(join(worktree, ancestor))?.isSymbolicLink()) {
-      return { skipped: `${path} is below symbolic link ${ancestor}` };
-    }
-  }
-  const stats = lstatIfPresent(join(worktree, path));
-  if (stats === undefined) return "absent";
-  if (stats.isSymbolicLink()) return { skipped: `${path} is a symbolic link` };
-  if (!stats.isFile()) return { skipped: `${path} is not a regular file` };
-  if (stats.nlink !== 1) return { skipped: `${path} is a hard link` };
-  return stats;
-}
-
-function changedWhileFormatting(
-  worktree: string,
-  admitted: ReadonlyMap<string, Stats>,
-): string | undefined {
-  for (const [path, before] of admitted) {
-    const after = lstatIfPresent(join(worktree, path));
-    if (
-      after === undefined ||
-      !after.isFile() ||
-      after.nlink !== 1 ||
-      after.dev !== before.dev ||
-      after.ino !== before.ino
-    ) {
-      return path;
-    }
-  }
-  return undefined;
-}
-
 function admitPaths(
   worktree: string,
   keyMergedPaths: readonly string[],
@@ -84,15 +39,15 @@ function admitPaths(
   const admitted = new Map<string, Stats>();
   const refused: TemplateUpgradeApplyStep[] = [];
   for (const path of keyMergedPaths) {
-    const admission = formatAdmission(worktree, path);
+    const admission = plainFileEntry(worktree, path);
     if (admission === "absent") continue;
-    if ("skipped" in admission) {
+    if ("refused" in admission) {
       refused.push(
         createTemplateUpgradeApplyStep(
           JSON_FORMAT_STEP,
           false,
           "skipped",
-          admission.skipped,
+          admission.refused,
         ),
       );
     } else admitted.set(path, admission);
@@ -134,7 +89,7 @@ export function runJsonFormatStep(
     env,
   });
   if (!result.ok) return { ok: false, result };
-  const changed = changedWhileFormatting(worktree, admitted);
+  const changed = plainFileIdentityChange(worktree, admitted);
   if (changed !== undefined) {
     const output = `${changed} is no longer the regular file with one link that ${JSON_FORMAT_STEP} was given`;
     return { ok: false, result: { ...result, ok: false, output } };
