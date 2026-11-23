@@ -143,11 +143,9 @@ test("L.weak keeps a number", () => {
     });
   }, 60_000);
 
-  test("BROKEN when the title selects only skipped tests without the patch", async () => {
+  test("BROKEN when the title selects only tests marked todo without the patch", async () => {
     const subject = planted({
-      tests: testFile(`test.skip("L.refuses NaN", () => {
-  expect(refused).toBe(true);
-});
+      tests: testFile(`test.todo("L.refuses NaN");
 test.todo("L.refuses NaN later");
 `),
     });
