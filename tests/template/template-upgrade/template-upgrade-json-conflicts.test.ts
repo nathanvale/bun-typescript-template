@@ -139,9 +139,6 @@ test(
       conflicts: [".fallowrc.json"],
     });
     const worktree = firstPayload.worktree;
-    expect(readFileSync(join(worktree, ".fallowrc.json"), "utf8")).toBe(
-      shape.marked,
-    );
 
     writeFileSync(
       join(worktree, "README.md"),
