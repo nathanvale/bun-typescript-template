@@ -17,6 +17,7 @@ const copied = [
   "scripts/kernel-trial.ts",
   "scripts/kernel-trial-command.ts",
   "scripts/pin-move.ts",
+  "scripts/pin-move-branch.ts",
   "scripts/pin-move-report.ts",
   "scripts/pin-move-repository.ts",
   "scripts/pin-verification.ts",
