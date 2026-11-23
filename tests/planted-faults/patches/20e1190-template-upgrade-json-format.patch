@@ -1,12 +1,12 @@
-diff --git a/src/template-upgrade-json-format.ts b/src/template-upgrade-json-format.ts
-index de57640..e7733ab 100644
---- a/src/template-upgrade-json-format.ts
-+++ b/src/template-upgrade-json-format.ts
-@@ -51,7 +51,6 @@ function formatAdmission(
+diff --git a/src/template-upgrade-plain-file.ts b/src/template-upgrade-plain-file.ts
+index 28b8c2d..3fa71ec 100644
+--- a/src/template-upgrade-plain-file.ts
++++ b/src/template-upgrade-plain-file.ts
+@@ -26,7 +26,6 @@ export function plainFileEntry(root: string, path: string): PlainFileEntry {
    if (stats === undefined) return "absent";
-   if (stats.isSymbolicLink()) return { skipped: `${path} is a symbolic link` };
-   if (!stats.isFile()) return { skipped: `${path} is not a regular file` };
--  if (stats.nlink !== 1) return { skipped: `${path} is a hard link` };
+   if (stats.isSymbolicLink()) return { refused: `${path} is a symbolic link` };
+   if (!stats.isFile()) return { refused: `${path} is not a regular file` };
+-  if (stats.nlink !== 1) return { refused: `${path} is a hard link` };
    return stats;
  }
  

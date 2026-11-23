@@ -1,0 +1,14 @@
+diff --git a/src/template-upgrade-gate-check.ts b/src/template-upgrade-gate-check.ts
+index 3bb00ce..4461994 100644
+--- a/src/template-upgrade-gate-check.ts
++++ b/src/template-upgrade-gate-check.ts
+@@ -131,9 +131,6 @@ function admitGateFiles(
+       return { refused: `${source.refused} in the upgrade worktree` };
+     }
+     const destination = plainFileEntry(scratch, path);
+-    if (destination !== "absent" && "refused" in destination) {
+-      return { refused: `${destination.refused} at HEAD` };
+-    }
+     admitted.push({ path, source, destination });
+   }
+   return admitted;

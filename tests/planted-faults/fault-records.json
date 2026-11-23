@@ -2543,5 +2543,26 @@
     "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-move.test.ts",
     "title": "apply stops as check-failed with the audit's output when the push's Fallow audit fails after bun run check passed$",
     "source": "eb61704 feat(template-upgrade): run the push's Fallow audit before apply commits the upgrade"
+  },
+  {
+    "id": "c6af63a-template-upgrade-gate-check-destination",
+    "patch": "tests/planted-faults/patches/c6af63a-template-upgrade-gate-check-destination.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-gate-links.test.ts",
+    "title": "^the gate check against HEAD never writes through a committed gate file that links outside both checkouts$",
+    "source": "c6af63a fix(template-upgrade): refuse a linked gate file before the gate check against HEAD copies it"
+  },
+  {
+    "id": "c6af63a-template-upgrade-gate-check-source",
+    "patch": "tests/planted-faults/patches/c6af63a-template-upgrade-gate-check-source.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-gate-links.test.ts",
+    "title": "^the gate check against HEAD never copies a worktree gate file that is a hard link to a file outside both checkouts$",
+    "source": "c6af63a fix(template-upgrade): refuse a linked gate file before the gate check against HEAD copies it"
+  },
+  {
+    "id": "c6af63a-template-upgrade-gate-check-identity",
+    "patch": "tests/planted-faults/patches/c6af63a-template-upgrade-gate-check-identity.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-gate-links.test.ts",
+    "title": "^the gate check against HEAD stops as check-failed when a gate file it wrote became a hard link while the gate ran$",
+    "source": "c6af63a fix(template-upgrade): refuse a linked gate file before the gate check against HEAD copies it"
   }
 ]
