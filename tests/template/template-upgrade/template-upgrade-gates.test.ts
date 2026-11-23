@@ -418,6 +418,9 @@ test(
       },
     ]);
     expect(lintPayload.gateRepair).toContain("ESLint");
+    expect(lintPayload.gateRepair).toContain(
+      "Move each loose file in src/ into a subject folder (src/<subject>/) or src/shared/.",
+    );
 
     const tsRepo = await createPreGateRepository({
       templateClone,
