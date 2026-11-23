@@ -1,10 +1,12 @@
 import {
   copyFileSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
+  type Stats,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -33,6 +35,10 @@ import type {
   TemplateUpgradeCopyChange,
   TemplateUpgradeRow,
 } from "./template-upgrade-merge.ts";
+import {
+  plainFileIdentityChange,
+  plainFileEntry,
+} from "./template-upgrade-plain-file.ts";
 import {
   createTemplateUpgradeApplyRun,
   createTemplateUpgradeApplyStep,
@@ -80,21 +86,20 @@ function overlayGatePackageScripts(
   scratch: string,
   worktree: string,
   gate: TemplateUpgradeGateName,
-): void {
+): boolean {
   const targetPath = join(scratch, "package.json");
   const sourcePath = join(worktree, "package.json");
-  if (!existsSync(targetPath) || !existsSync(sourcePath)) return;
   const sourceScripts = readPackageScriptMap(readFileSync(sourcePath, "utf8"));
-  if (sourceScripts === undefined) return;
+  if (sourceScripts === undefined) return false;
   const targetText = readFileSync(targetPath, "utf8");
   let parsed: unknown;
   try {
     parsed = JSON.parse(targetText);
   } catch {
-    return;
+    return false;
   }
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-    return;
+    return false;
   }
   const targetObj = Object.fromEntries(Object.entries(parsed));
   const nextScripts = { ...(readPackageScriptMap(targetText) ?? {}) };
@@ -105,6 +110,33 @@ function overlayGatePackageScripts(
   }
   targetObj.scripts = nextScripts;
   writeFileSync(targetPath, `${JSON.stringify(targetObj, null, 2)}\n`);
+  return true;
+}
+
+type GateFileEntries = {
+  readonly path: string;
+  readonly source: Stats | "absent";
+  readonly destination: Stats | "absent";
+};
+
+function admitGateFiles(
+  scratch: string,
+  worktree: string,
+  paths: readonly string[],
+): readonly GateFileEntries[] | { readonly refused: string } {
+  const admitted: GateFileEntries[] = [];
+  for (const path of paths) {
+    const source = plainFileEntry(worktree, path);
+    if (source !== "absent" && "refused" in source) {
+      return { refused: `${source.refused} in the upgrade worktree` };
+    }
+    const destination = plainFileEntry(scratch, path);
+    if (destination !== "absent" && "refused" in destination) {
+      return { refused: `${destination.refused} at HEAD` };
+    }
+    admitted.push({ path, source, destination });
+  }
+  return admitted;
 }
 
 function copyGateFilesToScratch(
@@ -112,23 +144,35 @@ function copyGateFilesToScratch(
   worktree: string,
   gate: TemplateUpgradeGateName,
   gateFiles: readonly string[],
-): void {
+): ReadonlyMap<string, Stats> | { readonly refused: string } {
   const extraFiles = gate === "fallow" ? RECORDED_HITS_FILES : [];
-  for (const relPath of [...new Set([...gateFiles, ...extraFiles])]) {
-    if (relPath === "package.json") {
-      overlayGatePackageScripts(scratch, worktree, gate);
+  const paths = [...new Set([...gateFiles, ...extraFiles])];
+  const admitted = admitGateFiles(scratch, worktree, paths);
+  if ("refused" in admitted) return admitted;
+  const written = new Map<string, Stats>();
+  for (const { path, source, destination } of admitted) {
+    const target = join(scratch, path);
+    if (path === "package.json") {
+      if (source === "absent" || destination === "absent") continue;
+      if (overlayGatePackageScripts(scratch, worktree, gate)) {
+        written.set(path, lstatSync(target));
+      }
       continue;
     }
-    const source = join(worktree, relPath);
-    const destination = join(scratch, relPath);
-    if (!existsSync(source)) {
-      rmSync(destination, { force: true });
+    if (source === "absent") {
+      rmSync(target, { force: true });
       continue;
     }
-    mkdirSync(dirname(destination), { recursive: true });
-    copyFileSync(source, destination);
+    mkdirSync(dirname(target), { recursive: true });
+    copyFileSync(join(worktree, path), target);
+    written.set(path, lstatSync(target));
   }
+  return written;
 }
+
+type PredatedGateProbe =
+  | { readonly problems?: readonly TemplateUpgradeGateProblem[] }
+  | { readonly refused: string };
 
 function probePredatedGateProblems(options: {
   readonly repository: string;
@@ -138,9 +182,9 @@ function probePredatedGateProblems(options: {
   readonly gateFiles: readonly string[];
   readonly env: ProcessEnvMap;
   readonly timeoutMilliseconds: number;
-}): readonly TemplateUpgradeGateProblem[] | undefined {
+}): PredatedGateProbe {
   const modulesPath = join(options.worktree, "node_modules");
-  if (!existsSync(modulesPath)) return undefined;
+  if (!existsSync(modulesPath)) return {};
   const scratchParent = mkdtempSync(
     join(tmpdir(), "template-upgrade-gate-verify-"),
   );
@@ -158,28 +202,35 @@ function probePredatedGateProblems(options: {
       ],
       { env: options.env, timeoutMilliseconds: options.timeoutMilliseconds },
     );
-    if (cloned.timedOut || cloned.exitCode !== 0) return undefined;
+    if (cloned.timedOut || cloned.exitCode !== 0) return {};
     const checkedOut = runGitCommand(
       scratch,
       ["checkout", "--quiet", "--detach", options.repositoryHead],
       { env: options.env, timeoutMilliseconds: options.timeoutMilliseconds },
     );
-    if (checkedOut.timedOut || checkedOut.exitCode !== 0) return undefined;
+    if (checkedOut.timedOut || checkedOut.exitCode !== 0) return {};
     symlinkSync(modulesPath, join(scratch, "node_modules"));
-    copyGateFilesToScratch(
+    const written = copyGateFilesToScratch(
       scratch,
       options.worktree,
       options.gate,
       options.gateFiles,
     );
+    if ("refused" in written) return written;
     const run = runBunStep({
       worktree: scratch,
       args: GATE_SCRIPT_ARGS[options.gate],
       timeoutMilliseconds: options.timeoutMilliseconds,
       env: options.env,
     });
-    if (run.ok) return undefined;
-    return parseTemplateUpgradeGateRun({
+    const changed = plainFileIdentityChange(scratch, written);
+    if (changed !== undefined) {
+      return {
+        refused: `${changed} is no longer the regular file with one link that this check wrote at HEAD`,
+      };
+    }
+    if (run.ok) return {};
+    const problems = parseTemplateUpgradeGateRun({
       gate: options.gate,
       output: run.output,
       worktree: scratch,
@@ -187,6 +238,7 @@ function probePredatedGateProblems(options: {
       timedOut: run.timedOut,
       signalCode: run.signalCode,
     })?.map((entry) => entry.problem);
+    return problems === undefined ? {} : { problems };
   } finally {
     rmSync(scratchParent, { force: true, recursive: true });
   }
@@ -220,6 +272,7 @@ function createTemplateUpgradeCheckFailureRun(options: {
     ...shared
   } = options;
   let gateResult: TemplateUpgradeGateResult | undefined;
+  let refusal: string | undefined;
   if (shared.failedStep === "bun run check") {
     const matched = matchTemplateUpgradeGateFailure({
       rows: shared.rows,
@@ -233,7 +286,7 @@ function createTemplateUpgradeCheckFailureRun(options: {
       afterPackage,
     });
     if (matched !== undefined) {
-      const predatedProblems = probePredatedGateProblems({
+      const probe = probePredatedGateProblems({
         repository: shared.inputs.repository,
         repositoryHead: shared.inputs.repositoryHead,
         worktree: shared.worktree,
@@ -242,18 +295,20 @@ function createTemplateUpgradeCheckFailureRun(options: {
         env,
         timeoutMilliseconds,
       });
-      gateResult = classifyTemplateUpgradeGateFailure({
-        rows: shared.rows,
-        dependencyChanges: shared.dependencyChanges,
-        checkCommandOutput: stepResult.output,
-        worktree: shared.worktree,
-        exitCode: stepResult.exitCode,
-        timedOut: stepResult.timedOut,
-        signalCode: stepResult.signalCode,
-        beforePackage,
-        afterPackage,
-        predatedProblems,
-      });
+      if ("refused" in probe) refusal = probe.refused;
+      else
+        gateResult = classifyTemplateUpgradeGateFailure({
+          rows: shared.rows,
+          dependencyChanges: shared.dependencyChanges,
+          checkCommandOutput: stepResult.output,
+          worktree: shared.worktree,
+          exitCode: stepResult.exitCode,
+          timedOut: stepResult.timedOut,
+          signalCode: stepResult.signalCode,
+          beforePackage,
+          afterPackage,
+          predatedProblems: probe.problems,
+        });
     }
   }
   if (gateResult !== undefined) {
@@ -272,7 +327,10 @@ function createTemplateUpgradeCheckFailureRun(options: {
     exitCode: 1,
     status: "check-failed",
     ...shared,
-    checkCommandOutput: stepResult.output,
+    checkCommandOutput:
+      refusal === undefined
+        ? stepResult.output
+        : `${stepResult.output.trimEnd()}\nThe gate was not checked against HEAD, so these problems are not shown to predate the upgrade: ${refusal}.`,
   });
 }
 
