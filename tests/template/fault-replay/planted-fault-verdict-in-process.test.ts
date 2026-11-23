@@ -143,6 +143,22 @@ test("L.weak keeps a number", () => {
     });
   }, 60_000);
 
+  test("BROKEN when the title selects only skipped tests without the patch", async () => {
+    const subject = planted({
+      tests: testFile(`test.skip("L.refuses NaN", () => {
+  expect(refused).toBe(true);
+});
+test.todo("L.refuses NaN later");
+`),
+    });
+
+    expect(await replayed(subject)).toMatchObject({
+      kind: "BROKEN",
+      cause:
+        "passes without the patch but runs no test, so the planted fault shows nothing.",
+    });
+  }, 60_000);
+
   test("KILLED names only the selected test that failed by its own check when another timed out", async () => {
     const subject = planted({
       tests: testFile(`test("L.refuses NaN", () => {
