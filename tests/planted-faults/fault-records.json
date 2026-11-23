@@ -2336,5 +2336,19 @@
     "testFile": "tests/template/template-upgrade/template-upgrade-json-conflicts.test.ts",
     "title": "^a JSON key conflict whose text merges cleanly is written as one marked conflict, ours above new, that does not parse$",
     "source": "23e59a0 fix(template-upgrade): mark a JSON key conflict whose text merges cleanly"
+  },
+  {
+    "id": "319c6de-kernel-pin",
+    "patch": "tests/planted-faults/patches/319c6de-kernel-pin.patch",
+    "testFile": "tests/template/kernel-trial/kernel-cache.test.ts",
+    "title": "an empty cache is filled with a bare clone of the pin's remote that holds the pinned commit$",
+    "source": "319c6de feat(kernel-pin): fetch the kernel into the kernel cache when no clone is named or beside the template"
+  },
+  {
+    "id": "319c6de-kernel-cache-identity",
+    "patch": "tests/planted-faults/patches/319c6de-kernel-cache-identity.patch",
+    "testFile": "tests/template/kernel-trial/kernel-cache.test.ts",
+    "title": "the kernel reader refuses a kernel cache whose pinned commit is replaced by another commit's bytes, as git finds the hash mismatch$",
+    "source": "319c6de feat(kernel-pin): fetch the kernel into the kernel cache when no clone is named or beside the template"
   }
 ]
