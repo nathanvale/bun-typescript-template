@@ -17,6 +17,7 @@ import {
   type Source,
   sourceIn,
 } from "./planted-fault-patch.ts";
+import { judged, testRun, type Verdict } from "./planted-fault-verdict.ts";
 import {
   runWithOwnTools,
   startChild,
@@ -32,13 +33,8 @@ export type Fault = {
   testFile: string;
   title: string;
   source: string;
+  removesBound?: true;
 };
-export type Verdict =
-  | { kind: "KILLED"; failing: readonly string[] }
-  | { kind: "SURVIVED" }
-  | { kind: "STALE"; output: string }
-  | { kind: "BROKEN"; output: string }
-  | { kind: "TIMEOUT"; step: string };
 
 const signals = ["SIGHUP", "SIGINT", "SIGTERM"] as const;
 const active: { stop?: () => void; stoppedBy?: (typeof signals)[number] } = {};
@@ -100,6 +96,8 @@ const repairFor: { readonly [name in keyof Fault]: string } = {
   title:
     "name the bun test -t pattern that selects the test that kills the planted fault.",
   source: "name it <fix short sha> <fix subject>.",
+  removesBound:
+    "write true for a fault whose only symptom is a timeout, or leave it out.",
 };
 
 function parseFault(entry: unknown, where: string, root: string): Fault {
@@ -121,11 +119,16 @@ function parseFault(entry: unknown, where: string, root: string): Fault {
     title: field("title"),
     source: field("source"),
   };
+  const removesBound = own.get("removesBound");
+  if (removesBound !== undefined && removesBound !== true)
+    throw new Error(
+      `${where} has removesBound ${JSON.stringify(removesBound)}. Repair: ${repairFor.removesBound}`,
+    );
   if (!existsSync(join(root, fault.testFile)))
     throw new Error(
       `${where} names testFile ${fault.testFile}, which does not exist. Repair: ${repairFor.testFile}`,
     );
-  return fault;
+  return removesBound === true ? { ...fault, removesBound } : fault;
 }
 
 export function readRecords(root: string): Fault[] {
@@ -209,18 +212,13 @@ async function step(
     { limitMilliseconds },
   );
   haltIfStopped(id);
-  if (timedOut) throw new StepTimedOut(argv.join(" "));
+  const shown = argv.filter((arg) => !arg.startsWith("--reporter")).join(" ");
+  if (timedOut) throw new StepTimedOut(shown);
   if (signalCode !== null)
     throw new Error(
-      `${argv.join(" ")} was killed by ${signalCode} while replaying ${id}, so it has no verdict.`,
+      `${shown} was killed by ${signalCode} while replaying ${id}, so it has no verdict.`,
     );
   return { passed: exitCode === 0, output };
-}
-
-function failingTests(output: string): string[] {
-  return [...output.matchAll(/^\(fail\) (.+?)(?: \[[\d.]+m?s\])?$/gm)].map(
-    (match) => match[1] ?? "",
-  );
 }
 
 function testArgs(fault: Fault): string[] {
@@ -294,13 +292,17 @@ export async function replay(
       throw new Error(
         `bun install --frozen-lockfile failed while replaying ${fault.id}:\n${installed.output}`,
       );
-    const clean = await bunInTree(testArgs(fault));
-    if (!clean.passed) return { kind: "BROKEN", output: clean.output };
-    for (const [path, text] of placement.files)
-      writeFileSync(join(dir, path), text);
-    const faulted = await bunInTree(testArgs(fault));
-    if (faulted.passed) return { kind: "SURVIVED" };
-    return { kind: "KILLED", failing: failingTests(faulted.output) };
+    const tested = async (name: string) => {
+      const report = join(folder, `${name}.xml`);
+      const args = ["--reporter=junit", `--reporter-outfile=${report}`];
+      return testRun(await bunInTree([...testArgs(fault), ...args]), report);
+    };
+    const faulted = () => {
+      for (const [path, text] of placement.files)
+        writeFileSync(join(dir, path), text);
+      return tested("patched");
+    };
+    return await judged(await tested("clean"), faulted, fault.removesBound);
   } catch (error) {
     if (error instanceof StepTimedOut)
       return { kind: "TIMEOUT", step: error.step };
@@ -322,7 +324,7 @@ export function report(
   switch (verdict.kind) {
     case "KILLED":
       print(
-        `KILLED ${fault.id} ${took}. Failed: ${verdict.failing.join(" | ") || "the test file, which did not load"}`,
+        `KILLED ${fault.id} ${took}. Failed: ${verdict.failing.join(" | ")}`,
       );
       return;
     case "SURVIVED":
@@ -341,11 +343,11 @@ export function report(
       print(replantRepair(fault));
       return;
     case "BROKEN":
-      print(
-        `BROKEN ${fault.id} ${took}. ${shown} fails without the patch, so the planted fault shows nothing.`,
-      );
+      print(`BROKEN ${fault.id} ${took}. ${shown} ${verdict.cause}`);
       process.stdout.write(verdict.output.replace(/\n?$/, "\n"));
-      print(`Repair: make that test pass without the patch. ${done}`);
+      print(
+        `Repair: make that test pass without the patch, and fail by its own check with it, not by a timeout or a test file that does not load. ${done}`,
+      );
       return;
     case "TIMEOUT":
       print(
@@ -358,7 +360,14 @@ export function report(
   }
 }
 
-const recordFields = ["id", "patch", "testFile", "title", "source"] as const;
+const recordFields = [
+  "id",
+  "patch",
+  "testFile",
+  "title",
+  "source",
+  "removesBound",
+] as const;
 
 function recordKey(entry: unknown): string {
   const own = new Map<string, unknown>(

@@ -101,7 +101,7 @@ describe("bun run fault-replay", () => {
         /^BROKEN red in [\d.]+ s\. bun test \.\/tests\/limit\.test\.ts -t '\^L\\\.red ' fails without the patch, so the planted fault shows nothing\.$/,
       );
       expect(run.lines).toContain(
-        "Repair: make that test pass without the patch. Done when bun run fault-replay red passes.",
+        "Repair: make that test pass without the patch, and fail by its own check with it, not by a timeout or a test file that does not load. Done when bun run fault-replay red passes.",
       );
       expect(run.exit).toBe(1);
       expectNoLeftovers(root, run.temporary);

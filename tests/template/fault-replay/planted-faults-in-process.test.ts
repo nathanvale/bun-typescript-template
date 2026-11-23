@@ -1,11 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import {
-  type Fault,
-  replay,
-  type Verdict,
-} from "../../../scripts/planted-faults.ts";
+import type { Verdict } from "../../../scripts/planted-fault-verdict.ts";
+import { type Fault, replay } from "../../../scripts/planted-faults.ts";
 import {
   createPlantedFaultFixture,
   guarded,

@@ -310,6 +310,10 @@ export function createPlantedFaultFixture() {
         join(repository, "scripts/planted-fault-patch.ts"),
         "utf8",
       ),
+      "scripts/planted-fault-verdict.ts": readFileSync(
+        join(repository, "scripts/planted-fault-verdict.ts"),
+        "utf8",
+      ),
       "scripts/process-runner.ts": readFileSync(
         join(repository, "scripts/process-runner.ts"),
         "utf8",

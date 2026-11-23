@@ -1,4 +1,5 @@
 import { existsSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
+import { timeoutErrorName } from "../../scripts/planted-fault-verdict.ts";
 import { type Child, startChild } from "../../scripts/process-runner.ts";
 
 const exitBound = 20_000;
@@ -233,8 +234,11 @@ export async function spawnBounded(
   try {
     const run = await child.finished;
     if (left !== undefined)
-      throw new Error(
-        `${argv.join(" ")} did not exit within ${bound} ms.\n${left}`,
+      throw Object.assign(
+        new Error(
+          `${argv.join(" ")} did not exit within ${bound} ms.\n${left}`,
+        ),
+        { name: timeoutErrorName },
       );
     return { stdout: run.stdout, stderr: run.stderr, exit: run.exitCode };
   } finally {

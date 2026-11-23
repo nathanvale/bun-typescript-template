@@ -1,0 +1,12 @@
+diff --git a/scripts/planted-fault-verdict.ts b/scripts/planted-fault-verdict.ts
+index b68b461..37f066b 100644
+--- a/scripts/planted-fault-verdict.ts
++++ b/scripts/planted-fault-verdict.ts
+@@ -120,6 +120,7 @@ export async function judged(
+     );
+   const patched = await faulted();
+   if (patched.passed) return { kind: "SURVIVED" };
++  return { kind: "KILLED", failing: [] };
+   const withPatch = (cause: string) =>
+     broken(`fails with the patch applied, ${cause}`, patched);
+   if (patched.results === undefined)

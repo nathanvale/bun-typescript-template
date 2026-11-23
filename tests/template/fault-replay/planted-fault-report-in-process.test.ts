@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import type { Verdict } from "../../../scripts/planted-fault-verdict.ts";
 import {
   report,
   stepLimitMilliseconds,
-  type Verdict,
 } from "../../../scripts/planted-faults.ts";
 import {
   captured,
@@ -53,6 +53,8 @@ describe("stepLimitMilliseconds", () => {
 describe("report", () => {
   const done = "Done when bun run fault-replay abc1234-limit passes.";
   const shown = "bun test ./tests/limit.test.ts -t '^L\\.refuses '";
+  const repair =
+    "Repair: make that test pass without the patch, and fail by its own check with it, not by a timeout or a test file that does not load.";
 
   async function reported(verdict: Verdict, seconds = 12.34, limit = 2_500) {
     const { result, stdout, stderr } = await captured(() =>
@@ -69,9 +71,16 @@ describe("report", () => {
     );
   });
 
-  test("KILLED with no failing test says the test file did not load", async () => {
-    expect(await reported({ kind: "KILLED", failing: [] }, 0.04)).toBe(
-      "KILLED abc1234-limit in 0.0 s. Failed: the test file, which did not load\n",
+  test("BROKEN with the patch applied names the cause, prints the output and the repair", async () => {
+    const cause =
+      "fails with the patch applied, but its test file did not load, so the planted fault shows nothing.";
+
+    expect(
+      await reported({ kind: "BROKEN", cause, output: "error: x" }, 0.04),
+    ).toBe(
+      `BROKEN abc1234-limit in 0.0 s. ${shown} ${cause}\n` +
+        "error: x\n" +
+        `${repair} ${done}\n`,
     );
   });
 
@@ -96,17 +105,26 @@ describe("report", () => {
     ).toContain("applies at this head.\nerror: no match\nRepair: plant");
   });
 
-  test("BROKEN prints the failing output and the repair", async () => {
-    expect(await reported({ kind: "BROKEN", output: "(fail) L.red" })).toBe(
-      `BROKEN abc1234-limit in 12.3 s. ${shown} fails without the patch, so the planted fault shows nothing.\n` +
+  test("BROKEN prints the cause, the failing output and the repair", async () => {
+    const cause =
+      "fails without the patch, so the planted fault shows nothing.";
+
+    expect(
+      await reported({ kind: "BROKEN", cause, output: "(fail) L.red" }),
+    ).toBe(
+      `BROKEN abc1234-limit in 12.3 s. ${shown} ${cause}\n` +
         "(fail) L.red\n" +
-        `Repair: make that test pass without the patch. ${done}\n`,
+        `${repair} ${done}\n`,
     );
   });
 
   test("BROKEN does not add a second newline to output that ends with one", async () => {
     expect(
-      await reported({ kind: "BROKEN", output: "(fail) L.red\n" }),
+      await reported({
+        kind: "BROKEN",
+        cause: "shows nothing.",
+        output: "(fail) L.red\n",
+      }),
     ).toContain("shows nothing.\n(fail) L.red\nRepair: make");
   });
 
