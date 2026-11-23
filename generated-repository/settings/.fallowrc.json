@@ -92,7 +92,10 @@
   },
   "boundaries": {
     "zones": [
-      { "name": "entry", "patterns": ["src/cli.ts", "src/commands.ts"] },
+      {
+        "name": "entry",
+        "patterns": ["src/cli.ts", "src/commands.ts", "src/commands/**"]
+      },
       { "name": "rules", "patterns": ["src/**/rules.ts"] },
       { "name": "shared", "patterns": ["src/shared/**"] },
       { "name": "subject", "patterns": ["src/*/**"], "autoDiscover": ["src"] },

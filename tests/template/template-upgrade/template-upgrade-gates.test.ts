@@ -258,9 +258,7 @@ test(
       "baseline analysis identity is incompatible",
     );
     const problemPaths = (payload.gateProblems ?? []).map((p) => p.path);
-    expect(problemPaths).toContain("src/commands/records.ts");
-    expect(problemPaths).toContain("src/records/find.ts");
-    expect(payload.gateProblems?.length).toBe(3);
+    expect(problemPaths).toEqual(["src/records/find.ts"]);
     expect(
       (payload.gateProblems ?? []).every(
         (p) => p.code === "boundary-violation",
@@ -285,7 +283,8 @@ test(
     );
     expect(second.exitCode).toBe(6);
     expect(second.stdout).toContain("existing code needs gate adoption");
-    expect(second.stdout).toContain("src/commands/records.ts");
+    expect(second.stdout).toContain("src/records/find.ts");
+    expect(second.stdout).not.toContain("src/commands/records.ts");
     expect(second.stdout).toContain("git worktree unlock");
     expect(second.stdout).toContain(`git worktree remove ${worktree}`);
     expect(second.stdout).not.toContain(
