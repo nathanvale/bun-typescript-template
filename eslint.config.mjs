@@ -25,6 +25,7 @@ export default defineConfig(
       "generated-repository/**",
     ],
   },
+  { linterOptions: { noInlineConfig: true } },
   {
     files: ["**/*.ts"],
     extends: [

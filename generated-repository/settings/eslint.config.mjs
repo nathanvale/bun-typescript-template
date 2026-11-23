@@ -63,6 +63,7 @@ export default tseslint.config(
       ".worktrees/**",
     ],
   },
+  { linterOptions: { noInlineConfig: true } },
   ...kernelLint({
     rootDir: import.meta.dirname,
     srcDir: "src",
