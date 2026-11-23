@@ -476,21 +476,23 @@ function keepIdentityOnly(
 
 export function noCheckTemplateUpgradeSteps(
   request: RecordedHitsRequest,
+  formatSteps: readonly TemplateUpgradeApplyStep[],
 ): readonly TemplateUpgradeApplyStep[] {
   const skipped = skipTemplateUpgradeSteps("--no-check");
   const [install, check] = skipped;
   if (install === undefined || check === undefined) return skipped;
-  if (recordedHitsAction(request) === "none") return skipped;
-  return Object.freeze([
-    install,
-    createTemplateUpgradeApplyStep(
-      RECORDED_HITS_STEP,
-      false,
-      "skipped",
-      "--no-check",
-    ),
-    check,
-  ]);
+  const recorded =
+    recordedHitsAction(request) === "none"
+      ? []
+      : [
+          createTemplateUpgradeApplyStep(
+            RECORDED_HITS_STEP,
+            false,
+            "skipped",
+            "--no-check",
+          ),
+        ];
+  return Object.freeze([install, ...formatSteps, ...recorded, check]);
 }
 
 function restoreSnapshots(
@@ -566,7 +568,6 @@ export function runRecordedHitsStep(
       ok: false,
       output: record.output,
       steps: Object.freeze([
-        createTemplateUpgradeApplyStep("bun install", true, "passed"),
         createTemplateUpgradeApplyStep(RECORDED_HITS_STEP, true, "failed"),
         createTemplateUpgradeApplyStep(
           "bun run check",

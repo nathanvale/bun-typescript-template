@@ -5,6 +5,7 @@ import { CliError } from "./cli-error.ts";
 import { withTemplateUpgradeTrees } from "./template-upgrade-bootstrap.ts";
 import { readTemplateUpgradeChangeNotes } from "./template-upgrade-change-notes.ts";
 import { runTemplateUpgradeCheckSteps } from "./template-upgrade-gate-check.ts";
+import { skipJsonFormatSteps } from "./template-upgrade-json-format.ts";
 import {
   lstatIfPresent,
   type ProcessEnvMap,
@@ -77,6 +78,7 @@ interface ApplyMergeData {
   readonly templateCopyChanges: readonly TemplateUpgradeCopyChange[];
   readonly beforePackage: string | undefined;
   readonly afterPackage: string | undefined;
+  readonly keyMergedPaths: readonly string[];
 }
 
 async function findCommittedWorktreeHead(
@@ -461,6 +463,7 @@ async function finalizeTemplateUpgradeWorktree(
   usingResolved: boolean,
   rows: readonly TemplateUpgradeRow[],
   templateCopyChanges: readonly TemplateUpgradeCopyChange[],
+  keyMergedPaths: ReadonlySet<string>,
 ): Promise<TemplateUpgradeApplyRun> {
   const { inputs, branch, changeNotes, targetWorktree, skipCheckCommand } =
     session;
@@ -473,6 +476,7 @@ async function finalizeTemplateUpgradeWorktree(
     templateCopyChanges,
     beforePackage,
     afterPackage,
+    keyMergedPaths: [...keyMergedPaths].sort(compareCodeUnits),
   };
   if (!usingResolved) {
     const conflicts = await collectTemplateUpgradeConflicts(
@@ -502,6 +506,7 @@ async function finalizeTemplateUpgradeWorktree(
         session.env,
         mergeData,
       ),
+      skipJsonFormatSteps(mergeData.keyMergedPaths, "--no-check"),
     );
   } else {
     const checked = runTemplateUpgradeCheckSteps({
@@ -533,11 +538,13 @@ async function applyTemplateUpgradeInTrees(
     const beforePackage = await readTextIfFile(
       join(temporaryWorktree, "package.json"),
     );
+    const keyMergedPaths = new Set<string>();
     const rows = await mergeTemplateUpgradeTrees(
       oldFolder,
       newFolder,
       temporaryWorktree,
       env,
+      keyMergedPaths,
     );
     const templateCopyChanges = await diffTemplateUpgradeCopyChanges(
       oldFolder,
@@ -561,6 +568,7 @@ async function applyTemplateUpgradeInTrees(
       prepared.usingResolved,
       rows,
       templateCopyChanges,
+      keyMergedPaths,
     );
   } finally {
     if (!temporaryMoved) {
