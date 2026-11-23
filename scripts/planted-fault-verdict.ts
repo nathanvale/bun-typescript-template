@@ -9,6 +9,8 @@ export type Verdict =
 
 export const timeoutErrorName = "TimeoutError";
 
+const assertionErrorName = "AssertionError";
+
 export type TestResult = {
   name: string;
   skipped: boolean;
@@ -106,19 +108,39 @@ export async function judged(
   );
   if (selected.size === 0)
     return broken("passes without the patch but runs no test", clean);
+  const twice = (results: readonly TestResult[]) =>
+    [...selected]
+      .filter((name) => results.filter((r) => r.name === name).length > 1)
+      .join(" | ");
+  const cleanTwice = twice(clean.results ?? []);
+  if (cleanTwice !== "")
+    return broken(
+      `passes without the patch but has more than one test named ${cleanTwice}`,
+      clean,
+    );
   const patched = await faulted();
   if (patched.passed) return { kind: "SURVIVED" };
   const withPatch = (cause: string) =>
     broken(`fails with the patch applied, ${cause}`, patched);
   if (patched.results === undefined)
     return withPatch("but its test file did not load");
+  const patchedTwice = twice(patched.results);
+  if (patchedTwice !== "")
+    return withPatch(`but has more than one test named ${patchedTwice}`);
   const failed = patched.results.filter(
     ({ name, failure }) => failure !== undefined && selected.has(name),
   );
+  const kills = (failure: string | undefined) =>
+    failure === assertionErrorName ||
+    (removesBound && failure === timeoutErrorName);
   const failing = failed
-    .filter(({ failure }) => removesBound || failure !== timeoutErrorName)
+    .filter(({ failure }) => kills(failure))
     .map(({ name }) => name);
   if (failing.length > 0) return { kind: "KILLED", failing };
+  if (failed.some(({ failure }) => failure !== timeoutErrorName))
+    return withPatch(
+      `but by no failed assertion (${failed.map(({ name, failure }) => `${name}: ${failure}`).join(" | ")})`,
+    );
   if (failed.length > 0)
     return withPatch(
       `but only by timing out (${failed.map(({ name }) => name).join(" | ")})`,

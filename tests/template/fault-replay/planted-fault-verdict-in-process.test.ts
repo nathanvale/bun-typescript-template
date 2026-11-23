@@ -179,6 +179,61 @@ test("L.refuses NaN in time", async () => {
   }, 60_000);
 });
 
+describe("replay credits a kill only to a failed assertion in a test it names once", () => {
+  test("BROKEN when a beforeEach hook throws once the patch is applied", async () => {
+    const subject = planted({
+      tests: testFile(
+        `beforeEach(() => {
+  if (!refused) throw new Error("setup crashed");
+});
+test("L.refuses NaN", () => {
+  expect(limit(1)).toBe(1);
+});
+`,
+        `import { beforeEach } from "bun:test";\n`,
+      ),
+    });
+
+    expect(await replayed(subject)).toMatchObject({
+      kind: "BROKEN",
+      cause: withPatch("but by no failed assertion (L.refuses NaN: Error)"),
+    });
+  }, 60_000);
+
+  test("BROKEN when the test body crashes after a passing assertion once the patch is applied", async () => {
+    const subject = planted({
+      tests: testFile(`test("L.refuses NaN", () => {
+  expect(limit(1)).toBe(1);
+  if (!refused) throw new TypeError("crashed");
+});
+`),
+    });
+
+    expect(await replayed(subject)).toMatchObject({
+      kind: "BROKEN",
+      cause: withPatch("but by no failed assertion (L.refuses NaN: TypeError)"),
+    });
+  }, 60_000);
+
+  test("BROKEN when the title selects a test name the report holds twice", async () => {
+    const subject = planted({
+      tests: testFile(`test("L.refuses NaN", () => {
+  expect(limit(1)).toBe(1);
+});
+(refused ? test.skip : test)("L.refuses NaN", () => {
+  expect(refused).toBe(true);
+});
+`),
+    });
+
+    expect(await replayed(subject)).toMatchObject({
+      kind: "BROKEN",
+      cause:
+        "passes without the patch but has more than one test named L.refuses NaN, so the planted fault shows nothing.",
+    });
+  }, 60_000);
+});
+
 describe("replay credits a timeout as a kill only for a record whose fault removes a bound", () => {
   const timesOut = testFile(`test("L.refuses NaN", async () => {
   if (!refused) ${hangs}
