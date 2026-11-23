@@ -1,0 +1,13 @@
+diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
+index 3a330b3..375d4ec 100644
+--- a/scripts/pin-move-repository.ts
++++ b/scripts/pin-move-repository.ts
+@@ -318,8 +318,6 @@ function planRepositoryEdits(
+   pin: KernelPin,
+   current: RepositoryPinRecord,
+ ): PlannedEdit[] {
+-  if (lstatSync(join(repository, "bun.lock"), { throwIfNoEntry: false }))
+-    requirePlainEntry(repository, "bun.lock", "file");
+   return [
+     plannedPackagePin(repository, current, pin.repository),
+     ...plannedPointerSkills(

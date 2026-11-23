@@ -1,0 +1,13 @@
+diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
+index 3a330b3..7e1d001 100644
+--- a/scripts/pin-move-repository.ts
++++ b/scripts/pin-move-repository.ts
+@@ -427,7 +427,7 @@ async function applyRepositoryPinMove(
+     );
+     return 0;
+   } catch (error) {
+-    throw failedAttempt(attempt, error);
++    throw error;
+   }
+ }
+ 
