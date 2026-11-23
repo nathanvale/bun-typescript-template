@@ -2389,5 +2389,12 @@
     "testFile": "tests/template/fault-replay/planted-fault-verdict-in-process.test.ts",
     "title": "BROKEN when, with the patch applied, ",
     "source": "012c09c fix(planted-faults): credit a kill only to a test that passed clean and failed by its own check"
+  },
+  {
+    "id": "c7c714d-planted-fault-verdict",
+    "patch": "tests/planted-faults/patches/c7c714d-planted-fault-verdict.patch",
+    "testFile": "tests/template/fault-replay/planted-fault-verdict-in-process.test.ts",
+    "title": "KILLED when the record has removesBound and ",
+    "source": "c7c714d feat(planted-faults): credit a timeout as a kill for a fault record that removes a bound"
   }
 ]
