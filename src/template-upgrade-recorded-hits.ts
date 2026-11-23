@@ -386,6 +386,15 @@ export function noCheckTemplateUpgradeSteps(
   ]);
 }
 
+function restoreSnapshots(
+  worktree: string,
+  snapshots: ReadonlyMap<string, Uint8Array>,
+): void {
+  for (const [file, beforeBytes] of snapshots) {
+    writeFileSync(join(worktree, file), beforeBytes);
+  }
+}
+
 export function runRecordedHitsStep(
   request: RecordedHitsRequest,
   timeoutMilliseconds: number,
@@ -399,11 +408,9 @@ export function runRecordedHitsStep(
   const action = recordedHitsAction(request);
   if (action === "none") return { ok: true, steps: [] };
   const snapshots = new Map<string, Uint8Array>();
-  if (action === "refresh-changed") {
-    for (const file of RECORDED_HITS_FILES) {
-      const bytes = readWorktreeRegularFileBytes(join(request.worktree, file));
-      if (bytes !== undefined) snapshots.set(file, bytes);
-    }
+  for (const file of RECORDED_HITS_FILES) {
+    const bytes = readWorktreeRegularFileBytes(join(request.worktree, file));
+    if (bytes !== undefined) snapshots.set(file, bytes);
   }
   const record = runBunStep({
     worktree: request.worktree,
@@ -412,6 +419,7 @@ export function runRecordedHitsStep(
     env: request.env,
   });
   if (!record.ok) {
+    restoreSnapshots(request.worktree, snapshots);
     return {
       ok: false,
       output: record.output,

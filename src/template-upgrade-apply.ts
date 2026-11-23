@@ -83,6 +83,8 @@ interface ApplyMergeData {
   readonly rows: readonly TemplateUpgradeRow[];
   readonly dependencyChanges: readonly PackageDependencyChange[];
   readonly templateCopyChanges: readonly TemplateUpgradeCopyChange[];
+  readonly beforePackage: string | undefined;
+  readonly afterPackage: string | undefined;
 }
 
 async function findCommittedWorktreeHead(
@@ -586,6 +588,8 @@ async function finalizeTemplateUpgradeWorktree(
     rows,
     dependencyChanges: diffPackageDependencies(beforePackage, afterPackage),
     templateCopyChanges,
+    beforePackage,
+    afterPackage,
   };
   if (!usingResolved) {
     const conflicts = await collectTemplateUpgradeConflicts(

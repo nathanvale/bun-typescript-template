@@ -6,12 +6,10 @@ import {
   readFileSync,
   rmSync,
   symlinkSync,
-  writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
 import { RECORDED_HITS_FILES } from "../../../src/recipe.ts";
-import { classifyTemplateUpgradeGateFailure } from "../../../src/template-upgrade-gates.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import { commitIn, git, gitEnv, inherited } from "../../support/git-fixture.ts";
@@ -484,122 +482,4 @@ test(
     ]);
   },
   processWatchdog(6),
-);
-
-test(
-  "classifyTemplateUpgradeGateFailure stays check-failed for Fallow errors, ESLint crashes, template-owned file failures, and upgrades without gate changes, and check-failed text prints unlock steps",
-  async () => {
-    const worktree = folder("classify-gate-worktree-");
-    const fallowRows = [
-      {
-        path: ".fallowrc.json",
-        ownerLabel: "shared" as const,
-        outcome: "take" as const,
-      },
-      {
-        path: "tests/git-fixture.test.ts",
-        ownerLabel: "template" as const,
-        outcome: "take" as const,
-      },
-    ];
-    expect(
-      classifyTemplateUpgradeGateFailure({
-        rows: fallowRows,
-        dependencyChanges: [],
-        checkCommandOutput:
-          '{"error":true,"message":"baseline analysis identity is incompatible in: project_config_hash","exit_code":2}\n',
-        worktree,
-      }),
-    ).toBeUndefined();
-
-    expect(
-      classifyTemplateUpgradeGateFailure({
-        rows: fallowRows,
-        dependencyChanges: [],
-        checkCommandOutput: `${JSON.stringify({
-          kind: "combined",
-          check: {
-            unused_files: [{ path: "tests/git-fixture.test.ts" }],
-          },
-        })}\n`,
-        worktree,
-      }),
-    ).toBeUndefined();
-
-    expect(
-      classifyTemplateUpgradeGateFailure({
-        rows: [
-          {
-            path: "eslint.config.mjs",
-            ownerLabel: "template" as const,
-            outcome: "take" as const,
-          },
-        ],
-        dependencyChanges: [],
-        checkCommandOutput:
-          "Oops! Something went wrong! :(\nError: broken config\n",
-        worktree,
-      }),
-    ).toBeUndefined();
-
-    expect(
-      classifyTemplateUpgradeGateFailure({
-        rows: [
-          {
-            path: "README.md",
-            ownerLabel: "repository" as const,
-            outcome: "template-copy-changed" as const,
-          },
-        ],
-        dependencyChanges: [],
-        checkCommandOutput:
-          "src/foo.ts(4,3): error TS7027: Unreachable code detected.\n",
-        worktree,
-      }),
-    ).toBeUndefined();
-
-    const { templateClone, baseCommit: targetCommit } =
-      cloneTemplateAtHead(folder);
-    const repo = await createPreGateRepository({
-      templateClone,
-      name: "check-failed-unlock-app",
-      files: {},
-    });
-    const failCheckBun = writeScriptedBun(
-      folder,
-      "scripted-bun-unlock-check-",
-      `#!/bin/sh
-echo "$*" >> __LEDGER__
-if [ "$1" = "run" ] && [ "$2" = "check" ]; then
-  echo "unexpected crash in check" >&2
-  exit 1
-fi
-exit 0
-`,
-    );
-    const stdout = captureStream(process.stdout);
-    const stderr = captureStream(process.stderr);
-    const expectedWorktree = join(
-      repo,
-      ".worktrees",
-      `template-upgrade-${targetCommit.slice(0, 7)}`,
-    );
-    const run = await invokeTemplateUpgradeMain(
-      stdout,
-      stderr,
-      ["apply", "--repository", repo, "--to", targetCommit],
-      { templateRoot: templateClone, env: failCheckBun.env },
-    );
-    expect(run.exitCode).toBe(1);
-    expect(run.stdout).toContain("bun run check failed");
-    expect(run.stdout).toContain(
-      "Repair the failure in that worktree, then rerun the same upgrade apply command.",
-    );
-    expect(run.stdout).toContain(`git worktree unlock ${expectedWorktree}`);
-    expect(run.stdout).toContain(
-      `git worktree remove --force ${expectedWorktree}`,
-    );
-    writeFileSync(join(worktree, "done.txt"), "ok\n");
-  },
-  processWatchdog(4),
 );

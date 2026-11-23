@@ -2298,7 +2298,7 @@
   {
     "id": "b9d4e2d-template-upgrade-gate-template-file",
     "patch": "tests/planted-faults/patches/b9d4e2d-template-upgrade-gate-template-file.patch",
-    "testFile": "tests/template/template-upgrade/template-upgrade-gates.test.ts",
+    "testFile": "tests/template/template-upgrade/template-upgrade-gate-check.test.ts",
     "title": "^classifyTemplateUpgradeGateFailure stays check-failed for Fallow errors, ESLint crashes, template-owned file failures, and upgrades without gate changes, and check-failed text prints unlock steps$",
     "source": "b9d4e2d fix(template-upgrade): refresh stale Fallow hits and report gate adoption"
   }

@@ -1,10 +1,10 @@
 diff --git a/src/template-upgrade-gates.ts b/src/template-upgrade-gates.ts
 --- a/src/template-upgrade-gates.ts
 +++ b/src/template-upgrade-gates.ts
-@@ -630,17 +630,7 @@ export function createTemplateUpgradeCheckFailureRun(options: {
-   readonly output: string;
+@@ -370,19 +370,7 @@ export function createTemplateUpgradeCheckFailureRun(options: {
+   readonly afterPackage?: string | undefined;
  }): TemplateUpgradeApplyRun {
-   const { output, ...shared } = options;
+   const { output, beforePackage, afterPackage, ...shared } = options;
 -  const gateResult =
 -    shared.failedStep === "bun run check"
 -      ? classifyTemplateUpgradeGateFailure({
@@ -12,6 +12,8 @@ diff --git a/src/template-upgrade-gates.ts b/src/template-upgrade-gates.ts
 -          dependencyChanges: shared.dependencyChanges,
 -          checkCommandOutput: output,
 -          worktree: shared.worktree,
+-          beforePackage,
+-          afterPackage,
 -        })
 -      : undefined;
 -  if (gateResult !== undefined) {
@@ -26,6 +28,8 @@ diff --git a/src/template-upgrade-gates.ts b/src/template-upgrade-gates.ts
 -      gateRepair: gateResult.repair,
 -    });
 -  }
++  void beforePackage;
++  void afterPackage;
    return createTemplateUpgradeApplyRun({
      exitCode: 1,
      status: "check-failed",

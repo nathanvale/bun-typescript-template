@@ -1,6 +1,10 @@
 import { realpathSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
 import type { ChangeNoteEntry } from "./change-notes.ts";
+import {
+  parseFallowGateProblems,
+  type TemplateUpgradeGateProblemEntry,
+} from "./template-upgrade-fallow-gate.ts";
 import type { TemplateUpgradeInputs } from "./template-upgrade-inputs.ts";
 import type { PackageDependencyChange } from "./template-upgrade-json-merge.ts";
 import type {
@@ -111,290 +115,6 @@ function normalizeWorktreePath(worktree: string, rawPath: string): string {
     ? relative(realWorktree, realFile)
     : relative(resolvedWorktree, resolvedFile);
   return candidate.replaceAll("\\", "/").replace(/^\.\//, "");
-}
-
-function asObject(
-  value: unknown,
-): Readonly<Record<string, unknown>> | undefined {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return undefined;
-  }
-  return Object.fromEntries(Object.entries(value));
-}
-
-function readStringField(
-  record: Readonly<Record<string, unknown>>,
-  key: string,
-): string | undefined {
-  if (!Object.hasOwn(record, key)) return undefined;
-  const value = record[key];
-  return typeof value === "string" ? value : undefined;
-}
-
-function readArrayField(
-  record: Readonly<Record<string, unknown>>,
-  key: string,
-): readonly unknown[] {
-  if (!Object.hasOwn(record, key)) return [];
-  const value = record[key];
-  return Array.isArray(value) ? value : [];
-}
-
-function collectBoundaryViolationProblems(
-  check: Readonly<Record<string, unknown>>,
-): TemplateUpgradeGateProblem[] {
-  const problems: TemplateUpgradeGateProblem[] = [];
-  for (const entry of readArrayField(check, "boundary_violations")) {
-    const item = asObject(entry);
-    if (item === undefined) continue;
-    const from = readStringField(item, "from_path") ?? "";
-    const to = readStringField(item, "to_path") ?? "";
-    const fromZone = readStringField(item, "from_zone") ?? "";
-    const toZone = readStringField(item, "to_zone") ?? "";
-    problems.push(
-      Object.freeze({
-        gate: "fallow",
-        code: "boundary-violation",
-        path: from,
-        message: `${from} imports ${to} (${fromZone} -> ${toZone})`,
-      }),
-    );
-  }
-  return problems;
-}
-
-function collectBoundaryOtherProblems(
-  check: Readonly<Record<string, unknown>>,
-): TemplateUpgradeGateProblem[] {
-  const problems: TemplateUpgradeGateProblem[] = [];
-  for (const entry of readArrayField(check, "boundary_coverage_violations")) {
-    const item = asObject(entry);
-    const path = item === undefined ? undefined : readStringField(item, "path");
-    if (path === undefined) continue;
-    problems.push(
-      Object.freeze({
-        gate: "fallow",
-        code: "boundary-coverage",
-        path,
-        message: `${path} does not match any boundary zone`,
-      }),
-    );
-  }
-  for (const entry of readArrayField(check, "boundary_call_violations")) {
-    const item = asObject(entry);
-    if (item === undefined) continue;
-    const path =
-      readStringField(item, "from_path") ?? readStringField(item, "path") ?? "";
-    const to = readStringField(item, "to_path") ?? "";
-    problems.push(
-      Object.freeze({
-        gate: "fallow",
-        code: "boundary-call",
-        path,
-        message:
-          to === "" ? `${path} violates boundary call` : `${path} calls ${to}`,
-      }),
-    );
-  }
-  return problems;
-}
-
-function collectBoundaryProblems(
-  check: Readonly<Record<string, unknown>>,
-): TemplateUpgradeGateProblem[] {
-  return [
-    ...collectBoundaryViolationProblems(check),
-    ...collectBoundaryOtherProblems(check),
-  ];
-}
-
-const DEAD_CODE_FIELDS: readonly string[] = [
-  "unused_files",
-  "unused_exports",
-  "unused_types",
-  "unused_class_members",
-  "unused_enum_members",
-  "duplicate_exports",
-  "duplicate_export_aliases",
-  "circular_dependencies",
-  "re_export_cycles",
-  "unresolved_imports",
-  "unused_dependencies",
-  "unused_dev_dependencies",
-  "unused_optional_dependencies",
-  "unlisted_dependencies",
-  "unlisted_binaries",
-  "dev_dependencies_in_production",
-  "test_only_dependencies",
-  "unused_dependency_overrides",
-  "misconfigured_dependency_overrides",
-  "stale_suppressions",
-];
-
-function extractDeadCodeItemPath(
-  item: Readonly<Record<string, unknown>>,
-): string {
-  const direct = readStringField(item, "path");
-  if (direct !== undefined && direct !== "") return direct;
-  const firstLocation = asObject(readArrayField(item, "locations")[0]);
-  const locPath =
-    firstLocation === undefined
-      ? undefined
-      : readStringField(firstLocation, "path");
-  if (locPath !== undefined && locPath !== "") return locPath;
-  const firstFile = readArrayField(item, "files")[0];
-  return typeof firstFile === "string" && firstFile !== ""
-    ? firstFile
-    : "package.json";
-}
-
-function extractDeadCodeItemDetail(
-  code: string,
-  item: Readonly<Record<string, unknown>>,
-  path: string,
-): string {
-  const symbol =
-    readStringField(item, "export_name") ??
-    readStringField(item, "member_name") ??
-    readStringField(item, "package_name") ??
-    readStringField(item, "specifier") ??
-    readStringField(item, "name");
-  return symbol === undefined ? `${code} in ${path}` : `${code}: ${symbol}`;
-}
-
-function collectDeadCodeProblems(
-  check: Readonly<Record<string, unknown>>,
-): TemplateUpgradeGateProblem[] {
-  const problems: TemplateUpgradeGateProblem[] = [];
-  for (const field of DEAD_CODE_FIELDS) {
-    const code =
-      field === "re_export_cycles"
-        ? "re-export-cycle"
-        : field.replaceAll("_", "-");
-    for (const entry of readArrayField(check, field)) {
-      if (typeof entry === "string") {
-        problems.push(
-          Object.freeze({
-            gate: "fallow",
-            code,
-            path: entry,
-            message: `${code}: ${entry}`,
-          }),
-        );
-        continue;
-      }
-      const item = asObject(entry);
-      if (item === undefined) continue;
-      const path = extractDeadCodeItemPath(item);
-      problems.push(
-        Object.freeze({
-          gate: "fallow",
-          code,
-          path,
-          message: extractDeadCodeItemDetail(code, item, path),
-        }),
-      );
-    }
-  }
-  return problems;
-}
-
-function collectDupeProblems(
-  report: Readonly<Record<string, unknown>>,
-): TemplateUpgradeGateProblem[] {
-  const dupes = asObject(report.dupes);
-  if (dupes === undefined) return [];
-  const problems: TemplateUpgradeGateProblem[] = [];
-  for (const entry of readArrayField(dupes, "clone_groups")) {
-    const group = asObject(entry);
-    if (group === undefined) continue;
-    const first = asObject(readArrayField(group, "instances")[0]);
-    const path =
-      (first === undefined ? undefined : readStringField(first, "file")) ??
-      (first === undefined ? undefined : readStringField(first, "path")) ??
-      "src";
-    problems.push(
-      Object.freeze({
-        gate: "fallow",
-        code: "duplicate-code",
-        path,
-        message: `duplicate code group in ${path}`,
-      }),
-    );
-  }
-  return problems;
-}
-
-function collectHealthProblems(
-  report: Readonly<Record<string, unknown>>,
-): TemplateUpgradeGateProblem[] {
-  const health = asObject(report.health);
-  if (health === undefined) return [];
-  const problems: TemplateUpgradeGateProblem[] = [];
-  for (const entry of readArrayField(health, "findings")) {
-    const finding = asObject(entry);
-    if (finding === undefined) continue;
-    const path = readStringField(finding, "path") ?? "src";
-    const name = readStringField(finding, "name") ?? path;
-    problems.push(
-      Object.freeze({
-        gate: "fallow",
-        code: "complexity",
-        path,
-        message: `complexity finding in ${name}`,
-      }),
-    );
-  }
-  return problems;
-}
-
-function parseJsonLine(
-  rawLine: string,
-): Readonly<Record<string, unknown>> | undefined {
-  const line = rawLine.trim();
-  if (!line.startsWith("{") || !line.endsWith("}")) return undefined;
-  try {
-    return asObject(JSON.parse(line));
-  } catch {
-    return undefined;
-  }
-}
-
-function findFallowCombinedJson(
-  checkOutput: string,
-): Readonly<Record<string, unknown>> | undefined {
-  let combined: Readonly<Record<string, unknown>> | undefined;
-  for (const rawLine of checkOutput.split(/\r?\n/)) {
-    const obj = parseJsonLine(rawLine);
-    if (obj === undefined) continue;
-    if (obj.error === true) return undefined;
-    if (obj.kind === "combined") combined = obj;
-  }
-  return combined;
-}
-
-function parseFallowProblems(
-  checkOutput: string,
-  worktree: string,
-): readonly TemplateUpgradeGateProblem[] | undefined {
-  const combined = findFallowCombinedJson(checkOutput);
-  if (combined === undefined) return undefined;
-  const check = asObject(combined.check);
-  const rawProblems = [
-    ...(check === undefined ? [] : collectBoundaryProblems(check)),
-    ...(check === undefined ? [] : collectDeadCodeProblems(check)),
-    ...collectDupeProblems(combined),
-    ...collectHealthProblems(combined),
-  ];
-  if (rawProblems.length === 0) return undefined;
-  return Object.freeze(
-    rawProblems.map((problem) =>
-      Object.freeze({
-        ...problem,
-        path: normalizeWorktreePath(worktree, problem.path),
-      }),
-    ),
-  );
 }
 
 function isEslintPathHeader(rawLine: string): boolean {
@@ -510,54 +230,105 @@ function repairForGate(
   return `Run bun run format in ${worktree} to update formatting, then rerun the same upgrade apply command.`;
 }
 
+function readPackageScriptMap(
+  text: string | undefined,
+): Readonly<Record<string, unknown>> | undefined {
+  if (text === undefined) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      Array.isArray(parsed)
+    ) {
+      return undefined;
+    }
+    const scripts: unknown = Reflect.get(parsed, "scripts");
+    if (
+      typeof scripts !== "object" ||
+      scripts === null ||
+      Array.isArray(scripts)
+    ) {
+      return undefined;
+    }
+    return Object.fromEntries(Object.entries(scripts));
+  } catch {
+    return undefined;
+  }
+}
+
+function packageScriptChanged(
+  beforeScripts: Readonly<Record<string, unknown>> | undefined,
+  afterScripts: Readonly<Record<string, unknown>> | undefined,
+  keys: readonly string[],
+): boolean {
+  if (beforeScripts === undefined || afterScripts === undefined) return false;
+  return keys.some((key) => beforeScripts[key] !== afterScripts[key]);
+}
+
 function changedGateFilesByKind(
   rows: readonly TemplateUpgradeRow[],
   dependencyChanges: readonly PackageDependencyChange[],
+  beforePackage?: string,
+  afterPackage?: string,
 ) {
   const changed = rows.filter(isChangedRow);
+  const beforeScripts = readPackageScriptMap(beforePackage);
+  const afterScripts = readPackageScriptMap(afterPackage);
+  const addPackage = (list: string[], condition: boolean) => {
+    if (condition && !list.includes("package.json")) list.push("package.json");
+  };
   const fallow = changed
     .map((row) => row.path)
     .filter((path) => isFallowGatePath(path));
-  if (
-    fallowPackageChange(dependencyChanges) &&
-    !fallow.includes("package.json")
-  ) {
-    fallow.push("package.json");
-  }
+  addPackage(
+    fallow,
+    fallowPackageChange(dependencyChanges) ||
+      packageScriptChanged(beforeScripts, afterScripts, [
+        "quality:fallow",
+        "quality:fallow:record-hits",
+      ]),
+  );
   const lint = changed
     .map((row) => row.path)
     .filter((path) => isLintGatePath(path));
+  addPackage(lint, packageScriptChanged(beforeScripts, afterScripts, ["lint"]));
   const typecheck = changed
     .map((row) => row.path)
     .filter((path) => isTsconfigPath(path));
-  if (
+  addPackage(
+    typecheck,
     dependencyChanges.some((change) =>
       TYPECHECK_PACKAGES.has(change.packageName),
-    ) &&
-    !typecheck.includes("package.json")
-  ) {
-    typecheck.push("package.json");
-  }
+    ) || packageScriptChanged(beforeScripts, afterScripts, ["typecheck"]),
+  );
   const format: string[] = changed
     .map((row) => row.path)
     .filter((path) => path === "biome.json");
-  if (
+  addPackage(
+    format,
     dependencyChanges.some((change) =>
       FORMAT_PACKAGES.has(change.packageName),
-    ) &&
-    !format.includes("package.json")
-  ) {
-    format.push("package.json");
-  }
+    ) || packageScriptChanged(beforeScripts, afterScripts, ["format:check"]),
+  );
   return { fallow, lint, typecheck, format };
 }
 
+function wrapProblems(
+  problems: readonly TemplateUpgradeGateProblem[] | undefined,
+): readonly TemplateUpgradeGateProblemEntry[] | undefined {
+  return problems?.map((problem) => ({
+    problem,
+    paths: problem.path === "" ? [] : [problem.path],
+  }));
+}
+
 function touchesModifiedTemplateFile(
-  problems: readonly TemplateUpgradeGateProblem[],
+  problems: readonly TemplateUpgradeGateProblemEntry[],
   modifiedTemplateOwnedPaths: ReadonlySet<string>,
 ): boolean {
-  return problems.some((problem) =>
-    modifiedTemplateOwnedPaths.has(problem.path),
+  return problems.some((entry) =>
+    entry.paths.some((path) => modifiedTemplateOwnedPaths.has(path)),
   );
 }
 
@@ -566,51 +337,68 @@ export function classifyTemplateUpgradeGateFailure(options: {
   readonly dependencyChanges: readonly PackageDependencyChange[];
   readonly checkCommandOutput: string;
   readonly worktree: string;
+  readonly beforePackage?: string | undefined;
+  readonly afterPackage?: string | undefined;
 }): TemplateUpgradeGateResult | undefined {
-  const { rows, dependencyChanges, checkCommandOutput, worktree } = options;
+  const {
+    rows,
+    dependencyChanges,
+    checkCommandOutput,
+    worktree,
+    beforePackage,
+    afterPackage,
+  } = options;
   const modifiedTemplateOwnedPaths = new Set(
     rows
       .filter((row) => isChangedRow(row) && row.ownerLabel !== "repository")
       .map((row) => row.path),
   );
-  const gates = changedGateFilesByKind(rows, dependencyChanges);
+  const gates = changedGateFilesByKind(
+    rows,
+    dependencyChanges,
+    beforePackage,
+    afterPackage,
+  );
   const candidates: readonly (readonly [
     TemplateUpgradeGateName,
     readonly string[],
-    () => readonly TemplateUpgradeGateProblem[] | undefined,
+    () => readonly TemplateUpgradeGateProblemEntry[] | undefined,
   ])[] = [
     [
       "lint",
       gates.lint,
-      () => parseEslintProblems(checkCommandOutput, worktree),
+      () => wrapProblems(parseEslintProblems(checkCommandOutput, worktree)),
     ],
     [
       "format",
       gates.format,
-      () => parseFormatProblems(checkCommandOutput, worktree),
+      () => wrapProblems(parseFormatProblems(checkCommandOutput, worktree)),
     ],
     [
       "typecheck",
       gates.typecheck,
-      () => parseTypecheckProblems(checkCommandOutput, worktree),
+      () => wrapProblems(parseTypecheckProblems(checkCommandOutput, worktree)),
     ],
     [
       "fallow",
       gates.fallow,
-      () => parseFallowProblems(checkCommandOutput, worktree),
+      () =>
+        parseFallowGateProblems(checkCommandOutput, (rawPath) =>
+          normalizeWorktreePath(worktree, rawPath),
+        ),
     ],
   ];
   for (const [gate, changedFiles, parse] of candidates) {
     if (changedFiles.length === 0) continue;
-    const problems = parse();
-    if (problems === undefined) continue;
-    if (touchesModifiedTemplateFile(problems, modifiedTemplateOwnedPaths)) {
+    const parsed = parse();
+    if (parsed === undefined) continue;
+    if (touchesModifiedTemplateFile(parsed, modifiedTemplateOwnedPaths)) {
       return undefined;
     }
     return Object.freeze({
       gate,
       gateFiles: Object.freeze([...changedFiles]),
-      problems,
+      problems: Object.freeze(parsed.map((entry) => entry.problem)),
       repair: repairForGate(gate, worktree),
     });
   }
@@ -628,8 +416,10 @@ export function createTemplateUpgradeCheckFailureRun(options: {
   readonly failedStep: TemplateUpgradeStepCommand;
   readonly steps: readonly TemplateUpgradeApplyStep[];
   readonly output: string;
+  readonly beforePackage?: string | undefined;
+  readonly afterPackage?: string | undefined;
 }): TemplateUpgradeApplyRun {
-  const { output, ...shared } = options;
+  const { output, beforePackage, afterPackage, ...shared } = options;
   const gateResult =
     shared.failedStep === "bun run check"
       ? classifyTemplateUpgradeGateFailure({
@@ -637,6 +427,8 @@ export function createTemplateUpgradeCheckFailureRun(options: {
           dependencyChanges: shared.dependencyChanges,
           checkCommandOutput: output,
           worktree: shared.worktree,
+          beforePackage,
+          afterPackage,
         })
       : undefined;
   if (gateResult !== undefined) {
