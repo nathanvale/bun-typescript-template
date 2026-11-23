@@ -57,6 +57,32 @@ export const commentCases = [
   ],
   [
     templateSourceFile,
+    "// eslint-disable-next-line no-console\nconsole.log(1);",
+    [1],
+  ],
+  [
+    templateSourceFile,
+    "// eslint-disable-next-line no-console --\nconsole.log(1);",
+    [1],
+  ],
+  [templateSourceFile, "/* eslint no-console: off */\nconsole.log(1);", [1]],
+  [
+    templateSourceFile,
+    "// @ts-expect-error\nexport const a: number = '1';",
+    [1],
+  ],
+  [
+    templateSourceFile,
+    "// biome-ignore lint/style/useConst:\nexport let a = 1;",
+    [1],
+  ],
+  [
+    templateSourceFile,
+    "// fallow-ignore-next-line unused-export\nexport const a = 1;",
+    [1],
+  ],
+  [
+    templateSourceFile,
     "// Platform: Bun drains spawn pipes.\nexport const a = 1;",
     [],
   ],
@@ -72,9 +98,30 @@ export const commentCases = [
   ],
   [
     templateSourceFile,
-    "// eslint-disable-next-line no-console\nconsole.log(1);",
+    "// eslint-disable-next-line no-console -- the CLI prints its result\nconsole.log(1);",
     [],
   ],
+  [
+    templateSourceFile,
+    "/* eslint no-console: off -- the CLI prints its result */\nconsole.log(1);",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// @ts-expect-error the fixture passes a string\nexport const a: number = '1';",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// biome-ignore lint/style/useConst: the binding is reassigned in a test\nexport let a = 1;",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// fallow-ignore-next-line unused-export -- a host imports it by name\nexport const a = 1;",
+    [],
+  ],
+  [templateSourceFile, "// eslint-enable no-console\nexport const a = 1;", []],
   [
     templateSourceFile,
     "// SAFETY: the parser checked the shape.\nconst x = y as Foo;",
@@ -104,5 +151,13 @@ export const commentCases = [
     templateSourceFile,
     'export const text = "// not a comment";\nexport const tpl = `/* nor this */`;',
     [],
+  ],
+] as const;
+
+export const commentRepairs = [
+  ["// Loop over the names.\nexport const a = 1;", "Repair: say this in code"],
+  [
+    "// eslint-disable-next-line no-console\nconsole.log(1);",
+    "give the reason after the directive",
   ],
 ] as const;

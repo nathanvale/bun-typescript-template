@@ -8,6 +8,26 @@ const safetyMarker = "SAFETY";
 const commentMarker = new RegExp(`^(?:${plainMarkers.join("|")}):`);
 const safetyJustification = new RegExp(`^${safetyMarker}:\\s*\\S`);
 const acceptedDecision = /accepted decisions?\b/i;
+const suppressionReasons = [
+  [
+    /^(?:eslint-disable(?:-next-line|-line)?|eslint|fallow-ignore(?:-next-line|-file)?)(?=\s|$)/,
+    /\s-{2,}\s+\S/,
+  ],
+  [/^@ts-(?:ignore|expect-error|nocheck)(?=\s|$)/, /^@ts-[\w-]+\s+\S/],
+  [/^biome-ignore(?:-all|-start)?(?=\s|$)/, /^biome-ignore\S*\s+[^\s:]+:\s*\S/],
+];
+const refusals = {
+  comment: {
+    problem: "A comment reads as permission, and the next agent builds on it.",
+    repair: "",
+  },
+  reason: {
+    problem:
+      "This suppression gives no reason, so the next agent cannot tell whether it still holds.",
+    repair:
+      "give the reason after the directive (eslint-disable-next-line rule -- reason, fallow-ignore-next-line kind -- reason, @ts-expect-error reason, biome-ignore lint/group/rule: reason), or fix what it suppresses and ",
+  },
+};
 const castOwners = new Set([
   "ExpressionStatement",
   "PropertyDefinition",
@@ -276,12 +296,22 @@ function castPlacements(source, assertion) {
   return placements;
 }
 
+function givesReason(directive) {
+  const found = suppressionReasons.find(([name]) => name.test(directive));
+  return found === undefined || found[1].test(directive);
+}
+
+function refusalOf(first) {
+  if (commentDirective.test(first)) return refusals.reason;
+  return refusals.comment;
+}
+
 function isAdmitted(source, block, placed) {
   const lines = block.map((comment) => comment.value.trim());
   const [first = ""] = lines;
   const { start } = block[0].loc;
   return (
-    commentDirective.test(first) ||
+    (commentDirective.test(first) && givesReason(first)) ||
     commentMarker.test(first) ||
     acceptedDecision.test(lines.join(" ")) ||
     (safetyJustification.test(first) &&
@@ -298,7 +328,7 @@ export default {
         schema: [],
         messages: {
           comment:
-            "A comment reads as permission, and the next agent builds on it. Keep a comment only when its first word is Platform: (behaviour of a runtime, operating system or tool this repository cannot change) or Interface: (a public contract the types cannot state), or when it cites an accepted decision (AGENTS.md, Authority), or when it opens with SAFETY: and a justification, on its own lines directly above the statement that holds a type cast (as T, not as const). Repair: say this in code (a clearer name, a type, a test title, or a lint rule whose message states the constraint), then delete the comment.",
+            "{{problem}} Keep a comment only when its first word is Platform: (behaviour of a runtime, operating system or tool this repository cannot change) or Interface: (a public contract the types cannot state), or when it cites an accepted decision (AGENTS.md, Authority), or when it is a lint or compiler directive that gives its reason, or when it opens with SAFETY: and a justification, on its own lines directly above the statement that holds a type cast (as T, not as const). Repair: {{repair}}say this in code (a clearer name, a type, a test title, or a lint rule whose message states the constraint), then delete the comment.",
         },
       },
       create(context) {
@@ -321,6 +351,7 @@ export default {
                   end: block[block.length - 1].loc.end,
                 },
                 messageId: "comment",
+                data: refusalOf(block[0].value.trim()),
               });
             }
           },

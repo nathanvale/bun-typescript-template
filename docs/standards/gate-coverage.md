@@ -169,7 +169,11 @@ file extensions in those directories.
   - The phrase "accepted decision" or "accepted decisions" anywhere in
     the block.
   - A lint or compiler directive, such as `eslint-disable-next-line` or
-    `@ts-expect-error`. Other rules govern those.
+    `@ts-expect-error`. A suppression gives its reason after it:
+    `-- reason` after an `eslint-disable` directive, an ESLint
+    configuration comment or a `fallow-ignore` directive, text after
+    `@ts-ignore`, `@ts-expect-error` or `@ts-nocheck`, and text after the
+    colon of a `biome-ignore` directive.
   - `SAFETY:` and a justification on its first line, on its own lines
     directly above the statement that holds a type cast (`as T`, not
     `as const`).
