@@ -2403,5 +2403,12 @@
     "testFile": "tests/template/fault-replay/planted-fault-verdict-in-process.test.ts",
     "title": "once the patch is applied",
     "source": "e39bbfd fix(planted-faults): credit a kill only to a failed assertion in a test named once"
+  },
+  {
+    "id": "e39bbfd-planted-fault-verdict-names",
+    "patch": "tests/planted-faults/patches/e39bbfd-planted-fault-verdict-names.patch",
+    "testFile": "tests/template/fault-replay/planted-fault-verdict-in-process.test.ts",
+    "title": "BROKEN when the title selects a test name the report holds twice",
+    "source": "e39bbfd fix(planted-faults): credit a kill only to a failed assertion in a test named once"
   }
 ]
