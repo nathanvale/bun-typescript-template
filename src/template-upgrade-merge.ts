@@ -3,6 +3,7 @@ import {
   mkdir,
   mkdtemp,
   readdir,
+  readFile,
   readlink,
   rm,
   symlink,
@@ -18,10 +19,7 @@ import {
   lstatIfPresent,
 } from "./template-upgrade-git.ts";
 import { OLD_TEMPLATE_JSON_FILE } from "./template-upgrade-inputs.ts";
-import {
-  type JsonMergeResult,
-  tryMergeJsonText,
-} from "./template-upgrade-json-merge.ts";
+import { tryMergeJsonText } from "./template-upgrade-json-merge.ts";
 import {
   assertNoSymlinkAncestors,
   readPlainFileBytes,
@@ -339,37 +337,6 @@ async function mergeJsonFile(options: {
   const oursPath = join(targetFolder, relativePath);
   const oldPath = join(oldFolder, relativePath);
   const newPath = join(newFolder, relativePath);
-  const json = mergeJsonSides(oursBytes, oldBytes, newBytes);
-  if (json !== undefined && json.result.conflictPaths.length === 0) {
-    await writeFile(oursPath, json.result.mergedText);
-    return "merge";
-  }
-  const fileResult = gitMergeFile(oursPath, oldPath, newPath, env);
-  if (json === undefined || fileResult === "conflict") {
-    return fileResult === "clean" ? "merge" : "conflict";
-  }
-  await writeFile(
-    oursPath,
-    `<<<<<<< ours\n` +
-      `${ensureTrailingNewline(json.oursText)}` +
-      `=======\n` +
-      `${ensureTrailingNewline(json.newText)}` +
-      `>>>>>>> new\n`,
-  );
-  return "conflict";
-}
-
-function mergeJsonSides(
-  oursBytes: Uint8Array,
-  oldBytes: Uint8Array,
-  newBytes: Uint8Array,
-):
-  | {
-      readonly oursText: string;
-      readonly newText: string;
-      readonly result: JsonMergeResult;
-    }
-  | undefined {
   const oursText = decodeTextIfUtf8(oursBytes);
   const oldText = decodeTextIfUtf8(oldBytes);
   const newText = decodeTextIfUtf8(newBytes);
@@ -378,10 +345,53 @@ function mergeJsonSides(
     oldText === undefined ||
     newText === undefined
   ) {
-    return undefined;
+    return gitMergeFile(oursPath, oldPath, newPath, env) === "clean"
+      ? "merge"
+      : "conflict";
   }
-  const result = tryMergeJsonText(oursText, oldText, newText);
-  return result === undefined ? undefined : { oursText, newText, result };
+  const json = tryMergeJsonText(oursText, oldText, newText);
+  if (json?.conflictPaths.length === 0) {
+    await writeFile(oursPath, json.mergedText);
+    return "merge";
+  }
+  if (json === undefined) {
+    if (gitMergeFile(oursPath, oldPath, newPath, env) === "conflict") {
+      return "conflict";
+    }
+    if (!repeatsMember(await readFile(oursPath, "utf8"))) {
+      return "merge";
+    }
+  }
+  await writeFile(
+    oursPath,
+    `<<<<<<< ours\n` +
+      `${ensureTrailingNewline(oursText)}` +
+      `=======\n` +
+      `${ensureTrailingNewline(newText)}` +
+      `>>>>>>> new\n`,
+  );
+  return "conflict";
+}
+
+const JSON_TOKEN =
+  /("(?:[^"\\]|\\.)*")(\s*:)?|\/\/.*|\/\*[\s\S]*?\*\/|[[\]{}]/g;
+
+function repeatsMember(text: string): boolean {
+  const scopes: Set<string>[] = [];
+  for (const [token, name, colon] of text.matchAll(JSON_TOKEN)) {
+    const names = scopes.at(-1);
+    if (name !== undefined && colon !== undefined) {
+      if (names?.has(name)) {
+        return true;
+      }
+      names?.add(name);
+    } else if (token === "{" || token === "[") {
+      scopes.push(new Set());
+    } else if (token === "}" || token === "]") {
+      scopes.pop();
+    }
+  }
+  return false;
 }
 
 async function applyUnchangedPathUpdate(
