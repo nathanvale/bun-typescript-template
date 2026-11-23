@@ -319,7 +319,10 @@ export function runTemplateUpgradeCheckSteps(options: {
       run: createTemplateUpgradeCheckFailureRun({
         ...options,
         failedStep: RECORDED_HITS_STEP,
-        steps: recorded.steps,
+        steps: Object.freeze([
+          createTemplateUpgradeApplyStep("bun install", true, "passed"),
+          ...recorded.steps,
+        ]),
         stepResult: {
           output: recorded.output,
           exitCode: 1,

@@ -566,7 +566,6 @@ export function runRecordedHitsStep(
       ok: false,
       output: record.output,
       steps: Object.freeze([
-        createTemplateUpgradeApplyStep("bun install", true, "passed"),
         createTemplateUpgradeApplyStep(RECORDED_HITS_STEP, true, "failed"),
         createTemplateUpgradeApplyStep(
           "bun run check",
