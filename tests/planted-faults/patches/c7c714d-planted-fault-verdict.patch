@@ -1,13 +1,14 @@
 diff --git a/scripts/planted-fault-verdict.ts b/scripts/planted-fault-verdict.ts
-index 5a20cf8..03a85fd 100644
+index b68b461..32a8929 100644
 --- a/scripts/planted-fault-verdict.ts
 +++ b/scripts/planted-fault-verdict.ts
-@@ -116,7 +116,7 @@ export async function judged(
+@@ -131,8 +131,7 @@ export async function judged(
      ({ name, failure }) => failure !== undefined && selected.has(name),
    );
+   const kills = (failure: string | undefined) =>
+-    failure === assertionErrorName ||
+-    (removesBound && failure === timeoutErrorName);
++    failure === assertionErrorName;
    const failing = failed
--    .filter(({ failure }) => removesBound || failure !== timeoutErrorName)
-+    .filter(({ failure }) => failure !== timeoutErrorName)
+     .filter(({ failure }) => kills(failure))
      .map(({ name }) => name);
-   if (failing.length > 0) return { kind: "KILLED", failing };
-   if (failed.length > 0)
