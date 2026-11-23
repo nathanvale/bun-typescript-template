@@ -1,0 +1,13 @@
+diff --git a/src/template-upgrade-gates.ts b/src/template-upgrade-gates.ts
+--- a/src/template-upgrade-gates.ts
++++ b/src/template-upgrade-gates.ts
+@@ -604,9 +604,6 @@ export function classifyTemplateUpgradeGateFailure(options: {
+     if (changedFiles.length === 0) continue;
+     const problems = parse();
+     if (problems === undefined) continue;
+-    if (touchesModifiedTemplateFile(problems, modifiedTemplateOwnedPaths)) {
+-      return undefined;
+-    }
+     return Object.freeze({
+       gate,
+       gateFiles: Object.freeze([...changedFiles]),

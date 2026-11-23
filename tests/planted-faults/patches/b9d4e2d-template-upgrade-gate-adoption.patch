@@ -1,0 +1,31 @@
+diff --git a/src/template-upgrade-gates.ts b/src/template-upgrade-gates.ts
+--- a/src/template-upgrade-gates.ts
++++ b/src/template-upgrade-gates.ts
+@@ -630,17 +630,7 @@ export function createTemplateUpgradeCheckFailureRun(options: {
+   readonly output: string;
+ }): TemplateUpgradeApplyRun {
+   const { output, ...shared } = options;
+-  const gateResult =
+-    shared.failedStep === "bun run check"
+-      ? classifyTemplateUpgradeGateFailure({
+-          rows: shared.rows,
+-          dependencyChanges: shared.dependencyChanges,
+-          checkCommandOutput: output,
+-          worktree: shared.worktree,
+-        })
+-      : undefined;
+-  if (gateResult !== undefined) {
+-    return createTemplateUpgradeApplyRun({
+-      exitCode: 6,
+-      status: "gate-adoption-required",
+-      ...shared,
+-      checkCommandOutput: output,
+-      gate: gateResult.gate,
+-      gateFiles: gateResult.gateFiles,
+-      gateProblems: gateResult.problems,
+-      gateRepair: gateResult.repair,
+-    });
+-  }
+   return createTemplateUpgradeApplyRun({
+     exitCode: 1,
+     status: "check-failed",

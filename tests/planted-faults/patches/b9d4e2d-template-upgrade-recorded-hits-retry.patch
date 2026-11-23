@@ -1,0 +1,10 @@
+diff --git a/src/template-upgrade-recorded-hits.ts b/src/template-upgrade-recorded-hits.ts
+--- a/src/template-upgrade-recorded-hits.ts
++++ b/src/template-upgrade-recorded-hits.ts
+@@ -226,7 +226,6 @@ function recordedHitsAction(options: RecordedHitsRequest): RecordedHitsAction {
+   const { worktree, repository, repositoryHead, env } = options;
+   if (!definesRecordedHitsScript(worktree)) return "none";
+-  if (recordingDone(options)) return "none";
+   const missingInRepositoryHead = RECORDED_HITS_FILES.some(
+     (file) =>
+       resolveRefIfPresent(repository, `${repositoryHead}:${file}`, env) ===

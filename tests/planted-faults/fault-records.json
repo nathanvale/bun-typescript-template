@@ -2266,5 +2266,40 @@
     "testFile": "tests/template/bootstrap/generated-strict-checks.test.ts",
     "title": "^bootstrapped eslint\\.config\\.mjs refuses plain unused parameters and accepts underscore-prefixed ones$",
     "source": "135edef feat(generated-repository): enforce allowUnreachableCode and underscore-prefixed unused parameters"
+  },
+  {
+    "id": "b9d4e2d-template-upgrade-recorded-hits-retry",
+    "patch": "tests/planted-faults/patches/b9d4e2d-template-upgrade-recorded-hits-retry.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-retry.test.ts",
+    "title": "^does not rerun the recorded-hits script on retry when the first recording left the template's empty files, so a finding added during the repair still fails the check$",
+    "source": "b9d4e2d fix(template-upgrade): refresh stale Fallow hits and report gate adoption"
+  },
+  {
+    "id": "b9d4e2d-template-upgrade-recorded-hits-refresh",
+    "patch": "tests/planted-faults/patches/b9d4e2d-template-upgrade-recorded-hits-refresh.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-gates.test.ts",
+    "title": "^refreshes stale Fallow recorded hits automatically and lands cleanly when changed Fallow and TypeScript settings produce zero new findings$",
+    "source": "b9d4e2d fix(template-upgrade): refresh stale Fallow hits and report gate adoption"
+  },
+  {
+    "id": "b9d4e2d-template-upgrade-no-silent-absorption",
+    "patch": "tests/planted-faults/patches/b9d4e2d-template-upgrade-no-silent-absorption.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-gates.test.ts",
+    "title": "^refreshes stale Fallow analysis identity and reports gate-adoption-required when upgrading a wiki-shaped repository across changed Fallow and layout gates$",
+    "source": "b9d4e2d fix(template-upgrade): refresh stale Fallow hits and report gate adoption"
+  },
+  {
+    "id": "b9d4e2d-template-upgrade-gate-adoption",
+    "patch": "tests/planted-faults/patches/b9d4e2d-template-upgrade-gate-adoption.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-gates.test.ts",
+    "title": "^refreshes stale Fallow analysis identity and reports gate-adoption-required when upgrading a wiki-shaped repository across changed Fallow and layout gates$",
+    "source": "b9d4e2d fix(template-upgrade): refresh stale Fallow hits and report gate adoption"
+  },
+  {
+    "id": "b9d4e2d-template-upgrade-gate-template-file",
+    "patch": "tests/planted-faults/patches/b9d4e2d-template-upgrade-gate-template-file.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-gates.test.ts",
+    "title": "^classifyTemplateUpgradeGateFailure stays check-failed for Fallow errors, ESLint crashes, template-owned file failures, and upgrades without gate changes, and check-failed text prints unlock steps$",
+    "source": "b9d4e2d fix(template-upgrade): refresh stale Fallow hits and report gate adoption"
   }
 ]

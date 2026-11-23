@@ -1,0 +1,19 @@
+diff --git a/src/template-upgrade-recorded-hits.ts b/src/template-upgrade-recorded-hits.ts
+--- a/src/template-upgrade-recorded-hits.ts
++++ b/src/template-upgrade-recorded-hits.ts
+@@ -439,14 +439,6 @@ export function runRecordedHitsStep(
+         );
+       },
+     );
+-    if (addedNewFindings) {
+-      keepIdentityOnly(
+-        request.worktree,
+-        snapshots,
+-        timeoutMilliseconds,
+-        request.env,
+-      );
+-      reason = REFRESHED_IDENTITY_REASON;
+-    }
++    void addedNewFindings;
+   }
+   markRecordingDone(request);
