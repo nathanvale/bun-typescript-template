@@ -97,6 +97,12 @@ export default tseslint.config(
     },
   },
   {
+    files: ["**/*.ts.txt"],
+    languageOptions: { parser: tseslint.parser },
+    plugins: { repository: repository },
+    rules: { "repository/no-comments": "error" },
+  },
+  {
     files: ["src/*.{ts,mts,cts,tsx,js,mjs,cjs,jsx}"],
     plugins: { repository },
     rules: {

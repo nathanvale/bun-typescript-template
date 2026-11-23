@@ -3,7 +3,11 @@ import {
   commentCases,
   commentRepairs,
 } from "../../support/lint-comment-cases.ts";
-import { hits, templateSourceFile } from "../../support/template-lint.ts";
+import {
+  hits,
+  messages,
+  templateSourceFile,
+} from "../../support/template-lint.ts";
 
 for (const [filePath, code, lines] of commentCases)
   test(`no-comments ${lines.length > 0 ? "refuses" : "admits"} ${JSON.stringify(code)} in ${filePath}`, async () => {
@@ -22,3 +26,13 @@ for (const [code, repair] of commentRepairs)
       true,
     ]);
   });
+
+test.each(["tests/fixtures/cli.ts.txt", "config/template-rules.d.mts"])(
+  "no-comments refuses a comment in %s, which the template lints",
+  async (filePath) => {
+    const found = await messages(filePath, "// Note.\nexport {};\n");
+    expect(found.map(({ ruleId, line }) => [ruleId, line])).toEqual([
+      ["repository/no-comments", 1],
+    ]);
+  },
+);

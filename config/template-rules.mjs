@@ -431,7 +431,7 @@ export default {
         schema: [],
         messages: {
           comment:
-            "{{problem}} Keep a comment only when its first word is Platform: and it names the runtime, operating system or tool whose behaviour this repository cannot change or Interface: (a public contract the types cannot state), or when it cites an accepted decision (AGENTS.md, Authority) by its id or ruling date, or when it is a lint or compiler directive that gives its reason, or when it opens with SAFETY: and a justification, on its own lines directly above the statement that holds a type cast (as T, not as const). Repair: {{repair}}say this in code (a clearer name, a type, a test title, or a lint rule whose message states the constraint), then delete the comment.",
+            "{{problem}} Keep a comment only when its first word is Platform: and it names the runtime, operating system or tool whose behaviour this repository cannot change, or Interface: (a public contract the types cannot state), or when it cites an accepted decision (AGENTS.md, Authority) by its id or ruling date, or when it is a lint or compiler directive that gives its reason, or when it opens with SAFETY: and a justification, on its own lines directly above the statement that holds a type cast (as T, not as const). Repair: {{repair}}say this in code (a clearer name, a type, a test title, or a lint rule whose message states the constraint), then delete the comment.",
         },
       },
       create(context) {
