@@ -23,6 +23,11 @@ import {
 } from "./template-upgrade-gates.ts";
 import { type ProcessEnvMap, runGitCommand } from "./template-upgrade-git.ts";
 import type { TemplateUpgradeInputs } from "./template-upgrade-inputs.ts";
+import {
+  JSON_FORMAT_STEP,
+  runJsonFormatStep,
+  skipJsonFormatSteps,
+} from "./template-upgrade-json-format.ts";
 import type { PackageDependencyChange } from "./template-upgrade-json-merge.ts";
 import type {
   TemplateUpgradeCopyChange,
@@ -276,6 +281,7 @@ export function runTemplateUpgradeCheckSteps(options: {
   readonly templateCopyChanges: readonly TemplateUpgradeCopyChange[];
   readonly beforePackage: string | undefined;
   readonly afterPackage: string | undefined;
+  readonly keyMergedPaths: readonly string[];
   readonly env: ProcessEnvMap;
 }):
   | { readonly ok: true; readonly steps: readonly TemplateUpgradeApplyStep[] }
@@ -294,6 +300,7 @@ export function runTemplateUpgradeCheckSteps(options: {
         failedStep: "bun install",
         steps: Object.freeze([
           createTemplateUpgradeApplyStep("bun install", true, "failed"),
+          ...skipJsonFormatSteps(options.keyMergedPaths, "bun install failed"),
           createTemplateUpgradeApplyStep(
             "bun run check",
             false,
@@ -306,6 +313,36 @@ export function runTemplateUpgradeCheckSteps(options: {
       }),
     };
   }
+  const formatted = runJsonFormatStep(
+    options.worktree,
+    options.keyMergedPaths,
+    options.env,
+  );
+  if (!formatted.ok) {
+    return {
+      ok: false,
+      run: createTemplateUpgradeCheckFailureRun({
+        ...options,
+        failedStep: JSON_FORMAT_STEP,
+        steps: Object.freeze([
+          createTemplateUpgradeApplyStep("bun install", true, "passed"),
+          createTemplateUpgradeApplyStep(JSON_FORMAT_STEP, true, "failed"),
+          createTemplateUpgradeApplyStep(
+            "bun run check",
+            false,
+            "skipped",
+            `${JSON_FORMAT_STEP} failed`,
+          ),
+        ]),
+        stepResult: formatted.result,
+        timeoutMilliseconds: CHECK_TIMEOUT_MS,
+      }),
+    };
+  }
+  const installed = [
+    createTemplateUpgradeApplyStep("bun install", true, "passed"),
+    ...formatted.steps,
+  ];
   const recorded = runRecordedHitsStep(
     recordedHitsRequestFor(options.worktree, options.inputs, options.env, {
       rows: options.rows,
@@ -319,7 +356,7 @@ export function runTemplateUpgradeCheckSteps(options: {
       run: createTemplateUpgradeCheckFailureRun({
         ...options,
         failedStep: RECORDED_HITS_STEP,
-        steps: recorded.steps,
+        steps: Object.freeze([...installed, ...recorded.steps]),
         stepResult: {
           output: recorded.output,
           exitCode: 1,
@@ -343,7 +380,7 @@ export function runTemplateUpgradeCheckSteps(options: {
         ...options,
         failedStep: "bun run check",
         steps: Object.freeze([
-          createTemplateUpgradeApplyStep("bun install", true, "passed"),
+          ...installed,
           ...recorded.steps,
           createTemplateUpgradeApplyStep("bun run check", true, "failed"),
         ]),
@@ -355,7 +392,7 @@ export function runTemplateUpgradeCheckSteps(options: {
   return {
     ok: true,
     steps: Object.freeze([
-      createTemplateUpgradeApplyStep("bun install", true, "passed"),
+      ...installed,
       ...recorded.steps,
       createTemplateUpgradeApplyStep("bun run check", true, "passed"),
     ]),

@@ -2378,5 +2378,26 @@
     "testFile": "tests/template/kernel-trial/kernel-cache.test.ts",
     "title": "the kernel reader refuses a kernel cache whose pinned commit is replaced by another commit's bytes, as git finds the hash mismatch$",
     "source": "319c6de feat(kernel-pin): fetch the kernel into the kernel cache when no clone is named or beside the template"
+  },
+  {
+    "id": "8652a6f-template-upgrade-gate-check",
+    "patch": "tests/planted-faults/patches/8652a6f-template-upgrade-gate-check.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-json-format.test.ts",
+    "title": "^apply formats the \\.fallowrc\\.json its JSON key merge wrote, so a skills-shaped upgrade passes bun run check$",
+    "source": "8652a6f fix(template-upgrade): format the JSON files the key merge wrote before bun run check"
+  },
+  {
+    "id": "5f09d30-template-upgrade-json-format",
+    "patch": "tests/planted-faults/patches/5f09d30-template-upgrade-json-format.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-json-format.test.ts",
+    "title": "^apply skips a key-merged \\.fallowrc\\.json the owner replaced with a link to a tracked JSON file, so the original repository keeps its bytes$",
+    "source": "5f09d30 fix(template-upgrade): skip a key-merged path the owner replaced with a link or folder before biome format"
+  },
+  {
+    "id": "20e1190-template-upgrade-json-format",
+    "patch": "tests/planted-faults/patches/20e1190-template-upgrade-json-format.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-json-format.test.ts",
+    "title": "^apply skips a key-merged \\.fallowrc\\.json the owner replaced with a hard link to a tracked JSON file, so the original repository keeps its bytes$",
+    "source": "20e1190 fix(template-upgrade): skip a hard-linked key-merged path and stop when a formatted file changed identity"
   }
 ]

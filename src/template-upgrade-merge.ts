@@ -321,6 +321,7 @@ async function mergeJsonFile(options: {
   readonly oldBytes: Uint8Array;
   readonly newBytes: Uint8Array;
   readonly env: Readonly<Record<string, string | undefined>>;
+  readonly keyMergedPaths: Set<string>;
 }): Promise<"merge" | "conflict"> {
   const {
     targetFolder,
@@ -353,6 +354,7 @@ async function mergeJsonFile(options: {
   const json = tryMergeJsonText(oursText, oldText, newText);
   if (json?.conflictPaths.length === 0) {
     await writeFile(oursPath, json.mergedText);
+    options.keyMergedPaths.add(relativePath);
     return "merge";
   }
   if (json === undefined) {
@@ -430,6 +432,7 @@ async function mergeRegularFiles(options: {
   readonly oldBytes: Uint8Array;
   readonly newBytes: Uint8Array;
   readonly env: Readonly<Record<string, string | undefined>>;
+  readonly keyMergedPaths: Set<string>;
 }): Promise<"merge" | "conflict"> {
   if (options.relativePath.endsWith(".json")) {
     return await mergeJsonFile(options);
@@ -455,6 +458,7 @@ async function mergeDivergentPath(options: {
   readonly oldEntry: TreeEntry;
   readonly newEntry: TreeEntry;
   readonly env: Readonly<Record<string, string | undefined>>;
+  readonly keyMergedPaths: Set<string>;
 }): Promise<PathMergeResult> {
   const { relativePath, targetFolder, oldFolder, newFolder, env } = options;
   const { oursEntry, oldEntry, newEntry } = options;
@@ -493,6 +497,7 @@ async function mergeDivergentPath(options: {
       oldBytes: oldEntry.bytes,
       newBytes: newEntry.bytes,
       env,
+      keyMergedPaths: options.keyMergedPaths,
     }),
   };
 }
@@ -505,6 +510,7 @@ async function mergeSinglePath(options: {
   readonly targetFolder: string;
   readonly newHasCurrentStamp: boolean;
   readonly env: Readonly<Record<string, string | undefined>>;
+  readonly keyMergedPaths: Set<string>;
 }): Promise<PathMergeResult> {
   const {
     relativePath,
@@ -566,6 +572,7 @@ async function mergeSinglePath(options: {
     oldEntry,
     newEntry,
     env,
+    keyMergedPaths: options.keyMergedPaths,
   });
 }
 
@@ -587,6 +594,7 @@ export async function mergeTemplateUpgradeTrees(
   newFolder: string,
   targetFolder: string,
   env: Readonly<Record<string, string | undefined>> = process.env,
+  keyMergedPaths = new Set<string>(),
 ): Promise<readonly TemplateUpgradeRow[]> {
   const [oldPaths, newPaths] = await Promise.all([
     collectTreePaths(oldFolder),
@@ -625,6 +633,7 @@ export async function mergeTemplateUpgradeTrees(
       targetFolder,
       newHasCurrentStamp,
       env,
+      keyMergedPaths,
     });
     rowByPath.set(
       relativePath,
