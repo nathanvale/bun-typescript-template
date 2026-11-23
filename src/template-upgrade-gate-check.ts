@@ -42,7 +42,9 @@ import {
 } from "./template-upgrade-report.ts";
 import {
   RECORDED_HITS_STEP,
+  recordedHitsRecordedBeforeRepair,
   recordedHitsRequestFor,
+  runRecordedHitsRepairStep,
   runRecordedHitsStep,
 } from "./template-upgrade-recorded-hits.ts";
 import {
@@ -385,6 +387,8 @@ export function runTemplateUpgradeCheckSteps(options: {
     options.env,
     { rows: options.rows, dependencyChanges: options.dependencyChanges },
   );
+  const recordedBeforeRepair =
+    recordedHitsRecordedBeforeRepair(recordedHitsRequest);
   const recorded = runRecordedHitsStep(recordedHitsRequest, CHECK_TIMEOUT_MS);
   if (!recorded.ok) {
     return {
@@ -430,6 +434,27 @@ export function runTemplateUpgradeCheckSteps(options: {
     ...recorded.steps,
     createTemplateUpgradeApplyStep("bun run check", true, "passed"),
   ];
+  const recordedAfterRepair = recordedBeforeRepair
+    ? runRecordedHitsRepairStep(recordedHitsRequest, CHECK_TIMEOUT_MS)
+    : { ok: true as const, steps: [] };
+  if (!recordedAfterRepair.ok) {
+    return {
+      ok: false,
+      run: createTemplateUpgradeCheckFailureRun({
+        ...options,
+        failedStep: RECORDED_HITS_STEP,
+        steps: Object.freeze([...checked, ...recordedAfterRepair.steps]),
+        stepResult: {
+          output: recordedAfterRepair.output,
+          exitCode: 1,
+          timedOut: false,
+          signalCode: null,
+        },
+        timeoutMilliseconds: CHECK_TIMEOUT_MS,
+      }),
+    };
+  }
+  const recordedSteps = [...checked, ...recordedAfterRepair.steps];
   const audit = runPushFallowAuditStep(
     options.worktree,
     options.inputs.repositoryHead,
@@ -442,7 +467,7 @@ export function runTemplateUpgradeCheckSteps(options: {
         ...options,
         failedStep: FALLOW_AUDIT_STEP,
         steps: Object.freeze([
-          ...checked,
+          ...recordedSteps,
           createTemplateUpgradeApplyStep(FALLOW_AUDIT_STEP, true, "failed"),
         ]),
         stepResult: audit.result,
@@ -450,5 +475,5 @@ export function runTemplateUpgradeCheckSteps(options: {
       }),
     };
   }
-  return { ok: true, steps: Object.freeze([...checked, audit.step]) };
+  return { ok: true, steps: Object.freeze([...recordedSteps, audit.step]) };
 }

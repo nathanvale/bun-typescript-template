@@ -370,7 +370,7 @@ exit 0
 );
 
 test(
-  "does not rerun the recorded-hits script on retry after check-failed, keeping the first recorded hits",
+  "does not rerun the recorded-hits script before bun run check on retry after check-failed, and records again only after the retried check passes",
   async () => {
     const { templateClone, baseCommit, targetCommit, branch } =
       createRecordedHitsUpgradeFixture(folder);
@@ -462,6 +462,12 @@ exit 0
         { command: "bun install", ran: true, outcome: "passed" },
         { command: "bun run check", ran: true, outcome: "passed" },
         {
+          command: "bun run quality:fallow:record-hits",
+          ran: true,
+          outcome: "passed",
+          reason: "recorded again after a repair that bun run check passed",
+        },
+        {
           command: "fallow audit",
           ran: false,
           outcome: "skipped",
@@ -475,10 +481,11 @@ exit 0
       "run check",
       "install",
       "run check",
+      "run quality:fallow:record-hits",
     ]);
     expect(
       git(repo, "show", `${branch}:fallow-dead-code-recorded-hits.json`),
-    ).toBe('{"pass":1,"file":"dead-code"}');
+    ).toBe('{"pass":2,"file":"dead-code"}');
   },
   processWatchdog(4),
 );

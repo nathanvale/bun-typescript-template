@@ -4,7 +4,9 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  renameSync,
   symlinkSync,
+  writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
@@ -165,6 +167,134 @@ function recordedHealthKeys(repo: string, branch: string): string[] {
   ) as { readonly identity_finding_counts: Record<string, unknown> };
   return Object.keys(hits.identity_finding_counts);
 }
+
+test(
+  "an upgrade whose gate-adoption repair moves a recorded complex function records it again at its new path, so the push's Fallow audit passes, and a function added during the repair is not recorded",
+  async () => {
+    const { templateClone, baseCommit: targetCommit } =
+      cloneTemplateAtHead(folder);
+    const { repo, repositoryHead } = await createCatalogRepository(
+      templateClone,
+      "moved-catalog-app",
+      "catalog.ts",
+    );
+    const { ledger, env } = prepareFastInstallBun(folder, "moved-catalog-bun-");
+    const stdout = captureStream(process.stdout);
+    const stderr = captureStream(process.stderr);
+    const args = [
+      "apply",
+      "--repository",
+      repo,
+      "--to",
+      targetCommit,
+      "--json",
+    ];
+    const runtime = { templateRoot: templateClone, env };
+    const worktree = join(
+      repo,
+      ".worktrees",
+      `template-upgrade-${targetCommit.slice(0, 7)}`,
+    );
+    const branch = `template-upgrade/${BEFORE_LAYOUT_GATE_COMMIT.slice(0, 7)}-${targetCommit.slice(0, 7)}`;
+
+    const first = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      args,
+      runtime,
+    );
+    expect(first.exitCode).toBe(6);
+    expect(JSON.parse(first.stdout)).toMatchObject({
+      status: "gate-adoption-required",
+      gate: "lint",
+      gateProblems: [
+        {
+          code: "repository/no-loose-source-with-subjects",
+          path: "src/catalog.ts",
+        },
+      ],
+    });
+
+    mkdirSync(join(worktree, "src/catalog"));
+    renameSync(
+      join(worktree, "src/catalog.ts"),
+      join(worktree, "src/catalog/catalog.ts"),
+    );
+    const commandsPath = join(worktree, "src/commands.ts");
+    const movedCommands = readFileSync(commandsPath, "utf8").replace(
+      '"./catalog.ts"',
+      '"./catalog/catalog.ts"',
+    );
+    writeFileSync(commandsPath, movedCommands);
+    const addedPath = join(worktree, "src/catalog/rank.ts");
+    writeFileSync(addedPath, complexFunction("catalogRank"));
+    writeFileSync(
+      commandsPath,
+      `import { catalogRank } from "./catalog/rank.ts";\n${movedCommands.replace(
+        "noteCount([])",
+        "noteCount([]) + catalogRank([])",
+      )}`,
+    );
+
+    const added = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      args,
+      runtime,
+    );
+    expect(added.exitCode).toBe(1);
+    expect(JSON.parse(added.stdout)).toMatchObject({
+      status: "check-failed",
+      failedStep: "bun run check",
+    });
+    expect(
+      readFileSync(join(worktree, "fallow-health-recorded-hits.json"), "utf8"),
+    ).not.toContain("catalogRank");
+
+    writeFileSync(commandsPath, movedCommands);
+    renameSync(addedPath, join(folder("removed-rank-"), "rank.ts"));
+    const moved = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      args,
+      runtime,
+    );
+    expect(moved.stderr).toBe("");
+    expect(JSON.parse(moved.stdout)).toMatchObject({
+      status: "applied",
+      steps: [
+        { command: "bun install", ran: true, outcome: "passed" },
+        { command: "bun run check", ran: true, outcome: "passed" },
+        {
+          command: "bun run quality:fallow:record-hits",
+          ran: true,
+          outcome: "passed",
+          reason: "recorded again after a repair that bun run check passed",
+        },
+        { command: "fallow audit", ran: true, outcome: "passed" },
+      ],
+    });
+    expect(upgradeCalls(ledger)).toEqual([
+      "install",
+      "run quality:fallow:record-hits",
+      "run check",
+      "install",
+      "run check",
+      "install",
+      "run check",
+      "run quality:fallow:record-hits",
+    ]);
+    expect(recordedHealthKeys(repo, branch)).toEqual([
+      "src/catalog/catalog.ts\u0000catalogScore",
+    ]);
+    expect(await pushAudit(repo, branch, repositoryHead)).toEqual({
+      exit: 0,
+      verdict: "pass",
+      complexity: [],
+    });
+  },
+  processWatchdog(8),
+);
 
 test(
   "an upgrade where no file moves records its hits once and lands a branch that the push's Fallow audit passes",

@@ -153,9 +153,9 @@ When a repository already has committed recorded-hits files and a later Template
 - If no new finding entries are added (for example, only `analysis_identity.project_config_hash` changed after a `tsconfig.base.json` update), the refreshed recorded-hits files are kept and `bun run check` proceeds normally.
 - If new finding entries would be added (for example, `.fallowrc.json` enabled a new gate such as `boundary-violation`), `apply` updates only `analysis_identity` and preserves the repository's previously recorded hits without silently absorbing the new findings. `bun run check` then surfaces the exact existing problems under `gate-adoption-required` (exit `6`) instead of failing on `project_config_hash`.
 
-The recording step runs at most once per upgrade worktree. When it passes, the upgrade marks the worktree's Git folder (`git rev-parse --git-path template-upgrade-recorded-hits-done`), and a rerun of `apply` after `check-failed` or `gate-adoption-required` never runs it again. A finding added during the repair therefore still fails `bun run check`. Removing the worktree removes the mark.
+The recording step runs before `bun run check` once per upgrade worktree. When it passes, the upgrade marks the worktree's Git folder (`git rev-parse --git-path template-upgrade-recorded-hits-done`). A rerun after `check-failed` or `gate-adoption-required` records again only after the check passes. A finding added during the repair still fails the check, and a recorded function that the repair moved is keyed to its new path. Removing the worktree removes the mark.
 
-After `bun run check` passes, `apply` runs a push's Fallow audit (`fallow audit --base <HEAD> --quiet`) and stops as `check-failed` with its output when the audit fails.
+When the check passes, `apply` runs a push's Fallow audit (`fallow audit --base <HEAD> --quiet`) and stops as `check-failed` with its output when the audit fails.
 
 With `--no-check`, the upgrade records no findings and commits the upgrade branch with empty or unrefreshed recorded-hits files. Before merging, run `bun install` and `bun run quality:fallow:record-hits` in the upgrade worktree or on the upgrade branch and commit the updated recorded-hits files.
 
