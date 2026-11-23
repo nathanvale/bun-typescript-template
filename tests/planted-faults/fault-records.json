@@ -37,7 +37,7 @@
   {
     "id": "8d55f96-check-commits",
     "patch": "tests/planted-faults/patches/8d55f96-check-commits.patch",
-    "testFile": "tests/template/check-commits/check-commits-range.test.ts",
+    "testFile": "tests/template/check-commits/check-commits-main-in-process.test.ts",
     "title": "an empty range checks nothing and fails",
     "source": "8d55f96 Gates that would check nothing fail"
   },
