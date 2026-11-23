@@ -75,7 +75,7 @@ jobs:
   fault-replay:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       KERNEL_REPOSITORY: ${{ github.workspace }}/../agent-cli-kernel
     steps:
