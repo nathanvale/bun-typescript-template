@@ -1,4 +1,12 @@
-import { existsSync, lstatSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import {
   PIN_SETTINGS,
@@ -31,6 +39,9 @@ import {
 export const RECORDED_HITS_STEP = `bun run ${RECORDED_HITS_SCRIPT}` as const;
 
 const RECORDING_DONE_MARK = "template-upgrade-recorded-hits-done";
+const RECORDING_PENDING_DIR = "template-upgrade-recorded-hits-pending";
+const PENDING_STATE_FILE = "state.json";
+const PENDING_FILES_DIR = "files";
 const REFRESHED_IDENTITY_REASON =
   "refreshed analysis identity; kept existing recorded hits";
 const METADATA_KEYS = new Set([
@@ -155,10 +166,10 @@ function matchesTemplateRecordedHits(
   return Buffer.compare(worktreeBytes, templateBytes) === 0;
 }
 
-function recordingDoneMarkPath(options: RecordedHitsRequest): string {
+function gitWorktreePath(options: RecordedHitsRequest, name: string): string {
   return runGitText(
     options.worktree,
-    ["rev-parse", "--path-format=absolute", "--git-path", RECORDING_DONE_MARK],
+    ["rev-parse", "--path-format=absolute", "--git-path", name],
     {
       code: "worktree_git_path_failed",
       message: `cannot locate the recorded-hits mark for ${options.worktree}`,
@@ -166,6 +177,98 @@ function recordingDoneMarkPath(options: RecordedHitsRequest): string {
     },
     { env: options.env },
   );
+}
+
+function recordingDoneMarkPath(options: RecordedHitsRequest): string {
+  return gitWorktreePath(options, RECORDING_DONE_MARK);
+}
+
+function recordingPendingDirPath(options: RecordedHitsRequest): string {
+  return gitWorktreePath(options, RECORDING_PENDING_DIR);
+}
+
+interface PendingSnapshotState {
+  readonly action: Exclude<RecordedHitsAction, "none">;
+  readonly snapshots: ReadonlyMap<string, Uint8Array | undefined>;
+}
+
+function parsePendingAction(
+  value: unknown,
+): Exclude<RecordedHitsAction, "none"> | undefined {
+  return value === "record-new" || value === "refresh-changed"
+    ? value
+    : undefined;
+}
+
+function persistPendingSnapshots(
+  pendingDir: string,
+  targetCommit: string,
+  action: Exclude<RecordedHitsAction, "none">,
+  snapshots: ReadonlyMap<string, Uint8Array | undefined>,
+): void {
+  const filesDir = join(pendingDir, PENDING_FILES_DIR);
+  rmSync(pendingDir, { force: true, recursive: true });
+  mkdirSync(filesDir, { recursive: true });
+  const filePresence: Record<string, boolean> = {};
+  for (const [file, bytes] of snapshots) {
+    filePresence[file] = bytes !== undefined;
+    if (bytes !== undefined) {
+      writeFileSync(join(filesDir, file), bytes);
+    }
+  }
+  const statePath = join(pendingDir, PENDING_STATE_FILE);
+  const tempStatePath = `${statePath}.tmp`;
+  writeFileSync(
+    tempStatePath,
+    `${JSON.stringify({ targetCommit, action, files: filePresence }, null, 2)}\n`,
+  );
+  renameSync(tempStatePath, statePath);
+}
+
+function readPendingSnapshots(
+  pendingDir: string,
+): PendingSnapshotState | undefined {
+  const statePath = join(pendingDir, PENDING_STATE_FILE);
+  if (!existsSync(statePath)) {
+    if (existsSync(pendingDir)) {
+      rmSync(pendingDir, { force: true, recursive: true });
+    }
+    return undefined;
+  }
+  const parsed = parseJsonObjectText(readFileSync(statePath, "utf8"));
+  const action =
+    parsed === undefined ? undefined : parsePendingAction(parsed.action);
+  const filesMap =
+    parsed === undefined ||
+    typeof parsed.files !== "object" ||
+    parsed.files === null ||
+    Array.isArray(parsed.files)
+      ? undefined
+      : Object.fromEntries(Object.entries(parsed.files));
+  if (action === undefined || filesMap === undefined) {
+    return undefined;
+  }
+  const snapshots = new Map<string, Uint8Array | undefined>();
+  for (const file of RECORDED_HITS_FILES) {
+    const present = Object.hasOwn(filesMap, file) && filesMap[file] === true;
+    snapshots.set(
+      file,
+      present
+        ? readFileSync(join(pendingDir, PENDING_FILES_DIR, file))
+        : undefined,
+    );
+  }
+  return { action, snapshots };
+}
+
+function captureWorktreeSnapshots(
+  worktree: string,
+): Map<string, Uint8Array | undefined> {
+  const snapshots = new Map<string, Uint8Array | undefined>();
+  for (const file of RECORDED_HITS_FILES) {
+    snapshots.set(file, readWorktreeRegularFileBytes(join(worktree, file)));
+  }
+  return snapshots;
 }
 
 function recordingDone(options: RecordedHitsRequest): boolean {
@@ -327,7 +430,7 @@ function formatRewrittenFiles(
 
 function keepIdentityOnly(
   worktree: string,
-  snapshots: ReadonlyMap<string, Uint8Array>,
+  snapshots: ReadonlyMap<string, Uint8Array | undefined>,
   timeoutMilliseconds: number,
   env: ProcessEnvMap,
 ): void {
@@ -335,6 +438,10 @@ function keepIdentityOnly(
   const rewritten: string[] = [];
   for (const [file, beforeBytes] of snapshots) {
     const fullPath = join(worktree, file);
+    if (beforeBytes === undefined) {
+      rmSync(fullPath, { force: true });
+      continue;
+    }
     const afterBytes = readWorktreeRegularFileBytes(fullPath);
     const beforeObj = parseJsonObjectText(utf8.decode(beforeBytes));
     const afterObj =
@@ -388,11 +495,45 @@ export function noCheckTemplateUpgradeSteps(
 
 function restoreSnapshots(
   worktree: string,
-  snapshots: ReadonlyMap<string, Uint8Array>,
+  snapshots: ReadonlyMap<string, Uint8Array | undefined>,
 ): void {
   for (const [file, beforeBytes] of snapshots) {
-    writeFileSync(join(worktree, file), beforeBytes);
+    const fullPath = join(worktree, file);
+    if (beforeBytes === undefined) {
+      rmSync(fullPath, { force: true });
+    } else {
+      writeFileSync(fullPath, beforeBytes);
+    }
   }
+}
+
+function snapshotsAddedNewFindings(
+  worktree: string,
+  snapshots: ReadonlyMap<string, Uint8Array | undefined>,
+): boolean {
+  return [...snapshots.entries()].some(([file, beforeBytes]) => {
+    const afterBytes = readWorktreeRegularFileBytes(join(worktree, file));
+    if (beforeBytes === undefined) return afterBytes !== undefined;
+    return (
+      afterBytes === undefined || fileAddedFindings(beforeBytes, afterBytes)
+    );
+  });
+}
+
+function preparePendingRecording(
+  request: RecordedHitsRequest,
+  pendingDir: string,
+): PendingSnapshotState | undefined {
+  const recovered = readPendingSnapshots(pendingDir);
+  if (recovered !== undefined) {
+    restoreSnapshots(request.worktree, recovered.snapshots);
+    return recovered;
+  }
+  const action = recordedHitsAction(request);
+  if (action === "none") return undefined;
+  const snapshots = captureWorktreeSnapshots(request.worktree);
+  persistPendingSnapshots(pendingDir, request.targetCommit, action, snapshots);
+  return { action, snapshots };
 }
 
 export function runRecordedHitsStep(
@@ -405,13 +546,13 @@ export function runRecordedHitsStep(
       readonly steps: readonly TemplateUpgradeApplyStep[];
       readonly output: string;
     } {
-  const action = recordedHitsAction(request);
-  if (action === "none") return { ok: true, steps: [] };
-  const snapshots = new Map<string, Uint8Array>();
-  for (const file of RECORDED_HITS_FILES) {
-    const bytes = readWorktreeRegularFileBytes(join(request.worktree, file));
-    if (bytes !== undefined) snapshots.set(file, bytes);
+  const pendingDir = recordingPendingDirPath(request);
+  if (recordingDone(request)) {
+    rmSync(pendingDir, { force: true, recursive: true });
+    return { ok: true, steps: [] };
   }
+  const pending = preparePendingRecording(request, pendingDir);
+  if (pending === undefined) return { ok: true, steps: [] };
   const record = runBunStep({
     worktree: request.worktree,
     args: ["run", RECORDED_HITS_SCRIPT],
@@ -419,7 +560,8 @@ export function runRecordedHitsStep(
     env: request.env,
   });
   if (!record.ok) {
-    restoreSnapshots(request.worktree, snapshots);
+    restoreSnapshots(request.worktree, pending.snapshots);
+    rmSync(pendingDir, { force: true, recursive: true });
     return {
       ok: false,
       output: record.output,
@@ -436,28 +578,20 @@ export function runRecordedHitsStep(
     };
   }
   let reason: string | undefined;
-  if (action === "refresh-changed") {
-    const addedNewFindings = [...snapshots.entries()].some(
-      ([file, beforeBytes]) => {
-        const afterBytes = readWorktreeRegularFileBytes(
-          join(request.worktree, file),
-        );
-        return (
-          afterBytes === undefined || fileAddedFindings(beforeBytes, afterBytes)
-        );
-      },
+  if (
+    pending.action === "refresh-changed" &&
+    snapshotsAddedNewFindings(request.worktree, pending.snapshots)
+  ) {
+    keepIdentityOnly(
+      request.worktree,
+      pending.snapshots,
+      timeoutMilliseconds,
+      request.env,
     );
-    if (addedNewFindings) {
-      keepIdentityOnly(
-        request.worktree,
-        snapshots,
-        timeoutMilliseconds,
-        request.env,
-      );
-      reason = REFRESHED_IDENTITY_REASON;
-    }
+    reason = REFRESHED_IDENTITY_REASON;
   }
   markRecordingDone(request);
+  rmSync(pendingDir, { force: true, recursive: true });
   return {
     ok: true,
     steps: [

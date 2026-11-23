@@ -178,9 +178,10 @@ function formatWorktreeDiscardLines(worktree: string | undefined): string[] {
     return [];
   }
   return [
-    "To discard the locked worktree instead, run:",
+    "To remove this locked worktree instead of resuming, save any edits you want to keep first, then run:",
     `  git worktree unlock ${worktree}`,
-    `  git worktree remove --force ${worktree}`,
+    `  git worktree remove ${worktree}`,
+    "Add --force to git worktree remove only after saving your work if you explicitly choose to discard uncommitted changes in that worktree.",
   ];
 }
 

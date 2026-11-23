@@ -6,6 +6,7 @@ import {
   readFileSync,
   rmSync,
   symlinkSync,
+  writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
@@ -286,7 +287,11 @@ test(
     expect(second.stdout).toContain("existing code needs gate adoption");
     expect(second.stdout).toContain("src/commands/records.ts");
     expect(second.stdout).toContain("git worktree unlock");
-    expect(second.stdout).toContain("git worktree remove --force");
+    expect(second.stdout).toContain(`git worktree remove ${worktree}`);
+    expect(second.stdout).not.toContain(
+      `  git worktree remove --force ${worktree}`,
+    );
+    expect(second.stdout).toContain("save any edits");
     expect(topLevelUpgradeCalls(ledger)).toEqual([
       "install",
       "run quality:fallow:record-hits",
@@ -480,6 +485,45 @@ test(
         path: "src/label.ts",
       },
     ]);
+
+    const { templateClone: brokenTemplate } = cloneTemplateAtHead(folder);
+    const helperPath = join(brokenTemplate, "tests/support/test-folder.ts");
+    writeFileSync(
+      helperPath,
+      readFileSync(helperPath, "utf8").replace(
+        "export function testFolder(",
+        "export function renamedTestFolder(",
+      ),
+    );
+    git(brokenTemplate, "add", "--", "tests/support/test-folder.ts");
+    git(
+      brokenTemplate,
+      "commit",
+      "--quiet",
+      "-m",
+      "rename template test helper export",
+    );
+    const brokenTarget = git(brokenTemplate, "rev-parse", "HEAD");
+    const brokenRepo = await createPreGateRepository({
+      templateClone: brokenTemplate,
+      name: "removed-export-app",
+      files: {
+        "tests/owner.test.ts":
+          'import { expect, test } from "bun:test";\nimport { testFolder } from "./support/test-folder.ts";\n\ntest("uses template helper", () => {\n  expect(typeof testFolder).toBe("function");\n});\n',
+      },
+    });
+    const brokenBun = prepareFastInstallBun("removed-export-bun-");
+    const brokenRun = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      ["apply", "--repository", brokenRepo, "--to", brokenTarget, "--json"],
+      { templateRoot: brokenTemplate, env: brokenBun.env },
+    );
+    expect(brokenRun.exitCode).toBe(1);
+    expect(JSON.parse(brokenRun.stdout)).toMatchObject({
+      status: "check-failed",
+      failedStep: "bun run check",
+    });
   },
   processWatchdog(6),
 );

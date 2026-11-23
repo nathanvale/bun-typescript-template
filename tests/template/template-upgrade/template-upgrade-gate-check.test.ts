@@ -45,6 +45,9 @@ test(
         checkCommandOutput:
           '{"error":true,"message":"baseline analysis identity is incompatible in: project_config_hash","exit_code":2}\n',
         worktree,
+        exitCode: 2,
+        timedOut: false,
+        signalCode: null,
       }),
     ).toBeUndefined();
 
@@ -54,11 +57,26 @@ test(
         dependencyChanges: [],
         checkCommandOutput: `${JSON.stringify({
           kind: "combined",
+          gate_outcomes: {
+            "error-severity-findings": { status: "fail", enforced: true },
+            "type-aware-require": { status: "pass", enforced: true },
+          },
           check: {
             unused_files: [{ path: "tests/git-fixture.test.ts" }],
           },
         })}\n`,
         worktree,
+        exitCode: 1,
+        timedOut: false,
+        signalCode: null,
+        predatedProblems: [
+          {
+            gate: "fallow",
+            code: "unused-file",
+            path: "tests/git-fixture.test.ts",
+            message: "unused file",
+          },
+        ],
       }),
     ).toBeUndefined();
 
@@ -75,6 +93,9 @@ test(
         checkCommandOutput:
           "Oops! Something went wrong! :(\nError: broken config\n",
         worktree,
+        exitCode: 2,
+        timedOut: false,
+        signalCode: null,
       }),
     ).toBeUndefined();
 
@@ -91,6 +112,17 @@ test(
         checkCommandOutput:
           "src/foo.ts(4,3): error TS7027: Unreachable code detected.\n",
         worktree,
+        exitCode: 2,
+        timedOut: false,
+        signalCode: null,
+        predatedProblems: [
+          {
+            gate: "typecheck",
+            code: "TS7027",
+            path: "src/foo.ts",
+            message: "line 4: Unreachable code detected.",
+          },
+        ],
       }),
     ).toBeUndefined();
 
@@ -133,9 +165,12 @@ exit 0
       "Repair the failure in that worktree, then rerun the same upgrade apply command.",
     );
     expect(run.stdout).toContain(`git worktree unlock ${expectedWorktree}`);
-    expect(run.stdout).toContain(
-      `git worktree remove --force ${expectedWorktree}`,
+    expect(run.stdout).toContain(`git worktree remove ${expectedWorktree}`);
+    expect(run.stdout).not.toContain(
+      `  git worktree remove --force ${expectedWorktree}`,
     );
+    expect(run.stdout).toContain("save any edits");
+    expect(run.stdout).toContain("--force");
     writeFileSync(join(worktree, "done.txt"), "ok\n");
   },
   processWatchdog(4),
@@ -162,6 +197,10 @@ test(
         dependencyChanges: [],
         checkCommandOutput: `${JSON.stringify({
           kind: "combined",
+          gate_outcomes: {
+            "duplication-findings": { status: "fail", enforced: true },
+            "type-aware-require": { status: "pass", enforced: true },
+          },
           dupes: {
             clone_groups: [
               {
@@ -174,6 +213,18 @@ test(
           },
         })}\n`,
         worktree,
+        exitCode: 1,
+        timedOut: false,
+        signalCode: null,
+        predatedProblems: [
+          {
+            gate: "fallow",
+            code: "duplication",
+            path: "src/records.ts",
+            message:
+              "duplicate code across src/records.ts, tests/git-fixture.test.ts",
+          },
+        ],
       }),
     ).toBeUndefined();
 
@@ -195,6 +246,10 @@ test(
         }),
         checkCommandOutput: `${JSON.stringify({
           kind: "combined",
+          gate_outcomes: {
+            "error-severity-findings": { status: "fail", enforced: true },
+            "type-aware-require": { status: "pass", enforced: true },
+          },
           check: {
             boundary_violations: [
               {
@@ -207,6 +262,18 @@ test(
           },
         })}\n`,
         worktree,
+        exitCode: 1,
+        timedOut: false,
+        signalCode: null,
+        predatedProblems: [
+          {
+            gate: "fallow",
+            code: "boundary-violation",
+            path: "src/commands/records.ts",
+            message:
+              "src/commands/records.ts imports src/records/find.ts (subject/commands -> subject/records)",
+          },
+        ],
       }),
     ).toMatchObject({
       gate: "fallow",
@@ -285,6 +352,157 @@ exit 0
         "utf8",
       ),
     ).toBe(originalDeadCode);
+  },
+  processWatchdog(2),
+);
+
+test(
+  "refuses gate-adoption-required on timeout, crash after findings, unchanged template file failing a new gate, or unestablished predating findings",
+  () => {
+    const worktree = folder("misclassification-wt-");
+    const fallowCombined = JSON.stringify({
+      kind: "combined",
+      gate_outcomes: {
+        "error-severity-findings": { status: "fail", enforced: true },
+        "type-aware-require": { status: "pass", enforced: true },
+      },
+      check: {
+        boundary_violations: [
+          {
+            from_path: "src/commands/records.ts",
+            to_path: "src/records/find.ts",
+            from_zone: "subject/commands",
+            to_zone: "subject/records",
+          },
+        ],
+      },
+    });
+    const predatedFallow = [
+      {
+        gate: "fallow" as const,
+        code: "boundary-violation",
+        path: "src/commands/records.ts",
+        message:
+          "src/commands/records.ts imports src/records/find.ts (subject/commands -> subject/records)",
+      },
+    ];
+    const fallowRows = [
+      {
+        path: ".fallowrc.json",
+        ownerLabel: "shared" as const,
+        outcome: "take" as const,
+      },
+    ];
+
+    expect(
+      classifyTemplateUpgradeGateFailure({
+        rows: fallowRows,
+        dependencyChanges: [],
+        checkCommandOutput: `bun run check did not finish within 240000 ms\n${fallowCombined}\n`,
+        worktree,
+        exitCode: null,
+        timedOut: true,
+        signalCode: "SIGKILL",
+        predatedProblems: predatedFallow,
+      }),
+    ).toBeUndefined();
+
+    expect(
+      classifyTemplateUpgradeGateFailure({
+        rows: fallowRows,
+        dependencyChanges: [],
+        checkCommandOutput: `${fallowCombined}\nTypeError: unexpected crash\n`,
+        worktree,
+        exitCode: 1,
+        timedOut: false,
+        signalCode: null,
+        predatedProblems: predatedFallow,
+      }),
+    ).toBeUndefined();
+
+    expect(
+      classifyTemplateUpgradeGateFailure({
+        rows: fallowRows,
+        dependencyChanges: [],
+        checkCommandOutput: `${fallowCombined}\n`,
+        worktree,
+        exitCode: 1,
+        timedOut: false,
+        signalCode: null,
+      }),
+    ).toBeUndefined();
+
+    expect(
+      classifyTemplateUpgradeGateFailure({
+        rows: [
+          {
+            path: "tsconfig.base.json",
+            ownerLabel: "shared",
+            outcome: "take",
+          },
+          {
+            path: "tests/add-on-start-up.test.ts",
+            ownerLabel: "template",
+            outcome: "untouched",
+          },
+        ],
+        dependencyChanges: [],
+        checkCommandOutput:
+          "tests/add-on-start-up.test.ts(10,3): error TS7027: Unreachable code detected.\n",
+        worktree,
+        exitCode: 2,
+        timedOut: false,
+        signalCode: null,
+        predatedProblems: [
+          {
+            gate: "typecheck",
+            code: "TS7027",
+            path: "tests/add-on-start-up.test.ts",
+            message: "line 10: Unreachable code detected.",
+          },
+        ],
+      }),
+    ).toBeUndefined();
+
+    expect(
+      classifyTemplateUpgradeGateFailure({
+        rows: [
+          {
+            path: "tsconfig.base.json",
+            ownerLabel: "shared",
+            outcome: "take",
+          },
+          {
+            path: "tests/support/test-folder.ts",
+            ownerLabel: "template",
+            outcome: "take",
+          },
+        ],
+        dependencyChanges: [],
+        checkCommandOutput:
+          'tests/owner.test.ts(2,10): error TS2305: Module "./support/test-folder.ts" has no exported member "testFolder".\n',
+        worktree,
+        exitCode: 2,
+        timedOut: false,
+        signalCode: null,
+        predatedProblems: [],
+      }),
+    ).toBeUndefined();
+
+    const valid = classifyTemplateUpgradeGateFailure({
+      rows: fallowRows,
+      dependencyChanges: [],
+      checkCommandOutput: `${fallowCombined}\n`,
+      worktree,
+      exitCode: 1,
+      timedOut: false,
+      signalCode: null,
+      predatedProblems: predatedFallow,
+    });
+    expect(valid?.gate).toBe("fallow");
+    expect(valid?.repair).toContain("Fix the listed problems");
+    expect(valid?.repair).toContain("Only if you intentionally choose");
+    expect(valid?.repair).toContain("never to hide new mistakes");
   },
   processWatchdog(2),
 );

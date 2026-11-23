@@ -297,12 +297,42 @@ function findFallowCombinedJson(
   return combined;
 }
 
+const FALLOW_FINDING_GATES = [
+  "error-severity-findings",
+  "duplication-findings",
+  "health-findings",
+] as const;
+
+function fallowGateOutcomesValid(
+  combined: Readonly<Record<string, unknown>>,
+): boolean {
+  const outcomes = asObject(combined.gate_outcomes);
+  if (outcomes === undefined) return false;
+  const typeAware = asObject(outcomes["type-aware-require"]);
+  if (
+    typeAware !== undefined &&
+    readStringField(typeAware, "status") === "fail"
+  ) {
+    return false;
+  }
+  return FALLOW_FINDING_GATES.some((gateName) => {
+    const entry = asObject(outcomes[gateName]);
+    return (
+      entry !== undefined &&
+      readStringField(entry, "status") === "fail" &&
+      entry.enforced === true
+    );
+  });
+}
+
 export function parseFallowGateProblems(
   checkOutput: string,
   normalizePath: (rawPath: string) => string,
 ): readonly TemplateUpgradeGateProblemEntry[] | undefined {
   const combined = findFallowCombinedJson(checkOutput);
-  if (combined === undefined) return undefined;
+  if (combined === undefined || !fallowGateOutcomesValid(combined)) {
+    return undefined;
+  }
   const check = asObject(combined.check);
   const rawProblems = [
     ...(check === undefined ? [] : collectBoundaryViolations(check)),
