@@ -1,9 +1,11 @@
 diff --git a/tests/support/git-fixture.ts b/tests/support/git-fixture.ts
-index dbf77af..b659204 100644
+index 0117486..407020c 100644
 --- a/tests/support/git-fixture.ts
 +++ b/tests/support/git-fixture.ts
-@@ -1,8 +1,6 @@
+@@ -1,10 +1,7 @@
  import { mkdirSync } from "node:fs";
+-import { timeoutErrorName } from "../../scripts/planted-fault-verdict.ts";
+ import { withoutRepositoryLocation } from "../../scripts/process-runner.ts";
  import { write } from "./fixture-files.ts";
  
 -const gitMilliseconds = 4_000;
@@ -11,7 +13,7 @@ index dbf77af..b659204 100644
  export const gitEnv = {
    GIT_CONFIG_GLOBAL: "/dev/null",
    GIT_CONFIG_NOSYSTEM: "1",
-@@ -32,19 +30,12 @@ export function inherited(): Record<string, string | undefined> {
+@@ -25,22 +22,12 @@ export function inherited(): Record<string, string | undefined> {
  }
  
  export function gitResult(root: string, ...args: string[]) {
@@ -25,8 +27,11 @@ index dbf77af..b659204 100644
 -    killSignal: "SIGKILL",
    });
 -  if (result.exitedDueToTimeout)
--    throw new Error(
--      `git ${args.join(" ")} did not exit within ${gitMilliseconds} ms.`,
+-    throw Object.assign(
+-      new Error(
+-        `git ${args.join(" ")} did not exit within ${gitMilliseconds} ms.`,
+-      ),
+-      { name: timeoutErrorName },
 -    );
 -  return result;
  }
