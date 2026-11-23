@@ -1,15 +1,23 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, join } from "node:path";
 import { CliError } from "../../../src/cli-error.ts";
 import {
   findSiblingKernel,
+  kernelCachePath,
   kernelPinFile,
   readKernelPin,
 } from "../../../src/kernel-pin.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import { commitIn, git, initRepository } from "../../support/git-fixture.ts";
+import { kernelCacheEnv } from "../../support/kernel-cache-fixture.ts";
 
 const folder = ownedFolders();
 const { repository, remote } = readKernelPin(ROOT);
@@ -76,13 +84,23 @@ describe("Bootstrap and the tests find the kernel repository", () => {
     );
   });
 
-  test("nowhere, and refuses naming KERNEL_REPOSITORY", () => {
+  test("nowhere, the kernel cache included, when the remote is unreachable, and refuses naming both manual routes and the cache it tried", () => {
     const parent = folder("kernel-sibling-");
     const root = templateIn(parent);
-    expect(refusalOf(() => findSiblingKernel(root, {}))).toEqual({
+    const env = kernelCacheEnv(
+      join(folder("kernel-sibling-remote-"), "absent.git"),
+      folder("kernel-sibling-cache-"),
+    );
+    const cache = kernelCachePath(env);
+    const refusal = refusalOf(() => findSiblingKernel(root, env));
+    expect(refusal).toMatchObject({
       code: "kernel_repository_missing",
-      message: `No kernel repository is at ${join(parent, repository)}.`,
-      repair: `clone ${remote} beside the template, or name its path in KERNEL_REPOSITORY`,
+      repair: `clone ${remote} beside the template, or name a clone's path in KERNEL_REPOSITORY, or rerun once git can reach ${remote} to fill the kernel cache at ${cache}`,
     });
+    expect(String(Reflect.get(Object(refusal), "message"))).toStartWith(
+      `No kernel repository is at ${join(parent, repository)}, and git could not clone ${remote} into the kernel cache at ${cache}: git says "fatal: `,
+    );
+    expect(existsSync(dirname(cache))).toBe(true);
+    expect(readdirSync(dirname(cache))).toEqual([]);
   });
 });

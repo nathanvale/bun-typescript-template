@@ -449,7 +449,11 @@ export async function withTemplateUpgradeTrees<Result>(
   env: Readonly<Record<string, string | undefined>>,
   work: (trees: TemplateUpgradeTrees) => Promise<Result>,
 ): Promise<Result> {
-  const kernelRepository = findSiblingKernel(inputs.templateRoot, env);
+  const kernelRepository = findSiblingKernel(
+    inputs.templateRoot,
+    env,
+    inputs.repositoryPinnedCommit,
+  );
   const scratchFolder = realpathSync(
     await mkdtemp(join(tmpdir(), "template-upgrade-")),
   );

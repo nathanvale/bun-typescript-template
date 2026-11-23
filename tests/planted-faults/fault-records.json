@@ -1466,7 +1466,7 @@
     "id": "0352f0d-kernel-sibling-refusal",
     "patch": "tests/planted-faults/patches/0352f0d-kernel-sibling-refusal.patch",
     "testFile": "tests/template/kernel-trial/kernel-sibling.test.ts",
-    "title": "nowhere, and refuses naming KERNEL_REPOSITORY$",
+    "title": "nowhere, the kernel cache included, when the remote is unreachable, and refuses naming both manual routes and the cache it tried$",
     "source": "0352f0d test(kernel-trial): find the kernel repository from a worktree, or refuse naming KERNEL_REPOSITORY"
   },
   {

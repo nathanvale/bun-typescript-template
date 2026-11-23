@@ -1,9 +1,19 @@
-import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { CliError } from "./cli-error.ts";
 import { git, type KernelSeam } from "./kernel-reader.ts";
+import { withoutGitLocation } from "./template-upgrade-git.ts";
 
 const file = "kernel-pin.json";
 export const kernelPinFile = file;
@@ -23,6 +33,7 @@ const restoreRepair =
   "Repair: restore it from the last commit that changed it. After its first write, only a pin move changes the kernel pin.";
 
 type Field = keyof typeof fieldPatterns;
+type Environment = Readonly<Record<string, string | undefined>>;
 
 export type KernelPin = {
   readonly repository: string;
@@ -103,6 +114,7 @@ export function siblingKernelPath(root: string, { repository }: KernelPin) {
 }
 
 const kernelCacheFolder = "bun-typescript-template/agent-cli-kernel.git";
+const networkMilliseconds = 300_000;
 
 export function kernelCachePath(
   environment: Readonly<Record<string, string | undefined>>,
@@ -115,9 +127,93 @@ export function kernelCachePath(
   return join(home, kernelCacheFolder);
 }
 
+function networkGit(
+  args: readonly string[],
+  environment: Environment,
+): string | undefined {
+  const result = Bun.spawnSync(["git", ...args], {
+    env: { ...withoutGitLocation(environment), GIT_TERMINAL_PROMPT: "0" },
+    stdin: "ignore",
+    stdout: "ignore",
+    stderr: "pipe",
+    timeout: networkMilliseconds,
+    killSignal: "SIGKILL",
+  });
+  if (result.exitedDueToTimeout)
+    return `git did not finish within ${networkMilliseconds} ms`;
+  if (result.exitCode === 0) return undefined;
+  return result.stderr.toString().trim().split("\n")[0] ?? "";
+}
+
+function cloneCache(
+  cache: string,
+  remote: string,
+  environment: Environment,
+): string | undefined {
+  mkdirSync(dirname(cache), { recursive: true });
+  const temporary = mkdtempSync(`${cache}-`);
+  try {
+    const said = networkGit(
+      ["clone", "--bare", "--quiet", remote, temporary],
+      environment,
+    );
+    if (said === undefined) renameSync(temporary, cache);
+    return said;
+  } catch (error) {
+    if (!existsSync(cache)) throw error;
+    return undefined;
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+}
+
+function cachedKernel(
+  pin: KernelPin,
+  commit: string,
+  places: readonly string[],
+  environment: Environment,
+): string {
+  const cache = kernelCachePath(environment);
+  const missing = (cause: string) =>
+    new CliError(
+      "kernel_repository_missing",
+      `No kernel repository is at ${places.join(" or ")}, and ${cause}`,
+      `clone ${pin.remote} beside the template, or name a clone's path in KERNEL_REPOSITORY, or rerun once git can reach ${pin.remote} to fill the kernel cache at ${cache}`,
+      1,
+      false,
+    );
+  if (!existsSync(cache)) {
+    const said = cloneCache(cache, pin.remote, environment);
+    if (said !== undefined)
+      throw missing(
+        `git could not clone ${pin.remote} into the kernel cache at ${cache}: git says "${said}".`,
+      );
+  }
+  const holds = () => git(cache, "cat-file", ["-e", commit]).ok;
+  if (holds()) return cache;
+  const said = networkGit(
+    [
+      "--git-dir",
+      cache,
+      "fetch",
+      "--quiet",
+      pin.remote,
+      "+refs/heads/*:refs/heads/*",
+    ],
+    environment,
+  );
+  if (holds()) return cache;
+  throw missing(
+    said === undefined
+      ? `commit ${commit} is in no branch of ${pin.remote}, so the kernel cache at ${cache} does not hold it.`
+      : `git could not fetch ${pin.remote} into the kernel cache at ${cache}: git says "${said}".`,
+  );
+}
+
 export function findSiblingKernel(
   root: string,
   environment: Readonly<Record<string, string | undefined>>,
+  commit?: string,
 ): string {
   const named = environment.KERNEL_REPOSITORY;
   if (named !== undefined && named !== "") return named;
@@ -140,12 +236,11 @@ export function findSiblingKernel(
   ];
   const found = places.find((place) => existsSync(place));
   if (found !== undefined) return found;
-  throw new CliError(
-    "kernel_repository_missing",
-    `No kernel repository is at ${[...new Set(places)].join(" or ")}.`,
-    `clone ${pin.remote} beside the template, or name its path in KERNEL_REPOSITORY`,
-    1,
-    false,
+  return cachedKernel(
+    pin,
+    commit ?? pin.commit,
+    [...new Set(places)],
+    environment,
   );
 }
 

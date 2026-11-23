@@ -23,8 +23,13 @@ These sources define the command contract the CLI kernel implements.
   the hosted check places it at the pinned commit.
 - From a worktree of the template, fault replay's included, the tests find
   it beside the main checkout.
-- From anywhere else, clone the kernel repository and name its path in
-  `KERNEL_REPOSITORY`.
+- From anywhere else, Bootstrap, a Template upgrade, and the tests that find
+  the kernel through `findSiblingKernel` use the kernel cache at
+  `$XDG_CACHE_HOME/bun-typescript-template/agent-cli-kernel.git` (or under
+  `~/.cache`), cloned from the pin's remote. The pin move, Pin verification
+  and the kernel trial do not; for those, clone the kernel repository and
+  name its path in `KERNEL_REPOSITORY`. The lookup order is in
+  [Template upgrade](../template-upgrade.md#where-the-kernel-repository-comes-from).
 
 ## The template's pin
 

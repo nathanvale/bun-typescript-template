@@ -24,7 +24,9 @@ Usage:
 
 The generated repository names the kernel by the template's Pin, and gets the
 kernel lockfile and a pointer skill for each kernel skill. Bootstrap reads the
-kernel repository beside the template, or at KERNEL_REPOSITORY.
+kernel repository at KERNEL_REPOSITORY, or beside the template, or else from
+the kernel cache under $XDG_CACHE_HOME or ~/.cache, which it clones from the
+Pin's remote the first time.
 
 Safety:
   An existing non-empty destination is refused and never overwritten.
