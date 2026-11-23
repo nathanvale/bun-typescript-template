@@ -18,6 +18,7 @@ export type TemplateUpgradeStepCommand =
   | "bun install"
   | "bun run check"
   | "biome format --write"
+  | "fallow audit"
   | `bun run ${string}`;
 
 export interface TemplateUpgradeApplyStep {

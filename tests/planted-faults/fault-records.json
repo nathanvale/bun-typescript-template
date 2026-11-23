@@ -2529,5 +2529,19 @@
     "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
     "title": "refuses when the generated repository check fails, and says the installed kernel was not restored when the starting branch's frozen install fails$",
     "source": "03da5f1 fix(pin-move): reinstall the starting branch's kernel after a refused repository Pin move"
+  },
+  {
+    "id": "77d30d8-template-upgrade-gate-check",
+    "patch": "tests/planted-faults/patches/77d30d8-template-upgrade-gate-check.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-move.test.ts",
+    "title": "an upgrade whose gate-adoption repair moves a recorded complex function records it again at its new path, so the push's Fallow audit passes, and a function added during the repair is not recorded$",
+    "source": "77d30d8 fix(template-upgrade): record hits again after a repair passes the check"
+  },
+  {
+    "id": "eb61704-template-upgrade-gate-check",
+    "patch": "tests/planted-faults/patches/eb61704-template-upgrade-gate-check.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-move.test.ts",
+    "title": "apply stops as check-failed with the audit's output when the push's Fallow audit fails after bun run check passed$",
+    "source": "eb61704 feat(template-upgrade): run the push's Fallow audit before apply commits the upgrade"
   }
 ]

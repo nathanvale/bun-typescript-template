@@ -1,5 +1,5 @@
 diff --git a/src/template-upgrade-gate-check.ts b/src/template-upgrade-gate-check.ts
-index 5d7cbd2..7941795 100644
+index ac9d6a1..aeb5f2b 100644
 --- a/src/template-upgrade-gate-check.ts
 +++ b/src/template-upgrade-gate-check.ts
 @@ -23,11 +23,6 @@ import {
@@ -14,7 +14,7 @@ index 5d7cbd2..7941795 100644
  import type { PackageDependencyChange } from "./template-upgrade-json-merge.ts";
  import type {
    TemplateUpgradeCopyChange,
-@@ -281,7 +276,6 @@ export function runTemplateUpgradeCheckSteps(options: {
+@@ -319,7 +314,6 @@ export function runTemplateUpgradeCheckSteps(options: {
    readonly templateCopyChanges: readonly TemplateUpgradeCopyChange[];
    readonly beforePackage: string | undefined;
    readonly afterPackage: string | undefined;
@@ -22,7 +22,7 @@ index 5d7cbd2..7941795 100644
    readonly env: ProcessEnvMap;
  }):
    | { readonly ok: true; readonly steps: readonly TemplateUpgradeApplyStep[] }
-@@ -300,7 +294,6 @@ export function runTemplateUpgradeCheckSteps(options: {
+@@ -338,7 +332,6 @@ export function runTemplateUpgradeCheckSteps(options: {
          failedStep: "bun install",
          steps: Object.freeze([
            createTemplateUpgradeApplyStep("bun install", true, "failed"),
@@ -30,7 +30,7 @@ index 5d7cbd2..7941795 100644
            createTemplateUpgradeApplyStep(
              "bun run check",
              false,
-@@ -313,36 +306,6 @@ export function runTemplateUpgradeCheckSteps(options: {
+@@ -351,36 +344,6 @@ export function runTemplateUpgradeCheckSteps(options: {
        }),
      };
    }
@@ -64,22 +64,19 @@ index 5d7cbd2..7941795 100644
 -    createTemplateUpgradeApplyStep("bun install", true, "passed"),
 -    ...formatted.steps,
 -  ];
-   const recorded = runRecordedHitsStep(
-     recordedHitsRequestFor(options.worktree, options.inputs, options.env, {
-       rows: options.rows,
-@@ -356,7 +319,10 @@ export function runTemplateUpgradeCheckSteps(options: {
+   const recordedHitsRequest = recordedHitsRequestFor(
+     options.worktree,
+     options.inputs,
+@@ -396,7 +359,7 @@ export function runTemplateUpgradeCheckSteps(options: {
        run: createTemplateUpgradeCheckFailureRun({
          ...options,
          failedStep: RECORDED_HITS_STEP,
 -        steps: Object.freeze([...installed, ...recorded.steps]),
-+        steps: Object.freeze([
-+          createTemplateUpgradeApplyStep("bun install", true, "passed"),
-+          ...recorded.steps,
-+        ]),
++        steps: Object.freeze([createTemplateUpgradeApplyStep("bun install", true, "passed"), ...recorded.steps]),
          stepResult: {
            output: recorded.output,
            exitCode: 1,
-@@ -380,7 +346,7 @@ export function runTemplateUpgradeCheckSteps(options: {
+@@ -420,7 +383,7 @@ export function runTemplateUpgradeCheckSteps(options: {
          ...options,
          failedStep: "bun run check",
          steps: Object.freeze([
@@ -88,12 +85,12 @@ index 5d7cbd2..7941795 100644
            ...recorded.steps,
            createTemplateUpgradeApplyStep("bun run check", true, "failed"),
          ]),
-@@ -392,7 +358,7 @@ export function runTemplateUpgradeCheckSteps(options: {
-   return {
-     ok: true,
-     steps: Object.freeze([
--      ...installed,
-+      createTemplateUpgradeApplyStep("bun install", true, "passed"),
-       ...recorded.steps,
-       createTemplateUpgradeApplyStep("bun run check", true, "passed"),
-     ]),
+@@ -430,7 +393,7 @@ export function runTemplateUpgradeCheckSteps(options: {
+     };
+   }
+   const checked = [
+-    ...installed,
++    createTemplateUpgradeApplyStep("bun install", true, "passed"),
+     ...recorded.steps,
+     createTemplateUpgradeApplyStep("bun run check", true, "passed"),
+   ];

@@ -3,6 +3,7 @@ import {
   copyFileSync,
   lstatSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   readlinkSync,
   renameSync,
@@ -340,6 +341,31 @@ export function writeScriptedBun(
       PATH: `${binFolder}${delimiter}${process.env.PATH ?? ""}`,
     },
   };
+}
+
+export function linkTemplateNodeModules(destination: string): void {
+  const modules = join(destination, "node_modules");
+  rmSync(modules, { force: true, recursive: true });
+  mkdirSync(modules, { recursive: true });
+  for (const name of readdirSync(join(ROOT, "node_modules"))) {
+    symlinkSync(join(ROOT, "node_modules", name), join(modules, name));
+  }
+  const kernelPackage = readKernelPin(ROOT).repository;
+  rmSync(join(modules, kernelPackage), { force: true, recursive: true });
+  kernelCheckout(join(modules, kernelPackage));
+}
+
+const TEMPLATE_UPGRADE_CALLS = new Set([
+  "install",
+  "run quality:fallow:record-hits",
+  "run check",
+]);
+
+export function templateUpgradeCalls(ledger: string): string[] {
+  return readFileSync(ledger, "utf8")
+    .trim()
+    .split("\n")
+    .filter((line) => TEMPLATE_UPGRADE_CALLS.has(line));
 }
 
 export function prepareFastInstallBun(

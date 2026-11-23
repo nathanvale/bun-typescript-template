@@ -44,6 +44,8 @@ const PENDING_STATE_FILE = "state.json";
 const PENDING_FILES_DIR = "files";
 const REFRESHED_IDENTITY_REASON =
   "refreshed analysis identity; kept existing recorded hits";
+const RECORDED_AFTER_REPAIR_REASON =
+  "recorded again after a repair that bun run check passed";
 const METADATA_KEYS = new Set([
   "kind",
   "identity",
@@ -281,6 +283,12 @@ function recordingDone(options: RecordedHitsRequest): boolean {
     if (code === "ENOENT") return false;
     throw error;
   }
+}
+
+export function recordedHitsRecordedBeforeRepair(
+  request: RecordedHitsRequest,
+): boolean {
+  return definesRecordedHitsScript(request.worktree) && recordingDone(request);
 }
 
 function markRecordingDone(options: RecordedHitsRequest): void {
@@ -536,6 +544,48 @@ function preparePendingRecording(
   const snapshots = captureWorktreeSnapshots(request.worktree);
   persistPendingSnapshots(pendingDir, request.targetCommit, action, snapshots);
   return { action, snapshots };
+}
+
+// Platform: Fallow keys a recorded hit by file path and function name, and its
+// audit of changed files reports a moved function as new.
+export function runRecordedHitsRepairStep(
+  request: RecordedHitsRequest,
+  timeoutMilliseconds: number,
+):
+  | { readonly ok: true; readonly steps: readonly TemplateUpgradeApplyStep[] }
+  | {
+      readonly ok: false;
+      readonly steps: readonly TemplateUpgradeApplyStep[];
+      readonly output: string;
+    } {
+  const snapshots = captureWorktreeSnapshots(request.worktree);
+  const record = runBunStep({
+    worktree: request.worktree,
+    args: ["run", RECORDED_HITS_SCRIPT],
+    timeoutMilliseconds,
+    env: request.env,
+  });
+  if (!record.ok) {
+    restoreSnapshots(request.worktree, snapshots);
+    return {
+      ok: false,
+      output: record.output,
+      steps: [
+        createTemplateUpgradeApplyStep(RECORDED_HITS_STEP, true, "failed"),
+      ],
+    };
+  }
+  return {
+    ok: true,
+    steps: [
+      createTemplateUpgradeApplyStep(
+        RECORDED_HITS_STEP,
+        true,
+        "passed",
+        RECORDED_AFTER_REPAIR_REASON,
+      ),
+    ],
+  };
 }
 
 export function runRecordedHitsStep(
