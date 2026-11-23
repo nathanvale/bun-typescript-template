@@ -2329,5 +2329,12 @@
     "testFile": "tests/template/bootstrap/generated-source-layout-gate.test.ts",
     "title": "^bootstrapped \\.fallowrc\\.json treats src/commands/ files as entry files that wire subjects$",
     "source": "162c665 feat(generated-repository): put src/commands/ files in the entry zone"
+  },
+  {
+    "id": "23e59a0-template-upgrade-merge",
+    "patch": "tests/planted-faults/patches/23e59a0-template-upgrade-merge.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-json-conflicts.test.ts",
+    "title": "^a JSON key conflict whose text merges cleanly is written as one marked conflict, ours above new, that does not parse$",
+    "source": "23e59a0 fix(template-upgrade): mark a JSON key conflict whose text merges cleanly"
   }
 ]
