@@ -1,6 +1,7 @@
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { findSiblingKernel, readKernelPin } from "../../src/kernel-pin.ts";
+import { CliError } from "../../src/cli-error.ts";
+import { readKernelPin, siblingKernelPath } from "../../src/kernel-pin.ts";
 import { ROOT } from "./bootstrap-cli-fixture.ts";
 import { git, gitOutput } from "./git-fixture.ts";
 import { gitWithInput } from "./git-object-fixture.ts";
@@ -14,8 +15,33 @@ export const templateCommitHoldingS5 =
 
 export const absentCommit = "0123456789abcdef0123456789abcdef01234567";
 
-export function siblingKernel(): string {
-  return findSiblingKernel(ROOT, process.env);
+export function siblingKernel(
+  root = ROOT,
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+): string {
+  const named = environment.KERNEL_REPOSITORY;
+  if (named !== undefined && named !== "") return named;
+  const pin = readKernelPin(root);
+  const objects = git(
+    root,
+    "rev-parse",
+    "--path-format=absolute",
+    "--git-common-dir",
+  );
+  const places = [
+    ...new Set(
+      [root, dirname(objects)].map((at) => siblingKernelPath(at, pin)),
+    ),
+  ];
+  const found = places.find((place) => existsSync(place));
+  if (found !== undefined) return found;
+  throw new CliError(
+    "kernel_repository_missing",
+    `No kernel repository is at ${places.join(" or ")}.`,
+    `clone ${pin.remote} beside the template, or name its path in KERNEL_REPOSITORY`,
+    1,
+    false,
+  );
 }
 
 export function kernelClone(folder: string, mainAt = pinnedCommit): string {

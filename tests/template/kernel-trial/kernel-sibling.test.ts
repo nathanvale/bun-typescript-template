@@ -18,6 +18,7 @@ import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import { commitIn, git, initRepository } from "../../support/git-fixture.ts";
 import { kernelCacheEnv } from "../../support/kernel-cache-fixture.ts";
+import { siblingKernel } from "../../support/kernel-sibling.ts";
 
 const folder = ownedFolders();
 const { repository, remote } = readKernelPin(ROOT);
@@ -42,7 +43,7 @@ function refusalOf(work: () => unknown) {
   return "no refusal";
 }
 
-describe("Bootstrap and the tests find the kernel repository", () => {
+describe("Bootstrap and a Template upgrade find the kernel repository", () => {
   test("at KERNEL_REPOSITORY when it is set", () => {
     const root = templateIn(folder("kernel-sibling-"));
     expect(findSiblingKernel(root, { KERNEL_REPOSITORY: "/some/kernel" })).toBe(
@@ -102,5 +103,26 @@ describe("Bootstrap and the tests find the kernel repository", () => {
     );
     expect(existsSync(dirname(cache))).toBe(true);
     expect(readdirSync(dirname(cache))).toEqual([]);
+  });
+});
+
+describe("The tests' kernel lookup", () => {
+  test("stops before the kernel cache, refusing as before and writing nothing under HOME or XDG_CACHE_HOME", () => {
+    const parent = folder("kernel-sibling-");
+    const root = templateIn(parent);
+    const home = folder("kernel-sibling-home-");
+    const env = {
+      ...kernelCacheEnv(
+        join(folder("kernel-sibling-remote-"), "absent.git"),
+        home,
+      ),
+      HOME: home,
+    };
+    expect(refusalOf(() => siblingKernel(root, env))).toEqual({
+      code: "kernel_repository_missing",
+      message: `No kernel repository is at ${join(parent, repository)}.`,
+      repair: `clone ${remote} beside the template, or name its path in KERNEL_REPOSITORY`,
+    });
+    expect(readdirSync(home)).toEqual([]);
   });
 });
