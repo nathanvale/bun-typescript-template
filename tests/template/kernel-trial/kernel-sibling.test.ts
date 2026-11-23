@@ -14,11 +14,12 @@ import {
   kernelPinFile,
   readKernelPin,
 } from "../../../src/kernel-pin.ts";
-import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
+import { invokeIn, ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import { commitIn, git, initRepository } from "../../support/git-fixture.ts";
 import { kernelCacheEnv } from "../../support/kernel-cache-fixture.ts";
 import { siblingKernel } from "../../support/kernel-sibling.ts";
+import { cloneTemplateAtHead } from "../../support/template-upgrade-fixture.ts";
 
 const folder = ownedFolders();
 const { repository, remote } = readKernelPin(ROOT);
@@ -106,23 +107,48 @@ describe("Bootstrap and a Template upgrade find the kernel repository", () => {
   });
 });
 
+function emptyHomeEnv(home: string) {
+  return {
+    ...kernelCacheEnv(
+      join(folder("kernel-sibling-remote-"), "absent.git"),
+      home,
+    ),
+    HOME: home,
+  };
+}
+
 describe("The tests' kernel lookup", () => {
   test("stops before the kernel cache, refusing as before and writing nothing under HOME or XDG_CACHE_HOME", () => {
     const parent = folder("kernel-sibling-");
     const root = templateIn(parent);
     const home = folder("kernel-sibling-home-");
-    const env = {
-      ...kernelCacheEnv(
-        join(folder("kernel-sibling-remote-"), "absent.git"),
-        home,
-      ),
-      HOME: home,
-    };
+    const env = emptyHomeEnv(home);
     expect(refusalOf(() => siblingKernel(root, env))).toEqual({
       code: "kernel_repository_missing",
       message: `No kernel repository is at ${join(parent, repository)}.`,
       repair: `clone ${remote} beside the template, or name its path in KERNEL_REPOSITORY`,
     });
     expect(readdirSync(home)).toEqual([]);
+  });
+
+  test("keeps a Bootstrap started through invoke off the kernel cache, refusing before it starts and writing nothing under HOME or XDG_CACHE_HOME", async () => {
+    const { templateClone } = cloneTemplateAtHead(folder);
+    const home = folder("kernel-sibling-home-");
+    const destination = join(folder("kernel-sibling-made-"), "made");
+    const refusal = await invokeIn(templateClone, emptyHomeEnv(home), [
+      "--destination",
+      destination,
+      "--source-packet",
+      "/abs/packets/demo",
+      "--json",
+    ]).catch((error: unknown) => error);
+    expect(refusal).toBeInstanceOf(CliError);
+    expect(refusal).toMatchObject({
+      code: "kernel_repository_missing",
+      message: `No kernel repository is at ${join(dirname(templateClone), repository)}.`,
+      repair: `clone ${remote} beside the template, or name its path in KERNEL_REPOSITORY`,
+    });
+    expect(readdirSync(home)).toEqual([]);
+    expect(existsSync(destination)).toBe(false);
   });
 });

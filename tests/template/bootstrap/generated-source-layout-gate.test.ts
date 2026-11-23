@@ -6,6 +6,7 @@ import { ESLint } from "eslint";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
 import {
   bootstrapCliFixture,
+  invokeIn,
   requireSuccess,
   ROOT,
   runCommand,
@@ -36,20 +37,13 @@ interface FallowReport {
 }
 
 function bootstrapIsolated(destination: string) {
-  return runCommand(
-    ROOT,
-    [
-      process.execPath,
-      "run",
-      "src/bootstrap.ts",
-      "--destination",
-      destination,
-      "--source-packet",
-      "https://example.test/spec",
-      "--json",
-    ],
-    { ...inherited(), ...gitEnv },
-  );
+  return invokeIn(ROOT, { ...inherited(), ...gitEnv }, [
+    "--destination",
+    destination,
+    "--source-packet",
+    "https://example.test/spec",
+    "--json",
+  ]);
 }
 
 function linkTemplatePackagesAndKernel(destination: string): void {

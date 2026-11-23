@@ -12,7 +12,11 @@ import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import { git, gitEnv, inherited } from "../../support/git-fixture.ts";
 import { bootstrapRow, withEnvironment } from "../../support/recipe-fixture.ts";
-import { kernelClone, trialBase } from "../../support/kernel-sibling.ts";
+import {
+  kernelClone,
+  siblingKernel,
+  trialBase,
+} from "../../support/kernel-sibling.ts";
 import {
   oneDependencyChanged,
   kernelTrials,
@@ -96,7 +100,11 @@ describe("the kernel trial", () => {
       const work = folder("kernel-lockfile-");
       const destination = join(work, "made");
       const { commit } = readKernelPin(ROOT);
-      const env = { ...inherited(), ...gitEnv };
+      const env = {
+        ...inherited(),
+        ...gitEnv,
+        KERNEL_REPOSITORY: siblingKernel(ROOT, inherited()),
+      };
       const made = await spawnBounded(
         [
           process.execPath,

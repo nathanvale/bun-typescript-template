@@ -26,7 +26,9 @@ These sources define the command contract the CLI kernel implements.
 - From anywhere else, clone the kernel repository and name its path in
   `KERNEL_REPOSITORY`. The tests' `siblingKernel` helper never reads the
   kernel cache: with no clone named or beside the template, it refuses with
-  `kernel_repository_missing`. The kernel cache's own tests fill a kernel cache
+  `kernel_repository_missing`. Each Bootstrap or Template upgrade that a test
+  starts gets `KERNEL_REPOSITORY`, from that helper or from the test itself.
+  The kernel cache's own tests are the exception: they fill a kernel cache
   under a test-owned `XDG_CACHE_HOME` from a local bare remote.
 - Bootstrap and a Template upgrade fall back to the kernel cache at
   `$XDG_CACHE_HOME/my-agent-dojo/bun-typescript-template/agent-cli-kernel.git`

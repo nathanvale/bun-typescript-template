@@ -2,11 +2,11 @@ import { existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { CliError } from "../../src/cli-error.ts";
 import { readKernelPin, siblingKernelPath } from "../../src/kernel-pin.ts";
-import { ROOT } from "./bootstrap-cli-fixture.ts";
 import { git, gitOutput } from "./git-fixture.ts";
 import { gitWithInput } from "./git-object-fixture.ts";
 
-const pinnedCommit = readKernelPin(ROOT).commit;
+const templateRoot = join(import.meta.dir, "../..");
+const pinnedCommit = readKernelPin(templateRoot).commit;
 
 export const trialBase = "426e5dbdb09fada8950f3aaea3b5204f1da40907";
 
@@ -16,7 +16,7 @@ export const templateCommitHoldingS5 =
 export const absentCommit = "0123456789abcdef0123456789abcdef01234567";
 
 export function siblingKernel(
-  root = ROOT,
+  root = templateRoot,
   environment: Readonly<Record<string, string | undefined>> = process.env,
 ): string {
   const named = environment.KERNEL_REPOSITORY;
