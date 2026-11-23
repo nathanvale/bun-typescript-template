@@ -178,19 +178,22 @@ file extensions in those directories.
     the block, followed by the decision's citation: an ID such as `N4a`
     or `BN-03`, or a parenthesis that holds an ID, a ruling date such as
     `19 November 2026`, or a question number such as `question 4`.
-  - `@ts-check`, or a TypeScript, Biome or Fallow suppression with a
-    reason in words after it: text after `@ts-ignore`, `@ts-expect-error`
+  - `@ts-check`, or a TypeScript, Biome format or Fallow suppression with
+    a reason in words after it: text after `@ts-ignore`, `@ts-expect-error`
     or `@ts-nocheck` (any suffix or punctuation `tsc` accepts), after the
-    colon of a `biome-ignore` directive, or after `--` in a
-    `fallow-ignore` directive. A block that holds a directive stays only
-    when every comment in it is one of these.
-- ESLint inline configuration (`eslint-disable*`, `eslint-enable`,
-  `eslint`, `global`, `exported`) never stays: `eslint.config.mjs` sets
-  `noInlineConfig`, here and in a generated repository, so it would change
-  nothing.
+    colon of `biome-ignore format:` or `biome-ignore-all format:`, or after
+    `--` in a `fallow-ignore` directive. It opens its comment exactly (no
+    extra `/` or `*`), is one line, and is alone on that line. A block that
+    holds a directive stays only when every comment in it is one of these.
   - `SAFETY:` and a justification on its first line, on its own lines
     directly above the statement that holds a type cast (`as T`, not
     `as const`).
+- Each comment is checked for a directive on every line it spans, before
+  any label in its block: `tsc` also reads one after `///`.
+- ESLint inline configuration (`eslint-disable*`, `eslint-enable`,
+  `eslint`, `global`, `exported`) never stays: `eslint.config.mjs` sets
+  `noInlineConfig`, here and in a generated repository. Nor does
+  `biome-ignore lint`, since Biome's linter is off in `biome.json`.
 - Everything else goes into code: a name, a type, a test title, or a lint
   rule whose message explains the constraint. An empty `catch` says what
   happens next in code (`return`, `continue`, or a rethrow), not in prose.
@@ -201,6 +204,8 @@ file extensions in those directories.
 - Fault `26c4d94-eslint-config-inline` drops `noInlineConfig`, and fault
   `0ebf758-template-rules` admits narration after a directive; a case of
   the directive table in `tests/support/lint-comment-cases.ts` kills each.
+  So does fault `cc1aefc-template-rules`, which reads only a comment's
+  first line.
 - Fault `66ec838-template-rules` admits a suppression with no reason,
   fault `938cab2-template-rules` admits any mention of an accepted
   decision, and fault `7e6536a-template-rules` admits a `Platform:`
