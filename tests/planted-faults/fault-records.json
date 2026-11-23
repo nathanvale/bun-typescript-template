@@ -2385,5 +2385,12 @@
     "testFile": "tests/template/template-upgrade/template-upgrade-json-format.test.ts",
     "title": "^apply formats the \\.fallowrc\\.json its JSON key merge wrote, so a skills-shaped upgrade passes bun run check$",
     "source": "8652a6f fix(template-upgrade): format the JSON files the key merge wrote before bun run check"
+  },
+  {
+    "id": "5f09d30-template-upgrade-json-format",
+    "patch": "tests/planted-faults/patches/5f09d30-template-upgrade-json-format.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-json-format.test.ts",
+    "title": "^apply skips a key-merged \\.fallowrc\\.json the owner replaced with a link to a tracked JSON file, so the original repository keeps its bytes$",
+    "source": "5f09d30 fix(template-upgrade): skip a key-merged path the owner replaced with a link or folder before biome format"
   }
 ]
