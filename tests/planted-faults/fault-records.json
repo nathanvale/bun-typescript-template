@@ -2322,5 +2322,12 @@
     "testFile": "tests/template/template-upgrade/template-upgrade-gate-check.test.ts",
     "title": "^refuses gate-adoption-required on timeout, crash after findings, unchanged template file failing a new gate, or unestablished predating findings$",
     "source": "885b9fc fix(template-upgrade): harden snapshot recovery, gate classification, and operator wording"
+  },
+  {
+    "id": "23e59a0-template-upgrade-merge",
+    "patch": "tests/planted-faults/patches/23e59a0-template-upgrade-merge.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-json-conflicts.test.ts",
+    "title": "^a JSON key conflict whose text merges cleanly is written as one marked conflict, ours above new, that does not parse$",
+    "source": "23e59a0 fix(template-upgrade): mark a JSON key conflict whose text merges cleanly"
   }
 ]
