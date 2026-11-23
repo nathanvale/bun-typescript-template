@@ -2,25 +2,22 @@ import { expect, test } from "bun:test";
 import {
   existsSync,
   mkdirSync,
-  readdirSync,
   readFileSync,
   renameSync,
-  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { readKernelPin } from "../../../src/kernel-pin.ts";
-import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import { commitIn, git, gitEnv, inherited } from "../../support/git-fixture.ts";
-import { kernelCheckout } from "../../support/kernel-sibling.ts";
 import { processWatchdog, spawnBounded } from "../../support/process.ts";
 import { streamWrites } from "../../support/stream-writes.ts";
 import {
   bootstrapGeneratedRepository,
   cloneTemplateAtHead,
   invokeTemplateUpgradeMain,
+  linkTemplateNodeModules,
   prepareFastInstallBun,
+  templateUpgradeCalls,
   writeScriptedBun,
 } from "../../support/template-upgrade-fixture.ts";
 
@@ -61,19 +58,6 @@ function complexFunction(name: string): string {
 `;
 }
 
-const TRACKED_CALLS = new Set([
-  "install",
-  "run quality:fallow:record-hits",
-  "run check",
-]);
-
-function upgradeCalls(ledger: string): string[] {
-  return readFileSync(ledger, "utf8")
-    .trim()
-    .split("\n")
-    .filter((line) => TRACKED_CALLS.has(line));
-}
-
 async function createCatalogRepository(
   templateClone: string,
   name: string,
@@ -105,16 +89,6 @@ async function createCatalogRepository(
   return { repo, repositoryHead: sha };
 }
 
-function linkNodeModules(destination: string): void {
-  const modules = join(destination, "node_modules");
-  mkdirSync(modules, { recursive: true });
-  for (const name of readdirSync(join(ROOT, "node_modules"))) {
-    symlinkSync(join(ROOT, "node_modules", name), join(modules, name));
-  }
-  const kernelPackage = readKernelPin(ROOT).repository;
-  kernelCheckout(join(modules, kernelPackage));
-}
-
 async function pushAudit(
   repo: string,
   branch: string,
@@ -126,7 +100,7 @@ async function pushAudit(
 }> {
   const checkout = join(folder("push-audit-"), "checkout");
   git(repo, "worktree", "add", "--quiet", "--detach", checkout, branch);
-  linkNodeModules(checkout);
+  linkTemplateNodeModules(checkout);
   const audit = await spawnBounded(
     [
       join(checkout, "node_modules/.bin/fallow"),
@@ -274,7 +248,7 @@ test(
         { command: "fallow audit", ran: true, outcome: "passed" },
       ],
     });
-    expect(upgradeCalls(ledger)).toEqual([
+    expect(templateUpgradeCalls(ledger)).toEqual([
       "install",
       "run quality:fallow:record-hits",
       "run check",
@@ -334,7 +308,7 @@ test(
         { command: "fallow audit", ran: true, outcome: "passed" },
       ],
     });
-    expect(upgradeCalls(ledger)).toEqual([
+    expect(templateUpgradeCalls(ledger)).toEqual([
       "install",
       "run quality:fallow:record-hits",
       "run check",

@@ -1,57 +1,24 @@
 import { expect, test } from "bun:test";
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { readKernelPin } from "../../../src/kernel-pin.ts";
 import { RECORDED_HITS_FILES } from "../../../src/recipe.ts";
-import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import { commitIn, git, gitEnv, inherited } from "../../support/git-fixture.ts";
-import { kernelCheckout } from "../../support/kernel-sibling.ts";
 import { processWatchdog, spawnBounded } from "../../support/process.ts";
 import { streamWrites } from "../../support/stream-writes.ts";
 import {
   bootstrapGeneratedRepository,
   cloneTemplateAtHead,
   invokeTemplateUpgradeMain,
+  linkTemplateNodeModules,
   prepareFastInstallBun,
+  templateUpgradeCalls,
 } from "../../support/template-upgrade-fixture.ts";
 
 const folder = ownedFolders();
 const captureStream = streamWrites();
 
 const PRE_GATE_TEMPLATE_COMMIT = "800ea873324c2654a80912e9c6b311fa2458ef24";
-
-function linkNodeModulesTemporarily(destination: string) {
-  const modules = join(destination, "node_modules");
-  rmSync(modules, { force: true, recursive: true });
-  mkdirSync(modules, { recursive: true });
-  for (const name of readdirSync(join(ROOT, "node_modules"))) {
-    symlinkSync(join(ROOT, "node_modules", name), join(modules, name));
-  }
-  const kernelPackage = readKernelPin(ROOT).repository;
-  rmSync(join(modules, kernelPackage), { force: true, recursive: true });
-  kernelCheckout(join(modules, kernelPackage));
-}
-
-function topLevelUpgradeCalls(ledgerPath: string): string[] {
-  const tracked = new Set([
-    "install",
-    "run quality:fallow:record-hits",
-    "run check",
-  ]);
-  return readFileSync(ledgerPath, "utf8")
-    .trim()
-    .split("\n")
-    .filter((line) => tracked.has(line));
-}
 
 async function createPreGateRepository(options: {
   readonly templateClone: string;
@@ -86,7 +53,7 @@ async function createPreGateRepository(options: {
   }
   commitIn(repo, "add pre-upgrade repository code", filesToCommit);
 
-  linkNodeModulesTemporarily(repo);
+  linkTemplateNodeModules(repo);
   try {
     const format = await spawnBounded([process.execPath, "run", "format"], {
       cwd: repo,
@@ -264,7 +231,7 @@ test(
       `  git worktree remove --force ${worktree}`,
     );
     expect(second.stdout).toContain("save any edits");
-    expect(topLevelUpgradeCalls(ledger)).toEqual([
+    expect(templateUpgradeCalls(ledger)).toEqual([
       "install",
       "run quality:fallow:record-hits",
       "run check",
@@ -348,7 +315,7 @@ test(
         { command: "fallow audit", ran: true, outcome: "passed" },
       ],
     });
-    expect(topLevelUpgradeCalls(ledger)).toEqual([
+    expect(templateUpgradeCalls(ledger)).toEqual([
       "install",
       "run quality:fallow:record-hits",
       "run check",
