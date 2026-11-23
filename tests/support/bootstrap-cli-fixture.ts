@@ -1,6 +1,7 @@
 import { afterEach } from "bun:test";
 import { readdir, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { siblingKernel } from "./kernel-sibling.ts";
 import { spawnBounded } from "./process.ts";
 import { testFolder } from "./test-folder.ts";
 
@@ -48,12 +49,19 @@ export async function runCommand(
 }
 
 export function invoke(...args: string[]): Promise<Invocation> {
-  return runCommand(ROOT, [
-    process.execPath,
-    "run",
-    "src/bootstrap.ts",
-    ...args,
-  ]);
+  return invokeIn(ROOT, process.env, args);
+}
+
+export async function invokeIn(
+  root: string,
+  env: Readonly<Record<string, string | undefined>>,
+  args: readonly string[],
+): Promise<Invocation> {
+  return runCommand(
+    root,
+    [process.execPath, "run", "src/bootstrap.ts", ...args],
+    { ...env, KERNEL_REPOSITORY: siblingKernel(root, env) },
+  );
 }
 
 export async function listFiles(root: string, prefix = ""): Promise<string[]> {

@@ -1,3 +1,5 @@
+import { readdirSync } from "node:fs";
+import { basename, dirname, resolve } from "node:path";
 import js from "@eslint/js";
 import { kernelLint } from "agent-cli-kernel/lint";
 import kernelRules from "agent-cli-kernel/lint-rules";
@@ -7,12 +9,47 @@ import payloadRules from "./config/payload-rules.mjs";
 import platformRules from "./config/platform-rules.mjs";
 import templateRules from "./config/template-rules.mjs";
 
+const entrySourceFiles = new Set(["cli.ts", "commands.ts"]);
+
+const noLooseSourceWithSubjects = {
+  meta: {
+    type: "problem",
+    schema: [],
+    messages: {
+      looseSource:
+        "Source file {{name}} sits loose in src/ alongside subject folders. Repair: move it into a subject folder (src/<subject>/) or src/shared/; only src/cli.ts and src/commands.ts stay at src/ root once subject folders exist.",
+    },
+  },
+  create(context) {
+    const file = context.filename;
+    if (file === "<input>" || file === "<text>") return {};
+    const folder = dirname(file);
+    if (resolve(folder) !== resolve(import.meta.dirname, "src")) return {};
+    const name = basename(file);
+    if (entrySourceFiles.has(name)) return {};
+    const hasSubjectFolder = readdirSync(folder, { withFileTypes: true }).some(
+      (entry) => entry.isDirectory() && !entry.name.startsWith("."),
+    );
+    if (!hasSubjectFolder) return {};
+    return {
+      Program(node) {
+        context.report({
+          node,
+          messageId: "looseSource",
+          data: { name },
+        });
+      },
+    };
+  },
+};
+
 const repository = {
   rules: {
     ...templateRules.rules,
     ...platformRules.rules,
     ...payloadRules.rules,
     ...kernelRules.rules,
+    "no-loose-source-with-subjects": noLooseSourceWithSubjects,
   },
 };
 
@@ -60,6 +97,13 @@ export default tseslint.config(
     },
   },
   {
+    files: ["src/*.{ts,mts,cts,tsx,js,mjs,cjs,jsx}"],
+    plugins: { repository },
+    rules: {
+      "repository/no-loose-source-with-subjects": "error",
+    },
+  },
+  {
     files: ["scripts/**/*.ts"],
     languageOptions: {
       parser: tseslint.parser,
@@ -99,6 +143,16 @@ export default tseslint.config(
       "anti-slop/no-unknown-type-aliases": "error",
       "anti-slop/no-module-mocking": "error",
       "anti-slop/no-reduce-accumulator-copy": "error",
+    },
+  },
+  {
+    files: ["**/*.{ts,mts,cts}"],
+    plugins: { "@typescript-eslint": tseslint.plugin },
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { args: "all", argsIgnorePattern: "^_" },
+      ],
     },
   },
 );

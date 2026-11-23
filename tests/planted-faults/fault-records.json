@@ -1466,7 +1466,7 @@
     "id": "0352f0d-kernel-sibling-refusal",
     "patch": "tests/planted-faults/patches/0352f0d-kernel-sibling-refusal.patch",
     "testFile": "tests/template/kernel-trial/kernel-sibling.test.ts",
-    "title": "nowhere, and refuses naming KERNEL_REPOSITORY$",
+    "title": "nowhere, the kernel cache included, when the remote is unreachable, and refuses naming both manual routes and the cache it tried$",
     "source": "0352f0d test(kernel-trial): find the kernel repository from a worktree, or refuse naming KERNEL_REPOSITORY"
   },
   {
@@ -2175,6 +2175,209 @@
     "testFile": "tests/template/bootstrap/kernel-row.test.ts",
     "title": "leaves Markdown with front matter and plain Markdown byte-identical when formatting a generated repository, while still checking TypeScript$",
     "source": "4da63bc fix(generated-repository): stop Biome rewriting Markdown and its front matter"
+  },
+  {
+    "id": "3de4a8a-template-upgrade-floor",
+    "patch": "tests/planted-faults/patches/3de4a8a-template-upgrade-floor.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-inputs.test.ts",
+    "title": "^refuses a base commit older than the template upgrade floor before regenerating$",
+    "source": "3de4a8a fix(template-upgrade): never move the kernel Pin, and refuse bases older than 46e0f66"
+  },
+  {
+    "id": "f116191-template-upgrade-symlink",
+    "patch": "tests/planted-faults/patches/f116191-template-upgrade-symlink.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-worktrees.test.ts",
+    "title": "^refuses a committed symbolic link ancestor folder in both plan and apply without touching external files$",
+    "source": "f116191 fix(template-upgrade): refuse symbolic link folders, keep owner work, make every conflict resolvable"
+  },
+  {
+    "id": "84d90e7-template-upgrade-worktree-lock",
+    "patch": "tests/planted-faults/patches/84d90e7-template-upgrade-worktree-lock.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-worktree-lock.test.ts",
+    "title": "^refuses and preserves an unlocked owner worktree at the temporary worktree path$",
+    "source": "84d90e7 fix(template-upgrade): only remove worktrees this command made"
+  },
+  {
+    "id": "f116191-template-upgrade-worktree-head",
+    "patch": "tests/planted-faults/patches/f116191-template-upgrade-worktree-head.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-worktrees.test.ts",
+    "title": "^refuses and preserves an existing upgrade worktree whose HEAD is older than the repository HEAD$",
+    "source": "f116191 fix(template-upgrade): refuse symbolic link folders, keep owner work, make every conflict resolvable"
+  },
+  {
+    "id": "8976133-generated-fallow-default-rules",
+    "patch": "tests/planted-faults/patches/8976133-generated-fallow-default-rules.patch",
+    "testFile": "tests/template/bootstrap/kernel-row.test.ts",
+    "title": "leaves the nine zero-finding default Fallow rules at Fallow's default severity$",
+    "source": "8976133 feat(generated-repository): restore nine zero-finding default Fallow rules"
+  },
+  {
+    "id": "6af3b16-template-git-fixture-count",
+    "patch": "tests/planted-faults/patches/6af3b16-template-git-fixture-count.patch",
+    "testFile": "tests/template/test-helpers/git-fixture.test.ts",
+    "title": "^the template git fixture commits with maintenance\\.auto false and gc\\.auto 0$",
+    "source": "6af3b16 feat(git-fixture): disable automatic git maintenance and ship gitFixture helper"
+  },
+  {
+    "id": "6af3b16-generated-git-fixture-count",
+    "patch": "tests/planted-faults/patches/6af3b16-generated-git-fixture-count.patch",
+    "testFile": "tests/template/test-helpers/git-fixture.test.ts",
+    "title": "^the shipped git fixture test passes in a bootstrapped generated repository$",
+    "source": "6af3b16 feat(git-fixture): disable automatic git maintenance and ship gitFixture helper"
+  },
+  {
+    "id": "c808d75-generated-source-layout-boundaries",
+    "patch": "tests/planted-faults/patches/c808d75-generated-source-layout-boundaries.patch",
+    "testFile": "tests/template/bootstrap/generated-source-layout-gate.test.ts",
+    "title": "^bootstrapped \\.fallowrc\\.json enforces source layout boundaries with Fallow directly$",
+    "source": "c808d75 feat(generated-repository): ship the source layout gate from day one"
+  },
+  {
+    "id": "c808d75-generated-loose-source-lint",
+    "patch": "tests/planted-faults/patches/c808d75-generated-loose-source-lint.patch",
+    "testFile": "tests/template/bootstrap/generated-source-layout-gate.test.ts",
+    "title": "^bootstrapped eslint\\.config\\.mjs refuses loose src files when subject folders exist$",
+    "source": "c808d75 feat(generated-repository): ship the source layout gate from day one"
+  },
+  {
+    "id": "135edef-template-allow-unreachable-code",
+    "patch": "tests/planted-faults/patches/135edef-template-allow-unreachable-code.patch",
+    "testFile": "tests/template/bootstrap/generated-strict-checks.test.ts",
+    "title": "^template eslint\\.config\\.mjs and tsconfig\\.base\\.json enforce strict checks with single ownership$",
+    "source": "135edef feat(generated-repository): enforce allowUnreachableCode and underscore-prefixed unused parameters"
+  },
+  {
+    "id": "135edef-template-unused-parameters-underscore",
+    "patch": "tests/planted-faults/patches/135edef-template-unused-parameters-underscore.patch",
+    "testFile": "tests/template/bootstrap/generated-strict-checks.test.ts",
+    "title": "^template eslint\\.config\\.mjs and tsconfig\\.base\\.json enforce strict checks with single ownership$",
+    "source": "135edef feat(generated-repository): enforce allowUnreachableCode and underscore-prefixed unused parameters"
+  },
+  {
+    "id": "135edef-generated-allow-unreachable-code",
+    "patch": "tests/planted-faults/patches/135edef-generated-allow-unreachable-code.patch",
+    "testFile": "tests/template/bootstrap/generated-strict-checks.test.ts",
+    "title": "^bootstrapped tsconfig\\.base\\.json refuses unreachable code after return without duplicating lint$",
+    "source": "135edef feat(generated-repository): enforce allowUnreachableCode and underscore-prefixed unused parameters"
+  },
+  {
+    "id": "135edef-generated-unused-parameters-underscore",
+    "patch": "tests/planted-faults/patches/135edef-generated-unused-parameters-underscore.patch",
+    "testFile": "tests/template/bootstrap/generated-strict-checks.test.ts",
+    "title": "^bootstrapped eslint\\.config\\.mjs refuses plain unused parameters and accepts underscore-prefixed ones$",
+    "source": "135edef feat(generated-repository): enforce allowUnreachableCode and underscore-prefixed unused parameters"
+  },
+  {
+    "id": "b9d4e2d-template-upgrade-recorded-hits-retry",
+    "patch": "tests/planted-faults/patches/b9d4e2d-template-upgrade-recorded-hits-retry.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-retry.test.ts",
+    "title": "^does not rerun the recorded-hits script on retry when the first recording left the template's empty files, so a finding added during the repair still fails the check$",
+    "source": "b9d4e2d fix(template-upgrade): refresh stale Fallow hits and report gate adoption"
+  },
+  {
+    "id": "b9d4e2d-template-upgrade-recorded-hits-refresh",
+    "patch": "tests/planted-faults/patches/b9d4e2d-template-upgrade-recorded-hits-refresh.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-gates.test.ts",
+    "title": "^refreshes stale Fallow recorded hits automatically and lands cleanly when changed Fallow and TypeScript settings produce zero new findings$",
+    "source": "b9d4e2d fix(template-upgrade): refresh stale Fallow hits and report gate adoption"
+  },
+  {
+    "id": "b9d4e2d-template-upgrade-no-silent-absorption",
+    "patch": "tests/planted-faults/patches/b9d4e2d-template-upgrade-no-silent-absorption.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-gates.test.ts",
+    "title": "^refreshes stale Fallow analysis identity and reports gate-adoption-required when upgrading a wiki-shaped repository across changed Fallow and layout gates$",
+    "source": "b9d4e2d fix(template-upgrade): refresh stale Fallow hits and report gate adoption"
+  },
+  {
+    "id": "b9d4e2d-template-upgrade-gate-adoption",
+    "patch": "tests/planted-faults/patches/b9d4e2d-template-upgrade-gate-adoption.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-gates.test.ts",
+    "title": "^refreshes stale Fallow analysis identity and reports gate-adoption-required when upgrading a wiki-shaped repository across changed Fallow and layout gates$",
+    "source": "b9d4e2d fix(template-upgrade): refresh stale Fallow hits and report gate adoption"
+  },
+  {
+    "id": "b9d4e2d-template-upgrade-gate-template-file",
+    "patch": "tests/planted-faults/patches/b9d4e2d-template-upgrade-gate-template-file.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-gate-check.test.ts",
+    "title": "^classifyTemplateUpgradeGateFailure stays check-failed for Fallow errors, ESLint crashes, template-owned file failures, and upgrades without gate changes, and check-failed text prints unlock steps$",
+    "source": "b9d4e2d fix(template-upgrade): refresh stale Fallow hits and report gate adoption"
+  },
+  {
+    "id": "885b9fc-template-upgrade-pending-snapshot-recovery",
+    "patch": "tests/planted-faults/patches/885b9fc-template-upgrade-pending-snapshot-recovery.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-retry.test.ts",
+    "title": "^recovers durable pre-record snapshots after an interrupted identity-only restoration or failed-recording rollback without absorbing new findings on retry$",
+    "source": "885b9fc fix(template-upgrade): harden snapshot recovery, gate classification, and operator wording"
+  },
+  {
+    "id": "885b9fc-template-upgrade-predated-gate-check",
+    "patch": "tests/planted-faults/patches/885b9fc-template-upgrade-predated-gate-check.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-gate-check.test.ts",
+    "title": "^refuses gate-adoption-required on timeout, crash after findings, unchanged template file failing a new gate, or unestablished predating findings$",
+    "source": "885b9fc fix(template-upgrade): harden snapshot recovery, gate classification, and operator wording"
+  },
+  {
+    "id": "885b9fc-template-upgrade-gate-exit-check",
+    "patch": "tests/planted-faults/patches/885b9fc-template-upgrade-gate-exit-check.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-gate-check.test.ts",
+    "title": "^refuses gate-adoption-required on timeout, crash after findings, unchanged template file failing a new gate, or unestablished predating findings$",
+    "source": "885b9fc fix(template-upgrade): harden snapshot recovery, gate classification, and operator wording"
+  },
+  {
+    "id": "162c665-generated-layout-commands-entry",
+    "patch": "tests/planted-faults/patches/162c665-generated-layout-commands-entry.patch",
+    "testFile": "tests/template/bootstrap/generated-source-layout-gate.test.ts",
+    "title": "^bootstrapped \\.fallowrc\\.json treats src/commands/ files as entry files that wire subjects$",
+    "source": "162c665 feat(generated-repository): put src/commands/ files in the entry zone"
+  },
+  {
+    "id": "23e59a0-template-upgrade-merge",
+    "patch": "tests/planted-faults/patches/23e59a0-template-upgrade-merge.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-json-conflicts.test.ts",
+    "title": "^a JSON key conflict whose text merges cleanly is written as one marked conflict, ours above new, that does not parse$",
+    "source": "23e59a0 fix(template-upgrade): mark a JSON key conflict whose text merges cleanly"
+  },
+  {
+    "id": "d557802-template-upgrade-merge-key-conflict",
+    "patch": "tests/planted-faults/patches/d557802-template-upgrade-merge-key-conflict.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-json-conflicts.test.ts",
+    "title": "^a JSON key conflict beside a text conflict is written as one marked conflict, so no member repeats outside the markers$",
+    "source": "d557802 fix(template-upgrade): mark the whole JSON file for any key conflict or repeated member"
+  },
+  {
+    "id": "d557802-template-upgrade-merge-repeated-member",
+    "patch": "tests/planted-faults/patches/d557802-template-upgrade-merge-repeated-member.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-json-conflicts.test.ts",
+    "title": "^a JSON file that does not parse and whose clean text merge repeats a member is written as one marked conflict$",
+    "source": "d557802 fix(template-upgrade): mark the whole JSON file for any key conflict or repeated member"
+  },
+  {
+    "id": "b61398f-template-upgrade-merge-text-conflict",
+    "patch": "tests/planted-faults/patches/b61398f-template-upgrade-merge-text-conflict.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-json-conflicts.test.ts",
+    "title": "^a JSON file that does not parse and whose text conflict leaves a repeated member outside git's markers is written as one marked conflict$",
+    "source": "b61398f fix(template-upgrade): mark the whole JSON file when a text conflict repeats a member on either side"
+  },
+  {
+    "id": "9556769-template-upgrade-json-members",
+    "patch": "tests/planted-faults/patches/9556769-template-upgrade-json-members.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-json-conflicts.test.ts",
+    "title": "^rerunning apply after resolving git's visible CRLF hunk at a nested object's closing brace, with a member repeated outside it, reports resolution-in-progress and commits nothing$",
+    "source": "9556769 fix(template-upgrade): read CRLF conflict hunks in a JSON text merge as their LF twins"
+  },
+  {
+    "id": "319c6de-kernel-pin",
+    "patch": "tests/planted-faults/patches/319c6de-kernel-pin.patch",
+    "testFile": "tests/template/kernel-trial/kernel-cache.test.ts",
+    "title": "an empty cache is filled with a bare clone of the pin's remote that holds the pinned commit$",
+    "source": "319c6de feat(kernel-pin): fetch the kernel into the kernel cache when no clone is named or beside the template"
+  },
+  {
+    "id": "319c6de-kernel-cache-identity",
+    "patch": "tests/planted-faults/patches/319c6de-kernel-cache-identity.patch",
+    "testFile": "tests/template/kernel-trial/kernel-cache.test.ts",
+    "title": "the kernel reader refuses a kernel cache whose pinned commit is replaced by another commit's bytes, as git finds the hash mismatch$",
+    "source": "319c6de feat(kernel-pin): fetch the kernel into the kernel cache when no clone is named or beside the template"
   },
   {
     "id": "4701022-pin-move-repository-dirty",

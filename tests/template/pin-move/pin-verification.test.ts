@@ -214,6 +214,8 @@ describe("pin verification", () => {
         gitResult(
           repository,
           "-c",
+          "maintenance.auto=true",
+          "-c",
           "maintenance.autoDetach=false",
           "-c",
           "gc.autoDetach=false",

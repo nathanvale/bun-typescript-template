@@ -3,6 +3,7 @@ import {
   mkdir,
   mkdtemp,
   readdir,
+  readFile,
   readlink,
   rm,
   symlink,
@@ -18,6 +19,7 @@ import {
   lstatIfPresent,
 } from "./template-upgrade-git.ts";
 import { OLD_TEMPLATE_JSON_FILE } from "./template-upgrade-inputs.ts";
+import { mergeDuplicatesMember } from "./template-upgrade-json-members.ts";
 import { tryMergeJsonText } from "./template-upgrade-json-merge.ts";
 import {
   assertNoSymlinkAncestors,
@@ -339,19 +341,35 @@ async function mergeJsonFile(options: {
   const oursText = decodeTextIfUtf8(oursBytes);
   const oldText = decodeTextIfUtf8(oldBytes);
   const newText = decodeTextIfUtf8(newBytes);
-  const jsonResult =
-    oursText !== undefined && oldText !== undefined && newText !== undefined
-      ? tryMergeJsonText(oursText, oldText, newText)
-      : undefined;
-  if (jsonResult !== undefined && jsonResult.conflictPaths.length === 0) {
-    await writeFile(oursPath, jsonResult.mergedText);
+  if (
+    oursText === undefined ||
+    oldText === undefined ||
+    newText === undefined
+  ) {
+    return gitMergeFile(oursPath, oldPath, newPath, env) === "clean"
+      ? "merge"
+      : "conflict";
+  }
+  const json = tryMergeJsonText(oursText, oldText, newText);
+  if (json?.conflictPaths.length === 0) {
+    await writeFile(oursPath, json.mergedText);
     return "merge";
   }
-  const fileResult = gitMergeFile(oursPath, oldPath, newPath, env);
-  if (jsonResult !== undefined && jsonResult.conflictPaths.length > 0) {
-    return "conflict";
+  if (json === undefined) {
+    const textResult = gitMergeFile(oursPath, oldPath, newPath, env);
+    if (!mergeDuplicatesMember(await readFile(oursPath, "utf8"))) {
+      return textResult === "clean" ? "merge" : "conflict";
+    }
   }
-  return fileResult === "clean" ? "merge" : "conflict";
+  await writeFile(
+    oursPath,
+    `<<<<<<< ours\n` +
+      `${ensureTrailingNewline(oursText)}` +
+      `=======\n` +
+      `${ensureTrailingNewline(newText)}` +
+      `>>>>>>> new\n`,
+  );
+  return "conflict";
 }
 
 async function applyUnchangedPathUpdate(

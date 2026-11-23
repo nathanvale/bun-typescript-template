@@ -1,0 +1,22 @@
+diff --git a/src/template-upgrade-recorded-hits.ts b/src/template-upgrade-recorded-hits.ts
+--- a/src/template-upgrade-recorded-hits.ts
++++ b/src/template-upgrade-recorded-hits.ts
+@@ -578,18 +578,6 @@ export function runRecordedHitsStep(
+     };
+   }
+   let reason: string | undefined;
+-  if (
+-    pending.action === "refresh-changed" &&
+-    snapshotsAddedNewFindings(request.worktree, pending.snapshots)
+-  ) {
+-    keepIdentityOnly(
+-      request.worktree,
+-      pending.snapshots,
+-      timeoutMilliseconds,
+-      request.env,
+-    );
+-    reason = REFRESHED_IDENTITY_REASON;
+-  }
+   markRecordingDone(request);
+   rmSync(pendingDir, { force: true, recursive: true });
+   return {

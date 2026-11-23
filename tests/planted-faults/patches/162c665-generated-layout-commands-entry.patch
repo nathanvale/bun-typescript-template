@@ -1,0 +1,16 @@
+diff --git a/generated-repository/settings/.fallowrc.json b/generated-repository/settings/.fallowrc.json
+index e80c367..c07ce64 100644
+--- a/generated-repository/settings/.fallowrc.json
++++ b/generated-repository/settings/.fallowrc.json
+@@ -92,10 +92,7 @@
+   },
+   "boundaries": {
+     "zones": [
+-      {
+-        "name": "entry",
+-        "patterns": ["src/cli.ts", "src/commands.ts", "src/commands/**"]
+-      },
++      { "name": "entry", "patterns": ["src/cli.ts", "src/commands.ts"] },
+       { "name": "rules", "patterns": ["src/**/rules.ts"] },
+       { "name": "shared", "patterns": ["src/shared/**"] },
+       { "name": "subject", "patterns": ["src/*/**"], "autoDiscover": ["src"] },

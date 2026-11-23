@@ -16,6 +16,7 @@ import {
   bootstrapGeneratedRepository,
   cloneTemplateAtHead,
   commitTemplateLintChange,
+  createRecordedHitsUpgradeFixture,
   invokeTemplateUpgradeMain,
   writeScriptedBun,
 } from "../../support/template-upgrade-fixture.ts";
@@ -29,94 +30,11 @@ const RECORDED_HITS_FILES = [
   "fallow-health-recorded-hits.json",
 ] as const;
 
-function createRecordedHitsUpgradeFixture(options?: {
-  readonly omitRecordScriptInTarget?: boolean;
-}) {
-  const { templateClone } = cloneTemplateAtHead(folder);
-  const savedFiles = RECORDED_HITS_FILES.map((file) => {
-    const path = join(templateClone, "generated-repository/settings", file);
-    return { file, path, content: readFileSync(path, "utf8") };
-  });
-  const settingsPackagePath = join(
-    templateClone,
-    "generated-repository/settings/package.json",
-  );
-  const targetPackageText = readFileSync(settingsPackagePath, "utf8");
-  const parsedPackage = JSON.parse(targetPackageText) as {
-    scripts: Record<string, string>;
-    [key: string]: unknown;
-  };
-  const withoutRecordScript = `${JSON.stringify(
-    {
-      ...parsedPackage,
-      scripts: Object.fromEntries(
-        Object.entries(parsedPackage.scripts).filter(
-          ([name]) => name !== "quality:fallow:record-hits",
-        ),
-      ),
-    },
-    null,
-    2,
-  )}\n`;
-  writeFileSync(settingsPackagePath, withoutRecordScript);
-  git(
-    templateClone,
-    "rm",
-    "--quiet",
-    "--",
-    ...RECORDED_HITS_FILES.map(
-      (file) => `generated-repository/settings/${file}`,
-    ),
-  );
-  git(templateClone, "add", "--", "generated-repository/settings/package.json");
-  git(
-    templateClone,
-    "commit",
-    "--quiet",
-    "-m",
-    "template before recorded-hits files",
-  );
-  const baseCommit = git(templateClone, "rev-parse", "HEAD");
-
-  for (const { path, content } of savedFiles) {
-    writeFileSync(path, content);
-  }
-  writeFileSync(
-    settingsPackagePath,
-    options?.omitRecordScriptInTarget === true
-      ? withoutRecordScript
-      : targetPackageText,
-  );
-  git(
-    templateClone,
-    "add",
-    "--",
-    "generated-repository/settings/package.json",
-    ...RECORDED_HITS_FILES.map(
-      (file) => `generated-repository/settings/${file}`,
-    ),
-  );
-  git(
-    templateClone,
-    "commit",
-    "--quiet",
-    "-m",
-    "template adding recorded-hits files",
-  );
-  const targetCommit = git(templateClone, "rev-parse", "HEAD");
-  return {
-    templateClone,
-    baseCommit,
-    targetCommit,
-    branch: `template-upgrade/${baseCommit.slice(0, 7)}-${targetCommit.slice(0, 7)}`,
-  };
-}
-
 test(
   "runs the recorded-hits script after bun install and before bun run check when an upgrade adds new recorded-hits files, commits them, and reports the step",
   async () => {
     const { templateClone, baseCommit, targetCommit, branch } =
-      createRecordedHitsUpgradeFixture();
+      createRecordedHitsUpgradeFixture(folder);
     const repo = await bootstrapGeneratedRepository(
       folder,
       templateClone,
@@ -306,7 +224,7 @@ exit 0
       `${git(existingRepo, "show", `${existingBranch}:fallow-dead-code-recorded-hits.json`)}\n`,
     ).toBe(customDeadCodeRecord);
 
-    const newFilesFixture = createRecordedHitsUpgradeFixture();
+    const newFilesFixture = createRecordedHitsUpgradeFixture(folder);
     const skippedRepo = await bootstrapGeneratedRepository(
       folder,
       newFilesFixture.templateClone,
@@ -385,7 +303,7 @@ exit 0
       "bun run quality:fallow:record-hits: skipped (--no-check)",
     );
 
-    const withoutScriptFixture = createRecordedHitsUpgradeFixture({
+    const withoutScriptFixture = createRecordedHitsUpgradeFixture(folder, {
       omitRecordScriptInTarget: true,
     });
     const withoutScriptRepo = await bootstrapGeneratedRepository(
@@ -437,7 +355,7 @@ test(
   "does not rerun the recorded-hits script on retry after check-failed, keeping the first recorded hits",
   async () => {
     const { templateClone, baseCommit, targetCommit, branch } =
-      createRecordedHitsUpgradeFixture();
+      createRecordedHitsUpgradeFixture(folder);
     const repo = await bootstrapGeneratedRepository(
       folder,
       templateClone,
@@ -544,13 +462,23 @@ exit 0
 test(
   "runRecordedHitsStep records only while every worktree recorded-hits file matches the target template empty file",
   () => {
-    const { templateClone, targetCommit } = createRecordedHitsUpgradeFixture();
+    const { templateClone, targetCommit } =
+      createRecordedHitsUpgradeFixture(folder);
     const repo = folder("recorded-hits-step-repo-");
     initRepository(repo);
     const { sha: repositoryHead } = commitIn(repo, "initial without hits", {
       "package.json": '{"name":"unit-app"}\n',
     });
     const worktree = folder("recorded-hits-step-worktree-");
+    git(
+      repo,
+      "worktree",
+      "add",
+      "--quiet",
+      "--detach",
+      worktree,
+      repositoryHead,
+    );
     writeFileSync(
       join(worktree, "package.json"),
       readFileSync(

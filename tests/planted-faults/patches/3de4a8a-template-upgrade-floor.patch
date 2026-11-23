@@ -1,0 +1,29 @@
+diff --git a/src/template-upgrade-git.ts b/src/template-upgrade-git.ts
+--- a/src/template-upgrade-git.ts
++++ b/src/template-upgrade-git.ts
+@@ -409,25 +409,6 @@ export function assertTemplateCommits(
+       true,
+     );
+   }
+-  const floorShort = TEMPLATE_UPGRADE_FLOOR.slice(0, 7);
+-  assertCommitAncestor({
+-    templateRoot,
+-    ancestor: TEMPLATE_UPGRADE_FLOOR,
+-    descendant: baseCommit,
+-    env,
+-    timeoutMessage: `git timed out checking template upgrade floor ${floorShort} against ${baseCommit}`,
+-    notAncestor: {
+-      code: "base_commit_unsupported",
+-      message: `base commit ${baseCommit.slice(0, 7)} is older than the oldest supported template upgrade base ${floorShort}; older template commits required --profile in bootstrap`,
+-      repair:
+-        "regenerate the repository from a newer template commit, or carry changes by hand",
+-      exitCode: 2,
+-      retrySafe: true,
+-    },
+-    unreadablePrefix: `cannot verify template upgrade floor ${floorShort} against ${baseCommit}`,
+-    unreadableRepair:
+-      "fetch complete history in the template checkout with git fetch --unshallow, then rerun",
+-  });
+   assertCommitAncestor({
+     templateRoot,
+     ancestor: baseCommit,
