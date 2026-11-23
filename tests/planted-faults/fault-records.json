@@ -2396,5 +2396,12 @@
     "testFile": "tests/template/fault-replay/planted-fault-verdict-in-process.test.ts",
     "title": "KILLED when the record has removesBound and ",
     "source": "c7c714d feat(planted-faults): credit a timeout as a kill for a fault record that removes a bound"
+  },
+  {
+    "id": "e39bbfd-planted-fault-verdict",
+    "patch": "tests/planted-faults/patches/e39bbfd-planted-fault-verdict.patch",
+    "testFile": "tests/template/fault-replay/planted-fault-verdict-in-process.test.ts",
+    "title": "once the patch is applied",
+    "source": "e39bbfd fix(planted-faults): credit a kill only to a failed assertion in a test named once"
   }
 ]
