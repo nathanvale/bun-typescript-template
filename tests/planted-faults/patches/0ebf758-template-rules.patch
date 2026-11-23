@@ -1,0 +1,13 @@
+diff --git a/config/template-rules.mjs b/config/template-rules.mjs
+index 8d673d3..57d9ba8 100644
+--- a/config/template-rules.mjs
++++ b/config/template-rules.mjs
+@@ -370,7 +370,7 @@ function isAdmitted(source, block, placed) {
+   const { start } = block[0].loc;
+   const kinds = lines.map(directiveKind);
+   if (kinds.some((kind) => kind !== "text"))
+-    return kinds.every((kind) => kind === "admitted");
++    return kinds[0] === "admitted";
+   return (
+     (commentMarker.test(first) && namesItsPlatform(lines)) ||
+     decisionCitation.test(lines.join(" ")) ||

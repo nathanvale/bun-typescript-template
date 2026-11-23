@@ -2585,5 +2585,19 @@
     "testFile": "tests/template/lint/lint-comments.test.ts",
     "title": "^no-comments tells the agent to name the platform or tool the fact belongs to",
     "source": "7e6536a fix(lint): refuse a Platform: comment that names no platform or tool"
+  },
+  {
+    "id": "26c4d94-eslint-config-inline",
+    "patch": "tests/planted-faults/patches/26c4d94-eslint-config-inline.patch",
+    "testFile": "tests/template/lint/lint-comments.test.ts",
+    "title": "^no-comments refuses \"/\\* eslint-disable \\*/.*clearer.* in src/toolchain-resolution\\.ts$",
+    "source": "26c4d94 fix(lint): switch ESLint inline configuration off in the template and in generated repositories"
+  },
+  {
+    "id": "0ebf758-template-rules",
+    "patch": "tests/planted-faults/patches/0ebf758-template-rules.patch",
+    "testFile": "tests/template/lint/lint-comments.test.ts",
+    "title": "^no-comments refuses \"// @ts-expect-error the fixture needs it.*clearer",
+    "source": "0ebf758 fix(lint): admit a directive only in its exact form, with a reason in words, on lines of its own"
   }
 ]
