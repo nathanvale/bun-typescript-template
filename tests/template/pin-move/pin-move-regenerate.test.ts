@@ -14,7 +14,7 @@ import { spawnBounded } from "../../support/process.ts";
 const fixture = pinMoveRepositoryFixture();
 
 const writesInstalledKernel = `bun -e "require('node:fs').writeFileSync('regenerated.txt', require('node:fs').readFileSync('node_modules/agent-cli-kernel/.bun-tag'))"`;
-const exitsThree = `bun -e "process.exit(3)"`;
+const writesThenExitsThree = `bun -e "require('node:fs').writeFileSync('regenerated.txt', 'partial'); process.exit(3)"`;
 
 const regeneratedTest = `import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
@@ -122,11 +122,11 @@ describe("pin-move --repository with a regenerate step", () => {
     expect(cleanStatus(repo)).toBe("");
   }, 240_000);
 
-  test("refuses when the regenerate step exits non-zero, keeps the attempt on a renamed branch, and a rerun after the fix moves the Pin with no force", async () => {
+  test("refuses when the regenerate step exits non-zero, keeps the attempt and its partial output on a renamed branch, and a rerun after the fix moves the Pin with no force", async () => {
     const repo = await fixture.installedRepository("pin-move-regenerate-fail-");
     commitIn(repo, "add a regenerate step that fails", {
       "bun.lock": readFileSync(join(repo, "bun.lock"), "utf8"),
-      "package.json": manifestWithRegenerate(repo, exitsThree),
+      "package.json": manifestWithRegenerate(repo, writesThenExitsThree),
     });
     const mainBefore = git(repo, "rev-parse", "main");
     const branch = `pin-move/${fixture.targetCommit.slice(0, 7)}`;
@@ -152,6 +152,7 @@ describe("pin-move --repository with a regenerate step", () => {
     expect(git(repo, "log", "-1", "--format=%s", kept)).toBe(
       `chore(kernel): failed Pin move from ${trialBase.slice(0, 7)} to ${fixture.targetCommit.slice(0, 7)} (repository_check_failed)`,
     );
+    expect(git(repo, "show", `${kept}:regenerated.txt`)).toBe("partial");
     expect(git(repo, "rev-parse", "--abbrev-ref", "HEAD")).toBe("main");
     expect(git(repo, "rev-parse", "main")).toBe(mainBefore);
     expect(cleanStatus(repo)).toBe("");
