@@ -280,7 +280,7 @@ const fallowRuns = new Map<string, readonly string[]>([
     "generated-repository/hosted-check/ci.yml",
     [
       "bun run check",
-      'if [ -z "${BASE:-}" ] || ! git cat-file -e "${BASE}^{commit}" 2>/dev/null; then\n  echo "Skipping Fallow recorded-hits growth check: no base commit ${BASE:-} in this checkout."\n  exit 0\nfi\nbun run --silent quality:fallow -- --fail-on-baseline-growth --baseline-base "$BASE"\n',
+      'if [ -z "${BASE:-}" ] || ! git cat-file -e "${BASE}^{commit}" 2>/dev/null; then\n  echo "Skipping Fallow recorded-hits growth check: no base commit ${BASE:-} in this checkout."\n  exit 0\nfi\nbun run --silent quality:fallow -- --fail-on-baseline-growth --baseline-base "$BASE"\nbun scripts/check-recorded-health-sizes.ts --base "$BASE"\n',
     ],
   ],
 ]);

@@ -1,0 +1,17 @@
+diff --git a/generated-repository/scripts/check-recorded-health-sizes.ts b/generated-repository/scripts/check-recorded-health-sizes.ts
+--- a/generated-repository/scripts/check-recorded-health-sizes.ts
++++ b/generated-repository/scripts/check-recorded-health-sizes.ts
+@@ -110,12 +110,7 @@ function readCommittedFile(root: string, rev: string, file: string) {
+   if (listed.exitCode === 0 && listed.stdout === "") return undefined;
+   const shown = runGit(root, ["show", `${rev}:${file}`]);
+   if (listed.exitCode !== 0 || shown.exitCode !== 0) {
+-    const reason = [listed.stderr.trim(), shown.stderr.trim()]
+-      .filter(Boolean)
+-      .join(" ");
+-    fail(
+-      `git cannot read ${file} at ${rev}: ${reason || `exit ${shown.exitCode}`}. Repair: run git fsck, or fetch ${rev} with full history, then run this check again.`,
+-    );
++    return undefined;
+   }
+   return shown.stdout;
+ }

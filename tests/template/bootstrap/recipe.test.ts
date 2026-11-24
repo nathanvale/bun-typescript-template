@@ -136,7 +136,10 @@ describe("the recipe", () => {
     ]);
     expect(
       files.filter((file) => file.startsWith("scripts/")).toSorted(),
-    ).toEqual(["scripts/check-gated-paths.ts"]);
+    ).toEqual([
+      "scripts/check-gated-paths.ts",
+      "scripts/check-recorded-health-sizes.ts",
+    ]);
   });
 });
 

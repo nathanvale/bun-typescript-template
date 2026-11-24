@@ -1,0 +1,11 @@
+diff --git a/generated-repository/scripts/check-recorded-health-sizes.ts b/generated-repository/scripts/check-recorded-health-sizes.ts
+--- a/generated-repository/scripts/check-recorded-health-sizes.ts
++++ b/generated-repository/scripts/check-recorded-health-sizes.ts
+@@ -303,6 +303,6 @@ function hasNewHealthApproval(
+   for (const entry of baseKinds?.values() ?? [])
+     if (entry.approved !== undefined) held.add(entry.approved);
+   for (const entry of headKinds.values())
+-    if (entry.approved !== undefined && !held.has(entry.approved)) return true;
++    if (entry.approved !== undefined) return true;
+   return false;
+ }

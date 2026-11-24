@@ -1,0 +1,12 @@
+diff --git a/generated-repository/scripts/check-recorded-health-sizes.ts b/generated-repository/scripts/check-recorded-health-sizes.ts
+--- a/generated-repository/scripts/check-recorded-health-sizes.ts
++++ b/generated-repository/scripts/check-recorded-health-sizes.ts
+@@ -147,7 +147,7 @@ function parseCountEntry(value: unknown, where: string, shape: string) {
+ function parseCountEntry(value: unknown, where: string, shape: string) {
+   const own = asOwnMap(value, where, shape, ["count", "approved"]);
+   const count = own.get("count");
+-  if (typeof count !== "number" || !Number.isSafeInteger(count) || count < 0)
++  if (typeof count !== "number" || !Number.isSafeInteger(count))
+     return refuseShape(where, shape);
+   const approved = own.get("approved");
+   if (approved !== undefined && typeof approved !== "string")

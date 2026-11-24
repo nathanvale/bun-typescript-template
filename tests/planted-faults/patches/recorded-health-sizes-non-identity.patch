@@ -1,0 +1,12 @@
+diff --git a/generated-repository/scripts/check-recorded-health-sizes.ts b/generated-repository/scripts/check-recorded-health-sizes.ts
+--- a/generated-repository/scripts/check-recorded-health-sizes.ts
++++ b/generated-repository/scripts/check-recorded-health-sizes.ts
+@@ -181,8 +181,6 @@ function parseHealthHits(text: string, rev: string): CountTable {
+   }
+   const identities = own.get("identity_finding_counts");
+   if (identities === undefined) {
+-    if (findingCounts !== undefined && findingCounts.size > 0)
+-      return refuseShape(where, shape);
+     return new Map();
+   }
+   return parseCountTable(identities, where, shape);
