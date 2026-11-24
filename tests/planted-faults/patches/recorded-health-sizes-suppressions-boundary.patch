@@ -1,0 +1,26 @@
+diff --git a/generated-repository/scripts/fallow-health-at-base-settings.ts b/generated-repository/scripts/fallow-health-at-base-settings.ts
+--- a/generated-repository/scripts/fallow-health-at-base-settings.ts
++++ b/generated-repository/scripts/fallow-health-at-base-settings.ts
+@@ -313,22 +313,6 @@ function resolveInsideTree(realTree: string, rel: string, rev: string): string {
+       `fallow suppressions at ${rev} reported an invalid file path. ${PINNED_FALLOW_REPAIR}`,
+     );
+   const target = resolve(realTree, rel);
+-  if (!target.startsWith(`${realTree}${sep}`))
+-    fail(
+-      `fallow suppressions at ${rev} reported ${rel}, outside the measured tree. Repair: commit regular files inside the repository, then run this check again.`,
+-    );
+-  let parent: string;
+-  try {
+-    parent = realpathSync(dirname(target));
+-  } catch {
+-    fail(
+-      `fallow suppressions at ${rev} reported ${rel}, which does not exist in the measured tree. ${PINNED_FALLOW_REPAIR}`,
+-    );
+-  }
+-  if (parent !== realTree && !parent.startsWith(`${realTree}${sep}`))
+-    fail(
+-      `fallow suppressions at ${rev} reported ${rel}, through a symbolic link outside the measured tree. Repair: commit ${rel} as a regular file without a symbolic link, then run this check again.`,
+-    );
+   if (!lstatSync(target, { throwIfNoEntry: false })?.isFile())
+     fail(
+       `fallow suppressions at ${rev} reported ${rel}, which is not a regular file. Repair: commit ${rel} as a regular file in the repository, then run this check again.`,

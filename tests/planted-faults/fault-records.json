@@ -2914,5 +2914,12 @@
     "testFile": "tests/template/toolchain/recorded-health-sizes-base-settings.test.ts",
     "title": "^refuses a base settings file that is a symbolic link, whether it points into head or inside base$",
     "source": "faf8f1a fix(recorded-health-sizes): make only comment markers inert and refuse a linked base settings file"
+  },
+  {
+    "id": "recorded-health-sizes-suppressions-boundary",
+    "patch": "tests/planted-faults/patches/recorded-health-sizes-suppressions-boundary.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes-base-settings.test.ts",
+    "title": "^fails closed with exit 2 when fallow suppressions reports malformed JSON, an invalid path, or an unrecognised marker line$",
+    "source": "fd8b2dc fix(recorded-health-sizes): fail closed on invalid reported suppression paths and test refusals"
   }
 ]
