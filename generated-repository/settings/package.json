@@ -8,6 +8,7 @@
     "start": "bun run src/cli.ts",
     "check": "bun run lint && bun run format:check && bun run typecheck && bun run test && bun run --silent quality:fallow",
     "check:changesets": "bun run --bun changeset status --since origin/main && bun scripts/check-gated-paths.ts",
+    "check:recorded-health-sizes": "bun scripts/check-recorded-health-sizes.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "bun scripts/test-run.ts",
     "quality:fallow": "node_modules/.bin/fallow --format json --quiet --type-aware --type-aware-require complete --fail-on-issues --baseline-mode identity --baseline fallow-dead-code-recorded-hits.json --dupes-baseline fallow-duplicates-recorded-hits.json --health-baseline fallow-health-recorded-hits.json",

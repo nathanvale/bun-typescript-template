@@ -2858,5 +2858,89 @@
     "testFile": "tests/template/lint/anti-slop-rules.test.ts",
     "title": "^anti-slop/no-chained-type-assertions refuses the anti-slop 13909c9 shape in scripts/doctor\\.ts and admits its clean form$",
     "source": "6ce33a5 fix(generated-lint): keep every kernel lint rule in a generated repository"
+  },
+  {
+    "id": "recorded-health-sizes-workflow",
+    "patch": "tests/planted-faults/patches/recorded-health-sizes-workflow.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes.test.ts",
+    "title": "^refuses function line growth in a recorded health finding$",
+    "source": "9765d7a fix(recorded-health-sizes): refuse growth in a recorded health finding's size and in eslint-suppressions.json"
+  },
+  {
+    "id": "recorded-health-sizes-function-lines",
+    "patch": "tests/planted-faults/patches/recorded-health-sizes-function-lines.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes.test.ts",
+    "title": "^refuses function line growth in a recorded health finding$",
+    "source": "9765d7a fix(recorded-health-sizes): refuse growth in a recorded health finding's size and in eslint-suppressions.json"
+  },
+  {
+    "id": "recorded-health-sizes-cyclomatic",
+    "patch": "tests/planted-faults/patches/recorded-health-sizes-cyclomatic.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes.test.ts",
+    "title": "^refuses cyclomatic complexity growth in a recorded health finding$",
+    "source": "9765d7a fix(recorded-health-sizes): refuse growth in a recorded health finding's size and in eslint-suppressions.json"
+  },
+  {
+    "id": "recorded-health-sizes-cognitive",
+    "patch": "tests/planted-faults/patches/recorded-health-sizes-cognitive.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes.test.ts",
+    "title": "^refuses cognitive complexity growth in a recorded health finding$",
+    "source": "9765d7a fix(recorded-health-sizes): refuse growth in a recorded health finding's size and in eslint-suppressions.json"
+  },
+  {
+    "id": "recorded-health-sizes-file-lines",
+    "patch": "tests/planted-faults/patches/recorded-health-sizes-file-lines.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes.test.ts",
+    "title": "^refuses file line growth in a recorded health finding$",
+    "source": "9765d7a fix(recorded-health-sizes): refuse growth in a recorded health finding's size and in eslint-suppressions.json"
+  },
+  {
+    "id": "recorded-health-sizes-eslint-count",
+    "patch": "tests/planted-faults/patches/recorded-health-sizes-eslint-count.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes.test.ts",
+    "title": "^refuses a higher suppression count in eslint-suppressions\\.json$",
+    "source": "9765d7a fix(recorded-health-sizes): refuse growth in a recorded health finding's size and in eslint-suppressions.json"
+  },
+  {
+    "id": "recorded-health-sizes-eslint-new",
+    "patch": "tests/planted-faults/patches/recorded-health-sizes-eslint-new.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes.test.ts",
+    "title": "^refuses a new file and rule pair in eslint-suppressions\\.json$",
+    "source": "9765d7a fix(recorded-health-sizes): refuse growth in a recorded health finding's size and in eslint-suppressions.json"
+  },
+  {
+    "id": "recorded-health-sizes-health-approval",
+    "patch": "tests/planted-faults/patches/recorded-health-sizes-health-approval.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes.test.ts",
+    "title": "^refuses growth when the base revision already holds the same approved value, even with spaces around it$",
+    "source": "9765d7a fix(recorded-health-sizes): refuse growth in a recorded health finding's size and in eslint-suppressions.json"
+  },
+  {
+    "id": "recorded-health-sizes-eslint-approval",
+    "patch": "tests/planted-faults/patches/recorded-health-sizes-eslint-approval.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes.test.ts",
+    "title": "^refuses growth when the base revision already holds the same approved value, even with spaces around it$",
+    "source": "9765d7a fix(recorded-health-sizes): refuse growth in a recorded health finding's size and in eslint-suppressions.json"
+  },
+  {
+    "id": "recorded-health-sizes-unreadable-base",
+    "patch": "tests/planted-faults/patches/recorded-health-sizes-unreadable-base.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes.test.ts",
+    "title": "^fails closed with exit 2 on an unreadable base file, naming the file and git reason$",
+    "source": "9765d7a fix(recorded-health-sizes): refuse growth in a recorded health finding's size and in eslint-suppressions.json"
+  },
+  {
+    "id": "recorded-health-sizes-malformed-count",
+    "patch": "tests/planted-faults/patches/recorded-health-sizes-malformed-count.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes.test.ts",
+    "title": "^fails closed with exit 2 on malformed recorded lists$",
+    "source": "9765d7a fix(recorded-health-sizes): refuse growth in a recorded health finding's size and in eslint-suppressions.json"
+  },
+  {
+    "id": "recorded-health-sizes-non-identity",
+    "patch": "tests/planted-faults/patches/recorded-health-sizes-non-identity.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes.test.ts",
+    "title": "^fails closed with exit 2 on malformed recorded lists$",
+    "source": "9765d7a fix(recorded-health-sizes): refuse growth in a recorded health finding's size and in eslint-suppressions.json"
   }
 ]

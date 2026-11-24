@@ -1,0 +1,11 @@
+diff --git a/generated-repository/scripts/check-recorded-health-sizes.ts b/generated-repository/scripts/check-recorded-health-sizes.ts
+--- a/generated-repository/scripts/check-recorded-health-sizes.ts
++++ b/generated-repository/scripts/check-recorded-health-sizes.ts
+@@ -317,7 +317,6 @@ function grownMetricsFor(
+       ? [["file lines", (m) => m.lineCount]]
+       : [
+           ["function lines", (m) => m.lineCount],
+-          ["cyclomatic complexity", (m) => m.cyclomatic],
+           ["cognitive complexity", (m) => m.cognitive],
+         ];
+   return checks.flatMap(([label, read]) => {

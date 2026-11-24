@@ -1,0 +1,12 @@
+diff --git a/generated-repository/scripts/check-recorded-health-sizes.ts b/generated-repository/scripts/check-recorded-health-sizes.ts
+--- a/generated-repository/scripts/check-recorded-health-sizes.ts
++++ b/generated-repository/scripts/check-recorded-health-sizes.ts
+@@ -404,8 +404,7 @@ function suppressionRefusalFor(
+   if (
+     headEntry.count <= baseCount ||
+     (headEntry.approved !== undefined &&
+-      headEntry.approved !== baseEntry?.approved)
++      true)
+   )
+     return undefined;
+   const shrink =
