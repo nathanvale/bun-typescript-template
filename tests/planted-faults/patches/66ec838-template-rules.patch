@@ -1,0 +1,13 @@
+diff --git a/config/template-rules.mjs b/config/template-rules.mjs
+index 3a35494..46bf43e 100644
+--- a/config/template-rules.mjs
++++ b/config/template-rules.mjs
+@@ -343,7 +343,7 @@ function directiveKind(source, comment) {
+   const text = comment.value.trimStart();
+   const found = directives.find(([form]) => form.test(text));
+   return source.lines[comment.loc.start.line - 1].trim() ===
+-    source.getText(comment).trim() && found?.[1].test(text)
++    source.getText(comment).trim() && found
+     ? "admitted"
+     : "reason";
+ }

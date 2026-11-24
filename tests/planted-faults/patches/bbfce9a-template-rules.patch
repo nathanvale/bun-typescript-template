@@ -1,109 +1,13 @@
 diff --git a/config/template-rules.mjs b/config/template-rules.mjs
-index 4904ca1..5c25355 100644
+index 3a35494..4da34a1 100644
 --- a/config/template-rules.mjs
 +++ b/config/template-rules.mjs
-@@ -8,13 +8,6 @@ const safetyMarker = "SAFETY";
- const commentMarker = new RegExp(`^(?:${plainMarkers.join("|")}):`);
- const safetyJustification = new RegExp(`^${safetyMarker}:\\s*\\S`);
- const acceptedDecision = /accepted decisions?\b/i;
--const castOwners = new Set([
--  "ExpressionStatement",
--  "PropertyDefinition",
--  "ReturnStatement",
--  "ThrowStatement",
--  "VariableDeclaration",
--]);
- 
- function constantText(context, node, depth = 0) {
-   if (!node || depth > 8) return undefined;
-@@ -242,54 +235,6 @@ function commentBlocks(source) {
-   return blocks;
- }
- 
--function isConstAssertion(node) {
--  return (
--    node.typeAnnotation.type === "TSTypeReference" &&
--    node.typeAnnotation.typeName.type === "Identifier" &&
--    node.typeAnnotation.typeName.name === "const"
--  );
--}
--
--function commentAbove(source, node) {
--  const comment = source.getCommentsBefore(node).at(-1);
--  return comment?.loc.end.line === node.loc.start.line - 1
--    ? comment
--    : undefined;
--}
--
--function castPlacements(source, assertion) {
--  const placements = [];
--  let node = assertion;
--  while (node.parent) {
--    placements.push(commentAbove(source, node));
--    if (castOwners.has(node.type)) {
--      if (
--        node.parent.type === "ExportNamedDeclaration" &&
--        node.parent.declaration === node
--      )
--        placements.push(commentAbove(source, node.parent));
--      break;
--    }
--    if (node.parent.type === "Program") break;
--    node = node.parent;
--  }
--  return placements;
--}
--
--function isAdmitted(source, block, placed) {
--  const lines = block.map((comment) => comment.value.trim());
--  const [first = ""] = lines;
--  const { start } = block[0].loc;
--  return (
--    commentDirective.test(first) ||
--    commentMarker.test(first) ||
--    acceptedDecision.test(lines.join(" ")) ||
--    (safetyJustification.test(first) &&
--      source.lines[start.line - 1].slice(0, start.column).trim() === "" &&
--      placed.has(block[block.length - 1]))
--  );
--}
--
- export default {
-   rules: {
-     "no-comments": {
-@@ -298,23 +243,22 @@ export default {
-         schema: [],
-         messages: {
-           comment:
--            "A comment reads as permission, and the next agent builds on it. Keep a comment only when its first word is Platform: (behaviour of a runtime, operating system or tool this repository cannot change) or Interface: (a public contract the types cannot state), or when it cites an accepted decision (AGENTS.md, Authority), or when it opens with SAFETY: and a justification, on its own lines directly above the statement that holds a type cast (as T, not as const). Repair: say this in code (a clearer name, a type, a test title, or a lint rule whose message states the constraint), then delete the comment.",
-+            "A comment reads as permission, and the next agent builds on it. Keep a comment only when its first word is Platform: (behaviour of a runtime, operating system or tool this repository cannot change) or Interface: (a public contract the types cannot state), or when it cites an accepted decision (AGENTS.md, Authority), or when it opens with SAFETY: and a justification for a type cast. Repair: say this in code (a clearer name, a type, a test title, or a lint rule whose message states the constraint), then delete the comment.",
-         },
-       },
-       create(context) {
--        const source = context.sourceCode;
--        const placed = new Set();
--        const collect = (node) => {
--          if (!isConstAssertion(node))
--            for (const comment of castPlacements(source, node))
--              placed.add(comment);
--        };
-         return {
--          TSAsExpression: collect,
--          TSTypeAssertion: collect,
--          "Program:exit"() {
--            for (const block of commentBlocks(source)) {
--              if (isAdmitted(source, block, placed)) continue;
-+          Program() {
-+            for (const block of commentBlocks(context.sourceCode)) {
-+              const lines = block.map((comment) => comment.value.trim());
-+              const [first = ""] = lines;
-+              if (
-+                commentDirective.test(first) ||
-+                commentMarker.test(first) ||
-+                safetyJustification.test(first) ||
-+                acceptedDecision.test(lines.join(" "))
-+              )
-+                continue;
-               context.report({
-                 loc: {
-                   start: block[0].loc.start,
+@@ -373,7 +373,7 @@ function labelRefusal(source, block, placed) {
+     (commentMarker.test(first) &&
+       (!platform || platformForms.some((form) => form.test(text)))) ||
+     decisionCitation.test(text) ||
+-    (safetyJustification.test(first) && opensAbove(source, block, placed))
++    safetyJustification.test(first)
+   )
+     return undefined;
+   if (platform) return refusals.platform;

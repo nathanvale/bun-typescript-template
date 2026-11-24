@@ -22,10 +22,10 @@ export default defineConfig(
       "coverage/**",
       ".fallow/**",
       ".worktrees/**",
-      "config/*.d.mts",
       "generated-repository/**",
     ],
   },
+  { linterOptions: { noInlineConfig: true } },
   {
     files: ["**/*.ts"],
     extends: [
@@ -51,6 +51,12 @@ export default defineConfig(
       "repository/no-comments": "error",
       "repository/no-host-path-literal": "error",
     },
+  },
+  {
+    files: ["**/*.ts.txt"],
+    languageOptions: { parser: tseslint.parser },
+    plugins: { repository: localRules },
+    rules: { "repository/no-comments": "error" },
   },
   {
     files: ["src/cli.ts"],

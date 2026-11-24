@@ -21,7 +21,10 @@ import {
   lintRulesOn,
 } from "../../support/generated-lint.ts";
 import { kernelCheckout } from "../../support/kernel-sibling.ts";
-import { commentCases } from "../../support/lint-comment-cases.ts";
+import {
+  commentCases,
+  directiveCases,
+} from "../../support/lint-comment-cases.ts";
 import { antiSlopGate, repositoryGate } from "../../support/lint-gate-cases.ts";
 import { EXPECTED_RULE_FILES } from "../../support/lint-rule-files.ts";
 import { processWatchdog } from "../../support/process.ts";
@@ -249,16 +252,18 @@ test(
 test(
   "a repository Bootstrap generates refuses and admits each comment as the template does",
   async () => {
-    const lint = generatedLint(await generatedRepository());
+    const root = await generatedRepository();
+    const lint = generatedLint(root);
     const rules = new Set(["repository/no-comments"]);
-    const verdicts: [string, number[]][] = [];
-    for (const [, code] of commentCases)
-      verdicts.push([
-        code,
-        (await lint(SOURCE_FILE, code, rules)).map(({ line }) => line),
-      ]);
+    const cases = [...commentCases, ...directiveCases];
+    const verdicts: [string, string, number[]][] = [];
+    for (const [path, code] of cases) {
+      const file = path.startsWith("tests/") ? testFileOf(root) : SOURCE_FILE;
+      const found = await lint(file, code, rules);
+      verdicts.push([path, code, [...new Set(found.map(({ line }) => line))]]);
+    }
     expect(verdicts).toEqual(
-      commentCases.map(([, code, lines]) => [code, [...lines]]),
+      cases.map(([path, code, lines]) => [path, code, [...lines]]),
     );
   },
   generationTimeout,

@@ -1,13 +1,74 @@
 const localeNames = new Set(["localeCompare", "Collator"]);
 const folding = new Set(["TemplateLiteral", "BinaryExpression"]);
 const comma = { type: "Literal", value: "," };
-const commentDirective =
-  /^(?:eslint-|eslint |global |@ts-|biome-ignore|fallow-ignore)/;
 const plainMarkers = ["Platform", "Interface"];
 const safetyMarker = "SAFETY";
 const commentMarker = new RegExp(`^(?:${plainMarkers.join("|")}):`);
 const safetyJustification = new RegExp(`^${safetyMarker}:\\s*\\S`);
 const acceptedDecision = /accepted decisions?\b/i;
+const decisionId = String.raw`\b[A-Z][A-Z0-9]*-?\d+[a-z]?\b`;
+const rulingDate = String.raw`\b\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\b`;
+const decisionCitation = new RegExp(
+  String.raw`[Aa]ccepted\s+decisions?\s+(?:${decisionId}|\([^)]*?(?:${decisionId}|${rulingDate}|\bquestion\s+\d+\b))`,
+);
+const platformNames =
+  "APFS Biome Bun bun bun-types Darwin ESLint ext4 Fallow git Git GitHub JavaScript launchd libc Linux LogTape macOS Node npm POSIX systemd tsc tsgo TypeScript Ubuntu Unix V8 Windows AbortController AbortSignal ArrayBuffer instanceof Map Proxy queueMicrotask ReadableStream setImmediate setInterval setTimeout structuredClone TextDecoder TextEncoder typeof Uint8Array WeakMap WeakRef".split(
+    " ",
+  );
+const platformMechanisms =
+  "compiler, decoder, event loop, file system, filesystem, fsync, hard link, promise, rename, runner, runtime, symbolic link".split(
+    ", ",
+  );
+const escaped = (text) => text.replace(/[.+-]/g, "\\$&");
+const platformForms = [
+  new RegExp(
+    String.raw`(?<![\w.-])(?:${platformNames.map(escaped).join("|")})(?![\w-])`,
+  ),
+  new RegExp(String.raw`\b(?:${platformMechanisms.join("|")})s?\b`, "i"),
+  /<[\w/]+\.h>/,
+  /\b(?:E[A-Z]{3,}|SIG[A-Z]{2,}|O_[A-Z]+|errno)\b/,
+  /\b[a-z_]+\(\d\)/,
+  /\/proc\b|\/dev\//,
+  /\b(?:Object|Function|Array|Math|Date|JSON|Reflect|Promise|Symbol|Intl|Number|String)\.\w/,
+  /\bnode:[a-z_/]+|\b[a-z]+Sync\b|\bprocess\.[a-z]+/,
+];
+const directives = [
+  [/^@ts-check$/, /^/],
+  [/^@ts-(?:expect-error|ignore|nocheck)/, /^@ts-[\w-]+(?![\w-]).*\p{L}/u],
+  [/^fallow-ignore(?:-next-line|-file)?(?![\w-])/, /\s-{2,}\s.*\p{L}/u],
+  [/^biome-ignore(?:-all)?\s+format:/, /:.*\p{L}/u],
+];
+const candidate =
+  /^[\s/*]*(?:(@ts-|(?:biome|fallow)-ignore)|(?:eslint(?:-enable|-disable(?:(?:-next)?-line)?)?|exported|globals?)(?:\s|$))/m;
+const refusals = {
+  comment: {
+    problem: "A comment reads as permission, and the next agent builds on it.",
+    repair: "",
+  },
+  reason: {
+    problem:
+      "Without its exact form, its own line and a reason in words, nobody can tell whether this directive holds.",
+    repair:
+      "give the reason after the directive, alone on its line (fallow-ignore-next-line kind -- reason, @ts-expect-error reason, biome-ignore format: reason; Biome's linter is off here, so delete biome-ignore lint) or fix what it suppresses and ",
+  },
+  eslint: {
+    problem:
+      "ESLint inline configuration is off here, so this changes nothing.",
+    repair:
+      "delete it and fix what ESLint reports; for anything else it says, ",
+  },
+  platform: {
+    problem:
+      "This Platform: comment names no platform or tool to check it against.",
+    repair:
+      "name the platform or tool the fact belongs to (for example Bun, git, macOS, Linux, POSIX, TypeScript or a JavaScript built-in such as Map); if the fact is about this repository's own code, ",
+  },
+  decision: {
+    problem: "This comment names an accepted decision but cites none.",
+    repair:
+      "cite the decision by its id or ruling date right after the words (accepted decision N4a, or Accepted decision (Nathan, 19 November 2026, 12:08 AEDT), or Accepted decision (Command Contract 3 question 4)); if no ruling exists, ",
+  },
+};
 const castOwners = new Set([
   "ExpressionStatement",
   "PropertyDefinition",
@@ -229,8 +290,8 @@ const namesNothing = (wrapped) => {
 function commentBlocks(source) {
   const blocks = [];
   for (const comment of source.getAllComments()) {
-    const block = blocks[blocks.length - 1];
-    const last = block?.[block.length - 1];
+    const block = blocks.at(-1);
+    const last = block?.at(-1);
     if (
       last?.type === "Line" &&
       comment.type === "Line" &&
@@ -276,18 +337,47 @@ function castPlacements(source, assertion) {
   return placements;
 }
 
-function isAdmitted(source, block, placed) {
-  const lines = block.map((comment) => comment.value.trim());
-  const [first = ""] = lines;
+function directiveKind(source, comment) {
+  const match = candidate.exec(comment.value);
+  if (!match?.[1]) return match ? "eslint" : "text";
+  const text = comment.value.trimStart();
+  const found = directives.find(([form]) => form.test(text));
+  return source.lines[comment.loc.start.line - 1].trim() ===
+    source.getText(comment).trim() && found?.[1].test(text)
+    ? "admitted"
+    : "reason";
+}
+
+function refusalOf(source, block, placed) {
+  const kinds = block.map((comment) => directiveKind(source, comment));
+  if (kinds.every((kind) => kind === "text"))
+    return labelRefusal(source, block, placed);
+  if (kinds.every((kind) => kind === "admitted")) return undefined;
+  return refusals[kinds.includes("eslint") ? "eslint" : "reason"];
+}
+
+function opensAbove(source, block, placed) {
   const { start } = block[0].loc;
   return (
-    commentDirective.test(first) ||
-    commentMarker.test(first) ||
-    acceptedDecision.test(lines.join(" ")) ||
-    (safetyJustification.test(first) &&
-      source.lines[start.line - 1].slice(0, start.column).trim() === "" &&
-      placed.has(block[block.length - 1]))
+    source.lines[start.line - 1].slice(0, start.column).trim() === "" &&
+    placed.has(block.at(-1))
   );
+}
+
+function labelRefusal(source, block, placed) {
+  const lines = block.map((comment) => comment.value.trim());
+  const [first] = lines;
+  const text = lines.join(" ");
+  const platform = first.startsWith("Platform:");
+  if (
+    (commentMarker.test(first) &&
+      (!platform || platformForms.some((form) => form.test(text)))) ||
+    decisionCitation.test(text) ||
+    (safetyJustification.test(first) && opensAbove(source, block, placed))
+  )
+    return undefined;
+  if (platform) return refusals.platform;
+  return acceptedDecision.test(text) ? refusals.decision : refusals.comment;
 }
 
 export default {
@@ -298,7 +388,7 @@ export default {
         schema: [],
         messages: {
           comment:
-            "A comment reads as permission, and the next agent builds on it. Keep a comment only when its first word is Platform: (behaviour of a runtime, operating system or tool this repository cannot change) or Interface: (a public contract the types cannot state), or when it cites an accepted decision (AGENTS.md, Authority), or when it opens with SAFETY: and a justification, on its own lines directly above the statement that holds a type cast (as T, not as const). Repair: say this in code (a clearer name, a type, a test title, or a lint rule whose message states the constraint), then delete the comment.",
+            "{{problem}} A comment stays only when it opens with Platform: and names the platform or tool it is about, opens with Interface: (a public contract the types cannot state), cites an accepted decision by its id or ruling date, is a TypeScript, Biome format or Fallow directive alone on its line with a reason in words, or opens with SAFETY: and a justification on its own lines directly above the statement that holds a type cast (as T, not as const). Repair: {{repair}}say this in code (a clearer name, a type, a test title, or a lint rule whose message states the constraint), then delete the comment.",
         },
       },
       create(context) {
@@ -314,13 +404,12 @@ export default {
           TSTypeAssertion: collect,
           "Program:exit"() {
             for (const block of commentBlocks(source)) {
-              if (isAdmitted(source, block, placed)) continue;
+              const refusal = refusalOf(source, block, placed);
+              if (!refusal) continue;
               context.report({
-                loc: {
-                  start: block[0].loc.start,
-                  end: block[block.length - 1].loc.end,
-                },
+                loc: { start: block[0].loc.start, end: block.at(-1).loc.end },
                 messageId: "comment",
+                data: refusal,
               });
             }
           },

@@ -1,0 +1,13 @@
+diff --git a/config/template-rules.mjs b/config/template-rules.mjs
+index 3a35494..c18dfac 100644
+--- a/config/template-rules.mjs
++++ b/config/template-rules.mjs
+@@ -352,7 +352,7 @@ function refusalOf(source, block, placed) {
+   const kinds = block.map((comment) => directiveKind(source, comment));
+   if (kinds.every((kind) => kind === "text"))
+     return labelRefusal(source, block, placed);
+-  if (kinds.every((kind) => kind === "admitted")) return undefined;
++  if (kinds[0] === "admitted") return undefined;
+   return refusals[kinds.includes("eslint") ? "eslint" : "reason"];
+ }
+ 
