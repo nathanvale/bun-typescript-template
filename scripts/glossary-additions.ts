@@ -299,8 +299,15 @@ function baseText(
   { file, movable }: RecordedList,
 ): string | undefined {
   if (movable === true) return textAt(root, base, file);
+  const listed = gitInNamesCheck(root, ["ls-tree", base, "--", file]);
+  if (listed.exitCode === 0 && listed.stdout.toString() === "")
+    return undefined;
   const shown = gitInNamesCheck(root, ["show", `${base}:${file}`]);
-  return shown.exitCode === 0 ? shown.stdout.toString() : undefined;
+  if (listed.exitCode !== 0 || shown.exitCode !== 0)
+    throw new Error(
+      `git cannot read ${file} at ${base}: ${[listed, shown].map((run) => run.stderr.toString().trim()).join(" ")} Repair: run git fsck, or fetch the base again, then run bun run check:names --against <base> again.`,
+    );
+  return shown.stdout.toString();
 }
 
 export function recordedAdditionProblems(

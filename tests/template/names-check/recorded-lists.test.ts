@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { existsSync, lstatSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, rmSync } from "node:fs";
 import { basename, join } from "node:path";
 import {
   recordedAdditionProblems,
@@ -164,14 +164,17 @@ function landedList(file: string, landed: unknown) {
   put(root, file, JSON.stringify(landed));
   git(root, "add", "--", recordedHitsFile, recordedUnusedTermsFile, file);
   git(root, "commit", "--quiet", "-m", "landed");
-  return (current: unknown) => {
-    put(root, file, JSON.stringify(current));
-    return recordedAdditionProblems(root, "HEAD", (path) =>
-      existsSync(join(root, path))
-        ? readFileSync(join(root, path), "utf8")
-        : undefined,
-    );
-  };
+  return Object.assign(
+    (current: unknown) => {
+      put(root, file, JSON.stringify(current));
+      return recordedAdditionProblems(root, "HEAD", (path) =>
+        existsSync(join(root, path))
+          ? readFileSync(join(root, path), "utf8")
+          : undefined,
+      );
+    },
+    { root },
+  );
 }
 
 test("every recorded list has a planted addition", () => {
@@ -191,6 +194,17 @@ for (const [file, { landed, grown, shrunk, approved }] of plants)
     expect(problemsAfter(shrunk)).toEqual([]);
     expect(problemsAfter(approved)).toEqual([]);
   });
+
+test("a list the base revision holds but git cannot read stops the run, not read as absent", () => {
+  const file = "names-plain-words.json";
+  const problemsAfter = landedList(file, { words: [] });
+  const root = problemsAfter.root;
+  const blob = git(root, "rev-parse", `HEAD:${file}`);
+  rmSync(join(root, ".git/objects", blob.slice(0, 2), blob.slice(2)));
+  expect(() => problemsAfter({ words: [] })).toThrow(
+    `git cannot read ${file} at `,
+  );
+});
 
 test("an approval the base revision already holds does not admit a rise, even with spaces around it", () => {
   const file = "eslint-suppressions.json";
@@ -454,6 +468,7 @@ const dodgedRuns: readonly (readonly [string, string, string])[] = [
     "eslint . --max-warnings 0",
     "eslint . --max-warnings 0 --suppressions-location extra.json",
   ],
+  [".fallowrc.json", "", '{"audit":{"healthBaseline":"custom.json"}}'],
   [
     ".fallowrc.json",
     '"audit": {',
@@ -465,7 +480,7 @@ test("a Fallow run or config that names a list another way is refused", () => {
   const tracked = trackedPaths();
   const refused = dodgedRuns.map(([path, from, to]) => {
     const text = readFileSync(join(templateRoot, path), "utf8");
-    overlay = new Map([[path, text.replace(from, to)]]);
+    overlay = new Map([[path, from === "" ? to : text.replace(from, to)]]);
     return text.includes(from) ? unguardedLists(tracked, templateRoot) : [];
   });
   overlay = new Map();
