@@ -67,6 +67,16 @@ test("a source that does neither is a library, not a CLI", async () => {
   ).toEqual([]);
 });
 
+test.each(["__cliInventoryMain", "__cliInventoryArgv"])(
+  "a library that spells the %s marker with an escape the transpiler decodes is not a CLI",
+  async (marker) => {
+    const escaped = `\\u005f${marker.slice(1)}`;
+    expect(
+      await inventoryOf({ "src/lib.ts": `export const s = "${escaped}";\n` }),
+    ).toEqual([]);
+  },
+);
+
 test.each([
   ["a tests folder", "tests/cli.ts"],
   ["a test folder", "test/cli.ts"],

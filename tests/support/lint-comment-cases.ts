@@ -1,5 +1,7 @@
 import { templateSourceFile } from "./template-lint.ts";
 
+const testFile = "tests/template/doctor/doctor.test.ts";
+
 export const commentCases = [
   [templateSourceFile, "// Loop over the names.\nexport const a = 1;", [1]],
   [
@@ -7,11 +9,7 @@ export const commentCases = [
     "// A workaround until the parser is fixed:\n// it drops the last token.\nexport const a = 1;",
     [1],
   ],
-  [
-    "tests/template/doctor/doctor.test.ts",
-    "/* Narration */ export const a = 1;",
-    [1],
-  ],
+  [testFile, "/* Narration */ export const a = 1;", [1]],
   [
     templateSourceFile,
     "/** Adds one. */\nexport const add = (n: number) => n + 1;",
@@ -57,7 +55,72 @@ export const commentCases = [
   ],
   [
     templateSourceFile,
+    "// Platform: Avoid collisions even when the parser normalizes escaped literal text.\nexport const a = 1;",
+    [1],
+  ],
+  [
+    templateSourceFile,
+    "// Platform: Resolved, so fileSeparation judges real directories.\nexport const a = 1;",
+    [1],
+  ],
+  [
+    templateSourceFile,
+    "// Platform: the lint-view parser overflows its stack\n// on deep nesting.\nexport const a = 1;",
+    [1],
+  ],
+  [
+    templateSourceFile,
+    "// This follows an accepted decision.\nexport const a = 1;",
+    [1],
+  ],
+  [
+    templateSourceFile,
+    "// The station (accepted decisions of 17:06 and 17:24, form H)\n// declares the ruled words.\nexport const a = 1;",
+    [1],
+  ],
+  [
+    templateSourceFile,
+    "// Accepted decision (Nathan, in chat): keep the loop.\nexport const a = 1;",
+    [1],
+  ],
+  [
+    templateSourceFile,
     "// Platform: Bun drains spawn pipes.\nexport const a = 1;",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// Platform: EPERM is another user's live process; only ESRCH\n// proves it is gone.\nexport const a = 1;",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// Platform: <sys/file.h> LOCK_EX LOCK_NB\nexport const a = 1;",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// Platform: A Map keeps names such as __proto__ as data.\nexport const a = 1;",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// Platform: Every object type resolves the Object.prototype members.\nexport const a = 1;",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// Platform: existsSync follows a symlink; lstatSync reads the link.\nexport const a = 1;",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// Platform: a write follows a symbolic link at the path.\nexport const a = 1;",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// Platform: Both compilers skip type checking when a file fails to parse.\nexport const a = 1;",
     [],
   ],
   [
@@ -66,13 +129,23 @@ export const commentCases = [
     [],
   ],
   [
-    "tests/template/doctor/doctor.test.ts",
+    testFile,
     "// The accepted\n// decision N4a keeps the line on stdout.\nexport const a = 1;",
     [],
   ],
   [
     templateSourceFile,
-    "// eslint-disable-next-line no-console\nconsole.log(1);",
+    "// Accepted decision (Nathan, 19 November 2026, 12:08 AEDT): at most\n// 64 moves per hold.\nexport const a = 1;",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// Accepted decision (Command Contract 3 question 4): the summary is\n// any proof the add-on issued.\nexport const a = 1;",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// O_CLOEXEC is set here (accepted decision BN-03).\nexport const a = 1;",
     [],
   ],
   [
@@ -106,3 +179,147 @@ export const commentCases = [
     [],
   ],
 ] as const;
+
+export const commentRepairs = [
+  ["// Loop over the names.\nexport const a = 1;", "Repair: say this in code"],
+  [
+    "// @ts-ignore:\nexport const a = 1;",
+    "give the reason after the directive",
+  ],
+  [
+    "/* eslint-disable */\nexport const a = 1;",
+    "delete it and fix what ESLint reports",
+  ],
+  [
+    "// This follows an accepted decision.\nexport const a = 1;",
+    "cite the decision by its id or ruling date",
+  ],
+  [
+    "// Platform: Avoid collisions when the parser normalizes text.\nexport const a = 1;",
+    "name the platform or tool the fact belongs to",
+  ],
+  [
+    "// biome-ignore lint/style/useConst: the fixture needs it\nexport const a = 1;",
+    "Biome's linter is off here",
+  ],
+] as const;
+
+const suppressions = [
+  "// @ts-expect-error",
+  "// @ts-expect-error:",
+  "// @ts-ignore",
+  "// @ts-ignore:",
+  "// @ts-nocheck",
+  "// @ts-nocheck:",
+  "// @ts-ignore-me",
+  "// biome-ignore format:",
+  "// biome-ignore-all format:",
+].map((open) => [templateSourceFile, open, " ", "", true] as const);
+const biomeLint = [
+  "// biome-ignore lint/style/useConst:",
+  "// biome-ignore lint:",
+  "// biome-ignore-all lint/style/useConst:",
+  "// biome-ignore-start format:",
+  "// biome-ignore-end lint/style/useConst:",
+].map((open) => [templateSourceFile, open, " ", "", false] as const);
+const fallow = [
+  "// fallow-ignore-next-line unused-export",
+  "// fallow-ignore-file unused-export",
+  "// fallow-ignore unused-export",
+].map((open) => [templateSourceFile, open, " -- ", "", true] as const);
+const eslintInline = [
+  ["/* eslint-disable", " */"],
+  ["/* eslint-disable repository/no-comments", " */"],
+  ['/* eslint "repository/no-comments": "off"', " */"],
+  ["/* global foo", " */"],
+  ["/* exported foo", " */"],
+  ["console.log(1); // eslint-disable-line", ""],
+  ["// eslint-disable-next-line no-console", ""],
+  ["// eslint-enable no-console", ""],
+].flatMap(([open, close]) =>
+  [templateSourceFile, testFile].map(
+    (path) => [path, open, " -- ", close, false] as const,
+  ),
+);
+const reasons = ["", ".", "the fixture needs it"];
+const narration = "\n// Loop over the names because it is clearer.";
+
+export const directiveCases = [
+  ...[...suppressions, ...biomeLint, ...fallow, ...eslintInline].flatMap(
+    ([path, open, separator, close, admits]) =>
+      reasons.flatMap((reason) =>
+        ["", narration].map((after) => {
+          const said = reason === "" ? "" : `${separator}${reason}`;
+          const code = `${open}${said}${close}${after}\nexport const a = 1;`;
+          const admitted = admits && reason === reasons[2] && after === "";
+          const lines = admitted ? [] : close !== "" && after ? [1, 2] : [1];
+          return [path, code, lines] as const;
+        }),
+      ),
+  ),
+  [templateSourceFile, "// @ts-check\nexport const a = 1;", []],
+  [templateSourceFile, `// @ts-check${narration}\nexport const a = 1;`, [1]],
+  [templateSourceFile, "// @ts-check\n// @ts-ignore\nexport const a = 1;", [1]],
+  [
+    templateSourceFile,
+    "// @ts-check\n// @ts-ignore the fixture needs it\nexport const a = 1;",
+    [],
+  ],
+  [
+    templateSourceFile,
+    "// Platform: Bun drains spawn pipes.\n// @ts-ignore\nexport const a = 1;",
+    [1],
+  ],
+  [
+    templateSourceFile,
+    "// global note: bump this when the schema changes\n// TODO remove after the next release\nexport const a = 1;",
+    [1],
+  ],
+  [
+    templateSourceFile,
+    "// eslint-tolerant hack: keep it\n// TODO remove after the next release\nexport const a = 1;",
+    [1],
+  ],
+  [
+    templateSourceFile,
+    '/// <reference types="bun" />\nexport const a = 1;',
+    [1],
+  ],
+  ...shapeCases(),
+] as const;
+
+function shapeCases() {
+  const platform = "Platform: Bun supplies the types used here.";
+  const shapes = [
+    [(d: string) => `// ${d}`, true],
+    [(d: string) => `/* ${d} */`, true],
+    [
+      (d: string) =>
+        `/* ${d}\n   Loop over the names because it is clearer. */`,
+    ],
+    [(d: string) => `/* ${platform}\n   ${d} */`],
+    [(d: string) => `/**\n * ${d}\n */`],
+    [(d: string) => `/// ${d}`],
+    [(d: string) => `// ${platform}\n/// ${d}`],
+    [(d: string) => `// ${platform}\n// ${d}`],
+    [(d: string) => `export const b = 1; // ${d}`],
+    [(d: string) => `/* ${d} */ export const b = 1;`],
+  ] as const;
+  const read = [
+    "@ts-expect-error the fixture needs it",
+    "@ts-ignore the fixture needs it",
+    "biome-ignore format: the fixture needs it",
+    "fallow-ignore-next-line unused-export -- the fixture needs it",
+  ].map((directive) => [directive, true] as const);
+  const unread = [
+    "biome-ignore lint/style/useConst: the fixture needs it",
+    "@ts-skip the fixture needs it",
+  ].map((directive) => [directive, false] as const);
+  return [...read, ...unread].flatMap(([directive, readHere]) =>
+    shapes.map(([shape, alone]) => {
+      const admitted = readHere && alone === true;
+      const code = `${shape(directive)}\nexport const a = 1;`;
+      return [templateSourceFile, code, admitted ? [] : [1]] as const;
+    }),
+  );
+}

@@ -291,10 +291,9 @@ function executableSource(
   };
   const scanner = sourceTranspiler(options);
   const original = scanner.transformSync(source);
-  // Platform: Avoid collisions even when the parser normalizes escaped literal text.
-  const occupied = source + original;
-  const main = referenceMarker(occupied, "__cliInventoryMain");
-  const argv = referenceMarker(occupied, "__cliInventoryArgv");
+  const sourceAndDecodedText = source + original;
+  const main = referenceMarker(sourceAndDecodedText, "__cliInventoryMain");
+  const argv = referenceMarker(sourceAndDecodedText, "__cliInventoryArgv");
   const references = processBindingReferences(original, scanner, argv);
   const transformed = sourceTranspiler({
     ...options,

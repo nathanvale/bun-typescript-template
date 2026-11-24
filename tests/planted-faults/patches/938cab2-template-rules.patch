@@ -1,0 +1,13 @@
+diff --git a/config/template-rules.mjs b/config/template-rules.mjs
+index 3a35494..ae30af2 100644
+--- a/config/template-rules.mjs
++++ b/config/template-rules.mjs
+@@ -372,7 +372,7 @@ function labelRefusal(source, block, placed) {
+   if (
+     (commentMarker.test(first) &&
+       (!platform || platformForms.some((form) => form.test(text)))) ||
+-    decisionCitation.test(text) ||
++    acceptedDecision.test(text) ||
+     (safetyJustification.test(first) && opensAbove(source, block, placed))
+   )
+     return undefined;

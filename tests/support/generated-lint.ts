@@ -16,6 +16,7 @@ const PROBES = [
   "src/probe.tsx",
   "tests/probe.ts",
   "tests/support/probe.mts",
+  "tests/fixtures/probe.ts.txt",
 ] as const;
 
 const TEMPLATE_RULE = /^(?:repository|anti-slop)\//;
@@ -118,10 +119,7 @@ export function generatedLint(root: string) {
   return async (file: string, code: string, rules: ReadonlySet<string>) => {
     const [result] = await eslint.lintText(code, { filePath: file });
     return (result?.messages ?? [])
-      .filter(
-        ({ ruleId, fatal }) =>
-          fatal === true || (ruleId !== null && rules.has(ruleId)),
-      )
+      .filter(({ ruleId }) => ruleId === null || rules.has(ruleId))
       .map(({ ruleId, line }) => ({ ruleId, line }));
   };
 }

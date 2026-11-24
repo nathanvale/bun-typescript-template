@@ -1,0 +1,13 @@
+diff --git a/config/template-rules.mjs b/config/template-rules.mjs
+index 3a35494..08980b4 100644
+--- a/config/template-rules.mjs
++++ b/config/template-rules.mjs
+@@ -39,7 +39,7 @@ const directives = [
+   [/^biome-ignore(?:-all)?\s+format:/, /:.*\p{L}/u],
+ ];
+ const candidate =
+-  /^[\s/*]*(?:(@ts-|(?:biome|fallow)-ignore)|(?:eslint(?:-enable|-disable(?:(?:-next)?-line)?)?|exported|globals?)(?:\s|$))/m;
++  /^[\s/*]*(?:(@ts-|(?:biome|fallow)-ignore)|(?:eslint(?:-enable|-disable(?:(?:-next)?-line)?)?|exported|globals?)(?:\s|$))/;
+ const refusals = {
+   comment: {
+     problem: "A comment reads as permission, and the next agent builds on it.",

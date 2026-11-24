@@ -2564,5 +2564,47 @@
     "testFile": "tests/template/template-upgrade/template-upgrade-gate-links.test.ts",
     "title": "^the gate check against HEAD stops as check-failed when a gate file it wrote became a hard link while the gate ran$",
     "source": "c6af63a fix(template-upgrade): refuse a linked gate file before the gate check against HEAD copies it"
+  },
+  {
+    "id": "66ec838-template-rules",
+    "patch": "tests/planted-faults/patches/66ec838-template-rules.patch",
+    "testFile": "tests/template/lint/lint-comments.test.ts",
+    "title": "^no-comments tells the agent to give the reason after the directive",
+    "source": "66ec838 fix(lint): refuse a suppression directive that gives no reason"
+  },
+  {
+    "id": "938cab2-template-rules",
+    "patch": "tests/planted-faults/patches/938cab2-template-rules.patch",
+    "testFile": "tests/template/lint/lint-comments.test.ts",
+    "title": "^no-comments tells the agent to cite the decision by its id or ruling date",
+    "source": "938cab2 fix(lint): refuse an accepted decision mention that cites no ID, ruling date or question"
+  },
+  {
+    "id": "7e6536a-template-rules",
+    "patch": "tests/planted-faults/patches/7e6536a-template-rules.patch",
+    "testFile": "tests/template/lint/lint-comments.test.ts",
+    "title": "^no-comments tells the agent to name the platform or tool the fact belongs to",
+    "source": "7e6536a fix(lint): refuse a Platform: comment that names no platform or tool"
+  },
+  {
+    "id": "26c4d94-eslint-config-inline",
+    "patch": "tests/planted-faults/patches/26c4d94-eslint-config-inline.patch",
+    "testFile": "tests/template/lint/lint-comments.test.ts",
+    "title": "^no-comments refuses \"/\\* eslint-disable \\*/.*clearer.* in src/toolchain-resolution\\.ts$",
+    "source": "26c4d94 fix(lint): switch ESLint inline configuration off in the template and in generated repositories"
+  },
+  {
+    "id": "0ebf758-template-rules",
+    "patch": "tests/planted-faults/patches/0ebf758-template-rules.patch",
+    "testFile": "tests/template/lint/lint-comments.test.ts",
+    "title": "^no-comments refuses \"// @ts-expect-error the fixture needs it.*clearer",
+    "source": "0ebf758 fix(lint): admit a directive only in its exact form, with a reason in words, on lines of its own"
+  },
+  {
+    "id": "cc1aefc-template-rules",
+    "patch": "tests/planted-faults/patches/cc1aefc-template-rules.patch",
+    "testFile": "tests/template/lint/lint-comments.test.ts",
+    "title": "^no-comments refuses \"/\\* Platform: Bun supplies the types used here\\.\\\\n   @ts-expect-error",
+    "source": "cc1aefc fix(lint): judge every comment as a directive candidate on its own, in the one form its tool reads"
   }
 ]
