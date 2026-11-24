@@ -1,7 +1,0 @@
-{
-  "kind": "added",
-  "breaking": false,
-  "affects": ["bootstrap", "generated-repository"],
-  "summary": "Added a change-notes/ folder with README.md to generated repositories through Bootstrap.",
-  "action": "Add change-notes/README.md if an existing generated repository should record change notes."
-}

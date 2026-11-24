@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, readFileSync, realpathSync } from "node:fs";
+import { delimiter, join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { kernelPinFile, readKernelPin } from "../../../src/kernel-pin.ts";
 import { argumentsOf } from "../../../scripts/pin-move.ts";
 import { startChild } from "../../../scripts/process-runner.ts";
@@ -8,11 +9,15 @@ import { KERNEL_LOCKFILE } from "../../../src/recipe.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import {
+  commitIn,
   git,
   gitEnv,
   gitOutput,
   inherited,
+  initRepository,
 } from "../../support/git-fixture.ts";
+import { commitObjects } from "../../support/git-object-fixture.ts";
+import { gitReadingRemoteAs } from "../../support/hung-git.ts";
 import {
   commitOn,
   kernelClone,
@@ -232,5 +237,68 @@ try {
       }
     },
     processWatchdog(3),
+  );
+
+  test(
+    "refuses a malformed kernel changeset with its CliError code and repair line",
+    async () => {
+      const kernelRepo = kernelClone(
+        folder("pin-move-command-bad-changeset-kernel-"),
+        trialBase,
+      );
+      git(kernelRepo, "read-tree", trialBase);
+      const badCommit = commitObjects(kernelRepo, "add malformed changeset", [
+        {
+          path: ".changeset/2026-11-24-broken.md",
+          bytes: "missing frontmatter\n",
+        },
+      ]);
+      moveBranch(kernelRepo, "main", badCommit);
+      const remoteBin = folder("pin-move-command-bad-changeset-bin-");
+      mkdirSync(remoteBin, { recursive: true });
+      gitReadingRemoteAs(remoteBin, readKernelPin(ROOT).remote, kernelRepo);
+
+      const generatedRepo = folder("pin-move-command-bad-changeset-repo-");
+      initRepository(generatedRepo);
+      const pinSpecifier = `git+${pathToFileURL(realpathSync(kernelRepo)).href}#${trialBase}`;
+      commitIn(generatedRepo, "initial pin", {
+        "package.json": `${JSON.stringify(
+          {
+            name: "bad-changeset-fixture",
+            dependencies: { "agent-cli-kernel": pinSpecifier },
+          },
+          null,
+          2,
+        )}\n`,
+      });
+
+      const run = await spawnBounded(
+        [
+          process.execPath,
+          join(ROOT, "scripts/pin-move.ts"),
+          badCommit,
+          "--kernel",
+          kernelRepo,
+          "--repository",
+          generatedRepo,
+          "--plan",
+        ],
+        {
+          cwd: ROOT,
+          env: {
+            ...inherited(),
+            ...gitEnv,
+            PATH: `${remoteBin}${delimiter}${process.env.PATH ?? ""}`,
+          },
+        },
+      );
+      expect({ exit: run.exit, stdout: run.stdout }).toEqual({
+        exit: 1,
+        stdout: "",
+      });
+      expect(run.stderr).toStartWith("changeset_invalid: ");
+      expect(run.stderr).toContain("\nRepair: ");
+    },
+    processWatchdog(1),
   );
 });

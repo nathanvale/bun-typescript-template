@@ -1,0 +1,7 @@
+---
+"bun-typescript-template": major
+---
+
+Enabled the source layout gate in generated repositories from day one: .fallowrc.json turns on boundary-violation with entry, rules, shared, subject, and flat zones under requireAllFiles, and eslint.config.mjs refuses loose files in src/ once subject folders exist.
+
+Action: Flat repositories (one subject, no subfolders under src/) pass untouched. Repositories that already added custom boundaries in .fallowrc.json resolve the JSON key merge on boundaries.zones and boundaries.rules by keeping their own stricter rules or taking the template's block. In any multi-folder repository, loose source files directly under src/ (other than src/cli.ts and src/commands.ts) must move into a subject folder or src/shared/ so bun run lint passes; recording Fallow hits does not silence ESLint. Pre-rule multi-folder repositories (such as src/commands/ + non-shared helper folders) that still report Fallow boundary violations can either move to src/<subject>/ and src/shared/ or run bun run quality:fallow:record-hits to record pre-existing Fallow boundary violations while blocking any new ones (noting that hosted baseline-growth checks refuse recorded-hits growth until paid down or explicitly accepted on the upgrade pull request).

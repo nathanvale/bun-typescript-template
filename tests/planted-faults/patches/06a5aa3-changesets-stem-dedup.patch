@@ -1,0 +1,16 @@
+diff --git a/src/template-upgrade-changesets.ts b/src/template-upgrade-changesets.ts
+--- a/src/template-upgrade-changesets.ts
++++ b/src/template-upgrade-changesets.ts
+@@ -211,12 +211,6 @@ function collectAddedEntries(options: {
+     if (!isCandidateChangesetFile(rawFile)) {
+       continue;
+     }
+-    if (
+-      !rawFile.includes("/") &&
+-      options.baseLegacyStems.has(rawFile.slice(0, -".md".length))
+-    ) {
+-      continue;
+-    }
+     entries.push(
+       parseEntry(options.repositoryRoot, rawFile, meta, options.env),
+     );

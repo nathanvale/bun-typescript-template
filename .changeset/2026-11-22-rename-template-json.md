@@ -1,0 +1,7 @@
+---
+"bun-typescript-template": minor
+---
+
+Renamed the template stamp file from .cli-design-template.json to .template.json and dropped specRevision, entryPoint, commandOwner, and registrationVersion, so the deprecated cli-design compose tool will no longer recognise a repository.
+
+Action: Existing repositories receive the new .template.json file name and trimmed stamp on their next Template upgrade.

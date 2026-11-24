@@ -1,0 +1,5 @@
+---
+"bun-typescript-template": minor
+---
+
+Moved files under src/commands/ into the entry zone of the source layout gate in .fallowrc.json, so a repository that splits its command table into src/commands/*.ts now treats those files as wiring like src/cli.ts and src/commands.ts: they may import subject folders, src/shared/ and rules.ts files. After a Template upgrade such a repository sees fewer boundary-violation problems and has nothing to do by hand. A subject importing another subject is still refused, and so is a subject or src/shared/ importing a file under src/commands/.

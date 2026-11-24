@@ -1,0 +1,14 @@
+diff --git a/src/template-upgrade-changesets.ts b/src/template-upgrade-changesets.ts
+--- a/src/template-upgrade-changesets.ts
++++ b/src/template-upgrade-changesets.ts
+@@ -45,9 +45,7 @@ function compareEntries(
+   left: TemplateChangesetEntry,
+   right: TemplateChangesetEntry,
+ ): number {
+-  const rankDelta =
+-    LEVEL_ORDER.indexOf(left.level) - LEVEL_ORDER.indexOf(right.level);
+-  return rankDelta !== 0 ? rankDelta : compareCodeUnits(left.file, right.file);
++  return compareCodeUnits(left.file, right.file);
+ }
+ 
+ function listTreeAt(

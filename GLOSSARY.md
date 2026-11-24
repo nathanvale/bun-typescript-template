@@ -339,10 +339,15 @@ The mark on a claim in a plan that says how sure it is: passed on Linux,
 passed on macOS only, designed and not run, decided by Nathan, or open.
 _Avoid_: confidence, status (for a claim tag), proven (for a prototype run)
 
-**Change note**:
-One JSON file under `change-notes/` recording a shipped change, whether it is
-breaking, what it affects, and any action the reader must take.
-_Avoid_: changeset, release note; changelog (for a change note)
+**Changeset**:
+One Markdown file under `.changeset/` recording a change on a gated path, its
+version level (`major`, `minor`, `patch`, or empty), its summary, and for a
+`major` change the `Action: ` line telling the reader what to do.
+_Avoid_: change note, release note; changelog (for a changeset)
+
+**Gated path**:
+A repository path whose changes require a changeset on a pull request.
+_Avoid_: shipped path
 
 **Plain word**:
 A word a new name may use that no glossary term holds, recorded with its reason.

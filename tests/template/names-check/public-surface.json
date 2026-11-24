@@ -1,6 +1,7 @@
 {
   "exports": [
     "generated-repository/application/**/*.ts",
+    "generated-repository/scripts/**/*.ts",
     "tests/support/test-folder.ts",
     "config/anti-slop-bindings.mjs",
     "config/anti-slop-rules.mjs",

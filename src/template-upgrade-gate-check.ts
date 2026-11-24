@@ -12,7 +12,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import type { ChangeNoteEntry } from "./change-notes.ts";
+import type { TemplateChangesetEntry } from "./template-upgrade-changesets.ts";
 import { RECORDED_HITS_FILES } from "./recipe.ts";
 import {
   classifyTemplateUpgradeGateFailure,
@@ -272,7 +272,7 @@ function createTemplateUpgradeCheckFailureRun(options: {
   readonly inputs: TemplateUpgradeInputs;
   readonly branch: string;
   readonly worktree: string;
-  readonly changeNotes: readonly ChangeNoteEntry[];
+  readonly changesets: readonly TemplateChangesetEntry[];
   readonly rows: readonly TemplateUpgradeRow[];
   readonly dependencyChanges: readonly PackageDependencyChange[];
   readonly templateCopyChanges: readonly TemplateUpgradeCopyChange[];
@@ -395,7 +395,7 @@ export function runTemplateUpgradeCheckSteps(options: {
   readonly inputs: TemplateUpgradeInputs;
   readonly branch: string;
   readonly worktree: string;
-  readonly changeNotes: readonly ChangeNoteEntry[];
+  readonly changesets: readonly TemplateChangesetEntry[];
   readonly rows: readonly TemplateUpgradeRow[];
   readonly dependencyChanges: readonly PackageDependencyChange[];
   readonly templateCopyChanges: readonly TemplateUpgradeCopyChange[];

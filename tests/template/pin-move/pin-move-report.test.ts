@@ -5,12 +5,11 @@ import {
   pinMoveReportText,
 } from "../../../scripts/pin-move-report.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
-import { initRepository } from "../../support/git-fixture.ts";
+import { git, initRepository } from "../../support/git-fixture.ts";
 import {
   commitObjects,
   stageRawPath,
 } from "../../support/git-object-fixture.ts";
-import { git } from "../../support/git-fixture.ts";
 
 const folder = ownedFolders();
 
@@ -69,171 +68,140 @@ describe("the pin move report", () => {
     );
   });
 
-  test("lists added kernel change notes first, breaking before non-breaking, when the kernel has a change-notes folder at the new Pin", () => {
-    const root = join(folder("pin-move-report-notes-"), "kernel");
+  test("lists added kernel changesets first, major before minor before empty, when the kernel has a .changeset folder at the new Pin", () => {
+    const root = join(folder("pin-move-report-changesets-"), "kernel");
     initRepository(root);
     const from = commitObjects(root, "first", [
-      { path: "change-notes/README.md", bytes: "# Change notes\n" },
+      { path: ".changeset/README.md", bytes: "# Changesets\n" },
       {
-        path: "change-notes/2026-11-20-older.json",
-        bytes: JSON.stringify({
-          kind: "added",
-          breaking: false,
-          affects: ["kernel"],
-          summary: "Earlier note.",
-          action: null,
-        }),
+        path: ".changeset/2026-11-20-older.md",
+        bytes: '---\n"agent-cli-kernel": minor\n---\n\nEarlier changeset.\n',
       },
     ]);
     const to = commitObjects(root, "second", [
       {
-        path: "change-notes/2026-11-22-forensics.json",
-        bytes: JSON.stringify({
-          kind: "added",
-          breaking: false,
-          affects: ["verify-cli"],
-          summary: "Added forensics command.",
-          action: null,
-        }),
+        path: ".changeset/2026-11-22-forensics.md",
+        bytes:
+          '---\n"agent-cli-kernel": minor\n---\n\nAdded forensics command.\n',
       },
       {
-        path: "change-notes/2026-11-23-drop-alias.json",
-        bytes: JSON.stringify({
-          kind: "removed",
-          breaking: true,
-          affects: ["addons/diagnostics"],
-          summary: "Removed legacy alias.",
-          action: "Import DiagnosticsAddon instead.",
-        }),
+        path: ".changeset/2026-11-23-drop-alias.md",
+        bytes:
+          '---\n"agent-cli-kernel": major\n---\n\nRemoved legacy alias.\n\nAction: Import DiagnosticsAddon instead.\n',
       },
       {
-        path: "change-notes/2026-11-23-internal.json",
-        bytes: JSON.stringify({
-          kind: "none",
-          breaking: false,
-          affects: [],
-          summary: "Internal refactor.",
-          action: null,
-        }),
+        path: ".changeset/2026-11-23-internal.md",
+        bytes: "---\n\n---\n",
       },
     ]);
 
     const report = pinMoveReport(root, from, to);
-    expect(report.changeNotes).toHaveLength(3);
-    expect(report.changeNotes?.map((entry) => entry.file)).toEqual([
-      "2026-11-22-forensics.json",
-      "2026-11-23-drop-alias.json",
-      "2026-11-23-internal.json",
+    expect(report.changesets).toHaveLength(3);
+    expect(
+      report.changesets?.map((entry) => [entry.file, entry.level]),
+    ).toEqual([
+      ["2026-11-23-drop-alias.md", "major"],
+      ["2026-11-22-forensics.md", "minor"],
+      ["2026-11-23-internal.md", "none"],
     ]);
 
     const text = pinMoveReportText(report, ["kernel-pin.json"]);
-    const notesIndex = text.indexOf("Kernel change notes (3):");
-    const breakingIndex = text.indexOf("BREAKING (1):");
-    const addedIndex = text.indexOf("Added (1):");
+    const sectionIndex = text.indexOf("Kernel changesets (3):");
+    const majorIndex = text.indexOf("MAJOR (1):");
+    const minorIndex = text.indexOf("Minor (1):");
     const noneIndex = text.indexOf("No consumer effect (1):");
     const writtenIndex = text.indexOf(
       "Written in the template, kernel lockfile first and pin last (1):",
     );
-    expect(notesIndex).toBeGreaterThan(-1);
-    expect(notesIndex).toBeLessThan(breakingIndex);
-    expect(breakingIndex).toBeLessThan(addedIndex);
-    expect(addedIndex).toBeLessThan(noneIndex);
+    expect(sectionIndex).toBeGreaterThan(-1);
+    expect(sectionIndex).toBeLessThan(majorIndex);
+    expect(majorIndex).toBeLessThan(minorIndex);
+    expect(minorIndex).toBeLessThan(noneIndex);
     expect(noneIndex).toBeLessThan(writtenIndex);
     expect(text).toContain("Action: Import DiagnosticsAddon instead.");
-    expect(text).not.toContain("2026-11-20-older.json");
+    expect(text).not.toContain("2026-11-20-older.md");
   });
 
-  test("reports zero added kernel change notes when change-notes exists at the new Pin with no new JSON note", () => {
-    const root = join(folder("pin-move-report-empty-notes-"), "kernel");
+  test("reports zero added kernel changesets when .changeset exists at the new Pin with no new Markdown file", () => {
+    const root = join(folder("pin-move-report-empty-changesets-"), "kernel");
     initRepository(root);
     const from = commitObjects(root, "first", [
-      { path: "change-notes/README.md", bytes: "# Change notes\n" },
+      { path: ".changeset/README.md", bytes: "# Changesets\n" },
     ]);
     const to = commitObjects(root, "second", [
       { path: "kernel/index.ts", bytes: "export const v = 2;\n" },
     ]);
 
     const report = pinMoveReport(root, from, to);
-    expect(report.changeNotes).toEqual([]);
+    expect(report.changesets).toEqual([]);
     const text = pinMoveReportText(report, ["kernel-pin.json"]);
     expect(text).toContain(
-      `Pin move report: ${from} to ${to}\nKernel change notes (0):\nWritten in the template`,
+      `Pin move report: ${from} to ${to}\nKernel changesets (0):\nWritten in the template`,
     );
   });
 
-  test("refuses a malformed or non-UTF-8 kernel change note added between Pins", () => {
-    const root = join(folder("pin-move-report-bad-notes-"), "kernel");
+  test("refuses a malformed or non-UTF-8 kernel changeset added between Pins", () => {
+    const root = join(folder("pin-move-report-bad-changesets-"), "kernel");
     initRepository(root);
     const from = commitObjects(root, "first", [
-      { path: "change-notes/README.md", bytes: "# Change notes\n" },
+      { path: ".changeset/README.md", bytes: "# Changesets\n" },
     ]);
-    const badJson = commitObjects(root, "bad-json", [
+    const badFrontmatter = commitObjects(root, "bad-frontmatter", [
       {
-        path: "change-notes/2026-11-22-broken.json",
-        bytes: JSON.stringify({
-          kind: "changed",
-          breaking: true,
-          affects: ["kernel"],
-          summary: "Breaking without action.",
-          action: null,
-        }),
+        path: ".changeset/2026-11-22-broken.md",
+        bytes: "missing frontmatter\n",
       },
     ]);
-    expect(() => pinMoveReport(root, from, badJson)).toThrow(
-      "change-notes/2026-11-22-broken.json: breaking is true so action must explain what the reader must do.",
+    expect(() => pinMoveReport(root, from, badFrontmatter)).toThrow(
+      ".changeset/2026-11-22-broken.md: could not parse changeset",
     );
 
     const badBytes = commitObjects(root, "bad-bytes", [
-      { path: "change-notes/2026-11-22-broken.json", removed: true },
+      { path: ".changeset/2026-11-22-broken.md", removed: true },
       {
-        path: "change-notes/2026-11-22-bytes.json",
+        path: ".changeset/2026-11-22-bytes.md",
         bytes: new Uint8Array([0xff, 0xfe]),
       },
     ]);
     expect(() => pinMoveReport(root, from, badBytes)).toThrow(
-      "change-notes/2026-11-22-bytes.json: kernel change note is not valid UTF-8 text.",
+      "is not valid UTF-8",
     );
   });
 
-  test("refuses a kernel change note whose filename is not valid UTF-8 and preserves a leading BOM in a valid filename", () => {
+  test("refuses a kernel changeset whose filename is not valid UTF-8 and preserves a leading BOM in a valid filename", () => {
     const root = join(folder("pin-move-report-bad-name-"), "kernel");
     initRepository(root);
     const from = commitObjects(root, "first", [
-      { path: "change-notes/README.md", bytes: "# Change notes\n" },
+      { path: ".changeset/README.md", bytes: "# Changesets\n" },
     ]);
-    const validJson = JSON.stringify({
-      kind: "fixed",
-      breaking: false,
-      affects: ["kernel"],
-      summary: "Valid note body.",
-      action: null,
-    });
+    const validMarkdown =
+      '---\n"agent-cli-kernel": patch\n---\n\nValid changeset body.\n';
     const badNameBytes = Buffer.concat([
-      Buffer.from("change-notes/2026-11-22-"),
+      Buffer.from(".changeset/2026-11-22-"),
       Buffer.from([0xff]),
-      Buffer.from(".json"),
+      Buffer.from(".md"),
     ]);
-    stageRawPath(root, badNameBytes, validJson);
+    stageRawPath(root, badNameBytes, validMarkdown);
     const toBad = commitObjects(root, "bad-name", []);
     expect(() => pinMoveReport(root, from, toBad)).toThrow(
-      "kernel change note filename is not valid UTF-8 text",
+      "changeset filename is not valid UTF-8 text",
     );
-    expect(() => pinMoveReport(root, from, toBad)).toThrow("ff2e6a736f6e");
+    expect(() => pinMoveReport(root, from, toBad)).toThrow("ff2e6d64");
 
-    git(root, "rm", "--cached", "--quiet", "-r", "change-notes");
+    git(root, "rm", "--cached", "--quiet", "-r", ".changeset");
     commitObjects(root, "restore-readme", [
-      { path: "change-notes/README.md", bytes: "# Change notes\n" },
+      { path: ".changeset/README.md", bytes: "# Changesets\n" },
     ]);
     const bomNameBytes = Buffer.concat([
-      Buffer.from("change-notes/"),
+      Buffer.from(".changeset/"),
       Buffer.from([0xef, 0xbb, 0xbf]),
-      Buffer.from("2026-11-22-bom.json"),
+      Buffer.from("2026-11-22-bom.md"),
     ]);
-    stageRawPath(root, bomNameBytes, validJson);
+    stageRawPath(root, bomNameBytes, validMarkdown);
     const toBom = commitObjects(root, "bom-name", []);
     const bomReport = pinMoveReport(root, from, toBom);
-    expect(bomReport.changeNotes?.map((entry) => entry.file)).toEqual([
-      "\uFEFF2026-11-22-bom.json",
+    expect(bomReport.changesets?.map((entry) => entry.file)).toEqual([
+      "\uFEFF2026-11-22-bom.md",
     ]);
   });
 });

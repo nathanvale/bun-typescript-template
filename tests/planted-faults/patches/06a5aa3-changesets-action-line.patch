@@ -1,0 +1,16 @@
+diff --git a/src/template-upgrade-changesets.ts b/src/template-upgrade-changesets.ts
+--- a/src/template-upgrade-changesets.ts
++++ b/src/template-upgrade-changesets.ts
+@@ -140,10 +140,8 @@ function levelOf(
+   return "none";
+ }
+ 
+-function actionOf(summary: string): string | null {
+-  const lines = summary.replace(/\r\n/g, "\n").split("\n").slice(1);
+-  const matched = lines.find((line) => ACTION_LINE.test(line));
+-  return matched === undefined ? null : matched.slice("Action: ".length).trim();
++function actionOf(_summary: string): string | null {
++  return null;
+ }
+ 
+ function parseEntry(

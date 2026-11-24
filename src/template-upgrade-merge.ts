@@ -105,6 +105,7 @@ export function classifyTemplateUpgradeFileOwner(
   if (
     (!relativePath.includes("/") &&
       (relativePath.endsWith(".json") || relativePath.endsWith(".toml"))) ||
+    relativePath === ".changeset/config.json" ||
     relativePath === ".gitignore" ||
     relativePath.startsWith(".github/") ||
     relativePath === "AGENTS.md"

@@ -360,7 +360,7 @@ test(
     manifest.scripts["build:sample"] =
       "bun build src/cli.ts --outfile dist/cli.js";
     manifest.scripts["build:custom"] = "bun run scripts/build.ts";
-    await mkdir(join(destination, "scripts"));
+    await mkdir(join(destination, "scripts"), { recursive: true });
     await writeFile(
       join(destination, "scripts/build.ts"),
       'const minify = process.argv.includes("--minify");\nvoid Bun.build({entrypoints: ["src/cli.ts"], outdir: "dist", minify});\n',

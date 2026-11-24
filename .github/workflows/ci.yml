@@ -21,9 +21,9 @@ jobs:
       - name: Recorded lists
         if: github.event_name == 'pull_request'
         run: bun run check:names --against "origin/${{ github.base_ref }}"
-      - name: Change notes
+      - name: Changesets
         if: github.event_name == 'pull_request'
-        run: bun run check:change-notes --base "origin/${{ github.base_ref }}"
+        run: bun run --bun changeset status --since "origin/${{ github.base_ref }}" && bun scripts/check-gated-paths.ts --base "origin/${{ github.base_ref }}"
       - name: Lint
         run: bun run lint
       - name: Format

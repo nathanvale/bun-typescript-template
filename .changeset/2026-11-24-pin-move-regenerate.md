@@ -1,0 +1,7 @@
+---
+"bun-typescript-template": minor
+---
+
+Changed pin-move --repository to run a generated repository's regenerate script, when its package.json declares one, after installing the new kernel and before the check command, and to commit what it changed with the Pin change. A failed attempt is now kept on branch pin-move/<kernel short>-failed-<attempt short>, so a rerun needs no branch deletion, and no repair line tells you to force-delete a branch or stash.
+
+Action: A repository whose tracked files are built from installed packages declares "regenerate" in package.json scripts, for example "regenerate": "bun run build:skills". Other repositories need nothing.

@@ -1,4 +1,9 @@
-import { type Glossary, hitsIn, readGlossary } from "./glossary.ts";
+import {
+  type Glossary,
+  hitsIn,
+  isChangesetMarkdownPath,
+  readGlossary,
+} from "./glossary.ts";
 import { listedEntries } from "./glossary-ownership.ts";
 import type { PathItem } from "./name-moves.ts";
 import type { PublicDeclaration } from "./public-declarations.ts";
@@ -300,6 +305,9 @@ export function unknownPathProblems(
   glossary: Glossary,
   items: readonly PathItem[],
 ): string[] {
+  items = items.filter(
+    ({ path, isFile }) => !(isFile && isChangesetMarkdownPath(path)),
+  );
   return items.flatMap(({ path, isFile }) =>
     isPlantedFaultPatch(path, isFile)
       ? []

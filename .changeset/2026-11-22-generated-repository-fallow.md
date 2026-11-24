@@ -1,0 +1,7 @@
+---
+"bun-typescript-template": minor
+---
+
+Changed generated repositories' quality:fallow script to check dead code, duplication, and complexity against recorded hits in fallow-dead-code-recorded-hits.json, fallow-duplicates-recorded-hits.json, and fallow-health-recorded-hits.json (identity-matched for complexity and wired into audit.*Baseline), added quality:fallow:record-hits, enabled complexity-cyclomatic, complexity-cognitive, and complexity-file-lines (health.maxFileLines: 500) as errors while setting type-only-dependencies to off in .fallowrc.json, and updated .github/workflows/ci.yml with fetch-depth: 0 so the hosted check refuses a pull request that grows the recorded findings (limit: a recorded complex function that gets more complex is not caught).
+
+Action: Nothing to do by hand for recording: the first Template upgrade that brings the recorded-hits files runs bun run quality:fallow:record-hits itself, after bun install and before bun run check, so the repository's existing dead code, duplication and complexity findings are recorded and the check fails only on new ones. .github/workflows/ci.yml is a shared file for the upgrade (three-way merge); review or resolve any merge if the repository edited its hosted check workflow.

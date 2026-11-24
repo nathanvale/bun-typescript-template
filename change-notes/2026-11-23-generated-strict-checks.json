@@ -1,7 +1,0 @@
-{
-  "kind": "changed",
-  "breaking": false,
-  "affects": ["generated-repository"],
-  "summary": "Enabled allowUnreachableCode: false in tsconfig.base.json and set @typescript-eslint/no-unused-vars to { args: \"all\", argsIgnorePattern: \"^_\" } in eslint.config.mjs so unreachable code after return and plain unused parameters (leading or trailing) are each owned by one check while underscore-prefixed unused parameters are accepted.",
-  "action": "Nothing to do by hand for repositories matching the measured baseline (0 hits in fresh Bootstrap, agent-doorway, wiki-personal, and agent-gates main and pull request 1). Template upgrade merges allowUnreachableCode: false into tsconfig.base.json (shared JSON file) and carries the eslint.config.mjs rule update (template-owned file). If a branch has a dead parameter or unreachable statement, remove what is dead or prefix deliberate callback/interface parameters with a leading underscore."
-}

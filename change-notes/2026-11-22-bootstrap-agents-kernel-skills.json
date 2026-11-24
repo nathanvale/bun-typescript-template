@@ -1,7 +1,0 @@
-{
-  "kind": "changed",
-  "breaking": false,
-  "affects": ["bootstrap", "generated-repository"],
-  "summary": "Updated generated AGENTS.md to list installed kernel skills and their paths in its opening lines.",
-  "action": "An existing repository receives the new AGENTS.md lines on its next Template upgrade."
-}

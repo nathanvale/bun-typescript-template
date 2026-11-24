@@ -8,6 +8,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { CliError } from "../src/cli-error.ts";
 import {
   type KernelPin,
   kernelPinFile,
@@ -308,6 +309,12 @@ export function argumentsOf(argv: readonly string[]):
 }
 
 function refusalExit(error: unknown): number {
+  if (error instanceof CliError) {
+    process.stderr.write(
+      `${error.code}: ${error.message}\nRepair: ${error.repair}\n`,
+    );
+    return error.exitCode;
+  }
   if (
     !(error instanceof PinRefusal) &&
     !(error instanceof KernelRefusal) &&

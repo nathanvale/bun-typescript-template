@@ -113,7 +113,12 @@
     ],
     "coverage": {
       "requireAllFiles": true,
-      "allowUnmatched": ["tests/**", "config/**", "eslint.config.mjs"]
+      "allowUnmatched": [
+        "tests/**",
+        "config/**",
+        "eslint.config.mjs",
+        "scripts/**"
+      ]
     }
   }
 }

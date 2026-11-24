@@ -1,7 +1,0 @@
-{
-  "kind": "fixed",
-  "breaking": false,
-  "affects": ["generated-repository"],
-  "summary": "Fixed Template upgrade to refresh stale Fallow recorded-hits analysis identity when Fallow or TypeScript settings change without silently absorbing new findings, guard retried upgrades from re-recording hits via a per-worktree git mark, classify existing-code failures against newly added or changed gates under a separate gate-adoption-required outcome (exit 6), and print worktree unlock and remove steps whenever an upgrade stops with a locked worktree.",
-  "action": null
-}

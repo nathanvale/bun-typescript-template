@@ -33,17 +33,8 @@ import { testFolder } from "./test-folder.ts";
 export const updatedSkillDescription =
   "Write commands on agent-cli-kernel after the Pin move.";
 
-const sampleChangeNote = JSON.stringify(
-  {
-    kind: "fixed",
-    breaking: false,
-    affects: ["kernel"],
-    summary: "Stopped a hung child process group on timeout.",
-    action: null,
-  },
-  null,
-  2,
-);
+const sampleChangeset =
+  '---\n"agent-cli-kernel": patch\n---\n\nStopped a hung child process group on timeout.\n';
 
 export const checkFailureTest = `import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
@@ -179,11 +170,11 @@ function kernelCommits(work: string, fixture: PinMoveRepositoryFixture): void {
   git(kernelRepo, "read-tree", trialBase);
   fixture.targetCommit = commitObjects(
     kernelRepo,
-    "fix(kernel): add change note and update skill trigger",
+    "fix(kernel): add changeset and update skill trigger",
     [
       {
-        path: "change-notes/2026-11-22-kernel-fix.json",
-        bytes: `${sampleChangeNote}\n`,
+        path: ".changeset/2026-11-22-kernel-fix.md",
+        bytes: sampleChangeset,
       },
       {
         path: "skills/agent-cli-kernel/SKILL.md",
@@ -203,8 +194,8 @@ function kernelCommits(work: string, fixture: PinMoveRepositoryFixture): void {
     "feat(kernel): local unpushed commit",
     [
       {
-        path: "change-notes/2026-11-22-local-only.json",
-        bytes: `${sampleChangeNote}\n`,
+        path: ".changeset/2026-11-22-local-only.md",
+        bytes: sampleChangeset,
       },
     ],
   );

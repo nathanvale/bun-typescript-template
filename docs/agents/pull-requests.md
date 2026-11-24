@@ -4,13 +4,15 @@
   request, with the review done by a different model from the one that wrote
   the code: a Monash Sol 6.1 worker started with `monash-worker`. Fix what it
   finds.
-- Add a change note under `change-notes/YYYY-MM-DD-<slug>.json` when a pull
-  request changes what the template ships (`generated-repository/**`, the
-  copied lint rule files in `config/`, `tests/support/test-folder.ts`,
-  `kernel-pin.json`, `src/recipe.ts`, `src/bootstrap.ts`,
-  `src/bootstrap-arguments.ts`, `src/token-substitution.ts`, or
-  `src/kernel-pin.ts`). Use `"kind": "none"` when a change to those paths has
-  no effect on generated repositories. See [change-notes/README.md](../../change-notes/README.md).
+- Add a changeset under `.changeset/` when a pull request changes a gated path
+  (`generated-repository/**`, the copied lint rule files in `config/`,
+  `tests/support/test-folder.ts`, `kernel-pin.json`, `src/recipe.ts`,
+  `src/bootstrap.ts`, `src/bootstrap-arguments.ts`,
+  `src/token-substitution.ts`, or `src/kernel-pin.ts`): run
+  `bun run --bun changeset add --minor bun-typescript-template -m "<summary>"`
+  (or `--empty` when there is no consumer effect), include a later `Action: `
+  line on every `major` changeset, and run `bun run check:changesets`. See
+  [.changeset/README.md](../../.changeset/README.md).
 - Open the pull request ready for review, never as a draft.
 - Write its body with the `pr` skill.
 - Drive the open pull request with the Babysit playbook in pstack's

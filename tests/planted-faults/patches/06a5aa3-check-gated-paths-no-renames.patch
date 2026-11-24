@@ -1,0 +1,11 @@
+diff --git a/scripts/check-gated-paths.ts b/scripts/check-gated-paths.ts
+--- a/scripts/check-gated-paths.ts
++++ b/scripts/check-gated-paths.ts
+@@ -70,7 +70,6 @@ function changedPaths(
+   return runGit(root, baseRef, [
+     "diff",
+     "--ignore-submodules=none",
+-    "--no-renames",
+     "-z",
+     "--name-only",
+     "--no-relative",

@@ -10,7 +10,7 @@
     "check": "bun run check:file-size && bun run lint && bun run format:check && bun run typecheck && bun run test && bun run --silent quality:fallow",
     "quality:fallow": "node_modules/.bin/fallow audit --baseline-mode identity --format json --quiet",
     "doctor": "bun run scripts/doctor.ts",
-    "check:change-notes": "bun run scripts/check-change-notes.ts",
+    "check:changesets": "bun run --bun changeset status --since origin/main && bun scripts/check-gated-paths.ts",
     "check:commits": "bun run scripts/check-commits.ts",
     "check:file-size": "bun --no-install scripts/check-file-size.ts",
     "check:names": "bun run scripts/check-names.ts",
@@ -29,8 +29,13 @@
     "format": "biome format --write .",
     "admit:cli": "bun run src/cli-inventory.ts"
   },
+  "dependencies": {
+    "@changesets/parse": "1.0.0"
+  },
   "devDependencies": {
     "@biomejs/biome": "2.6.7",
+    "@changesets/cli": "3.0.3",
+    "@changesets/read": "1.0.1",
     "@types/bun": "1.4.4",
     "tiktoken": "1.0.22",
     "fallow": "3.43.2",
