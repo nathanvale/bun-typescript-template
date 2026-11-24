@@ -1,12 +1,19 @@
 diff --git a/generated-repository/scripts/fallow-health-at-base-settings.ts b/generated-repository/scripts/fallow-health-at-base-settings.ts
+index 6b9ec0f..56ef92b 100644
 --- a/generated-repository/scripts/fallow-health-at-base-settings.ts
 +++ b/generated-repository/scripts/fallow-health-at-base-settings.ts
-@@ -385,7 +385,5 @@ function makeReportedMarkersInert(
+@@ -383,14 +383,7 @@ function makeReportedMarkersInert(
+   );
    const reported = parseReportedMarkers(stdout, rev);
    if (reported.size === 0) return;
 -  const realTree = realpathSync(tree);
 -  for (const [rel, lineNumbers] of reported)
--    inertFileLines(resolveInsideTree(realTree, rel, rev), rel, lineNumbers, rev);
+-    inertFileLines(
+-      resolveInsideTree(realTree, rel, rev),
+-      rel,
+-      lineNumbers,
+-      rev,
+-    );
 +  void reported;
  }
  
