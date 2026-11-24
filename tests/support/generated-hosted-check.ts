@@ -8,7 +8,7 @@ const CHECKOUT_ACTION = "actions/checkout";
 const SETUP_BUN_ACTION = "oven-sh/setup-bun";
 const REQUIRED_ACTIONS = [CHECKOUT_ACTION, SETUP_BUN_ACTION] as const;
 
-type PlainObject = Record<string, unknown>;
+export type PlainObject = Record<string, unknown>;
 
 type TemplatePins = {
   readonly bunVersion: string | undefined;
@@ -16,13 +16,13 @@ type TemplatePins = {
   readonly problems: readonly string[];
 };
 
-function asRecord(value: unknown): PlainObject | undefined {
+export function asRecord(value: unknown): PlainObject | undefined {
   if (typeof value !== "object" || value === null || Array.isArray(value))
     return undefined;
   return Object.fromEntries(Object.entries(value));
 }
 
-function own(record: PlainObject, key: string): unknown {
+export function own(record: PlainObject, key: string): unknown {
   return Object.hasOwn(record, key) ? record[key] : undefined;
 }
 

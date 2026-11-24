@@ -2,6 +2,7 @@ import { existsSync, readFileSync, symlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { ROOT } from "./bootstrap-cli-fixture.ts";
 import { ownedFolders } from "./fixture-files.ts";
+import { asRecord, own } from "./generated-hosted-check.ts";
 import { commitIn, gitEnv, inherited, initRepository } from "./git-fixture.ts";
 import { spawnBounded } from "./process.ts";
 
@@ -21,18 +22,6 @@ const RECORDED_HITS_FILES = [
   "fallow-duplicates-recorded-hits.json",
   "fallow-health-recorded-hits.json",
 ] as const;
-
-type PlainObject = Record<string, unknown>;
-
-function asRecord(value: unknown): PlainObject | undefined {
-  if (typeof value !== "object" || value === null || Array.isArray(value))
-    return undefined;
-  return Object.fromEntries(Object.entries(value));
-}
-
-function own(record: PlainObject, key: string): unknown {
-  return Object.hasOwn(record, key) ? record[key] : undefined;
-}
 
 function readRecordedHitsGrowthStepRun(): string {
   const parsed = asRecord(
