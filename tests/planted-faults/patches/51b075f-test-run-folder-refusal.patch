@@ -1,13 +1,12 @@
 diff --git a/tests/support/test-run-folder.ts b/tests/support/test-run-folder.ts
-index 9940d35..7834e01 100644
 --- a/tests/support/test-run-folder.ts
 +++ b/tests/support/test-run-folder.ts
-@@ -29,7 +29,7 @@ if (
-   temp === undefined ||
-   !insideFolder(temp, runFolder)
- )
--  throw new Error(
-+  void new Error(
-     "bun test started without scripts/test-run.ts, so its tests and their children would write to the system temp folder. Repair: start tests with bun run test, and pass test paths and bun test options after it.",
-   );
- writeFileSync(join(runFolder, teardownMark), "");
+@@ -36,7 +36,7 @@
+ const temp = real(process.env.TMPDIR);
+ const testRunProcess = Number(process.env[testRunProcessVariable]);
+ const inPackageScriptUnderCi =
+-  process.env.CI === "true" && process.env.npm_lifecycle_event !== undefined;
++  process.env.CI === "true" && process.env.npm_lifecycle_event === undefined;
+ if (
+   Number.isInteger(testRunProcess) &&
+   testRunProcess > 0 &&

@@ -207,8 +207,9 @@ through it.
 **Test run folder**:
 The one temporary folder that a test run's tests and all their child processes
 see as the system temp folder. The test run makes it and removes it; the
-preload `tests/support/test-run-folder.ts` refuses `bun test` started outside
-one and stops any child a test file leaves running at teardown.
+preload `tests/support/test-run-folder.ts` stops any child a test file leaves
+running at teardown. It refuses `bun test` started outside one by a package
+script under `CI=true`, and warns about any other plain `bun test`.
 
 ### Shared tool words
 

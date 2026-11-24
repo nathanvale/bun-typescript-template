@@ -19,29 +19,40 @@ function real(path: string | undefined): string | undefined {
   }
 }
 
+function guard(runFolder: string, testRunProcess: number): void {
+  writeFileSync(join(runFolder, teardownMark), "");
+  setInterval(() => {
+    try {
+      process.kill(testRunProcess, 0);
+    } catch {
+      rmSync(runFolder, { recursive: true, force: true });
+      process.kill(0, "SIGKILL");
+    }
+  }, 500).unref();
+  afterAll(stopChildrenLeft);
+}
+
 const runFolder = real(process.env[testRunFolderVariable]);
 const temp = real(process.env.TMPDIR);
 const testRunProcess = Number(process.env[testRunProcessVariable]);
+const inPackageScriptUnderCi =
+  process.env.CI === "true" && process.env.npm_lifecycle_event !== undefined;
 if (
-  !Number.isInteger(testRunProcess) ||
-  testRunProcess <= 0 ||
-  runFolder === undefined ||
-  temp === undefined ||
-  !insideFolder(temp, runFolder)
+  Number.isInteger(testRunProcess) &&
+  testRunProcess > 0 &&
+  runFolder !== undefined &&
+  temp !== undefined &&
+  insideFolder(temp, runFolder)
 )
+  guard(runFolder, testRunProcess);
+else if (inPackageScriptUnderCi)
   throw new Error(
-    "bun test started without scripts/test-run.ts, so its tests and their children would write to the system temp folder. Repair: start tests with bun run test, and pass test paths and bun test options after it.",
+    "bun test started without scripts/test-run.ts in a package script under CI, so its tests and their children would write to the system temp folder. Repair: make the test script bun scripts/test-run.ts, and pass test paths and bun test options after it.",
   );
-writeFileSync(join(runFolder, teardownMark), "");
-
-setInterval(() => {
-  try {
-    process.kill(testRunProcess, 0);
-  } catch {
-    rmSync(runFolder, { recursive: true, force: true });
-    process.kill(0, "SIGKILL");
-  }
-}, 500).unref();
+else
+  process.stderr.write(
+    "Warning: bun test started without scripts/test-run.ts, so child processes can write outside a test run folder, into the system temp folder. bun run test is the guarded route.\n",
+  );
 
 function childrenLeft(): { pid: number; group: number; text: string }[] {
   const rows = processRows();
@@ -64,7 +75,7 @@ function childrenLeft(): { pid: number; group: number; text: string }[] {
     }));
 }
 
-afterAll(() => {
+function stopChildrenLeft(): void {
   const left = childrenLeft();
   for (const row of left)
     if (row.group === 0) stopProcess(row.pid, false);
@@ -73,4 +84,4 @@ afterAll(() => {
     throw new Error(
       `Tests left ${left.length} child process(es) running at teardown, and they were stopped:\n${left.map((row) => row.text).join("\n")}\nRepair: end each child a test starts before the test ends: await its exit, or stop it in finally.`,
     );
-});
+}

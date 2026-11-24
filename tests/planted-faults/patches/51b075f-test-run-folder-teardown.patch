@@ -1,8 +1,7 @@
 diff --git a/tests/support/test-run-folder.ts b/tests/support/test-run-folder.ts
-index 9940d35..2461db6 100644
 --- a/tests/support/test-run-folder.ts
 +++ b/tests/support/test-run-folder.ts
-@@ -69,7 +69,7 @@ afterAll(() => {
+@@ -80,7 +80,7 @@
    for (const row of left)
      if (row.group === 0) stopProcess(row.pid, false);
      else stopProcess(row.group, true);

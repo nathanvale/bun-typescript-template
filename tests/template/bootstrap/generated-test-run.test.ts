@@ -37,11 +37,12 @@ async function generated(): Promise<string> {
   return destination;
 }
 
-function checkOutsideTestRun(destination: string) {
+function checkOutsideTestRun(destination: string, ci?: "true") {
   return runCommand(destination, [process.execPath, "run", "check"], {
     ...process.env,
     TMPDIR: temporaryRoot(),
-    CI: undefined,
+    CI: ci,
+    npm_lifecycle_event: undefined,
     [testRunFolderVariable]: undefined,
     [testRunProcessVariable]: undefined,
   });
@@ -65,7 +66,7 @@ async function edited(
 }
 
 test(
-  "a generated repository runs its tests through the test run, and bun run check fails when the test script or bunfig.toml drops it",
+  "a generated repository runs its tests through the test run, and bun run check fails when the test script drops it under CI or bunfig.toml drops it",
   async () => {
     const destination = await generated();
     const passed = await runIn(destination, ["run", "test"], {});
@@ -77,10 +78,10 @@ test(
       (text) =>
         text.replace('"test": "bun scripts/test-run.ts"', '"test": "bun test"'),
       async () => {
-        const check = await checkOutsideTestRun(destination);
+        const check = await checkOutsideTestRun(destination, "true");
         expect(check.exitCode).not.toBe(0);
         expect(check.stderr).toContain(
-          "\nerror: bun test started without scripts/test-run.ts",
+          "\nerror: bun test started without scripts/test-run.ts in a package script under CI",
         );
       },
     );

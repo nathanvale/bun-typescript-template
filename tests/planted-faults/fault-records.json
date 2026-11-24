@@ -2793,7 +2793,7 @@
     "id": "51b075f-test-run-folder-refusal",
     "patch": "tests/planted-faults/patches/51b075f-test-run-folder-refusal.patch",
     "testFile": "tests/template/test-run/test-run.test.ts",
-    "title": "^bun test started without the test run is refused by the preload, so a test script that drops it fails$",
+    "title": "^under CI, a test script that runs plain bun test is refused by the preload, so bun run check fails$",
     "source": "51b075f feat(test-run): run every test in one test run folder"
   },
   {

@@ -1,13 +1,12 @@
 diff --git a/tests/support/test-run-folder.ts b/tests/support/test-run-folder.ts
-index 9940d35..fb22f3c 100644
 --- a/tests/support/test-run-folder.ts
 +++ b/tests/support/test-run-folder.ts
-@@ -39,7 +39,7 @@ setInterval(() => {
-     process.kill(testRunProcess, 0);
-   } catch {
-     rmSync(runFolder, { recursive: true, force: true });
--    process.kill(0, "SIGKILL");
-+    return;
-   }
- }, 500).unref();
- 
+@@ -26,7 +26,7 @@
+       process.kill(testRunProcess, 0);
+     } catch {
+       rmSync(runFolder, { recursive: true, force: true });
+-      process.kill(0, "SIGKILL");
++      return;
+     }
+   }, 500).unref();
+   afterAll(stopChildrenLeft);

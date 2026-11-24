@@ -95,6 +95,7 @@ function outsideRun(temp: string): Record<string, string | undefined> {
     ...process.env,
     TMPDIR: temp,
     CI: undefined,
+    npm_lifecycle_event: undefined,
     [testRunFolderVariable]: undefined,
   };
 }
@@ -280,8 +281,32 @@ test(
   processWatchdog(1),
 );
 
+const plainWarning =
+  "Warning: bun test started without scripts/test-run.ts, so child processes can write outside a test run folder, into the system temp folder. bun run test is the guarded route.";
+
 test(
-  "bun test started without the test run is refused by the preload, so a test script that drops it fails",
+  "under CI, a test script that runs plain bun test is refused by the preload, so bun run check fails",
+  async () => {
+    const temp = folder("test-run-temp-");
+    const root = specimen({
+      "package.json": JSON.stringify({ scripts: { test: "bun test" } }),
+      "tests/passing.test.ts": passing,
+    });
+    const run = await spawnBounded([process.execPath, "run", "test"], {
+      cwd: root,
+      env: { ...outsideRun(temp), CI: "true" },
+    });
+    expect(run.exit).toBe(1);
+    expect(run.stderr).toContain(
+      "\nerror: bun test started without scripts/test-run.ts in a package script under CI, so its tests and their children would write to the system temp folder.",
+    );
+    expect(readdirSync(temp)).toEqual([]);
+  },
+  processWatchdog(1),
+);
+
+test(
+  "without CI, plain bun test warns once and runs its tests",
   async () => {
     const temp = folder("test-run-temp-");
     const root = specimen({ "tests/passing.test.ts": passing });
@@ -289,11 +314,25 @@ test(
       cwd: root,
       env: outsideRun(temp),
     });
-    expect(run.exit).toBe(1);
-    expect(run.stderr).toContain(
-      "\nerror: bun test started without scripts/test-run.ts, so its tests and their children would write to the system temp folder.",
-    );
-    expect(readdirSync(temp)).toEqual([]);
+    expect(run.exit).toBe(0);
+    expect(run.stderr.split(plainWarning).length - 1).toBe(1);
+    expect(run.stderr).toContain(" 1 pass\n");
+  },
+  processWatchdog(1),
+);
+
+test(
+  "under CI, plain bun test started outside a package script warns and runs its tests",
+  async () => {
+    const temp = folder("test-run-temp-");
+    const root = specimen({ "tests/passing.test.ts": passing });
+    const run = await spawnBounded([process.execPath, "test"], {
+      cwd: root,
+      env: { ...outsideRun(temp), CI: "true" },
+    });
+    expect(run.exit).toBe(0);
+    expect(run.stderr).toContain(plainWarning);
+    expect(run.stderr).toContain(" 1 pass\n");
   },
   processWatchdog(1),
 );
