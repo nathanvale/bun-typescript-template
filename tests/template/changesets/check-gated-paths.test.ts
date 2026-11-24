@@ -272,6 +272,15 @@ describe("template scripts/check-gated-paths.ts", () => {
       expect(workingTreeMasked.stderr).toContain(
         'gated path(s) (first: "src/recipe.ts")',
       );
+      git(repo, "add", "--", "src/recipe.ts");
+      const stagedAndWorkingTreeMasked = await checkGatedPaths(
+        repo,
+        "origin/main",
+      );
+      expect(stagedAndWorkingTreeMasked.code).toBe(1);
+      expect(stagedAndWorkingTreeMasked.stderr).toContain(
+        'gated path(s) (first: "src/recipe.ts")',
+      );
 
       expect(await runGatedPathCheck(["--unknown"], repo)).toMatchObject({
         code: 2,

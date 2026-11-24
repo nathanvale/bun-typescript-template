@@ -305,20 +305,21 @@ export function unknownPathProblems(
   glossary: Glossary,
   items: readonly PathItem[],
 ): string[] {
-  return items
-    .filter(({ path, isFile }) => !(isFile && isChangesetMarkdownPath(path)))
-    .flatMap(({ path, isFile }) =>
-      isPlantedFaultPatch(path, isFile)
-        ? []
-        : unknownWordsOf(
-            words,
-            coveredByGlossaryRule(path, glossary),
-            segmentWords(path, isFile),
-          ).map(
-            (word) =>
-              `${path} uses "${word}", ${unknownReason(words, word)}. ${unknownWordRepair(words, word, path)}`,
-          ),
-    );
+  items = items.filter(
+    ({ path, isFile }) => !(isFile && isChangesetMarkdownPath(path)),
+  );
+  return items.flatMap(({ path, isFile }) =>
+    isPlantedFaultPatch(path, isFile)
+      ? []
+      : unknownWordsOf(
+          words,
+          coveredByGlossaryRule(path, glossary),
+          segmentWords(path, isFile),
+        ).map(
+          (word) =>
+            `${path} uses "${word}", ${unknownReason(words, word)}. ${unknownWordRepair(words, word, path)}`,
+        ),
+  );
 }
 
 export function unknownDeclarationProblems(
