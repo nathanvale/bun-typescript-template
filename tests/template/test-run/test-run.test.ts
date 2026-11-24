@@ -5,6 +5,7 @@ import {
   insideFolder,
   leftoverFolders,
   runTests,
+  stopProcess,
   testRunFolderVariable,
 } from "../../../scripts/test-run.ts";
 import {
@@ -378,7 +379,9 @@ test(
       .slice(0, 2)
       .map(Number);
     expect(pids.every((pid) => pid > 0)).toBe(true);
-    expect(await gone(pids, 2_000)).toEqual([]);
+    const left = await gone(pids, 2_000);
+    for (const pid of left) stopProcess(pid, true);
+    expect(left).toEqual([]);
     expect(readdirSync(temp)).toEqual([]);
   },
   processWatchdog(1),
