@@ -4,7 +4,7 @@ import js from "@eslint/js";
 import { kernelLint } from "agent-cli-kernel/lint";
 import kernelRules from "agent-cli-kernel/lint-rules";
 import tseslint from "typescript-eslint";
-import antiSlop, { chainedTypeAssertions } from "./config/anti-slop-rules.mjs";
+import antiSlop from "./config/anti-slop-rules.mjs";
 import payloadRules from "./config/payload-rules.mjs";
 import platformRules from "./config/platform-rules.mjs";
 import templateRules from "./config/template-rules.mjs";
@@ -67,12 +67,12 @@ export default tseslint.config(
   ...kernelLint({
     rootDir: import.meta.dirname,
     srcDir: "src",
-    testDirs: [],
+    testDirs: ["tests"],
     addons: [],
     plugin: repository,
   }),
   {
-    files: ["tests/**/*.ts"],
+    files: ["scripts/**/*.ts"],
     extends: [
       js.configs.recommended,
       ...tseslint.configs.recommendedTypeChecked,
@@ -83,10 +83,13 @@ export default tseslint.config(
         tsconfigRootDir: import.meta.dirname,
       },
     },
+    plugins: { repository },
     rules: {
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-non-null-assertion": "error",
       "no-console": "error",
+      "repository/no-locale-compare": "error",
+      "repository/no-in-operator": "error",
     },
   },
   {
@@ -111,21 +114,6 @@ export default tseslint.config(
     },
   },
   {
-    files: ["scripts/**/*.ts"],
-    languageOptions: {
-      parser: tseslint.parser,
-      parserOptions: {
-        projectService: true,
-        tsconfigRootDir: import.meta.dirname,
-      },
-    },
-    plugins: { repository },
-    rules: {
-      "repository/no-locale-compare": "error",
-      "repository/no-in-operator": "error",
-    },
-  },
-  {
     files: ["tests/**/*.{ts,mts,cts}", "**/*.test.{ts,mts,cts}"],
     plugins: { repository },
     rules: {
@@ -144,7 +132,7 @@ export default tseslint.config(
     files: ["**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"],
     plugins: { "anti-slop": antiSlop },
     rules: {
-      "no-restricted-syntax": ["error", ...chainedTypeAssertions],
+      "anti-slop/no-chained-type-assertions": "error",
       "anti-slop/no-accumulating-spread": "error",
       "anti-slop/no-widen-then-assert": "error",
       "anti-slop/no-unknown-type-aliases": "error",

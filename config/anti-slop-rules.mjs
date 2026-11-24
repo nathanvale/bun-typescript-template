@@ -53,10 +53,26 @@ function chainSelector(constDepth) {
   return `${outermostAssertion}${consts}${assertionAt(assertedAt)}:not(${constAt(level)})`;
 }
 
-export const chainedTypeAssertions = [0, 1, 2, 3].map((constDepth) => ({
-  selector: chainSelector(constDepth),
-  message: chainedMessage,
-}));
+const chainedTypeAssertions = [0, 1, 2, 3].map(chainSelector).join(", ");
+
+const noChainedTypeAssertions = {
+  meta: {
+    type: "problem",
+    schema: [],
+    docs: {
+      description:
+        "Disallow a chain of type assertions that discards type evidence.",
+    },
+    messages: { chained: chainedMessage },
+  },
+  create(context) {
+    return {
+      [chainedTypeAssertions](node) {
+        context.report({ node, messageId: "chained" });
+      },
+    };
+  },
+};
 
 const moduleMockMethods = new Set(["doMock", "mock", "unstable_mockModule"]);
 
@@ -570,6 +586,7 @@ const noAccumulatingSpread = {
 export default {
   meta: upstream,
   rules: {
+    "no-chained-type-assertions": noChainedTypeAssertions,
     "no-widen-then-assert": noWidenThenAssert,
     "no-unknown-type-aliases": noUnknownTypeAliases,
     "no-reduce-accumulator-copy": noReduceAccumulatorCopy,

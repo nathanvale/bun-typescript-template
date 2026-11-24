@@ -1,9 +1,9 @@
 diff --git a/tests/support/generated-lint.ts b/tests/support/generated-lint.ts
-index 63af428..162bac2 100644
+index 5e91ae6..f456541 100644
 --- a/tests/support/generated-lint.ts
 +++ b/tests/support/generated-lint.ts
-@@ -4,16 +4,12 @@ import { ESLint } from "eslint";
- import { EXPECTED_RULE_FILES } from "./lint-rule-files.ts";
+@@ -16,16 +16,12 @@ import { EXPECTED_RULE_FILES } from "./lint-rule-files.ts";
+ import { testFolder } from "./test-folder.ts";
  
  const PROBES = [
 -  "probe.cjs",
