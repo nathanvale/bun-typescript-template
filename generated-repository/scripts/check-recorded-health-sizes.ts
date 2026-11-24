@@ -225,9 +225,10 @@ function parseFallowFindings(stdout: string, rev: string) {
   return byIdentity;
 }
 
-function spawnFallowHealth(fallowBin: string, treeDir: string) {
+function runFallowHealth(fallowBin: string, treeDir: string, rev: string) {
+  let run: Bun.SyncSubprocess<"pipe", "pipe">;
   try {
-    return Bun.spawnSync([fallowBin, ...FALLOW_ARGS, "--root", treeDir], {
+    run = Bun.spawnSync([fallowBin, ...FALLOW_ARGS, "--root", treeDir], {
       cwd: treeDir,
       stdout: "pipe",
       stderr: "pipe",
@@ -239,10 +240,6 @@ function spawnFallowHealth(fallowBin: string, treeDir: string) {
       `cannot run fallow at ${fallowBin}: ${error instanceof Error ? error.message : String(error)}. Repair: run bun install --frozen-lockfile, then run this check again.`,
     );
   }
-}
-
-function runFallowHealth(fallowBin: string, treeDir: string, rev: string) {
-  const run = spawnFallowHealth(fallowBin, treeDir);
   if (run.exitedDueToTimeout)
     fail(
       `fallow health at ${rev} did not finish within ${FALLOW_MS} ms. Repair: run fallow health by hand to see where it waits, then run this check again.`,
