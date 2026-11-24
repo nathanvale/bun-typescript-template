@@ -28,9 +28,12 @@ test("returns help for empty arguments, --help, and -h", () => {
   expect(TEMPLATE_UPGRADE_HELP).toContain(
     "bun run upgrade apply --repository PATH [--to REF] [--no-check] [--json]",
   );
+  expect(TEMPLATE_UPGRADE_HELP).toContain(
+    "bun run upgrade recover --repository PATH [--to REF] [--json]",
+  );
 });
 
-test("parses plan and apply options with defaults and overrides", () => {
+test("parses plan, apply, and recover options with defaults and overrides", () => {
   expect(
     parseTemplateUpgradeArgs(["plan", "--repository", "demo-repo"]),
   ).toEqual({
@@ -55,6 +58,22 @@ test("parses plan and apply options with defaults and overrides", () => {
     repository: resolve("demo-repo"),
     targetRef: "origin/main",
     skipCheckCommand: true,
+    json: true,
+  });
+  expect(
+    parseTemplateUpgradeArgs([
+      "recover",
+      "--repository",
+      "demo-repo",
+      "--to",
+      "origin/main",
+      "--json",
+    ]),
+  ).toEqual({
+    action: "recover",
+    repository: resolve("demo-repo"),
+    targetRef: "origin/main",
+    skipCheckCommand: false,
     json: true,
   });
 });
@@ -125,7 +144,7 @@ test("refuses missing values for --repository and --to", () => {
   });
 });
 
-test("refuses --no-check on plan and unknown arguments", () => {
+test("refuses --no-check on plan or recover and unknown arguments", () => {
   const noCheck = captureCliError(() =>
     parseTemplateUpgradeArgs(["plan", "--repository", "demo", "--no-check"]),
   );
@@ -133,6 +152,19 @@ test("refuses --no-check on plan and unknown arguments", () => {
     code: noCheck.code,
     message: noCheck.message,
     exitCode: noCheck.exitCode,
+  }).toEqual({
+    code: "unsupported_argument",
+    message: "--no-check is only valid with upgrade apply",
+    exitCode: 2,
+  });
+
+  const recoverNoCheck = captureCliError(() =>
+    parseTemplateUpgradeArgs(["recover", "--repository", "demo", "--no-check"]),
+  );
+  expect({
+    code: recoverNoCheck.code,
+    message: recoverNoCheck.message,
+    exitCode: recoverNoCheck.exitCode,
   }).toEqual({
     code: "unsupported_argument",
     message: "--no-check is only valid with upgrade apply",

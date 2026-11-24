@@ -1,0 +1,16 @@
+diff --git a/src/template-upgrade-recover.ts b/src/template-upgrade-recover.ts
+--- a/src/template-upgrade-recover.ts
++++ b/src/template-upgrade-recover.ts
+@@ -185,11 +185,7 @@ async function requireOwnedWorktree(
+       return unlocked;
+     }
+   }
+-  const record = await assertWorktreePathAvailableForTemplateUpgrade(
+-    repository,
+-    targetWorktree,
+-    env,
+-  );
++  const record = findGitWorktreeRecord(repository, targetWorktree, env);
+   if (record === undefined) {
+     throw new CliError(
+       "worktree_missing",

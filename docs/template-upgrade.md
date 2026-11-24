@@ -18,33 +18,38 @@ Apply an upgrade into an isolated worktree and publish the result on a branch:
 bun run upgrade apply --repository PATH [--to REF] [--no-check] [--json]
 ```
 
+Recover a failed upgrade worktree into a branch and patch file, then remove it:
+
+```bash
+bun run upgrade recover --repository PATH [--to REF] [--json]
+```
+
 ### Options
 
 - `--repository PATH`: Path to the generated repository root.
-- `--to REF`: Target template commit, branch, or tag (default: `HEAD` of this template checkout). The target must descend from the repository's recorded `templateRevision`; downgrades are refused. Both `plan` and `apply` always print the resolved target commit (`Target commit: <sha>`). When targeting the template checkout's `HEAD` while it is behind `origin/main` (checked locally with `git rev-list --count HEAD..origin/main`, without fetching), both commands print one warning line (and include `templateHeadNotice` in `--json` output) naming how many commits behind it is and the repair (`git pull` in the template, or pass `--to origin/main`).
+- `--to REF`: Target template commit, branch, or tag (default: `HEAD` of this template checkout). The target must descend from the repository's recorded `templateRevision`; downgrades are refused. Both `plan` and `apply` print `Target commit: <sha>`. When targeting `HEAD` while it is behind `origin/main` (checked locally via `git rev-list --count HEAD..origin/main`, without fetching), both print one warning line (`templateHeadNotice` in `--json`) naming the count and repair (`git pull` in the template, or `--to origin/main`).
 - `--no-check`: Available with `apply`. Skips `bun install` and `bun run check` in the upgrade worktree before committing.
 - `--json`: Prints a single JSON result envelope (`stdout` on completion or conflict/check status, `stderr` on refusal).
 
 ### Inputs and refusals
 
-The command reads only committed state (`HEAD:.template.json` — or `HEAD:.cli-design-template.json` when `.template.json` is absent — and `HEAD:package.json`). It never moves the repository's kernel Pin: it reads the repository's pinned commit from `dependencies.agent-cli-kernel` (`#<40-hex>`) in `HEAD:package.json` and regenerates both the base and target template trees against that Pin. It refuses with an error code and a repair step when:
+`plan` and `apply` read only committed state (`HEAD:.template.json` — or `HEAD:.cli-design-template.json` when `.template.json` is absent — and `HEAD:package.json`). They never move the repository's kernel Pin: they read `dependencies.agent-cli-kernel` (`#<40-hex>`) from `HEAD:package.json` and regenerate both trees against that Pin. Refusals name an error code and repair step when:
 
 - `--repository` is not a git repository root or has no `HEAD`.
 - `HEAD` has neither `.template.json` nor `.cli-design-template.json`.
 - `HEAD` has both `.template.json` and `.cli-design-template.json` (`stamp_duplicate`); delete `.cli-design-template.json` and commit the removal.
-- The committed stamp (`.template.json` or `.cli-design-template.json`) has `templateDirty: true`.
-- The recorded `templateRevision` is not in this template checkout's history.
-- The recorded `templateRevision` is not a descendant of the oldest supported base commit (`46e0f66`).
-- `--to REF` cannot be resolved or is not a descendant of `templateRevision`.
-- `HEAD:package.json` is missing or its `dependencies.agent-cli-kernel` entry does not carry a full 40-character pinned commit (`#<40-hex>`).
+- The committed stamp has `templateDirty: true`.
+- `templateRevision` is not in this template checkout's history or does not descend from the oldest supported base commit (`46e0f66`).
+- `--to REF` cannot be resolved or does not descend from `templateRevision`.
+- `HEAD:package.json` is missing or its `dependencies.agent-cli-kernel` is not a full 40-character pinned commit (`#<40-hex>`).
 - Regenerating either tree with the repository's Pin fails (quoting the bootstrap error and naming moving the Pin as a possible cause).
-- No kernel repository is at `KERNEL_REPOSITORY` or beside the template, and the kernel cache cannot get the repository's Pin (`kernel_repository_missing`). The message names git's words, or names the commit when no branch of the remote reaches it. Clone the kernel repository beside the template, or name a clone's path in `KERNEL_REPOSITORY`, or rerun once git can reach the remote to fill the kernel cache at the path the repair line names.
+- No kernel repository is at `KERNEL_REPOSITORY` or beside the template, and the kernel cache cannot fetch the repository's Pin (`kernel_repository_missing`). Clone the kernel repository beside the template, set `KERNEL_REPOSITORY`, or rerun with network access to fill the kernel cache at the path the repair line names.
 - The target branch `template-upgrade/<base7>-<target7>` already exists from a different `HEAD`.
 - Any ancestor folder of an upgraded path (in the old tree, new tree, or worktree), or `.worktrees` itself, is a symbolic link (`symlink_ancestor`).
-- The active upgrade worktree `.worktrees/template-upgrade-<target7>` already exists at a different `HEAD` (`worktree_exists_other_head`); copy what you need out of it, unlock it with `git worktree unlock`, remove it with `git worktree remove --force`, and rerun.
-- Either `.worktrees/template-upgrade-tmp` or `.worktrees/template-upgrade-<target7>` holds anything not locked by this command with a reason starting `template-upgrade ` (`worktree_not_owned`), such as an unlocked worktree, a worktree locked for another reason, or a plain folder or file; move or remove it after saving any work you need, then rerun.
+- The active upgrade worktree `.worktrees/template-upgrade-<target7>` exists at a different `HEAD` (`worktree_exists_other_head`); run `bun run upgrade recover --repository PATH --to <target7>` and rerun.
+- Either `.worktrees/template-upgrade-tmp` or `.worktrees/template-upgrade-<target7>` holds anything not locked by this command with a reason starting `template-upgrade ` (`worktree_not_owned`), such as an unlocked worktree, a worktree locked for another reason, or a plain folder or file; move or remove it after saving any work, then rerun.
 
-If `templateRevision` equals the resolved target commit, both `plan` and `apply` exit `0` with status `up-to-date` and write nothing. When the template's own Pin at the target (`kernel-pin.json`) differs from the repository's Pin, both `plan` and `apply` print one notice (and include `pinMoveNotice` in `--json` output). The notice names both Pins without saying which is newer, says that a Template upgrade does not move a Pin, and tells you to move yours separately if you need the template's.
+If `templateRevision` equals the resolved target commit, `plan` and `apply` exit `0` with status `up-to-date` and write nothing. When the template's Pin at the target (`kernel-pin.json`) differs from the repository's Pin, both print one notice (`pinMoveNotice` in `--json`) naming both Pins and reminding you that a Template upgrade does not move a Pin.
 
 ### Where the kernel repository comes from
 
@@ -107,20 +112,19 @@ The key-level JSON merge formats merged files with two-space indentation and one
 - Active upgrade worktree: `.worktrees/template-upgrade-<target7>`
 - Published branch: `template-upgrade/<base7>-<target7>`
 
-### Worktree lock and manual removal
+### Worktree lock and recovery
 
 Right after this command creates a worktree (`git worktree add`), it locks it with `git worktree lock --reason "template-upgrade <target commit>" <path>`. Both `.worktrees/template-upgrade-tmp` and `.worktrees/template-upgrade-<target7>` carry that lock (kept through `git worktree move`).
 
-Before removing anything at `.worktrees/template-upgrade-tmp` or `.worktrees/template-upgrade-<target7>`, the command inspects `git worktree list --porcelain` and removes a worktree only when it is locked with a reason starting `template-upgrade `. Anything else at either path (an unlocked worktree, a worktree locked for another reason, or a plain folder or file) is refused (`worktree_not_owned`) and left untouched.
+Before removing anything at `.worktrees/template-upgrade-tmp` or `.worktrees/template-upgrade-<target7>`, the command inspects `git worktree list --porcelain` and acts on a worktree only when it is locked with a reason starting `template-upgrade `. Anything else at either path (an unlocked worktree, a worktree locked for another reason, or a plain folder or file) is refused (`worktree_not_owned`) and left untouched.
 
-To remove a leftover upgrade worktree by hand, unlock it first and then remove it:
+To clear a failed upgrade worktree without losing its edits, run:
 
 ```bash
-git worktree unlock .worktrees/template-upgrade-<target7>
-git worktree remove .worktrees/template-upgrade-<target7>
+bun run upgrade recover --repository PATH [--to REF] [--json]
 ```
 
-Add `--force` to `git worktree remove` if the worktree contains uncommitted changes you no longer need.
+`recover` commits the worktree's edits by path onto `template-upgrade/<target7>-failed-<n>` (the lowest unused positive `n`), writes the same diff to `.worktrees/template-upgrade-<target7>-failed-<n>.patch`, unlocks the worktree, removes it with a plain `git worktree remove`, and deletes no branch. It prints the branch, patch path, and rerun command (with `--json`, `action: "recover"`, `status: "recovered"`, `targetCommit`, `worktree`, `branch`, `commit`, `patchPath`, and `rerunCommand`, exiting `0`). It refuses with `worktree_missing` (exit `4`, retry-safe) when no failed worktree exists (including on a second `recover`), `worktree_not_owned` (exit `4`) when the worktree was not created by this tool, and `worktree_patch_failed`, `worktree_unlock_failed`, or `worktree_remove_failed` (exit `1`) on a step failure with no partial removal. After recovery, `upgrade apply` for the same target starts clean.
 
 ### Apply statuses and exit codes
 
@@ -131,8 +135,8 @@ Add `--force` to `git worktree remove` if the worktree contains uncommitted chan
 | `applied`                | `0`  | Merged, installed and checked (unless `--no-check`), committed as `Upgrade template <base7> to <target7>`, branch created, worktree removed.                                                                                                                                    |
 | `conflicts`              | `2`  | Conflicts remain in `.worktrees/template-upgrade-<target7>`.                                                                                                                                                                                                                    |
 | `resolution-in-progress` | `5`  | You started editing `.worktrees/template-upgrade-<target7>` but `<<<<<<< ours` markers remain.                                                                                                                                                                                  |
-| `gate-adoption-required` | `6`  | Existing repository code violates a gate added or changed by this upgrade (Fallow, ESLint, TypeScript, or Biome); worktree kept with the listed problems, changed gate files, repair steps, and unlock/remove commands.                                                         |
-| `check-failed`           | `1`  | `bun install`, `biome format --write`, `bun run quality:fallow:record-hits`, `bun run check`, or `fallow audit` failed because the upgrade or tool run broke (not existing code against a newly changed gate); worktree kept with resume and unlock/remove commands.            |
+| `gate-adoption-required` | `6`  | Existing repository code violates a gate added or changed by this upgrade (Fallow, ESLint, TypeScript, or Biome); worktree kept with the listed problems, changed gate files, repair steps, and recover command.                                                                |
+| `check-failed`           | `1`  | `bun install`, `biome format --write`, `bun run quality:fallow:record-hits`, `bun run check`, or `fallow audit` failed because the upgrade or tool run broke (not existing code against a newly changed gate); worktree kept with resume and recover commands.                   |
 
 ### Resolving conflicts and rerunning
 
@@ -163,6 +167,6 @@ With `--no-check`, the upgrade records no findings and commits the upgrade branc
 
 When `bun run check` fails cleanly (without timing out, crashing, or failing tests) only on existing repository code (never on a template-owned or generated file, whether changed or unchanged, and never on a broken template dependency) for a gate whose configuration or script this upgrade changed (`.fallowrc.json`, `eslint.config.mjs`, `config/*.mjs`, `tsconfig*.json`, `biome.json`, or the matching `package.json` script/package), `apply` verifies the findings against the repository's pre-upgrade `HEAD` with only the changed gate files applied. Only when every failing problem is established to predate the changed template files does `apply` stop with status `gate-adoption-required` and exit code `6`, distinct from `check-failed` (exit `1`). Anything it cannot establish stays `check-failed`.
 
-On any failure that keeps a locked worktree (`conflicts`, `resolution-in-progress`, `gate-adoption-required`, `check-failed`), `apply` prints the resume instruction plus safe removal commands that tell you to save any edits first and default to plain `git worktree remove` (mentioning `--force` only if you explicitly choose to discard uncommitted changes). For Fallow gate adoption, fixing the listed problems is the default repair; `bun run quality:fallow:record-hits` is noted only for intentionally deferring pre-existing Fallow findings.
+On any failure that keeps a locked worktree (`conflicts`, `resolution-in-progress`, `gate-adoption-required`, `check-failed`), `apply` prints the resume instruction plus `bun run upgrade recover --repository PATH --to <target7>` to save edits and remove the worktree cleanly. For Fallow gate adoption, fixing the listed problems is the default repair; `bun run quality:fallow:record-hits` is noted only for intentionally deferring pre-existing Fallow findings.
 
 Limit: a recorded complex function that gets more complex is not caught. Re-running `bun run quality:fallow:record-hits` after fixing a recorded finding is fine (the file shrinks); recording a new finding is refused by the hosted check on a pull request.

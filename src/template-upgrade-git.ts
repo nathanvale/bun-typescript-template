@@ -17,7 +17,23 @@ const GIT_LOCATION_VARIABLES: readonly string[] = [
 
 const DEFAULT_GIT_TIMEOUT_MS = 10_000;
 const FULL_COMMIT_PATTERN = /^[0-9a-f]{40}$/;
+const SAFE_COMMAND_PATH_PATTERN = /^[A-Za-z0-9_@%+=:,./-]+$/;
 const STRICT_UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+
+export function formatCommandPath(value: string): string {
+  if (value !== "" && SAFE_COMMAND_PATH_PATTERN.test(value)) {
+    return value;
+  }
+  return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
+export function formatTemplateUpgradeCommand(
+  action: "apply" | "recover",
+  repository: string,
+  target7: string,
+): string {
+  return `bun run upgrade ${action} --repository ${formatCommandPath(repository)} --to ${target7}`;
+}
 
 export const TEMPLATE_UPGRADE_FLOOR =
   "46e0f6659f879b45b68ef64d1d3a72f229b7b3bd";
@@ -119,7 +135,7 @@ export function runGitText(
   if (result.timedOut) {
     throw new CliError(
       refusal.code,
-      `git ${args.join(" ")} did not finish within ${timeoutMilliseconds} ms`,
+      `${refusal.message}: git ${args.join(" ")} did not finish within ${timeoutMilliseconds} ms`,
       refusal.repair,
       refusal.exitCode ?? 1,
       refusal.retrySafe ?? false,
@@ -237,7 +253,7 @@ function requireGitWorkTreeRoot(
     throw new CliError(
       "not_git_repository",
       `${repository} is inside a git repository at ${topLevelPath}, not the repository root`,
-      `pass --repository ${topLevelPath}`,
+      `pass --repository ${formatCommandPath(topLevelPath)}`,
       2,
       true,
     );
@@ -278,7 +294,7 @@ export function readCommittedBytesAt(
     throw new CliError(
       "repository_git_unreadable",
       `git timed out while checking ${objectSpec} in ${repository}`,
-      `check git status in ${repository}, then rerun`,
+      `check git status in ${formatCommandPath(repository)}, then rerun`,
       1,
       false,
     );

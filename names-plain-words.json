@@ -7,6 +7,11 @@
     {
       "word": "pattern",
       "reason": "A glob or matching pattern, approved by Nathan for the template CLI."
+    },
+    {
+      "word": "recover",
+      "reason": "The verb for saving a failed upgrade worktree's edits onto a branch and patch before removing the worktree.",
+      "approved": "Super Coordinator, item 33, 25 November 2026 04:08"
     }
   ]
 }

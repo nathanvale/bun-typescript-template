@@ -225,11 +225,10 @@ test(
     expect(second.stdout).toContain("existing code needs gate adoption");
     expect(second.stdout).toContain("src/records/find.ts");
     expect(second.stdout).not.toContain("src/commands/records.ts");
-    expect(second.stdout).toContain("git worktree unlock");
-    expect(second.stdout).toContain(`git worktree remove ${worktree}`);
-    expect(second.stdout).not.toContain(
-      `  git worktree remove --force ${worktree}`,
+    expect(second.stdout).toContain(
+      `bun run upgrade recover --repository ${repo} --to ${targetCommit.slice(0, 7)}`,
     );
+    expect(second.stdout).not.toContain("--force");
     expect(second.stdout).toContain("save any edits");
     expect(templateUpgradeCalls(ledger)).toEqual([
       "install",

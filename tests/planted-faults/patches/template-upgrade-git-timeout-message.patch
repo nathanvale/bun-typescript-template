@@ -1,0 +1,12 @@
+diff --git a/src/template-upgrade-git.ts b/src/template-upgrade-git.ts
+--- a/src/template-upgrade-git.ts
++++ b/src/template-upgrade-git.ts
+@@ -135,7 +135,7 @@ export function runGitText(
+   if (result.timedOut) {
+     throw new CliError(
+       refusal.code,
+-      `${refusal.message}: git ${args.join(" ")} did not finish within ${timeoutMilliseconds} ms`,
++      `git ${args.join(" ")} did not finish within ${timeoutMilliseconds} ms`,
+       refusal.repair,
+       refusal.exitCode ?? 1,
+       refusal.retrySafe ?? false,

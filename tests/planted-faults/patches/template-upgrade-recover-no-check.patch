@@ -1,0 +1,12 @@
+diff --git a/src/template-upgrade-arguments.ts b/src/template-upgrade-arguments.ts
+--- a/src/template-upgrade-arguments.ts
++++ b/src/template-upgrade-arguments.ts
+@@ -129,7 +129,7 @@ export function parseTemplateUpgradeArgs(
+       true,
+     );
+   }
+-  if (action !== "apply" && flags.skipCheckCommand) {
++  if (action === "plan" && flags.skipCheckCommand) {
+     throw new CliError(
+       "unsupported_argument",
+       "--no-check is only valid with upgrade apply",

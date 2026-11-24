@@ -2944,6 +2944,76 @@
     "source": "9765d7a fix(recorded-health-sizes): refuse growth in a recorded health finding's size and in eslint-suppressions.json"
   },
   {
+    "id": "template-upgrade-recover-missing",
+    "patch": "tests/planted-faults/patches/template-upgrade-recover-missing.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recover-refusals.test.ts",
+    "title": "^refuses missing, prunable, unowned, foreign-locked, plain-entry, and symlinked worktrees without touching them$",
+    "source": "1890751 feat(template-upgrade): upgrade recover saves a failed run's edits and clears its worktree without force"
+  },
+  {
+    "id": "template-upgrade-recover-not-owned",
+    "patch": "tests/planted-faults/patches/template-upgrade-recover-not-owned.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recover-refusals.test.ts",
+    "title": "^refuses missing, prunable, unowned, foreign-locked, plain-entry, and symlinked worktrees without touching them$",
+    "source": "1890751 feat(template-upgrade): upgrade recover saves a failed run's edits and clears its worktree without force"
+  },
+  {
+    "id": "template-upgrade-recover-patch-failed",
+    "patch": "tests/planted-faults/patches/template-upgrade-recover-patch-failed.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recover-refusals.test.ts",
+    "title": "^refuses with worktree_patch_failed, worktree_unlock_failed, and worktree_remove_failed without partial removal$",
+    "source": "1890751 feat(template-upgrade): upgrade recover saves a failed run's edits and clears its worktree without force"
+  },
+  {
+    "id": "template-upgrade-recover-unlock-failed",
+    "patch": "tests/planted-faults/patches/template-upgrade-recover-unlock-failed.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recover-refusals.test.ts",
+    "title": "^refuses with worktree_patch_failed, worktree_unlock_failed, and worktree_remove_failed without partial removal$",
+    "source": "1890751 feat(template-upgrade): upgrade recover saves a failed run's edits and clears its worktree without force"
+  },
+  {
+    "id": "template-upgrade-recover-remove-failed",
+    "patch": "tests/planted-faults/patches/template-upgrade-recover-remove-failed.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recover-refusals.test.ts",
+    "title": "^refuses with worktree_patch_failed, worktree_unlock_failed, and worktree_remove_failed without partial removal$",
+    "source": "1890751 feat(template-upgrade): upgrade recover saves a failed run's edits and clears its worktree without force"
+  },
+  {
+    "id": "template-upgrade-recover-no-check",
+    "patch": "tests/planted-faults/patches/template-upgrade-recover-no-check.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-arguments.test.ts",
+    "title": "^refuses --no-check on plan or recover and unknown arguments$",
+    "source": "1890751 feat(template-upgrade): upgrade recover saves a failed run's edits and clears its worktree without force"
+  },
+  {
+    "id": "template-upgrade-recover-patch-mismatch",
+    "patch": "tests/planted-faults/patches/template-upgrade-recover-patch-mismatch.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recover-retry.test.ts",
+    "title": "^refuses a mismatched or partial existing recovery patch file on retry and keeps the worktree$",
+    "source": "bf82cbc fix(template-upgrade): resume an interrupted recover from its recorded state, quote printed paths, keep saved effects on timeout"
+  },
+  {
+    "id": "template-upgrade-recover-remove-preflight",
+    "patch": "tests/planted-faults/patches/template-upgrade-recover-remove-preflight.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recover-retry.test.ts",
+    "title": "^checks worktree removability before deletion and leaves a real partial removal recoverable or reports remaining state$",
+    "source": "bf82cbc fix(template-upgrade): resume an interrupted recover from its recorded state, quote printed paths, keep saved effects on timeout"
+  },
+  {
+    "id": "template-upgrade-git-timeout-message",
+    "patch": "tests/planted-faults/patches/template-upgrade-git-timeout-message.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recover-refusals.test.ts",
+    "title": "^keeps saved branch, commit, and patch in worktree_unlock_failed on unlock timeout$",
+    "source": "bf82cbc fix(template-upgrade): resume an interrupted recover from its recorded state, quote printed paths, keep saved effects on timeout"
+  },
+  {
+    "id": "template-upgrade-recover-unlock-record",
+    "patch": "tests/planted-faults/patches/template-upgrade-recover-unlock-record.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recover-retry.test.ts",
+    "title": "^refuses an unlocked worktree with worktree_not_owned when its recovery record is pre-unlock or mismatched$",
+    "source": "4184dde fix(template-upgrade): record recover steps and resume unlocked worktrees from a valid record"
+  },
+  {
     "id": "recorded-health-sizes-base-settings",
     "patch": "tests/planted-faults/patches/recorded-health-sizes-base-settings.patch",
     "testFile": "tests/template/toolchain/recorded-health-sizes.test.ts",

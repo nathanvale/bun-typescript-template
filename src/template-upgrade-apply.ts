@@ -9,6 +9,7 @@ import { withTemplateUpgradeTrees } from "./template-upgrade-bootstrap.ts";
 import { runTemplateUpgradeCheckSteps } from "./template-upgrade-gate-check.ts";
 import { skipJsonFormatSteps } from "./template-upgrade-json-format.ts";
 import {
+  formatCommandPath,
   lstatIfPresent,
   type ProcessEnvMap,
   runGitText,
@@ -302,7 +303,7 @@ async function inspectExistingTemplateUpgradeBranch(
   throw new CliError(
     "branch_exists_other_head",
     `branch ${branch} already exists from another commit`,
-    `delete it with git -C ${inputs.repository} branch -D ${branch} to retry`,
+    `delete it with git -C ${formatCommandPath(inputs.repository)} branch -D ${branch} to retry`,
     4,
     false,
   );
