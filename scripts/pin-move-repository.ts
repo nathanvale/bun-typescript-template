@@ -463,7 +463,6 @@ async function applyRepositoryPinMove(
     const written = attemptPaths(repository, attempt.edited, regenerated);
     const commit = commitPinMoveBranch(
       repository,
-      branch,
       current.oldCommit,
       kernelCommit,
       written,
