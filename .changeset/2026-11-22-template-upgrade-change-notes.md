@@ -1,0 +1,5 @@
+---
+"bun-typescript-template": minor
+---
+
+Included breaking-first template change notes in upgrade plan, apply, and commit messages, reported bun install and bun run check step outcomes in apply, named edited shared files to merge in plan, and printed the target commit with a behind-origin/main warning when HEAD lags.

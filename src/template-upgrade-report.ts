@@ -1,4 +1,4 @@
-import type { ChangeNoteEntry } from "./change-notes.ts";
+import type { TemplateChangesetEntry } from "./template-upgrade-changesets.ts";
 import type {
   TemplateUpgradeGateName,
   TemplateUpgradeGateProblem,
@@ -39,7 +39,7 @@ export interface TemplateUpgradePlanResult {
   readonly sharedMerges: readonly string[];
   readonly dependencyChanges: readonly PackageDependencyChange[];
   readonly templateCopyChanges: readonly TemplateUpgradeCopyChange[];
-  readonly changeNotes: readonly ChangeNoteEntry[];
+  readonly changesets: readonly TemplateChangesetEntry[];
   readonly pinMoveNotice?: string;
   readonly templateHeadNotice?: string;
 }
@@ -64,7 +64,7 @@ export interface TemplateUpgradeApplyResult {
   readonly conflicts: readonly string[];
   readonly dependencyChanges: readonly PackageDependencyChange[];
   readonly templateCopyChanges: readonly TemplateUpgradeCopyChange[];
-  readonly changeNotes: readonly ChangeNoteEntry[];
+  readonly changesets: readonly TemplateChangesetEntry[];
   readonly steps: readonly TemplateUpgradeApplyStep[];
   readonly pinMoveNotice?: string;
   readonly templateHeadNotice?: string;
@@ -87,7 +87,7 @@ export interface TemplateUpgradeApplyReportOptions {
   readonly inputs: TemplateUpgradeInputs;
   readonly branch: string;
   readonly status: TemplateUpgradeApplyResult["status"];
-  readonly changeNotes: readonly ChangeNoteEntry[];
+  readonly changesets: readonly TemplateChangesetEntry[];
   readonly steps: readonly TemplateUpgradeApplyStep[];
   readonly commit?: string;
   readonly worktree?: string;
@@ -112,7 +112,7 @@ export interface TemplateUpgradePlanReportOptions {
   readonly sharedMerges: readonly string[];
   readonly dependencyChanges: readonly PackageDependencyChange[];
   readonly templateCopyChanges: readonly TemplateUpgradeCopyChange[];
-  readonly changeNotes: readonly ChangeNoteEntry[];
+  readonly changesets: readonly TemplateChangesetEntry[];
 }
 
 function pinMoveNoticeFor(inputs: TemplateUpgradeInputs): string | undefined {
@@ -171,7 +171,7 @@ export function createTemplateUpgradePlanResult(
     sharedMerges: options.sharedMerges,
     dependencyChanges: options.dependencyChanges,
     templateCopyChanges: options.templateCopyChanges,
-    changeNotes: options.changeNotes,
+    changesets: options.changesets,
     ...(pinMoveNotice === undefined ? {} : { pinMoveNotice }),
     ...(templateHeadNotice === undefined ? {} : { templateHeadNotice }),
   });
@@ -212,7 +212,7 @@ export function createTemplateUpgradeApplyRun(
     conflicts: options.conflicts ?? Object.freeze([]),
     dependencyChanges: options.dependencyChanges ?? Object.freeze([]),
     templateCopyChanges: options.templateCopyChanges ?? Object.freeze([]),
-    changeNotes: options.changeNotes,
+    changesets: options.changesets,
     steps: options.steps,
     ...definedApplyFields(options, pinMoveNotice),
   };

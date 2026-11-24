@@ -237,11 +237,24 @@ function qualifyRepair(word: string, terms: readonly string[]): string {
   return `Repair: Look in the glossary first; add a word that says which ${word} it is.`;
 }
 
+export function isChangesetMarkdownPath(path: string): boolean {
+  if (!path.endsWith(".md")) return false;
+  const prefix = path.startsWith(".changeset/pre/")
+    ? ".changeset/pre/"
+    : path.startsWith(".changeset/")
+      ? ".changeset/"
+      : undefined;
+  if (prefix === undefined) return false;
+  const rest = path.slice(prefix.length);
+  return rest !== "" && !rest.includes("/") && rest !== "README.md";
+}
+
 export function hitsIn(
   path: string,
   glossary: Glossary,
   declarationName?: string,
 ): NameHit[] {
+  if (declarationName === undefined && isChangesetMarkdownPath(path)) return [];
   const name =
     declarationName ?? (path.split("/").at(-1) ?? path).replace(/^\.+/, "");
   const words = wordsOf(name);

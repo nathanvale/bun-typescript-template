@@ -1,9 +1,11 @@
 import { rmdir } from "node:fs/promises";
 import { join } from "node:path";
-import type { ChangeNoteEntry } from "./change-notes.ts";
+import {
+  readTemplateUpgradeChangesets,
+  type TemplateChangesetEntry,
+} from "./template-upgrade-changesets.ts";
 import { CliError } from "./cli-error.ts";
 import { withTemplateUpgradeTrees } from "./template-upgrade-bootstrap.ts";
-import { readTemplateUpgradeChangeNotes } from "./template-upgrade-change-notes.ts";
 import { runTemplateUpgradeCheckSteps } from "./template-upgrade-gate-check.ts";
 import { skipJsonFormatSteps } from "./template-upgrade-json-format.ts";
 import {
@@ -64,7 +66,7 @@ interface ApplySession {
   readonly branch: string;
   readonly commitSubject: string;
   readonly commitMessage: string;
-  readonly changeNotes: readonly ChangeNoteEntry[];
+  readonly changesets: readonly TemplateChangesetEntry[];
   readonly worktreesRoot: string;
   readonly temporaryWorktree: string;
   readonly targetWorktree: string;
@@ -113,14 +115,8 @@ async function findCommittedWorktreeHead(
 async function tryFinishCommittedWorktree(
   session: ApplySession,
 ): Promise<TemplateUpgradeApplyRun | undefined> {
-  const {
-    inputs,
-    branch,
-    changeNotes,
-    targetWorktree,
-    temporaryWorktree,
-    env,
-  } = session;
+  const { inputs, branch, changesets, targetWorktree, temporaryWorktree, env } =
+    session;
   const worktreeHead = await findCommittedWorktreeHead(session);
   if (worktreeHead === undefined) {
     return undefined;
@@ -147,20 +143,20 @@ async function tryFinishCommittedWorktree(
     branch,
     status: "applied",
     commit: worktreeHead,
-    changeNotes,
+    changesets,
     steps: skipTemplateUpgradeSteps("recovered committed worktree"),
   });
 }
 
 async function executePlanInWorktree(options: {
   readonly inputs: TemplateUpgradeInputs;
-  readonly changeNotes: readonly ChangeNoteEntry[];
+  readonly changesets: readonly TemplateChangesetEntry[];
   readonly oldFolder: string;
   readonly newFolder: string;
   readonly planWorktree: string;
   readonly env: ProcessEnvMap;
 }): Promise<TemplateUpgradePlanResult> {
-  const { inputs, changeNotes, oldFolder, newFolder, planWorktree, env } =
+  const { inputs, changesets, oldFolder, newFolder, planWorktree, env } =
     options;
   const beforePackage = await readTextIfFile(
     join(planWorktree, "package.json"),
@@ -196,7 +192,7 @@ async function executePlanInWorktree(options: {
     sharedMerges: Object.freeze(sharedMerges),
     dependencyChanges,
     templateCopyChanges,
-    changeNotes,
+    changesets,
   });
 }
 
@@ -213,10 +209,10 @@ export async function templateUpgradePlan(
       sharedMerges: Object.freeze([]),
       dependencyChanges: Object.freeze([]),
       templateCopyChanges: Object.freeze([]),
-      changeNotes: Object.freeze([]),
+      changesets: Object.freeze([]),
     });
   }
-  const changeNotes = readTemplateUpgradeChangeNotes(
+  const changesets = readTemplateUpgradeChangesets(
     inputs.templateRoot,
     inputs.baseCommit,
     inputs.targetCommit,
@@ -238,7 +234,7 @@ export async function templateUpgradePlan(
     try {
       return await executePlanInWorktree({
         inputs,
-        changeNotes,
+        changesets,
         oldFolder: trees.oldFolder,
         newFolder: trees.newFolder,
         planWorktree,
@@ -253,14 +249,8 @@ export async function templateUpgradePlan(
 async function inspectExistingTemplateUpgradeBranch(
   session: ApplySession,
 ): Promise<TemplateUpgradeApplyRun | undefined> {
-  const {
-    inputs,
-    branch,
-    changeNotes,
-    targetWorktree,
-    temporaryWorktree,
-    env,
-  } = session;
+  const { inputs, branch, changesets, targetWorktree, temporaryWorktree, env } =
+    session;
   const existingTip = resolveRefIfPresent(
     inputs.repository,
     `refs/heads/${branch}`,
@@ -302,7 +292,7 @@ async function inspectExistingTemplateUpgradeBranch(
       branch,
       status: "already-done",
       commit: existingTip,
-      changeNotes,
+      changesets,
       steps: skipTemplateUpgradeSteps("already-done"),
       ...(leftoverWorktree === undefined
         ? {}
@@ -342,14 +332,8 @@ async function prepareTemplateUpgradeWorktree(
   | { readonly kind: "stopped"; readonly run: TemplateUpgradeApplyRun }
   | { readonly kind: "ready"; readonly usingResolved: boolean }
 > {
-  const {
-    inputs,
-    branch,
-    changeNotes,
-    temporaryWorktree,
-    targetWorktree,
-    env,
-  } = session;
+  const { inputs, branch, changesets, temporaryWorktree, targetWorktree, env } =
+    session;
   await assertTargetWorktreeMatchesHead({
     repository: inputs.repository,
     repositoryHead: inputs.repositoryHead,
@@ -378,7 +362,7 @@ async function prepareTemplateUpgradeWorktree(
         branch,
         status: "resolution-in-progress",
         worktree: targetWorktree,
-        changeNotes,
+        changesets,
         steps: skipTemplateUpgradeSteps("resolution-in-progress"),
         rows,
         conflicts: markerFiles,
@@ -414,7 +398,7 @@ async function publishTemplateUpgradeBranch(
   mergeData: ApplyMergeData,
   steps: readonly TemplateUpgradeApplyStep[],
 ): Promise<TemplateUpgradeApplyRun> {
-  const { inputs, branch, commitMessage, changeNotes, targetWorktree, env } =
+  const { inputs, branch, commitMessage, changesets, targetWorktree, env } =
     session;
   const commitSha = await stageAndCommitWorktree({
     worktree: targetWorktree,
@@ -438,7 +422,7 @@ async function publishTemplateUpgradeBranch(
     branch,
     status: "applied",
     commit: commitSha,
-    changeNotes,
+    changesets,
     steps,
     ...mergeData,
   });
@@ -465,7 +449,7 @@ async function finalizeTemplateUpgradeWorktree(
   templateCopyChanges: readonly TemplateUpgradeCopyChange[],
   keyMergedPaths: ReadonlySet<string>,
 ): Promise<TemplateUpgradeApplyRun> {
-  const { inputs, branch, changeNotes, targetWorktree, skipCheckCommand } =
+  const { inputs, branch, changesets, targetWorktree, skipCheckCommand } =
     session;
   const afterPackage = await readTextIfFile(
     join(targetWorktree, "package.json"),
@@ -490,7 +474,7 @@ async function finalizeTemplateUpgradeWorktree(
         branch,
         status: "conflicts",
         worktree: targetWorktree,
-        changeNotes,
+        changesets,
         steps: skipTemplateUpgradeSteps("conflicts"),
         ...mergeData,
         conflicts,
@@ -513,7 +497,7 @@ async function finalizeTemplateUpgradeWorktree(
       inputs,
       branch,
       worktree: targetWorktree,
-      changeNotes,
+      changesets,
       env: session.env,
       ...mergeData,
     });
@@ -602,11 +586,11 @@ export async function templateUpgradeApply(
       inputs,
       branch,
       status: "up-to-date",
-      changeNotes: Object.freeze([]),
+      changesets: Object.freeze([]),
       steps: skipTemplateUpgradeSteps("up-to-date"),
     });
   }
-  const changeNotes = readTemplateUpgradeChangeNotes(
+  const changesets = readTemplateUpgradeChangesets(
     inputs.templateRoot,
     inputs.baseCommit,
     inputs.targetCommit,
@@ -626,9 +610,9 @@ export async function templateUpgradeApply(
     commitMessage: templateUpgradeCommitMessage(
       inputs.baseCommit,
       inputs.targetCommit,
-      changeNotes,
+      changesets,
     ),
-    changeNotes,
+    changesets,
     ...paths,
     skipCheckCommand: options.skipCheckCommand,
     env,

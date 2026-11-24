@@ -81,6 +81,12 @@ test("classifies generated, repository, shared (including root *.toml), and temp
     "shared",
   );
   expect(classifyTemplateUpgradeFileOwner("AGENTS.md")).toBe("shared");
+  expect(classifyTemplateUpgradeFileOwner(".changeset/config.json")).toBe(
+    "shared",
+  );
+  expect(classifyTemplateUpgradeFileOwner(".changeset/README.md")).toBe(
+    "template",
+  );
 
   expect(classifyTemplateUpgradeFileOwner("config/template-rules.mjs")).toBe(
     "template",

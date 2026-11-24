@@ -1,4 +1,9 @@
-import { type Glossary, hitsIn, readGlossary } from "./glossary.ts";
+import {
+  type Glossary,
+  hitsIn,
+  isChangesetMarkdownPath,
+  readGlossary,
+} from "./glossary.ts";
 import { listedEntries } from "./glossary-ownership.ts";
 import type { PathItem } from "./name-moves.ts";
 import type { PublicDeclaration } from "./public-declarations.ts";
@@ -300,18 +305,20 @@ export function unknownPathProblems(
   glossary: Glossary,
   items: readonly PathItem[],
 ): string[] {
-  return items.flatMap(({ path, isFile }) =>
-    isPlantedFaultPatch(path, isFile)
-      ? []
-      : unknownWordsOf(
-          words,
-          coveredByGlossaryRule(path, glossary),
-          segmentWords(path, isFile),
-        ).map(
-          (word) =>
-            `${path} uses "${word}", ${unknownReason(words, word)}. ${unknownWordRepair(words, word, path)}`,
-        ),
-  );
+  return items
+    .filter(({ path, isFile }) => !(isFile && isChangesetMarkdownPath(path)))
+    .flatMap(({ path, isFile }) =>
+      isPlantedFaultPatch(path, isFile)
+        ? []
+        : unknownWordsOf(
+            words,
+            coveredByGlossaryRule(path, glossary),
+            segmentWords(path, isFile),
+          ).map(
+            (word) =>
+              `${path} uses "${word}", ${unknownReason(words, word)}. ${unknownWordRepair(words, word, path)}`,
+          ),
+    );
 }
 
 export function unknownDeclarationProblems(

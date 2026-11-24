@@ -41,7 +41,7 @@ const { folder, freshRepository, installedRepository, runPinMove } = fixture;
 
 describe("pin-move --repository", () => {
   test(
-    "--plan prints kernel change notes and leaves the generated repository untouched on main",
+    "--plan prints kernel changesets and leaves the generated repository untouched on main",
     async () => {
       const repo = freshRepository("pin-move-plan-");
       const beforeHead = git(repo, "rev-parse", "HEAD");
@@ -60,7 +60,7 @@ describe("pin-move --repository", () => {
       expect(run.stdout).toContain(
         `Pin move report: ${trialBase} to ${fixture.targetCommit}`,
       );
-      expect(run.stdout).toContain("Kernel change notes (1):");
+      expect(run.stdout).toContain("Kernel changesets (1):");
       expect(run.stdout).toContain(
         "Stopped a hung child process group on timeout.",
       );
@@ -75,7 +75,7 @@ describe("pin-move --repository", () => {
     processWatchdog(3),
   );
 
-  test("moves a generated repository Pin onto a new branch, prints change notes first, updates package.json, lockfile and pointer skills, runs check, and leaves main untouched", async () => {
+  test("moves a generated repository Pin onto a new branch, prints changesets first, updates package.json, lockfile and pointer skills, runs check, and leaves main untouched", async () => {
     const repo = freshRepository("pin-move-apply-");
     const oldSpecifier = cloneSpecifier(fixture.kernelRepo, trialBase);
     const originalManifest = readFileSync(join(repo, "package.json"), "utf8");
@@ -99,7 +99,7 @@ describe("pin-move --repository", () => {
       exit: 0,
       stderr: "",
     });
-    const reportIndex = run.stdout.indexOf("Kernel change notes (1):");
+    const reportIndex = run.stdout.indexOf("Kernel changesets (1):");
     const movedIndex = run.stdout.indexOf(
       `Moved kernel Pin in ${realpathSync(repo)} on branch ${expectedBranch}`,
     );
@@ -253,7 +253,7 @@ describe("pin-move --repository", () => {
       repo,
     ]);
     expect(run.exit).toBe(1);
-    expect(run.stdout).toContain("Kernel change notes (1):");
+    expect(run.stdout).toContain("Kernel changesets (1):");
     expect(run.stderr).toContain("repository_check_failed:");
     const kept = keptAttempt(repo, expectedBranch);
     expect(run.stderr).toContain(

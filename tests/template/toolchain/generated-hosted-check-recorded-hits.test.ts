@@ -45,7 +45,13 @@ function readRecordedHitsGrowthStepRun(): string {
   const rawSteps = check === undefined ? undefined : own(check, "steps");
   if (!Array.isArray(rawSteps))
     throw new Error("generated-repository/hosted-check/ci.yml has no steps");
-  const growthStep = rawSteps.map(asRecord)[4];
+  const growthStep = rawSteps
+    .map(asRecord)
+    .find(
+      (step) =>
+        step !== undefined &&
+        own(step, "name") === "Check Fallow recorded hits did not grow",
+    );
   const run = growthStep === undefined ? undefined : own(growthStep, "run");
   if (typeof run !== "string" || run.trim() === "")
     throw new Error(

@@ -72,6 +72,7 @@ const OVERLAY_PATHS = [
   "generated-repository",
   "config",
   "kernel-pin.json",
+  ".changeset",
 ] as const;
 
 function gitNulPaths(root: string, ...args: string[]): string[] {

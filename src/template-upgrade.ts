@@ -1,6 +1,9 @@
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { type ChangeNoteEntry, formatChangeNoteLines } from "./change-notes.ts";
+import {
+  formatChangesetLines,
+  type TemplateChangesetEntry,
+} from "./template-upgrade-changesets.ts";
 import { writeCliError } from "./cli-error.ts";
 import {
   templateUpgradeApply,
@@ -56,16 +59,16 @@ function formatTargetCommitLines(
   ];
 }
 
-function formatChangeNotesSection(
-  changeNotes: readonly ChangeNoteEntry[],
+function formatChangesetsSection(
+  changesets: readonly TemplateChangesetEntry[],
 ): string[] {
-  if (changeNotes.length === 0) {
+  if (changesets.length === 0) {
     return [];
   }
   return [
     "",
-    `Change notes (${changeNotes.length}):`,
-    ...formatChangeNoteLines(changeNotes).map((line) => `  ${line}`),
+    `Changesets (${changesets.length}):`,
+    ...formatChangesetLines(changesets).map((line) => `  ${line}`),
   ];
 }
 
@@ -152,8 +155,8 @@ function formatPlan(result: TemplateUpgradePlanResult): string {
   const lines = [
     `Template upgrade plan: ${base7} -> ${target7}`,
     ...targetLines,
-    ...formatChangeNotesSection(result.changeNotes),
-    ...(result.changeNotes.length > 0 ? [""] : []),
+    ...formatChangesetsSection(result.changesets),
+    ...(result.changesets.length > 0 ? [""] : []),
     ...formatRows(result.rows),
     ...formatSharedMerges(result.sharedMerges),
     ...formatDependencyChanges(result.dependencyChanges),
@@ -272,9 +275,9 @@ function formatApply(result: TemplateUpgradeApplyResult): string {
     result.templateHeadNotice,
   );
   const stepLines = formatApplySteps(result.steps);
-  const changeNoteLines = formatChangeNotesSection(result.changeNotes);
+  const changesetLines = formatChangesetsSection(result.changesets);
   const pinNotice = formatPinMoveNoticeLines(result.pinMoveNotice);
-  const headerDetails = [...targetLines, ...stepLines, ...changeNoteLines];
+  const headerDetails = [...targetLines, ...stepLines, ...changesetLines];
   if (result.status === "up-to-date") {
     return `${[`Template upgrade: up-to-date at ${target7}`, ...targetLines, ...stepLines, ...pinNotice].join("\n")}\n`;
   }

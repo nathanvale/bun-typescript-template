@@ -236,6 +236,7 @@ function stepSummary(step: PlainObject) {
   const run = scalar(own(step, "run"));
   return {
     uses: scalar(own(step, "uses"))?.split("@")[0],
+    if: scalar(own(step, "if")),
     run: run?.includes('--fail-on-baseline-growth --baseline-base "$BASE"')
       ? GROWTH_CHECK
       : run,
@@ -335,27 +336,44 @@ function jobProblems(
   const checkoutPin = pins.actions.get(CHECKOUT_ACTION);
   const setupBunPin = pins.actions.get(SETUP_BUN_ACTION);
   const expectedSummary = [
-    { uses: CHECKOUT_ACTION, run: undefined, fetchDepth: "0", base: undefined },
+    {
+      uses: CHECKOUT_ACTION,
+      if: undefined,
+      run: undefined,
+      fetchDepth: "0",
+      base: undefined,
+    },
     {
       uses: SETUP_BUN_ACTION,
+      if: undefined,
       run: undefined,
       fetchDepth: undefined,
       base: undefined,
     },
     {
       uses: undefined,
+      if: undefined,
       run: "bun install --frozen-lockfile",
       fetchDepth: undefined,
       base: undefined,
     },
     {
       uses: undefined,
+      if: undefined,
       run: KERNEL_RECIPE.checkCommand,
       fetchDepth: undefined,
       base: undefined,
     },
     {
       uses: undefined,
+      if: "github.event_name == 'pull_request'",
+      run: "bun run check:changesets",
+      fetchDepth: undefined,
+      base: undefined,
+    },
+    {
+      uses: undefined,
+      if: undefined,
       run: GROWTH_CHECK,
       fetchDepth: undefined,
       base: GROWTH_BASE,
@@ -363,7 +381,7 @@ function jobProblems(
   ];
   if (!Bun.deepEquals(validSteps.map(stepSummary), expectedSummary))
     problems.push(
-      `${where} job check must run ${checkoutPin ?? CHECKOUT_ACTION} with fetch-depth: 0, ${setupBunPin ?? SETUP_BUN_ACTION}, bun install --frozen-lockfile, ${KERNEL_RECIPE.checkCommand}, then the Fallow recorded-hits growth check with BASE ${GROWTH_BASE}. Repair: match those five steps in order in generated-repository/hosted-check/ci.yml.`,
+      `${where} job check must run ${checkoutPin ?? CHECKOUT_ACTION} with fetch-depth: 0, ${setupBunPin ?? SETUP_BUN_ACTION}, bun install --frozen-lockfile, ${KERNEL_RECIPE.checkCommand}, the pull_request Changesets step (bun run check:changesets), then the Fallow recorded-hits growth check with BASE ${GROWTH_BASE}. Repair: match those six steps in order in generated-repository/hosted-check/ci.yml.`,
     );
   return problems;
 }

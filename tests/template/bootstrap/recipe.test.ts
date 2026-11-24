@@ -3,7 +3,7 @@ import { existsSync, statSync, writeFileSync } from "node:fs";
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import {
-  CHANGE_NOTES_FOLDER,
+  CHANGESET_FOLDER,
   copiesOf,
   HOSTED_CHECK_FOLDER,
   KERNEL_LOCKFILE,
@@ -124,12 +124,19 @@ describe("the recipe", () => {
     ).toEqual([`${HOSTED_CHECK_FOLDER}/ci.yml`]);
   });
 
-  test("it copies the change notes README into change-notes", async () => {
+  test("it copies the Changesets config and README into .changeset and the gated-paths script into scripts", async () => {
+    const files = await copiedFiles(KERNEL_RECIPE);
     expect(
-      (await copiedFiles(KERNEL_RECIPE))
-        .filter((file) => file.startsWith(`${CHANGE_NOTES_FOLDER}/`))
+      files
+        .filter((file) => file.startsWith(`${CHANGESET_FOLDER}/`))
         .toSorted(),
-    ).toEqual([`${CHANGE_NOTES_FOLDER}/README.md`]);
+    ).toEqual([
+      `${CHANGESET_FOLDER}/README.md`,
+      `${CHANGESET_FOLDER}/config.json`,
+    ]);
+    expect(
+      files.filter((file) => file.startsWith("scripts/")).toSorted(),
+    ).toEqual(["scripts/check-gated-paths.ts"]);
   });
 });
 

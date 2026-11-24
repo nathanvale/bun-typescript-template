@@ -1,7 +1,0 @@
-{
-  "kind": "fixed",
-  "breaking": false,
-  "affects": ["bootstrap", "generated-repository"],
-  "summary": "Disabled Biome Markdown formatting in generated biome.json and restored the shipped pointer skills' front matter so formatting leaves Markdown files byte-identical.",
-  "action": "Run Template upgrade to merge the markdown.formatter.enabled setting into biome.json (a shared file merged with the repository's own edits) and update the pointer skills."
-}

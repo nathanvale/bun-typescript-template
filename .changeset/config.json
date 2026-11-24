@@ -1,0 +1,29 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@4.0.1/schema.json",
+  "baseBranch": "main",
+  "access": "restricted",
+  "format": "auto",
+  "changelog": "@changesets/cli/changelog",
+  "commit": false,
+  "ignore": [],
+  "fixed": [],
+  "linked": [],
+  "updateInternalDependencies": "patch",
+  "privatePackages": { "version": true, "tag": false },
+  "changedFilePatterns": [
+    "generated-repository/**",
+    "kernel-pin.json",
+    "config/anti-slop-bindings.mjs",
+    "config/anti-slop-rules.mjs",
+    "config/anti-slop-type-rules.mjs",
+    "config/payload-rules.mjs",
+    "config/platform-rules.mjs",
+    "config/template-rules.mjs",
+    "tests/support/test-folder.ts",
+    "src/bootstrap.ts",
+    "src/bootstrap-arguments.ts",
+    "src/kernel-pin.ts",
+    "src/recipe.ts",
+    "src/token-substitution.ts"
+  ]
+}

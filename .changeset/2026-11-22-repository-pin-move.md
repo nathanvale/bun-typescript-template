@@ -1,0 +1,7 @@
+---
+"bun-typescript-template": minor
+---
+
+Added --repository and --plan to bun run pin-move so a generated repository's owner can preview kernel change notes and move its kernel Pin onto a new branch, with install, pointer skill updates, and check command verification.
+
+Action: Nothing to do by hand: run bun run pin-move <full kernel commit> --repository <path> --plan from the template to preview, then without --plan to move the Pin.

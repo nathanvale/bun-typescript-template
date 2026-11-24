@@ -1,7 +1,0 @@
-{
-  "kind": "added",
-  "breaking": false,
-  "affects": ["generated-repository", "test-support"],
-  "summary": "Added a shipped git fixture helper (tests/support/git-fixture.ts) and test (tests/git-fixture.test.ts) to generated repositories and disabled automatic git maintenance (maintenance.auto=false and gc.auto=0) in both the shipped helper and the template's tests/support/git-fixture.ts so fixture commits do not start background git maintenance.",
-  "action": "Nothing to do by hand: tests/support/git-fixture.ts and tests/git-fixture.test.ts carry the template owner label, so Template upgrade takes both files whole; a repository's own git tests can switch to gitFixture and git."
-}
