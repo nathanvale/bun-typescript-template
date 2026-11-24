@@ -3,12 +3,14 @@ import { readdirSync, readFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
 import {
   commandOf,
-  insideFolder,
-  leftoverFolders,
   processRows,
-  runTests,
   stopProcess,
   type TestRunEnvironment,
+} from "../../../scripts/test-run-process.ts";
+import {
+  insideFolder,
+  leftoverFolders,
+  runTests,
   testRunFolderVariable,
 } from "../../../scripts/test-run.ts";
 import {

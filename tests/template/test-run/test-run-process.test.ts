@@ -12,12 +12,14 @@ import { startChild } from "../../../scripts/process-runner.ts";
 import {
   childProcessRows,
   commandOf,
-  leftoverFolders,
-  leftoverProcessProblems,
   processRows,
-  runTests,
   stopProcess,
   type TestRunEnvironment,
+} from "../../../scripts/test-run-process.ts";
+import {
+  leftoverFolders,
+  leftoverProcessProblems,
+  runTests,
   testRunFolderVariable,
   testRunProcessMark,
   testRunProcessVariable,

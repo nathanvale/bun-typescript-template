@@ -1,7 +1,7 @@
-diff --git a/scripts/test-run.ts b/scripts/test-run.ts
---- a/scripts/test-run.ts
-+++ b/scripts/test-run.ts
-@@ -252,12 +252,7 @@
+diff --git a/scripts/test-run-process.ts b/scripts/test-run-process.ts
+--- a/scripts/test-run-process.ts
++++ b/scripts/test-run-process.ts
+@@ -227,12 +227,7 @@
  ):
    | { readonly ok: true; readonly rows: ProcessRow[] }
    | { readonly ok: false; readonly message: string } {

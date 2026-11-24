@@ -4,9 +4,11 @@ import { join } from "node:path";
 import {
   childProcessRows,
   commandOf,
-  insideFolder,
   processRows,
   stopProcess,
+} from "../../scripts/test-run-process.ts";
+import {
+  insideFolder,
   teardownMark,
   testRunFolderVariable,
   testRunProcessVariable,

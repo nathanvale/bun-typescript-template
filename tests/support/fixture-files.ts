@@ -43,6 +43,7 @@ export function testRunFiles(): Record<string, string> {
   return Object.fromEntries(
     [
       "bunfig.toml",
+      "scripts/test-run-process.ts",
       "scripts/test-run.ts",
       "tests/support/test-run-folder.ts",
     ].map((path) => [path, readFileSync(join(templateRoot, path), "utf8")]),

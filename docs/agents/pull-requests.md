@@ -7,7 +7,7 @@
 - Add a changeset under `.changeset/` when a pull request changes a gated path
   (`generated-repository/**`, the copied lint rule files in `config/`,
   `tests/support/test-folder.ts`, `tests/support/test-run-folder.ts`,
-  `scripts/test-run.ts`, `kernel-pin.json`, `src/recipe.ts`,
+  `scripts/test-run.ts`, `scripts/test-run-process.ts`, `kernel-pin.json`, `src/recipe.ts`,
   `src/bootstrap.ts`, `src/bootstrap-arguments.ts`,
   `src/token-substitution.ts`, or `src/kernel-pin.ts`): run
   `bun run --bun changeset add --minor bun-typescript-template -m "<summary>"`

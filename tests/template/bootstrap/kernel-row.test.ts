@@ -60,6 +60,7 @@ const ownFiles = [
   "fallow-health-recorded-hits.json",
   "package.json",
   "scripts/check-gated-paths.ts",
+  "scripts/test-run-process.ts",
   "scripts/test-run.ts",
   "src/cli.ts",
   "src/commands.ts",

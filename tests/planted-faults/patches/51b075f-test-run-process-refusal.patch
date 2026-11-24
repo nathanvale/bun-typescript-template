@@ -1,7 +1,7 @@
-diff --git a/scripts/test-run.ts b/scripts/test-run.ts
---- a/scripts/test-run.ts
-+++ b/scripts/test-run.ts
-@@ -70,7 +70,7 @@
+diff --git a/scripts/test-run-process.ts b/scripts/test-run-process.ts
+--- a/scripts/test-run-process.ts
++++ b/scripts/test-run-process.ts
+@@ -61,7 +61,7 @@
    }
    if (ps.exitedDueToTimeout)
      return refusedPs(`did not answer within ${psMilliseconds} ms`);
