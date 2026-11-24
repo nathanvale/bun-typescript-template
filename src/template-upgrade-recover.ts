@@ -1,8 +1,6 @@
-import { readdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { CliError } from "./cli-error.ts";
 import {
-  decodeUtf8Strict,
   formatCommandPath,
   formatTemplateUpgradeCommand,
   lstatIfPresent,
@@ -14,13 +12,17 @@ import {
 } from "./template-upgrade-git.ts";
 import {
   type CommittedRecoverRecord,
+  findRecoverTarget,
   RECOVER_RECORD_FILE,
   type RecoverRecord,
   type RecoverRemoveRequest,
+  readRecoverPatchBytes,
   readRecoverRecord,
   reportFailedRemoveResult,
   restorePartialRemovePaths,
+  verifyRecoverRecord,
   writeRecoverRecord,
+  writeRecoverStep,
 } from "./template-upgrade-recover-record.ts";
 import {
   createTemplateUpgradeRecoverResult,
@@ -28,8 +30,10 @@ import {
 } from "./template-upgrade-report.ts";
 import {
   assertWorktreePathAvailableForTemplateUpgrade,
+  findGitWorktreeRecord,
   type GitWorktreeRecord,
   isRepositoryWorktree,
+  templateUpgradeLockReason,
 } from "./template-upgrade-worktree-lock.ts";
 import {
   assertNotSymlinkPath,
@@ -44,10 +48,6 @@ import {
 } from "./template-upgrade-worktree.ts";
 
 const WORKTREE_TIMEOUT_MS = 30_000;
-const POSITIVE_INDEX_PATTERN = /^[1-9]\d*$/;
-const RECOVER_BRANCH_PREFIX = "template-upgrade/";
-const RECOVER_PATCH_PREFIX = "template-upgrade-";
-const RECOVER_PATCH_SUFFIX = ".patch";
 const UTF8_DECODER = new TextDecoder("utf-8");
 
 export interface TemplateUpgradeRecoverRequest {
@@ -63,103 +63,32 @@ interface OwnedWorktreeState {
   readonly head: string;
   readonly worktreeGitDir: string;
   readonly commonDir: string;
+  readonly savedRecord: RecoverRecord | undefined;
 }
 
-function parsePositiveIndex(segment: string): number | undefined {
-  if (!POSITIVE_INDEX_PATTERN.test(segment)) {
-    return undefined;
-  }
-  const parsed = Number.parseInt(segment, 10);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
+interface RecoverTargetContext {
+  readonly repository: string;
+  readonly worktreesRoot: string;
+  readonly targetWorktree: string;
+  readonly targetCommit: string;
+  readonly target7: string;
+  readonly env: ProcessEnvMap;
+  readonly timeoutMilliseconds: number;
 }
 
-function collectUsedBranchIndices(
-  repository: string,
-  target7: string,
-  env: ProcessEnvMap,
-  timeoutMilliseconds: number,
-  used: Set<number>,
-): void {
-  const prefix = `${RECOVER_BRANCH_PREFIX}${target7}-failed-`;
-  const result = runGitCommand(
-    repository,
-    ["for-each-ref", "--format=%(refname:short)", `refs/heads/${prefix}*`],
-    { env, timeoutMilliseconds },
-  );
-  if (result.timedOut || result.exitCode !== 0) {
-    const detail = UTF8_DECODER.decode(result.stderr).trim();
-    throw new CliError(
-      "repository_git_unreadable",
-      detail === ""
-        ? `cannot list branches in ${repository}`
-        : `cannot list branches in ${repository}: ${detail}`,
-      `inspect git -C ${formatCommandPath(repository)} branch -a, then rerun`,
-      1,
-      false,
-    );
-  }
-  for (const line of decodeUtf8Strict(
-    result.stdout,
-    "git for-each-ref output",
-  ).split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed.startsWith(prefix)) {
-      continue;
-    }
-    const parsed = parsePositiveIndex(
-      trimmed.slice(prefix.length).split("/")[0] ?? "",
-    );
-    if (parsed !== undefined) {
-      used.add(parsed);
-    }
-  }
-}
-
-async function allocateRecoveryTarget(
-  repository: string,
-  worktreesRoot: string,
-  target7: string,
-  env: ProcessEnvMap,
-  timeoutMilliseconds: number,
-): Promise<{ readonly branch: string; readonly patchPath: string }> {
-  const used = new Set<number>();
-  collectUsedBranchIndices(repository, target7, env, timeoutMilliseconds, used);
-  const patchPrefix = `${RECOVER_PATCH_PREFIX}${target7}-failed-`;
-  for (const name of await readdir(worktreesRoot)) {
-    if (!name.startsWith(patchPrefix) || !name.endsWith(RECOVER_PATCH_SUFFIX)) {
-      continue;
-    }
-    const parsed = parsePositiveIndex(
-      name.slice(patchPrefix.length, -RECOVER_PATCH_SUFFIX.length),
-    );
-    if (parsed !== undefined) {
-      used.add(parsed);
-    }
-  }
-  const upperBound = used.size + 1;
-  let index = 1;
-  while (index <= upperBound && used.has(index)) {
-    index += 1;
-  }
-  return {
-    branch: `${RECOVER_BRANCH_PREFIX}${target7}-failed-${index}`,
-    patchPath: join(
-      worktreesRoot,
-      `${patchPrefix}${index}${RECOVER_PATCH_SUFFIX}`,
-    ),
-  };
-}
-
-async function readWorktreeGitMeta(
+async function tryReadWorktreeGitMeta(
   repository: string,
   targetWorktree: string,
   isDirectory: boolean,
   env: ProcessEnvMap,
-): Promise<{
-  readonly head: string;
-  readonly worktreeGitDir: string;
-  readonly commonDir: string;
-}> {
+): Promise<
+  | {
+      readonly head: string;
+      readonly worktreeGitDir: string;
+      readonly commonDir: string;
+    }
+  | undefined
+> {
   const head = isDirectory
     ? await readWorktreeOwnHead(targetWorktree, env)
     : undefined;
@@ -185,6 +114,28 @@ async function readWorktreeGitMeta(
     commonDir === undefined ||
     !isRepositoryWorktree(repository, targetWorktree, env)
   ) {
+    return undefined;
+  }
+  return { head, worktreeGitDir, commonDir };
+}
+
+async function readWorktreeGitMeta(
+  repository: string,
+  targetWorktree: string,
+  isDirectory: boolean,
+  env: ProcessEnvMap,
+): Promise<{
+  readonly head: string;
+  readonly worktreeGitDir: string;
+  readonly commonDir: string;
+}> {
+  const meta = await tryReadWorktreeGitMeta(
+    repository,
+    targetWorktree,
+    isDirectory,
+    env,
+  );
+  if (meta === undefined) {
     throw new CliError(
       "worktree_not_owned",
       `refused to touch ${targetWorktree}: path is not a readable git worktree of ${repository}`,
@@ -193,15 +144,47 @@ async function readWorktreeGitMeta(
       false,
     );
   }
-  return { head, worktreeGitDir, commonDir };
+  return meta;
+}
+
+async function readUnlockedRecoverWorktree(
+  context: RecoverTargetContext,
+  record: GitWorktreeRecord,
+): Promise<OwnedWorktreeState | undefined> {
+  if (record.branch !== undefined) {
+    return undefined;
+  }
+  const meta = await tryReadWorktreeGitMeta(
+    context.repository,
+    context.targetWorktree,
+    true,
+    context.env,
+  );
+  if (meta === undefined) {
+    return undefined;
+  }
+  const savedRecord = await verifyRecoverRecord({
+    ...context,
+    head: meta.head,
+    worktreeGitDir: meta.worktreeGitDir,
+  });
+  return savedRecord === undefined
+    ? undefined
+    : { record, ...meta, savedRecord };
 }
 
 async function requireOwnedWorktree(
-  repository: string,
-  targetWorktree: string,
-  target7: string,
-  env: ProcessEnvMap,
+  context: RecoverTargetContext,
 ): Promise<OwnedWorktreeState> {
+  const { repository, targetWorktree, targetCommit, target7, env } = context;
+  const stats = await lstatIfPresent(targetWorktree);
+  const existing = findGitWorktreeRecord(repository, targetWorktree, env);
+  if (existing !== undefined && !existing.locked && stats?.isDirectory()) {
+    const unlocked = await readUnlockedRecoverWorktree(context, existing);
+    if (unlocked !== undefined) {
+      return unlocked;
+    }
+  }
   const record = await assertWorktreePathAvailableForTemplateUpgrade(
     repository,
     targetWorktree,
@@ -216,7 +199,6 @@ async function requireOwnedWorktree(
       true,
     );
   }
-  const stats = await lstatIfPresent(targetWorktree);
   if (stats === undefined) {
     throw new CliError(
       "worktree_missing",
@@ -232,7 +214,11 @@ async function requireOwnedWorktree(
     stats.isDirectory(),
     env,
   );
-  return { record, ...meta };
+  const savedRecord = await readRecoverRecord(
+    join(meta.worktreeGitDir, RECOVER_RECORD_FILE),
+    targetCommit,
+  );
+  return { record, ...meta, savedRecord };
 }
 
 function ensureRecoveryBranch(options: {
@@ -350,11 +336,15 @@ async function ensureRecoveryCommit(options: {
   readonly targetCommit: string;
   readonly target7: string;
   readonly record: GitWorktreeRecord;
+  readonly existing: RecoverRecord | undefined;
   readonly parentHead: string;
   readonly statePath: string;
   readonly env: ProcessEnvMap;
   readonly timeoutMilliseconds: number;
-}): Promise<CommittedRecoverRecord> {
+}): Promise<{
+  readonly committed: CommittedRecoverRecord;
+  readonly state: RecoverRecord;
+}> {
   const {
     repository,
     worktreesRoot,
@@ -362,6 +352,7 @@ async function ensureRecoveryCommit(options: {
     targetCommit,
     target7,
     record,
+    existing,
     parentHead,
     statePath,
     env,
@@ -372,13 +363,12 @@ async function ensureRecoveryCommit(options: {
     repository,
     target7,
   );
-  const existing = await readRecoverRecord(statePath, targetCommit);
   const state: RecoverRecord =
     existing ??
     ({
       schemaVersion: 1,
       targetCommit,
-      ...(await allocateRecoveryTarget(
+      ...(await findRecoverTarget(
         repository,
         worktreesRoot,
         target7,
@@ -386,6 +376,7 @@ async function ensureRecoveryCommit(options: {
         timeoutMilliseconds,
       )),
       parentHead,
+      step: "commit",
     } satisfies RecoverRecord);
   if (existing === undefined) {
     await writeRecoverRecord(statePath, state);
@@ -409,14 +400,27 @@ async function ensureRecoveryCommit(options: {
     env,
     timeoutMilliseconds,
   });
-  if (state.removalAttempted === true) {
+  const committedState: RecoverRecord = Object.freeze({
+    ...state,
+    commitSha,
+    step: state.step ?? "commit",
+  });
+  if (committedState.step === "remove") {
     restorePartialRemovePaths(targetWorktree, env, timeoutMilliseconds);
   }
+  const patchedState = await writeRecoverStep(
+    statePath,
+    committedState,
+    "patch",
+  );
   return {
-    branch: state.branch,
-    patchPath: state.patchPath,
-    parentHead: state.parentHead,
-    commitSha,
+    committed: {
+      branch: state.branch,
+      patchPath: state.patchPath,
+      parentHead: state.parentHead,
+      commitSha,
+    },
+    state: patchedState,
   };
 }
 
@@ -427,18 +431,12 @@ function buildRecoveryPatchBytes(
   env: ProcessEnvMap,
   timeoutMilliseconds: number,
 ): Uint8Array {
-  const diffRun = runGitCommand(
+  const diffRun = readRecoverPatchBytes(
     repository,
-    [
-      "diff",
-      "--no-color",
-      "--no-ext-diff",
-      "--no-textconv",
-      "--binary",
-      committed.parentHead,
-      committed.commitSha,
-    ],
-    { env, timeoutMilliseconds },
+    committed.parentHead,
+    committed.commitSha,
+    env,
+    timeoutMilliseconds,
   );
   if (diffRun.timedOut || diffRun.exitCode !== 0) {
     const detail = diffRun.timedOut
@@ -549,6 +547,9 @@ async function unlockAndRemoveWorktree(
     targetWorktree,
     target7,
     committed,
+    record,
+    worktreeLocked,
+    worktreeGitDir,
     env,
     timeoutMilliseconds,
   } = options;
@@ -562,26 +563,34 @@ async function unlockAndRemoveWorktree(
     await verifyWorktreeRemoveTree(targetWorktree);
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
+    const untouched = worktreeLocked
+      ? "worktree left locked and untouched"
+      : "worktree left untouched";
     throw new CliError(
       "worktree_remove_failed",
-      `cannot remove worktree at ${targetWorktree} (${savedEffects}; worktree left locked and untouched): ${detail}`,
+      `cannot remove worktree at ${targetWorktree} (${savedEffects}; ${untouched}): ${detail}`,
       `fix permissions on ${formatCommandPath(targetWorktree)} and ${formatCommandPath(dirname(targetWorktree))}, then rerun ${recoverCmd}`,
       1,
       false,
     );
   }
-  runGitText(
-    repository,
-    ["worktree", "unlock", targetWorktree],
-    {
-      code: "worktree_unlock_failed",
-      message: `cannot unlock worktree at ${targetWorktree} (${savedEffects})`,
-      repair: `inspect git -C ${formatCommandPath(repository)} worktree list, then rerun ${recoverCmd}`,
-      exitCode: 1,
-      retrySafe: false,
-    },
-    { env, timeoutMilliseconds },
-  );
+  const statePath = join(worktreeGitDir, RECOVER_RECORD_FILE);
+  const unlockState = await writeRecoverStep(statePath, record, "unlock");
+  if (worktreeLocked) {
+    runGitText(
+      repository,
+      ["worktree", "unlock", targetWorktree],
+      {
+        code: "worktree_unlock_failed",
+        message: `cannot unlock worktree at ${targetWorktree} (${savedEffects})`,
+        repair: `inspect git -C ${formatCommandPath(repository)} worktree list, then rerun ${recoverCmd}`,
+        exitCode: 1,
+        retrySafe: false,
+      },
+      { env, timeoutMilliseconds },
+    );
+  }
+  await writeRecoverStep(statePath, unlockState, "remove");
   const removed = runGitCommand(
     repository,
     ["worktree", "remove", targetWorktree],
@@ -624,15 +633,24 @@ export async function templateUpgradeRecover(
     targetWorktree,
     `.worktrees/template-upgrade-${target7}`,
   );
-  const { record, head, worktreeGitDir, commonDir } =
-    await requireOwnedWorktree(repository, targetWorktree, target7, env);
-  const committed = await ensureRecoveryCommit({
+  const { record, head, worktreeGitDir, commonDir, savedRecord } =
+    await requireOwnedWorktree({
+      repository,
+      worktreesRoot,
+      targetWorktree,
+      targetCommit,
+      target7,
+      env,
+      timeoutMilliseconds,
+    });
+  const { committed, state } = await ensureRecoveryCommit({
     repository,
     worktreesRoot,
     targetWorktree,
     targetCommit,
     target7,
     record,
+    existing: savedRecord,
     parentHead: head,
     statePath: join(worktreeGitDir, RECOVER_RECORD_FILE),
     env,
@@ -652,9 +670,11 @@ export async function templateUpgradeRecover(
     targetCommit,
     target7,
     committed,
+    record: state,
+    worktreeLocked: record.locked,
     worktreeGitDir,
     commonDir,
-    lockReason: record.lockReason,
+    lockReason: record.lockReason ?? templateUpgradeLockReason(targetCommit),
     env,
     timeoutMilliseconds,
   });

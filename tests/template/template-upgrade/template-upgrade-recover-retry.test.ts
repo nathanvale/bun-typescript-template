@@ -63,6 +63,7 @@ test(
     const patchText = readFileSync(setup.patch1, "utf8");
     expect(patchText).toContain("must stay in patch");
     expect(patchText).toBe(recoverDiff(setup.repo, parentHead, savedCommit));
+    expect(existsSync(setup.targetWorktree)).toBe(false);
     expect(
       git(
         setup.repo,
@@ -322,6 +323,188 @@ echo "mutated by prepare-commit-msg" > "$1"
         `template-upgrade/${setup.target7}-failed-2`,
       ),
     ).toBe("");
+  },
+  processWatchdog(6),
+);
+
+async function assertRetryMatchesSaved(
+  setup: Awaited<ReturnType<typeof createFailedApplyWorktree>>,
+  savedCommit: string,
+  savedPatch: Uint8Array,
+): Promise<void> {
+  const retryRun = await setup.runRecover();
+  expect(retryRun.exitCode).toBe(0);
+  const payload = parseRecover(retryRun.stdout);
+  expect(payload.branch).toBe(setup.branch1);
+  expect(payload.commit).toBe(savedCommit);
+  expect(payload.patchPath).toBe(setup.patch1);
+  expect(git(setup.repo, "rev-parse", setup.branch1)).toBe(savedCommit);
+  expect(Buffer.compare(readFileSync(setup.patch1), savedPatch)).toBe(0);
+  expect(existsSync(setup.targetWorktree)).toBe(false);
+  expect(
+    git(
+      setup.repo,
+      "branch",
+      "--list",
+      `template-upgrade/${setup.target7}-failed-2`,
+    ),
+  ).toBe("");
+}
+
+function readRecoverRecordPath(targetWorktree: string): string {
+  return git(
+    targetWorktree,
+    "rev-parse",
+    "--path-format=absolute",
+    "--git-path",
+    "template-upgrade-recover.json",
+  );
+}
+
+function writeStopAfterUnlockGit(prefix: string) {
+  return writeCustomGit(
+    folder,
+    prefix,
+    (realGit, ledger) => `#!/bin/sh
+echo "$*" >> ${JSON.stringify(ledger)}
+if printf "%s" "$*" | grep -q "worktree unlock"; then
+  ${JSON.stringify(realGit)} "$@"
+  echo "interrupted after unlock" >&2
+  exit 1
+fi
+exec ${JSON.stringify(realGit)} "$@"
+`,
+  );
+}
+
+test(
+  "resumes recover after patch, after unlock, and after failed removal while pinning branch, commit, and patch",
+  async () => {
+    const afterPatch = await createFailedApplyWorktree(
+      folder,
+      captureStream,
+      "recover-after-patch-app",
+    );
+    const failBeforeUnlock = writeScriptedGit(
+      folder,
+      "git-stop-after-patch-",
+      'printf "%s" "$*" | grep -q "worktree unlock"',
+      "interrupted after patch",
+    );
+    expect((await afterPatch.runRecover(failBeforeUnlock.env)).exitCode).toBe(
+      1,
+    );
+    const patchCommit = git(afterPatch.repo, "rev-parse", afterPatch.branch1);
+    const patchBytes = readFileSync(afterPatch.patch1);
+    expect(existsSync(afterPatch.targetWorktree)).toBe(true);
+    await assertRetryMatchesSaved(afterPatch, patchCommit, patchBytes);
+
+    const afterUnlock = await createFailedApplyWorktree(
+      folder,
+      captureStream,
+      "recover-after-unlock-app",
+    );
+    const stopAfterUnlock = writeStopAfterUnlockGit("git-stop-after-unlock-");
+    expect((await afterUnlock.runRecover(stopAfterUnlock.env)).exitCode).toBe(
+      1,
+    );
+    const unlockCommit = git(
+      afterUnlock.repo,
+      "rev-parse",
+      afterUnlock.branch1,
+    );
+    const unlockPatch = readFileSync(afterUnlock.patch1);
+    const unlockRecord = JSON.parse(
+      readFileSync(readRecoverRecordPath(afterUnlock.targetWorktree), "utf8"),
+    ) as { readonly step?: string };
+    expect(unlockRecord.step).toBe("unlock");
+    expect(
+      gitOutput(afterUnlock.repo, "worktree", "list", "--porcelain"),
+    ).not.toContain("locked");
+    await assertRetryMatchesSaved(afterUnlock, unlockCommit, unlockPatch);
+
+    const afterRemove = await createFailedApplyWorktree(
+      folder,
+      captureStream,
+      "recover-after-remove-app",
+    );
+    const failRemove = writeScriptedGit(
+      folder,
+      "git-fail-remove-",
+      'printf "%s" "$*" | grep -q "worktree remove"',
+      "interrupted during removal",
+    );
+    expect((await afterRemove.runRecover(failRemove.env)).exitCode).toBe(1);
+    const removeCommit = git(
+      afterRemove.repo,
+      "rev-parse",
+      afterRemove.branch1,
+    );
+    const removePatch = readFileSync(afterRemove.patch1);
+    git(afterRemove.repo, "worktree", "unlock", afterRemove.targetWorktree);
+    rmSync(join(afterRemove.targetWorktree, "package.json"));
+    const removeRecord = JSON.parse(
+      readFileSync(readRecoverRecordPath(afterRemove.targetWorktree), "utf8"),
+    ) as { readonly step?: string };
+    expect(removeRecord.step).toBe("remove");
+    await assertRetryMatchesSaved(afterRemove, removeCommit, removePatch);
+  },
+  processWatchdog(6),
+);
+
+test(
+  "refuses an unlocked worktree with worktree_not_owned when its recovery record is pre-unlock or mismatched",
+  async () => {
+    const setup = await createFailedApplyWorktree(
+      folder,
+      captureStream,
+      "recover-unlocked-invalid-app",
+    );
+    const stopAfterUnlock = writeStopAfterUnlockGit(
+      "git-stop-unlocked-invalid-",
+    );
+    expect((await setup.runRecover(stopAfterUnlock.env)).exitCode).toBe(1);
+    const recordPath = readRecoverRecordPath(setup.targetWorktree);
+    const validRaw = readFileSync(recordPath, "utf8");
+    const validRecord = JSON.parse(validRaw) as Record<string, unknown>;
+    const validPatch = readFileSync(setup.patch1);
+    const savedCommit = git(setup.targetWorktree, "rev-parse", "HEAD");
+
+    const expectNotOwned = async () => {
+      const run = await setup.runRecover();
+      expect(run.exitCode).toBe(4);
+      expect(parseRefusal(run.stderr).error.code).toBe("worktree_not_owned");
+      expect(existsSync(setup.targetWorktree)).toBe(true);
+    };
+
+    writeFileSync(
+      recordPath,
+      `${JSON.stringify({ ...validRecord, step: "patch" })}\n`,
+    );
+    await expectNotOwned();
+
+    writeFileSync(
+      recordPath,
+      `${JSON.stringify({ ...validRecord, targetCommit: "0".repeat(40) })}\n`,
+    );
+    await expectNotOwned();
+
+    writeFileSync(recordPath, validRaw);
+    writeFileSync(setup.patch1, "tampered patch\n");
+    await expectNotOwned();
+
+    writeFileSync(setup.patch1, validPatch);
+    git(setup.repo, "branch", "-f", setup.branch1, `${setup.branch1}^`);
+    await expectNotOwned();
+
+    git(setup.repo, "branch", "-f", setup.branch1, savedCommit);
+    git(setup.targetWorktree, "checkout", "--quiet", "--detach", "HEAD^");
+    await expectNotOwned();
+
+    git(setup.targetWorktree, "checkout", "--quiet", "--detach", savedCommit);
+    const recovered = await setup.runRecover();
+    expect(recovered.exitCode).toBe(0);
+    expect(existsSync(setup.targetWorktree)).toBe(false);
   },
   processWatchdog(6),
 );

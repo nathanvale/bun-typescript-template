@@ -1,6 +1,6 @@
 import { realpathSync } from "node:fs";
-import { mkdir } from "node:fs/promises";
-import { join, relative } from "node:path";
+import { mkdir, readdir } from "node:fs/promises";
+import { basename, dirname, join, relative } from "node:path";
 import { CliError } from "./cli-error.ts";
 import {
   decodeUtf8Strict,
@@ -19,13 +19,133 @@ import {
   assertNotSymlinkPath,
   readPlainFileBytes,
   readWorktreeOwnHead,
+  resolveRefIfPresent,
   writePlainFile,
 } from "./template-upgrade-worktree.ts";
 
 export const RECOVER_RECORD_FILE = "template-upgrade-recover.json";
 
+const RECOVER_BRANCH_PREFIX = "template-upgrade/";
+const RECOVER_PATCH_PREFIX = "template-upgrade-";
+const RECOVER_PATCH_EXTENSION = ".patch";
 const FULL_COMMIT_PATTERN = /^[0-9a-f]{40}$/;
+const POSITIVE_INDEX_PATTERN = /^[1-9]\d*$/;
+const UTF8_DECODER = new TextDecoder("utf-8");
 const UTF8_ENCODER = new TextEncoder();
+
+function parsePositiveNumber(segment: string): number | undefined {
+  if (!POSITIVE_INDEX_PATTERN.test(segment)) {
+    return undefined;
+  }
+  const parsed = Number.parseInt(segment, 10);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function formatRecoverTarget(
+  worktreesRoot: string,
+  target7: string,
+  count: number,
+): { readonly branch: string; readonly patchPath: string } {
+  return {
+    branch: `${RECOVER_BRANCH_PREFIX}${target7}-failed-${count}`,
+    patchPath: join(
+      worktreesRoot,
+      `${RECOVER_PATCH_PREFIX}${target7}-failed-${count}${RECOVER_PATCH_EXTENSION}`,
+    ),
+  };
+}
+
+function parseRecoverBranchName(
+  branch: string,
+  target7: string,
+): number | undefined {
+  const prefix = `${RECOVER_BRANCH_PREFIX}${target7}-failed-`;
+  if (!branch.startsWith(prefix)) {
+    return undefined;
+  }
+  return parsePositiveNumber(branch.slice(prefix.length).split("/")[0] ?? "");
+}
+
+function parseRecoverPatchName(
+  fileName: string,
+  target7: string,
+): number | undefined {
+  const prefix = `${RECOVER_PATCH_PREFIX}${target7}-failed-`;
+  if (
+    !fileName.startsWith(prefix) ||
+    !fileName.endsWith(RECOVER_PATCH_EXTENSION)
+  ) {
+    return undefined;
+  }
+  return parsePositiveNumber(
+    fileName.slice(prefix.length, -RECOVER_PATCH_EXTENSION.length),
+  );
+}
+
+function collectUsedBranchIndices(
+  repository: string,
+  target7: string,
+  env: ProcessEnvMap,
+  timeoutMilliseconds: number,
+  used: Set<number>,
+): void {
+  const result = runGitCommand(
+    repository,
+    [
+      "for-each-ref",
+      "--format=%(refname:short)",
+      `refs/heads/${RECOVER_BRANCH_PREFIX}${target7}-failed-*`,
+    ],
+    { env, timeoutMilliseconds },
+  );
+  if (result.timedOut || result.exitCode !== 0) {
+    const detail = UTF8_DECODER.decode(result.stderr).trim();
+    throw new CliError(
+      "repository_git_unreadable",
+      detail === ""
+        ? `cannot list branches in ${repository}`
+        : `cannot list branches in ${repository}: ${detail}`,
+      `inspect git -C ${formatCommandPath(repository)} branch -a, then rerun`,
+      1,
+      false,
+    );
+  }
+  for (const line of decodeUtf8Strict(
+    result.stdout,
+    "git for-each-ref output",
+  ).split("\n")) {
+    const parsed = parseRecoverBranchName(line.trim(), target7);
+    if (parsed !== undefined) {
+      used.add(parsed);
+    }
+  }
+}
+
+export async function findRecoverTarget(
+  repository: string,
+  worktreesRoot: string,
+  target7: string,
+  env: ProcessEnvMap,
+  timeoutMilliseconds: number,
+): Promise<{ readonly branch: string; readonly patchPath: string }> {
+  const used = new Set<number>();
+  collectUsedBranchIndices(repository, target7, env, timeoutMilliseconds, used);
+  for (const name of await readdir(worktreesRoot)) {
+    const parsed = parseRecoverPatchName(name, target7);
+    if (parsed !== undefined) {
+      used.add(parsed);
+    }
+  }
+  const upperBound = used.size + 1;
+  let count = 1;
+  while (count <= upperBound && used.has(count)) {
+    count += 1;
+  }
+  return formatRecoverTarget(worktreesRoot, target7, count);
+}
+
+const RECOVER_STEPS = ["commit", "patch", "unlock", "remove"] as const;
+export type RecoverStep = (typeof RECOVER_STEPS)[number];
 
 export interface RecoverRecord {
   readonly schemaVersion: 1;
@@ -34,7 +154,7 @@ export interface RecoverRecord {
   readonly patchPath: string;
   readonly parentHead: string;
   readonly commitSha?: string;
-  readonly removalAttempted?: boolean;
+  readonly step?: RecoverStep;
 }
 
 export interface CommittedRecoverRecord {
@@ -50,6 +170,8 @@ export interface RecoverRemoveRequest {
   readonly targetCommit: string;
   readonly target7: string;
   readonly committed: CommittedRecoverRecord;
+  readonly record: RecoverRecord;
+  readonly worktreeLocked: boolean;
   readonly worktreeGitDir: string;
   readonly commonDir: string;
   readonly lockReason: string | undefined;
@@ -57,8 +179,27 @@ export interface RecoverRemoveRequest {
   readonly timeoutMilliseconds: number;
 }
 
+export interface VerifyRecoverRecordRequest {
+  readonly repository: string;
+  readonly worktreesRoot: string;
+  readonly targetCommit: string;
+  readonly target7: string;
+  readonly head: string;
+  readonly worktreeGitDir: string;
+  readonly env: ProcessEnvMap;
+  readonly timeoutMilliseconds: number;
+}
+
 function ownField(record: object, key: string): unknown {
   return Object.hasOwn(record, key) ? Reflect.get(record, key) : undefined;
+}
+
+function parseRecoverStep(value: unknown): RecoverStep | undefined {
+  return RECOVER_STEPS.find((step) => step === value);
+}
+
+function recoverStepRank(step: RecoverStep | undefined): number {
+  return step === undefined ? 0 : RECOVER_STEPS.indexOf(step);
 }
 
 function invalidRecordError(recordPath: string, reason: string): CliError {
@@ -71,11 +212,15 @@ function invalidRecordError(recordPath: string, reason: string): CliError {
   );
 }
 
-function parseRecoverRecord(
-  rawText: string,
-  expectedTargetCommit: string,
-  recordPath: string,
-): RecoverRecord {
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value !== "";
+}
+
+function isFullCommit(value: unknown): value is string {
+  return typeof value === "string" && FULL_COMMIT_PATTERN.test(value);
+}
+
+function parseJsonObject(rawText: string, recordPath: string): object {
   let parsed: unknown;
   try {
     parsed = JSON.parse(rawText);
@@ -85,37 +230,66 @@ function parseRecoverRecord(
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
     throw invalidRecordError(recordPath, "expected JSON object");
   }
-  const version = ownField(parsed, "schemaVersion");
-  const targetCommit = ownField(parsed, "targetCommit");
+  return parsed;
+}
+
+function readOptionalRecoverStep(
+  parsed: object,
+  recordPath: string,
+): RecoverStep | undefined {
+  const stepRaw = ownField(parsed, "step");
+  if (stepRaw === undefined) {
+    return undefined;
+  }
+  const step = parseRecoverStep(stepRaw);
+  if (step === undefined) {
+    throw invalidRecordError(recordPath, "unexpected recovery record fields");
+  }
+  return step;
+}
+
+function readOptionalCommitSha(
+  parsed: object,
+  recordPath: string,
+): string | undefined {
+  const commitSha = ownField(parsed, "commitSha");
+  if (commitSha === undefined) {
+    return undefined;
+  }
+  if (!isFullCommit(commitSha)) {
+    throw invalidRecordError(recordPath, "unexpected recovery record fields");
+  }
+  return commitSha;
+}
+
+function parseRecoverRecord(
+  rawText: string,
+  expectedTargetCommit: string,
+  recordPath: string,
+): RecoverRecord {
+  const parsed = parseJsonObject(rawText, recordPath);
   const branch = ownField(parsed, "branch");
   const patchPath = ownField(parsed, "patchPath");
   const parentHead = ownField(parsed, "parentHead");
-  const commitSha = ownField(parsed, "commitSha");
-  const removalAttempted = ownField(parsed, "removalAttempted");
   const validRequired =
-    version === 1 &&
-    targetCommit === expectedTargetCommit &&
-    typeof branch === "string" &&
-    branch !== "" &&
-    typeof patchPath === "string" &&
-    patchPath !== "" &&
-    typeof parentHead === "string" &&
-    FULL_COMMIT_PATTERN.test(parentHead);
-  const validOptional =
-    (commitSha === undefined ||
-      (typeof commitSha === "string" && FULL_COMMIT_PATTERN.test(commitSha))) &&
-    (removalAttempted === undefined || typeof removalAttempted === "boolean");
-  if (!validRequired || !validOptional) {
+    ownField(parsed, "schemaVersion") === 1 &&
+    ownField(parsed, "targetCommit") === expectedTargetCommit &&
+    isNonEmptyString(branch) &&
+    isNonEmptyString(patchPath) &&
+    isFullCommit(parentHead);
+  if (!validRequired) {
     throw invalidRecordError(recordPath, "unexpected recovery record fields");
   }
+  const commitSha = readOptionalCommitSha(parsed, recordPath);
+  const step = readOptionalRecoverStep(parsed, recordPath);
   return Object.freeze({
     schemaVersion: 1,
-    targetCommit,
+    targetCommit: expectedTargetCommit,
     branch,
     patchPath,
     parentHead,
-    ...(typeof commitSha === "string" ? { commitSha } : {}),
-    ...(typeof removalAttempted === "boolean" ? { removalAttempted } : {}),
+    ...(commitSha !== undefined ? { commitSha } : {}),
+    ...(step !== undefined ? { step } : {}),
   });
 }
 
@@ -149,6 +323,150 @@ export async function writeRecoverRecord(
     recordPath,
     UTF8_ENCODER.encode(`${JSON.stringify(record)}\n`),
   );
+}
+
+export async function writeRecoverStep(
+  recordPath: string,
+  record: RecoverRecord,
+  step: RecoverStep,
+): Promise<RecoverRecord> {
+  const targetStep =
+    recoverStepRank(record.step) >= recoverStepRank(step)
+      ? (record.step ?? step)
+      : step;
+  const updated: RecoverRecord = Object.freeze({ ...record, step: targetStep });
+  if (record.step !== targetStep) {
+    await writeRecoverRecord(recordPath, updated);
+  }
+  return updated;
+}
+
+export function readRecoverPatchBytes(
+  repository: string,
+  parentHead: string,
+  commitSha: string,
+  env: ProcessEnvMap,
+  timeoutMilliseconds: number,
+) {
+  return runGitCommand(
+    repository,
+    [
+      "diff",
+      "--no-color",
+      "--no-ext-diff",
+      "--no-textconv",
+      "--binary",
+      parentHead,
+      commitSha,
+    ],
+    { env, timeoutMilliseconds },
+  );
+}
+
+function matchesRecoveryTargetPaths(
+  branch: string,
+  patchPath: string,
+  worktreesRoot: string,
+  target7: string,
+): boolean {
+  const branchPrefix = `${RECOVER_BRANCH_PREFIX}${target7}-failed-`;
+  if (!branch.startsWith(branchPrefix)) {
+    return false;
+  }
+  const suffix = branch.slice(branchPrefix.length);
+  const count = parsePositiveNumber(suffix);
+  if (count === undefined) {
+    return false;
+  }
+  const expected = formatRecoverTarget(worktreesRoot, target7, count);
+  if (basename(patchPath) !== basename(expected.patchPath)) {
+    return false;
+  }
+  try {
+    return realpathSync(dirname(patchPath)) === realpathSync(worktreesRoot);
+  } catch {
+    return false;
+  }
+}
+
+async function matchesSavedPatch(
+  options: VerifyRecoverRecordRequest,
+  record: RecoverRecord & { readonly commitSha: string },
+): Promise<boolean> {
+  const patchStats = await lstatIfPresent(record.patchPath);
+  if (
+    patchStats === undefined ||
+    patchStats.isSymbolicLink() ||
+    !patchStats.isFile()
+  ) {
+    return false;
+  }
+  let existingBytes: Uint8Array;
+  try {
+    existingBytes = await readPlainFileBytes(record.patchPath);
+  } catch {
+    return false;
+  }
+  const diffRun = readRecoverPatchBytes(
+    options.repository,
+    record.parentHead,
+    record.commitSha,
+    options.env,
+    options.timeoutMilliseconds,
+  );
+  return (
+    !diffRun.timedOut &&
+    diffRun.exitCode === 0 &&
+    Buffer.compare(existingBytes, diffRun.stdout) === 0
+  );
+}
+
+export async function verifyRecoverRecord(
+  options: VerifyRecoverRecordRequest,
+): Promise<RecoverRecord | undefined> {
+  const statePath = join(options.worktreeGitDir, RECOVER_RECORD_FILE);
+  let saved: RecoverRecord | undefined;
+  try {
+    saved = await readRecoverRecord(statePath, options.targetCommit);
+  } catch {
+    return undefined;
+  }
+  if (saved === undefined || saved.commitSha === undefined) {
+    return undefined;
+  }
+  if (saved.step !== "unlock" && saved.step !== "remove") {
+    return undefined;
+  }
+  if (options.head !== saved.commitSha) {
+    return undefined;
+  }
+  if (
+    !matchesRecoveryTargetPaths(
+      saved.branch,
+      saved.patchPath,
+      options.worktreesRoot,
+      options.target7,
+    )
+  ) {
+    return undefined;
+  }
+  const { commitSha } = saved;
+  if (
+    resolveRefIfPresent(
+      options.repository,
+      `${commitSha}^{commit}`,
+      options.env,
+    ) !== commitSha ||
+    resolveRefIfPresent(
+      options.repository,
+      `refs/heads/${saved.branch}`,
+      options.env,
+    ) !== commitSha
+  ) {
+    return undefined;
+  }
+  const patchOk = await matchesSavedPatch(options, { ...saved, commitSha });
+  return patchOk ? saved : undefined;
 }
 
 export function restorePartialRemovePaths(
@@ -236,7 +554,7 @@ async function restoreWorktreeRegistration(
     patchPath: committed.patchPath,
     parentHead: committed.parentHead,
     commitSha: committed.commitSha,
-    removalAttempted: true,
+    step: "remove",
   });
   return needsRestore;
 }
