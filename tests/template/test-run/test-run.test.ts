@@ -291,7 +291,7 @@ test(
     });
     expect(run.exit).toBe(1);
     expect(run.stderr).toContain(
-      "bun test started without scripts/test-run.ts, so its tests and their children would write to the system temp folder.",
+      "\nerror: bun test started without scripts/test-run.ts, so its tests and their children would write to the system temp folder.",
     );
     expect(readdirSync(temp)).toEqual([]);
   },

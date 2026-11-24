@@ -80,7 +80,7 @@ test(
         const check = await checkOutsideTestRun(destination);
         expect(check.exitCode).not.toBe(0);
         expect(check.stderr).toContain(
-          "bun test started without scripts/test-run.ts",
+          "\nerror: bun test started without scripts/test-run.ts",
         );
       },
     );
