@@ -1,0 +1,12 @@
+diff --git a/generated-repository/scripts/fallow-health-at-base-settings.ts b/generated-repository/scripts/fallow-health-at-base-settings.ts
+--- a/generated-repository/scripts/fallow-health-at-base-settings.ts
++++ b/generated-repository/scripts/fallow-health-at-base-settings.ts
+@@ -361,7 +361,6 @@ function makeInlineMarkersInert(root: string, rev: string, tree: string): void {
+     const path = join(tree, rel);
+     if (!lstatSync(path, { throwIfNoEntry: false })?.isFile()) continue;
+     const bytes = readFileSync(path, "latin1");
+-    const updated = makeCommentMarkersInert(bytes, rel);
+-    if (updated !== bytes) writeFileSync(path, updated, "latin1");
++    writeFileSync(path, bytes.replaceAll(INLINE_MARKER, INERT_MARKER), "latin1");
+   }
+ }

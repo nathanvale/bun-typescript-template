@@ -2900,5 +2900,19 @@
     "testFile": "tests/template/toolchain/recorded-health-sizes.test.ts",
     "title": "^refuses recorded growth that a same-diff change to Fallow settings, an ignore file or an inline marker would hide, and passes the controls$",
     "source": "3fa9ca2 fix(recorded-health-sizes): make markers inert in files .gitattributes marks binary"
+  },
+  {
+    "id": "recorded-health-sizes-comment-only-markers",
+    "patch": "tests/planted-faults/patches/recorded-health-sizes-comment-only-markers.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes-base-settings.test.ts",
+    "title": "^makes only comment markers inert, keeping settings values and non-comment file contents intact$",
+    "source": "faf8f1a fix(recorded-health-sizes): make only comment markers inert and refuse a linked base settings file"
+  },
+  {
+    "id": "recorded-health-sizes-base-settings-symlink",
+    "patch": "tests/planted-faults/patches/recorded-health-sizes-base-settings-symlink.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes-base-settings.test.ts",
+    "title": "^refuses a base settings file that is a symbolic link, whether it points into head or inside base$",
+    "source": "faf8f1a fix(recorded-health-sizes): make only comment markers inert and refuse a linked base settings file"
   }
 ]

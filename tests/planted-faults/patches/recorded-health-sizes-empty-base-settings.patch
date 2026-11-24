@@ -1,9 +1,9 @@
 diff --git a/generated-repository/scripts/fallow-health-at-base-settings.ts b/generated-repository/scripts/fallow-health-at-base-settings.ts
 --- a/generated-repository/scripts/fallow-health-at-base-settings.ts
 +++ b/generated-repository/scripts/fallow-health-at-base-settings.ts
-@@ -146,9 +146,7 @@ function baseSettingsFile(baseTree: string, tempDir: string): string {
-     const path = join(baseTree, name);
-     if (lstatSync(path, { throwIfNoEntry: false }) !== undefined) return path;
+@@ -215,9 +215,7 @@ function baseSettingsFile(
+     writeFileSync(path, bytes);
+     return path;
    }
 -  const empty = join(tempDir, ".fallowrc.json");
 -  writeFileSync(empty, "{}\n");
@@ -11,4 +11,4 @@ diff --git a/generated-repository/scripts/fallow-health-at-base-settings.ts b/ge
 +  return join(tempDir, "head", SETTINGS_FILES[0]);
  }
  
- // Platform: Fallow skips files that .gitignore or .ignore name, even outside a
+ // Platform: Fallow skips files that .ignore names, and inside a git repository
