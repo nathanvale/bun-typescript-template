@@ -282,6 +282,34 @@ function leftoverProblems(
   return [];
 }
 
+function runningProcessProblems(
+  group: number,
+  runFolder: string,
+  options: TestRunOptions,
+): string[] {
+  const listed = processRows(options.env);
+  if (!listed.ok) {
+    if (options.strict) return [listed.message];
+    reportProcessRows(runFolder, listed.message, options.report);
+    return [];
+  }
+  const left = listed.rows.filter((row) => row.group === group);
+  if (left.length === 0) return [];
+  return [
+    `Tests left ${left.length} process(es) running after bun test exited, and they were stopped:\n${described(left, options.env)}\nRepair: end each child a test starts before the test ends: await its exit, or stop it in finally.`,
+  ];
+}
+
+function testRunResult(
+  code: number,
+  rawSignal: NodeJS.Signals | number | null,
+  problemCount: number,
+): TestRunResult {
+  const signalCode = typeof rawSignal === "string" ? rawSignal : null;
+  if (code !== 0 || signalCode !== null) return { exitCode: code, signalCode };
+  return { exitCode: problemCount > 0 ? 1 : 0, signalCode };
+}
+
 export async function runTests(
   args: readonly string[],
   options: TestRunOptions,
@@ -297,19 +325,8 @@ export async function runTests(
   let marked: boolean;
   try {
     code = await finished(child, options.limitMilliseconds);
-    if (child.signalCode === null) {
-      const listed = processRows(options.env);
-      if (!listed.ok) {
-        if (options.strict) problems.push(listed.message);
-        else reportProcessRows(runFolder, listed.message, options.report);
-      } else {
-        const left = listed.rows.filter((row) => row.group === child.pid);
-        if (left.length > 0)
-          problems.push(
-            `Tests left ${left.length} process(es) running after bun test exited, and they were stopped:\n${described(left, options.env)}\nRepair: end each child a test starts before the test ends: await its exit, or stop it in finally.`,
-          );
-      }
-    }
+    if (child.signalCode === null)
+      problems.push(...runningProcessProblems(child.pid, runFolder, options));
   } finally {
     stopProcess(child.pid, true);
     marked = existsSync(join(runFolder, teardownMark));
@@ -326,10 +343,7 @@ export async function runTests(
     ),
   );
   for (const problem of problems) options.report(problem);
-  const signalCode =
-    typeof child.signalCode === "string" ? child.signalCode : null;
-  if (code !== 0 || signalCode !== null) return { exitCode: code, signalCode };
-  return { exitCode: problems.length > 0 ? 1 : 0, signalCode };
+  return testRunResult(code, child.signalCode, problems.length);
 }
 
 if (import.meta.main) {
