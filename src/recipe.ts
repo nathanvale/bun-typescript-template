@@ -47,7 +47,7 @@ export const KERNEL_RECIPE: Recipe = {
     {
       from: "scripts",
       into: "scripts",
-      only: ["test-run.ts", "test-run-process.ts"],
+      only: ["test-run.ts"],
     },
     { from: "generated-repository/skills", into: SKILL_FOLDER },
     {

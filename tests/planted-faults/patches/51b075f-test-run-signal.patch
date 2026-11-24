@@ -1,11 +1,11 @@
 diff --git a/scripts/test-run.ts b/scripts/test-run.ts
 --- a/scripts/test-run.ts
 +++ b/scripts/test-run.ts
-@@ -484,7 +484,7 @@
+@@ -194,7 +194,7 @@
      }
      forwarded = true;
      stopProcess(child.pid, true, signal);
--    escalation = setTimeout(killAll, signalGraceMilliseconds);
+-    escalation = setTimeout(killGroup, signalGraceMilliseconds);
 +    escalation = undefined;
    };
    const limit =

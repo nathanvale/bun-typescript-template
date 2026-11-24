@@ -23,7 +23,6 @@ const copied = [
   "scripts/pin-verification.ts",
   "generated-repository",
   "config",
-  "scripts/test-run-process.ts",
   "scripts/test-run.ts",
   "tests/support/test-folder.ts",
   "tests/support/test-run-folder.ts",

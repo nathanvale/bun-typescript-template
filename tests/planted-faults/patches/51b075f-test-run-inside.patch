@@ -1,7 +1,7 @@
 diff --git a/scripts/test-run.ts b/scripts/test-run.ts
 --- a/scripts/test-run.ts
 +++ b/scripts/test-run.ts
-@@ -38,7 +38,7 @@
+@@ -35,7 +35,7 @@
  
  export function insideFolder(path: string, folder: string): boolean {
    const way = relative(folder, path);
@@ -9,4 +9,4 @@ diff --git a/scripts/test-run.ts b/scripts/test-run.ts
 +  return path.startsWith(folder) || isAbsolute(way);
  }
  
- function stopChildTree(rootPid: number, env: TestRunEnvironment): void {
+ export function stopProcess(

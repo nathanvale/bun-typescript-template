@@ -2755,13 +2755,6 @@
     "source": "51b075f feat(test-run): run every test in one test run folder"
   },
   {
-    "id": "51b075f-test-run-group",
-    "patch": "tests/planted-faults/patches/51b075f-test-run-group.patch",
-    "testFile": "tests/template/test-run/test-run.test.ts",
-    "title": "^the test run fails, names and stops each child a test leaves running, by every spawn route$",
-    "source": "51b075f feat(test-run): run every test in one test run folder"
-  },
-  {
     "id": "51b075f-test-run-mark",
     "patch": "tests/planted-faults/patches/51b075f-test-run-mark.patch",
     "testFile": "tests/template/test-run/test-run.test.ts",
@@ -2797,24 +2790,10 @@
     "source": "51b075f feat(test-run): run every test in one test run folder"
   },
   {
-    "id": "51b075f-test-run-folder-teardown",
-    "patch": "tests/planted-faults/patches/51b075f-test-run-folder-teardown.patch",
-    "testFile": "tests/template/test-run/test-run.test.ts",
-    "title": "^the teardown check fails the file and stops each child still running when its tests end$",
-    "source": "51b075f feat(test-run): run every test in one test run folder"
-  },
-  {
     "id": "51b075f-test-run-folder-orphan",
     "patch": "tests/planted-faults/patches/51b075f-test-run-folder-orphan.patch",
     "testFile": "tests/template/test-run/test-run.test.ts",
     "title": "^when the test run itself is killed, its bun test and their children stop within a second and its run folder is removed$",
-    "source": "51b075f feat(test-run): run every test in one test run folder"
-  },
-  {
-    "id": "51b075f-test-run-process-refusal",
-    "patch": "tests/planted-faults/patches/51b075f-test-run-process-refusal.patch",
-    "testFile": "tests/template/test-run/test-run-process.test.ts",
-    "title": "^when all process listing routes fail, processRows refuses with a repair and leftoverProcessProblems fails closed$",
     "source": "51b075f feat(test-run): run every test in one test run folder"
   },
   {
@@ -2846,38 +2825,10 @@
     "source": "51b075f feat(test-run): run every test in one test run folder"
   },
   {
-    "id": "51b075f-test-run-process-list",
-    "patch": "tests/planted-faults/patches/51b075f-test-run-process-list.patch",
-    "testFile": "tests/template/test-run/test-run-process.test.ts",
-    "title": "^when ps is refused, teardown stops a detached child and the launcher stops any remaining process group child$",
-    "source": "51b075f feat(test-run): run every test in one test run folder"
-  },
-  {
-    "id": "51b075f-test-run-process-problem",
-    "patch": "tests/planted-faults/patches/51b075f-test-run-process-problem.patch",
-    "testFile": "tests/template/test-run/test-run-process.test.ts",
-    "title": "^when all process listing routes fail, processRows refuses with a repair and leftoverProcessProblems fails closed$",
-    "source": "51b075f feat(test-run): run every test in one test run folder"
-  },
-  {
     "id": "51b075f-test-run-folder-mark",
     "patch": "tests/planted-faults/patches/51b075f-test-run-folder-mark.patch",
     "testFile": "tests/template/test-run/test-run-process.test.ts",
     "title": "^a strict test run fails and names leaked test-run-\\* files, folders, stale marks and links to live run folders$",
-    "source": "51b075f feat(test-run): run every test in one test run folder"
-  },
-  {
-    "id": "51b075f-test-run-folder-groups",
-    "patch": "tests/planted-faults/patches/51b075f-test-run-folder-groups.patch",
-    "testFile": "tests/template/test-run/test-run-process.test.ts",
-    "title": "^when the test run is killed and ps is refused, the preload still stops detached child processes$",
-    "source": "51b075f feat(test-run): run every test in one test run folder"
-  },
-  {
-    "id": "51b075f-test-run-child-rows",
-    "patch": "tests/planted-faults/patches/51b075f-test-run-child-rows.patch",
-    "testFile": "tests/template/test-run/test-run-process.test.ts",
-    "title": "^when all process listing routes fail, processRows refuses with a repair and leftoverProcessProblems fails closed$",
     "source": "51b075f feat(test-run): run every test in one test run folder"
   },
   {

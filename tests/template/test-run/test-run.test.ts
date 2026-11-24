@@ -1,25 +1,19 @@
 import { expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
-import { delimiter, join } from "node:path";
-import {
-  commandOf,
-  processRows,
-  stopProcess,
-  type TestRunEnvironment,
-} from "../../../scripts/test-run-process.ts";
+import { join } from "node:path";
+import { startChild } from "../../../scripts/process-runner.ts";
 import {
   insideFolder,
   leftoverFolders,
   runTests,
+  stopProcess,
   testRunFolderVariable,
 } from "../../../scripts/test-run.ts";
 import {
   ownedFolders,
   testRunFiles,
   write,
-  writeExecutable,
 } from "../../support/fixture-files.ts";
-import { startChild } from "../../../scripts/process-runner.ts";
 import {
   processAlive,
   processWatchdog,
@@ -45,17 +39,6 @@ test("destructured", () => { destructured(make("destructured")); });
 test("aliased", async () => { await aliased(make("aliased")).exited; });
 test("Bun.$", async () => { await Bun.$\`mktemp -d \${tmpdir()}/planted-shell-XXXXXX\`.quiet(); });
 test("node:child_process", () => { childProcess.execSync(make("node").map((part) => \`'\${part}'\`).join(" ")); });
-`;
-
-const leftRunning = `import { test } from "bun:test";
-import { spawn } from "node:child_process";
-test("leaves children running", () => {
-  Bun.spawn(["sleep", "301"]);
-  Bun.spawn(["sleep", "302"], { detached: true });
-  Bun.spawnSync(["sh", "-c", "sleep 303 >/dev/null 2>&1 &"]);
-  spawn("sleep", ["304"], { detached: true, stdio: "ignore" }).unref();
-  spawn("sleep", ["305"], { stdio: "ignore" });
-});
 `;
 
 const hanging = `import { test } from "bun:test";
@@ -107,14 +90,6 @@ function outsideRun(temp: string): Record<string, string | undefined> {
   };
 }
 
-const psBlockedLocally = process.env.CI !== "true" && !processRows().ok;
-
-function withPs(env: TestRunEnvironment, body: string) {
-  const dir = folder("test-run-stub-");
-  writeExecutable(dir, "ps", body);
-  return { ...env, PATH: `${dir}${delimiter}${env.PATH ?? ""}` };
-}
-
 async function runIn(
   root: string,
   temp: string,
@@ -122,30 +97,15 @@ async function runIn(
   args: readonly string[] = [],
 ) {
   const lines: string[] = [];
-  const base = outsideRun(temp);
   const { exitCode: exit } = await runTests(args, {
     cwd: root,
-    env: psBlockedLocally ? withPs(base, "exit 0") : base,
+    env: outsideRun(temp),
     leftoverFolders: [temp],
     strict,
     report: (line) => lines.push(line),
     limitMilliseconds: runBound,
   });
   return { exit, text: lines.join("\n") };
-}
-
-function sleepsLeft(
-  env: TestRunEnvironment = process.env,
-  platform: NodeJS.Platform = process.platform,
-): string[] {
-  const own = new Set(
-    [301, 302, 303, 304, 305].map((seconds) => `sleep ${seconds}`),
-  );
-  const listed = processRows(env, platform);
-  if (!listed.ok) throw new Error(listed.message);
-  return listed.rows
-    .map((row) => commandOf(row.pid, env, platform))
-    .filter((args) => own.has(args));
 }
 
 test("insideFolder admits the folder and what it holds, and refuses a sibling with the same prefix", () => {
@@ -204,47 +164,6 @@ test(
     const root = specimen({ "tests/leaks.test.ts": leakingRoutes });
     expect(await runIn(root, temp, true)).toEqual({ exit: 0, text: "" });
     expect(readdirSync(temp)).toEqual([]);
-  },
-  processWatchdog(1),
-);
-
-test.skipIf(psBlockedLocally)(
-  "the test run fails, names and stops each child a test leaves running, by every spawn route",
-  async () => {
-    const temp = folder("test-run-temp-");
-    const root = specimen({ "tests/running.test.ts": leftRunning });
-    const run = await spawnBounded([process.execPath, "scripts/test-run.ts"], {
-      cwd: root,
-      env: outsideRun(temp),
-      processGroup: true,
-    });
-    expect(run.exit).toBe(1);
-    expect(run.stderr).toContain(
-      "Tests left 1 process(es) running after bun test exited, and they were stopped:",
-    );
-    expect(run.stderr).toContain(": sleep 303");
-    expect(sleepsLeft()).toEqual([]);
-  },
-  processWatchdog(1),
-);
-
-test.skipIf(psBlockedLocally)(
-  "the teardown check fails the file and stops each child still running when its tests end",
-  async () => {
-    const temp = folder("test-run-temp-");
-    const root = specimen({ "tests/running.test.ts": leftRunning });
-    const run = await spawnBounded([process.execPath, "scripts/test-run.ts"], {
-      cwd: root,
-      env: outsideRun(temp),
-      processGroup: true,
-    });
-    expect(run.exit).toBe(1);
-    expect(run.stderr).toContain(
-      "Tests left 4 child process(es) running at teardown, and they were stopped:",
-    );
-    for (const seconds of [301, 302, 304, 305])
-      expect(run.stderr).toContain(`: sleep ${seconds}`);
-    expect(sleepsLeft()).toEqual([]);
   },
   processWatchdog(1),
 );
@@ -364,7 +283,7 @@ test(
     const run = await runIn(root, temp, true);
     expect(run).toEqual({
       exit: 1,
-      text: 'bun test did not load tests/support/test-run-folder.ts, so nothing stopped a child process left at teardown. Repair: add preload = ["./tests/support/test-run-folder.ts"] under [test] in bunfig.toml.',
+      text: 'bun test did not load tests/support/test-run-folder.ts, so plain bun test is unguarded and a killed test run would leave its folder behind. Repair: add preload = ["./tests/support/test-run-folder.ts"] under [test] in bunfig.toml.',
     });
   },
   processWatchdog(1),
@@ -404,16 +323,4 @@ test(
 
 test("this run's own temp folder is a test run folder", () => {
   expect(process.env[testRunFolderVariable]).toBeString();
-});
-
-test("sleepsLeft refuses a non-zero ps exit instead of returning empty", () => {
-  expect(() =>
-    sleepsLeft(
-      withPs(
-        process.env,
-        'echo "ps: operation not permitted (EPERM)" >&2\nexit 1',
-      ),
-      "freebsd",
-    ),
-  ).toThrow("ps -A exited 1");
 });

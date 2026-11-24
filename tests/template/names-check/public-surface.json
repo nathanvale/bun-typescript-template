@@ -4,7 +4,6 @@
     "generated-repository/scripts/**/*.ts",
     "tests/support/test-folder.ts",
     "tests/support/test-run-folder.ts",
-    "scripts/test-run-process.ts",
     "scripts/test-run.ts",
     "config/anti-slop-bindings.mjs",
     "config/anti-slop-rules.mjs",

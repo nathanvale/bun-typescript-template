@@ -14,24 +14,19 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, relative } from "node:path";
-import {
-  childProcessRows,
-  commandOf,
-  type ProcessRow,
-  processRows,
-  stopProcess,
-  type TestRunEnvironment,
-} from "./test-run-process.ts";
+
+export type TestRunEnvironment = Readonly<Record<string, string | undefined>>;
 
 export const testRunFolderVariable = "TEST_RUN_FOLDER";
 export const testRunProcessVariable = "TEST_RUN_PID";
 export const teardownMark = ".test-run-teardown";
 export const testRunProcessMark = ".test-run-process";
 
-const psMilliseconds = 10_000;
+const bareTempMilliseconds = 10_000;
 const signalGraceMilliseconds = 2_000;
 const runFolderPrefix = "test-run-";
 const missingCodes = new Set<unknown>(["ENOENT", "ENOTDIR"]);
+const stoppedCodes = new Set<unknown>(["ESRCH", "EPERM"]);
 const liveMarkPattern = new RegExp(
   `^${testRunProcessVariable}=([1-9]\\d*)\\n$`,
 );
@@ -43,20 +38,16 @@ export function insideFolder(path: string, folder: string): boolean {
   return way === "" || (!way.startsWith("..") && !isAbsolute(way));
 }
 
-function stopChildTree(rootPid: number, env: TestRunEnvironment): void {
-  const listed = processRows(env);
-  if (!listed.ok) return;
-  for (const child of childProcessRows(listed, rootPid))
-    stopProcess(child.group === 0 ? child.pid : child.group, child.group !== 0);
-}
-
-function described(
-  rows: readonly ProcessRow[],
-  env: TestRunEnvironment,
-): string {
-  return rows
-    .map((row) => `  ${row.text}: ${commandOf(row.pid, env) || "(exited)"}`)
-    .join("\n");
+export function stopProcess(
+  pid: number,
+  group: boolean,
+  signal: NodeJS.Signals = "SIGKILL",
+): void {
+  try {
+    process.kill(group ? -pid : pid, signal);
+  } catch (error) {
+    if (!stoppedCodes.has(Reflect.get(Object(error), "code"))) throw error;
+  }
 }
 
 function namesIn(folder: string): Set<string> {
@@ -79,13 +70,13 @@ function bareTemp(bun: string = process.execPath): string {
       env: {},
       stdout: "pipe",
       stderr: "pipe",
-      timeout: psMilliseconds,
+      timeout: bareTempMilliseconds,
       killSignal: "SIGKILL",
     },
   );
   if (child.exitedDueToTimeout || child.exitCode !== 0) {
     const why = child.exitedDueToTimeout
-      ? `timed out after ${psMilliseconds} ms`
+      ? `timed out after ${bareTempMilliseconds} ms`
       : `exited ${String(child.exitCode)}: ${child.stderr.toString().trim() || "(no output)"}`;
     throw new Error(
       `Reading the bare system temp folder with ${bun} ${why}. Repair: check that Bun starts cleanly, then run the tests again.`,
@@ -194,26 +185,23 @@ async function finished(
   child: ReturnType<typeof startBunTest>,
   options: TestRunOptions,
 ): Promise<number> {
-  const killAll = () => {
-    stopChildTree(child.pid, options.env);
-    stopProcess(child.pid, true, "SIGKILL");
-  };
+  const killGroup = () => stopProcess(child.pid, true, "SIGKILL");
   let escalation: ReturnType<typeof setTimeout> | undefined;
   let forwarded = false;
   const forward = (signal: NodeJS.Signals) => {
     if (forwarded) {
       clearTimeout(escalation);
-      killAll();
+      killGroup();
       return;
     }
     forwarded = true;
     stopProcess(child.pid, true, signal);
-    escalation = setTimeout(killAll, signalGraceMilliseconds);
+    escalation = setTimeout(killGroup, signalGraceMilliseconds);
   };
   const limit =
     options.limitMilliseconds === undefined
       ? undefined
-      : setTimeout(killAll, options.limitMilliseconds);
+      : setTimeout(killGroup, options.limitMilliseconds);
   const signals = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
   for (const signal of signals) process.on(signal, forward);
   try {
@@ -236,19 +224,6 @@ function leftoverProblems(
     `Warning (another program on this machine may have made these): ${message}`,
   );
   return [];
-}
-
-export function leftoverProcessProblems(
-  group: number,
-  listed: ReturnType<typeof processRows>,
-  env: TestRunEnvironment = process.env,
-): string[] {
-  if (!listed.ok) return [listed.message];
-  const left = listed.rows.filter((row) => row.group === group);
-  if (left.length === 0) return [];
-  return [
-    `Tests left ${left.length} process(es) running after bun test exited, and they were stopped:\n${described(left, env)}\nRepair: end each child a test starts before the test ends: await its exit, or stop it in finally.`,
-  ];
 }
 
 function testRunResult(
@@ -280,14 +255,6 @@ export async function runTests(
   let marked: boolean;
   try {
     code = await finished(child, options);
-    if (child.signalCode === null)
-      problems.push(
-        ...leftoverProcessProblems(
-          child.pid,
-          processRows(options.env),
-          options.env,
-        ),
-      );
   } finally {
     stopProcess(child.pid, true);
     marked = existsSync(join(runFolder, teardownMark));
@@ -295,7 +262,7 @@ export async function runTests(
   }
   if (code === 0 && !marked)
     problems.push(
-      `bun test did not load tests/support/test-run-folder.ts, so nothing stopped a child process left at teardown. Repair: add preload = ["./tests/support/test-run-folder.ts"] under [test] in bunfig.toml.`,
+      `bun test did not load tests/support/test-run-folder.ts, so plain bun test is unguarded and a killed test run would leave its folder behind. Repair: add preload = ["./tests/support/test-run-folder.ts"] under [test] in bunfig.toml.`,
     );
   problems.push(
     ...leftoverProblems(

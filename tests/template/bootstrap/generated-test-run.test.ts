@@ -101,18 +101,6 @@ test(
         );
       },
     );
-
-    const planted = join(destination, "tests/planted-running.test.ts");
-    await writeFile(
-      planted,
-      'import { test } from "bun:test";\nimport { spawn } from "node:child_process";\ntest("leaves a child running", () => {\n  spawn("sleep", ["306"], { detached: true, stdio: "ignore" }).unref();\n});\n',
-    );
-    const running = await runIn(destination, ["run", "test"], {});
-    expect(running.exitCode).toBe(1);
-    expect(running.stderr).toContain(
-      "Tests left 1 child process(es) running at teardown, and they were stopped:",
-    );
-    expect(running.stderr).toContain(": sleep 306");
   },
   processWatchdog(12),
 );

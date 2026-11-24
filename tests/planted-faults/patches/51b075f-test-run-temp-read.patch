@@ -1,12 +1,12 @@
 diff --git a/scripts/test-run.ts b/scripts/test-run.ts
 --- a/scripts/test-run.ts
 +++ b/scripts/test-run.ts
-@@ -165,7 +165,7 @@
+@@ -73,7 +73,7 @@
        killSignal: "SIGKILL",
      },
    );
 -  if (child.exitedDueToTimeout || child.exitCode !== 0) {
 +  if (child.exitedDueToTimeout && child.exitCode !== 0) {
      const why = child.exitedDueToTimeout
-       ? `timed out after ${psMilliseconds} ms`
+       ? `timed out after ${bareTempMilliseconds} ms`
        : `exited ${String(child.exitCode)}: ${child.stderr.toString().trim() || "(no output)"}`;

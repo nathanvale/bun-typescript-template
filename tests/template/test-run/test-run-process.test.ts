@@ -7,19 +7,13 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { delimiter, join } from "node:path";
+import { join } from "node:path";
 import { startChild } from "../../../scripts/process-runner.ts";
 import {
-  childProcessRows,
-  commandOf,
-  processRows,
+  leftoverFolders,
+  runTests,
   stopProcess,
   type TestRunEnvironment,
-} from "../../../scripts/test-run-process.ts";
-import {
-  leftoverFolders,
-  leftoverProcessProblems,
-  runTests,
   testRunFolderVariable,
   testRunProcessMark,
   testRunProcessVariable,
@@ -40,7 +34,6 @@ import {
 const folder = ownedFolders();
 const bound = 20_000;
 const pass = 'import { test } from "bun:test";\ntest("ok", () => {});\n';
-const psRepair = "Repair: make ps answer, then run the tests again.";
 
 const specimen = (tests: Readonly<Record<string, string>>) => {
   const root = folder("test-run-specimen-");
@@ -49,19 +42,14 @@ const specimen = (tests: Readonly<Record<string, string>>) => {
   return root;
 };
 
-const psEnv = (temp: string, ps: string, extra: TestRunEnvironment = {}) => {
-  const dir = folder("test-run-stub-");
-  writeExecutable(dir, "ps", ps);
-  return {
-    ...process.env,
-    PATH: `${dir}${delimiter}${process.env.PATH ?? ""}`,
-    TMPDIR: temp,
-    CI: undefined,
-    npm_lifecycle_event: undefined,
-    [testRunFolderVariable]: undefined,
-    ...extra,
-  };
-};
+const outsideRun = (temp: string, extra: TestRunEnvironment = {}) => ({
+  ...process.env,
+  TMPDIR: temp,
+  CI: undefined,
+  npm_lifecycle_event: undefined,
+  [testRunFolderVariable]: undefined,
+  ...extra,
+});
 
 async function reap(pids: readonly number[]): Promise<number[]> {
   const started = Date.now();
@@ -97,30 +85,29 @@ const runCase = (
 const startRun = (
   tests: Readonly<Record<string, string>>,
   temp: string,
-  ps: string,
   extra: TestRunEnvironment,
 ) =>
   startChild([process.execPath, "scripts/test-run.ts"], {
     cwd: specimen(tests),
-    env: psEnv(temp, ps, extra),
+    env: outsideRun(temp, extra),
     limitMilliseconds: bound,
     graceMilliseconds: 0,
   });
 
 test(
-  "when ps is refused, teardown stops a detached child and the launcher stops any remaining process group child",
+  "when bun test exits, the test run stops any process still left in bun test's process group",
   async () => {
     const temp = folder("test-run-temp-");
-    const L = join(folder("test-run-ledger-"), "pids");
+    const L = join(folder("test-run-ledger-"), "pid");
     const child =
-      'import { test } from "bun:test";\nimport { appendFileSync } from "node:fs";\ntest("c", () => { const d = Bun.spawn(["sleep", "30"], { detached: true, stdin: "ignore", stdout: "ignore", stderr: "ignore" }); appendFileSync(process.env.L, `${d.pid}\\n`); Bun.spawnSync(["sh", "-c", \'sleep 31 >/dev/null 2>&1 & echo "$!" >> "$L"\']); });\n';
+      'import { test } from "bun:test";\ntest("c", () => { Bun.spawnSync(["sh", "-c", \'sleep 31 >/dev/null 2>&1 & echo "$!" >> "$L"\']); });\n';
     let left: number[] = [];
     let pids: number[];
     let run: Awaited<ReturnType<typeof spawnBounded>>;
     try {
       run = await spawnBounded([process.execPath, "scripts/test-run.ts"], {
-        cwd: specimen({ "tests/c.test.ts": child, "tests/p.test.ts": pass }),
-        env: psEnv(temp, 'echo "ps: EPERM" >&2\nexit 1', { L }),
+        cwd: specimen({ "tests/c.test.ts": child }),
+        env: outsideRun(temp, { L }),
         processGroup: true,
       });
     } finally {
@@ -129,72 +116,21 @@ test(
         : [];
       if (pids.length > 0) left = await reap(pids);
     }
-    expect([pids.length === 2 && pids.every((p) => p > 0), run.exit]).toEqual([
+    expect([pids.length === 1 && pids.every((p) => p > 0), run.exit]).toEqual([
       true,
-      1,
+      0,
     ]);
-    expect(run.stderr).toContain(
-      "Tests left 1 child process(es) running at teardown, and they were stopped:",
-    );
-    expect(run.stderr).toContain(": sleep 30");
-    expect(run.stderr).toContain(": sleep 31");
     expect([...left, ...readdirSync(temp)]).toEqual([]);
   },
   processWatchdog(1),
 );
-
-test("when all process listing routes fail, processRows refuses with a repair and leftoverProcessProblems fails closed", () => {
-  const temp = folder("test-run-temp-");
-  const empty = folder("test-run-empty-path-");
-  const exited = processRows(
-    psEnv(temp, 'echo "ps: EPERM" >&2\nexit 1'),
-    "freebsd",
-  );
-  expect(exited.ok).toBe(false);
-  if (!exited.ok) {
-    expect(exited.message).toContain("EPERM");
-    expect(exited.message).toContain(psRepair);
-    expect(leftoverProcessProblems(1, exited)).toEqual([exited.message]);
-    expect(() => childProcessRows(exited, 1)).toThrow(psRepair);
-  }
-  const missing = processRows({ PATH: empty }, "linux", join(empty, "no-proc"));
-  expect(missing.ok).toBe(false);
-  if (!missing.ok) {
-    expect(missing.message).toContain("no-proc");
-    expect(missing.message).toContain("Fallback:");
-    expect(missing.message).toContain(psRepair);
-  }
-  const emptyProc = processRows({ PATH: empty }, "linux", empty);
-  expect(emptyProc.ok).toBe(false);
-  if (!emptyProc.ok)
-    expect(emptyProc.message).toContain("no readable processes");
-});
-
-test("linux /proc listing parses stat with spaces and parentheses, skips zombies, and reads cmdline", () => {
-  const proc = folder("test-run-proc-");
-  write(proc, "42/stat", "42 (my (app) 1) S 10 42 10 0 -1\n");
-  write(proc, "42/cmdline", "sleep\x0030\x00");
-  write(proc, "43/stat", "43 (defunct) Z 10 43 10 0 -1\n");
-  expect(processRows({}, "linux", proc)).toEqual({
-    ok: true,
-    rows: [
-      {
-        pid: 42,
-        parentPid: 10,
-        group: 42,
-        text: "pid 42 (process group 42, state S)",
-      },
-    ],
-  });
-  expect(commandOf(42, {}, "linux", proc)).toBe("sleep 30");
-});
 
 test(
   "two concurrent strict test runs do not report each other's live test run folder as a leftover",
   async () => {
     const temp = folder("test-run-temp-");
     const L = join(folder("test-run-ledger-"), "overlap");
-    const env = psEnv(temp, "exit 0", { L });
+    const env = outsideRun(temp, { L });
     const wait = (w: string, g: string) =>
       `import { test } from "bun:test";\nimport { appendFileSync, existsSync, readFileSync } from "node:fs";\ntest("o", async () => { const f = process.env.L; appendFileSync(f, ${JSON.stringify(`${w}\n`)}); const t = Date.now(); await new Promise((r) => { const p = setInterval(() => { if (!(existsSync(f) ? readFileSync(f, "utf8") : "").split("\\n").includes(${JSON.stringify(g)}) && Date.now() - t < 10_000) return; clearInterval(p); r(undefined); }, 10); }); }, 20_000);\n`;
     const lines: string[] = [];
@@ -233,34 +169,6 @@ test(
   processWatchdog(2),
 );
 
-test(
-  "when the test run is killed and ps is refused, the preload still stops detached child processes",
-  async () => {
-    const temp = folder("test-run-temp-");
-    const L = join(folder("test-run-ledger-"), "killed-detached");
-    const body =
-      'import { test } from "bun:test";\nimport { appendFileSync } from "node:fs";\ntest("h", async () => { const c = Bun.spawn(["sleep", "308"], { detached: true, stdin: "ignore", stdout: "ignore", stderr: "ignore" }); appendFileSync(process.env.L, `${process.pid}\\n${c.pid}\\nready\\n`); await new Promise(() => {}); }, 60_000);\n';
-    const run = startRun(
-      { "tests/h.test.ts": body },
-      temp,
-      'echo "ps: EPERM" >&2\nexit 1',
-      { L },
-    );
-    const w = watchLedger(L, "ready", bound);
-    try {
-      await w.reached;
-    } finally {
-      run.stop();
-      w.stop();
-      await run.finished;
-    }
-    const pids = readFileSync(L, "utf8").split("\n").slice(0, 2).map(Number);
-    expect(pids.length === 2 && pids.every((p) => p > 0)).toBe(true);
-    expect([...(await reap(pids)), ...readdirSync(temp)]).toEqual([]);
-  },
-  processWatchdog(1),
-);
-
 test.each([
   ["after the grace window", false, 1_500, 4_500],
   ["immediately on a second signal", true, 0, 1_200],
@@ -271,7 +179,7 @@ test.each([
     const L = join(folder("test-run-ledger-"), "sig");
     const body =
       'import { test } from "bun:test";\nimport { appendFileSync } from "node:fs";\ntest("t", async () => { process.on("SIGTERM", () => appendFileSync(process.env.L, "trapped\\n")); await Bun.spawn(["sh", "-c", \'trap "" TERM; echo "$$" >> "$L"; echo ready >> "$L"; sleep 6\']).exited; }, 20_000);\n';
-    const run = startRun({ "tests/t.test.ts": body }, temp, "exit 0", { L });
+    const run = startRun({ "tests/t.test.ts": body }, temp, { L });
     const [r, t] = [
       watchLedger(L, "ready", bound),
       watchLedger(L, "trapped", bound),
@@ -320,7 +228,7 @@ test.skipIf(process.getuid?.() === 0)(
     try {
       await runCase(
         { "tests/p.test.ts": pass },
-        psEnv(temp, "exit 0"),
+        outsideRun(temp),
         [locked],
         true,
       );
@@ -356,7 +264,7 @@ test(
     const started = Date.now();
     const result = await runCase(
       { "tests/s.test.ts": body },
-      psEnv(temp, "exit 0", { L }),
+      outsideRun(temp, { L }),
       [temp],
       false,
       [],
@@ -412,7 +320,7 @@ test("l", async () => {
     const lines: string[] = [];
     const result = await runCase(
       { "tests/l.test.ts": body },
-      psEnv(temp, "exit 0", { T: temp, LIVE: live }),
+      outsideRun(temp, { T: temp, LIVE: live }),
       [temp],
       true,
       lines,

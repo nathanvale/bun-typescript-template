@@ -1,13 +1,12 @@
 diff --git a/scripts/test-run.ts b/scripts/test-run.ts
-index f59ed36..d5b07f6 100644
 --- a/scripts/test-run.ts
 +++ b/scripts/test-run.ts
-@@ -222,7 +222,7 @@ export async function runTests(
+@@ -261,7 +261,7 @@
      marked = existsSync(join(runFolder, teardownMark));
      rmSync(runFolder, { recursive: true, force: true });
    }
 -  if (code === 0 && !marked)
 +  if (code !== 0 && !marked)
      problems.push(
-       `bun test did not load tests/support/test-run-folder.ts, so nothing stopped a child process left at teardown. Repair: add preload = ["./tests/support/test-run-folder.ts"] under [test] in bunfig.toml.`,
+       `bun test did not load tests/support/test-run-folder.ts, so plain bun test is unguarded and a killed test run would leave its folder behind. Repair: add preload = ["./tests/support/test-run-folder.ts"] under [test] in bunfig.toml.`,
      );
