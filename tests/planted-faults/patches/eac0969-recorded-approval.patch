@@ -1,12 +1,13 @@
 diff --git a/scripts/glossary-additions.ts b/scripts/glossary-additions.ts
+index 8d39150..7b8c4a1 100644
 --- a/scripts/glossary-additions.ts
 +++ b/scripts/glossary-additions.ts
-@@ -35,7 +35,7 @@
- 
- function approvalOf(own: ReadonlyMap<string, unknown>): string | undefined {
+@@ -55,7 +55,7 @@ function approvalOf(
    const approved = own.get("approved");
--  return typeof approved === "string" && approved.trim() !== ""
-+  return typeof approved === "string"
-     ? approved
-     : undefined;
+   if (approved !== undefined && typeof approved !== "string")
+     return refuse(file, shape);
+-  return approved?.trim() === "" ? undefined : approved?.trim();
++  return approved;
  }
+ 
+ function arrayEntries(

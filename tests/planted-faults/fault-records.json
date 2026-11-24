@@ -2697,5 +2697,33 @@
     "testFile": "tests/template/names-check/recorded-lists.test.ts",
     "title": "^scripts/file-size-recorded-hits.json refuses a planted addition or rise",
     "source": "ebc1803 fix(recorded-lists): refuse growth in every recorded list under --against"
+  },
+  {
+    "id": "8d8f920-recorded-lists-strict",
+    "patch": "tests/planted-faults/patches/8d8f920-recorded-lists-strict.patch",
+    "testFile": "tests/template/names-check/recorded-lists.test.ts",
+    "title": "^a recorded list in a form its reader does not know is refused",
+    "source": "8d8f920 fix(recorded-lists): read each recorded list strictly and refuse other Fallow config forms"
+  },
+  {
+    "id": "8d8f920-recorded-lists-health-keys",
+    "patch": "tests/planted-faults/patches/8d8f920-recorded-lists-health-keys.patch",
+    "testFile": "tests/template/names-check/recorded-lists.test.ts",
+    "title": "^fallow-health-recorded-hits.json refuses a planted addition or rise",
+    "source": "8d8f920 fix(recorded-lists): read each recorded list strictly and refuse other Fallow config forms"
+  },
+  {
+    "id": "8d8f920-recorded-lists-trim",
+    "patch": "tests/planted-faults/patches/8d8f920-recorded-lists-trim.patch",
+    "testFile": "tests/template/names-check/recorded-lists.test.ts",
+    "title": "^an approval the base revision already holds does not admit a rise",
+    "source": "8d8f920 fix(recorded-lists): read each recorded list strictly and refuse other Fallow config forms"
+  },
+  {
+    "id": "8d8f920-recorded-lists-discovery",
+    "patch": "tests/planted-faults/patches/8d8f920-recorded-lists-discovery.patch",
+    "testFile": "tests/template/names-check/recorded-lists.test.ts",
+    "title": "^every recorded list in this repository and in a generated repository has a shrink-only guard",
+    "source": "8d8f920 fix(recorded-lists): read each recorded list strictly and refuse other Fallow config forms"
   }
 ]

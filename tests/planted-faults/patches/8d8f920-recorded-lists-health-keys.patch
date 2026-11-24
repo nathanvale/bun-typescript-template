@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-additions.ts b/scripts/glossary-additions.ts
+index 8d39150..ba083eb 100644
+--- a/scripts/glossary-additions.ts
++++ b/scripts/glossary-additions.ts
+@@ -127,7 +127,7 @@ function healthEntries(file: string, text: string): RecordedEntry[] {
+     [...approvals.values()].some((approved) => typeof approved !== "string")
+   )
+     return refuse(file, healthShape);
+-  const keys = ["runtime_coverage_findings", "target_keys"].flatMap((field) => {
++  const keys = ["runtime_coverage_findings"].flatMap((field) => {
+     const listed = own.get(field);
+     if (!Array.isArray(listed) || listed.some((key) => typeof key !== "string"))
+       return refuse(file, healthShape);

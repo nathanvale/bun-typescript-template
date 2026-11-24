@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-additions.ts b/scripts/glossary-additions.ts
+index 8d39150..9346bf1 100644
+--- a/scripts/glossary-additions.ts
++++ b/scripts/glossary-additions.ts
+@@ -42,7 +42,7 @@ function shaped(
+   if (typeof value !== "object" || value === null || Array.isArray(value))
+     return refuse(file, shape);
+   const own = new Map<string, unknown>(Object.entries(value));
+-  if (keys !== undefined && [...own.keys()].some((key) => !keys.includes(key)))
++  if (keys !== undefined && false)
+     return refuse(file, shape);
+   return own;
+ }

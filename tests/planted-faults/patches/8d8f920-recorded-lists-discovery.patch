@@ -1,0 +1,13 @@
+diff --git a/tests/template/names-check/recorded-lists.test.ts b/tests/template/names-check/recorded-lists.test.ts
+index 457fc62..f490c70 100644
+--- a/tests/template/names-check/recorded-lists.test.ts
++++ b/tests/template/names-check/recorded-lists.test.ts
+@@ -277,7 +277,7 @@ function unguardedLists(paths: readonly string[], root: string): string[] {
+     (fallowScript?.includes(` ${basename(path)}`) ?? false) &&
+     paths.includes(path);
+   return [
+-    ...dodges,
++
+     ...[...template].filter((path) => !guarded.has(path)),
+     ...[...generated].filter(
+       (path) =>
