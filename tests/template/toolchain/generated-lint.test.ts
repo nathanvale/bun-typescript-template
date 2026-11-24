@@ -2,25 +2,18 @@ import { afterAll, expect, test } from "bun:test";
 import {
   existsSync,
   mkdirSync,
-  readdirSync,
   readFileSync,
   rmSync,
-  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
-import { readKernelPin } from "../../../src/kernel-pin.ts";
-import {
-  invoke,
-  requireSuccess,
-  ROOT,
-} from "../../support/bootstrap-cli-fixture.ts";
+import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import {
   generatedLint,
   generatedLintProblems,
+  generatedRepositoryOnce,
   lintRulesOn,
 } from "../../support/generated-lint.ts";
-import { kernelCheckout } from "../../support/kernel-sibling.ts";
 import {
   commentCases,
   directiveCases,
@@ -44,7 +37,7 @@ const ANTI_SLOP = [
   "anti-slop/no-reduce-accumulator-copy",
   "anti-slop/no-unknown-type-aliases",
   "anti-slop/no-widen-then-assert",
-  "no-restricted-syntax",
+  "anti-slop/no-chained-type-assertions",
 ];
 const EVERY_FILE = [
   ...ANTI_SLOP,
@@ -71,37 +64,7 @@ const TEMPLATE_LINT_RULES: [string, string[]][] = [
 const TURN_ON =
   "Repair: copy the lint rule's entry, with its files, from the template's eslint.config.mjs into the eslint.config.mjs this recipe copies.";
 
-function installTemplatePackagesAndKernel(destination: string): void {
-  const modules = join(destination, "node_modules");
-  mkdirSync(modules);
-  for (const name of readdirSync(join(ROOT, "node_modules")))
-    symlinkSync(join(ROOT, "node_modules", name), join(modules, name));
-  kernelCheckout(join(modules, readKernelPin(ROOT).repository));
-}
-
-async function bootstrapped(): Promise<string> {
-  const destination = join(testFolder("generated-lint-"), "repository");
-  folders.push(dirname(destination));
-  requireSuccess(
-    await invoke(
-      "--destination",
-      destination,
-      "--source-packet",
-      "https://example.test/spec",
-      "--json",
-    ),
-    "bootstrap",
-  );
-  installTemplatePackagesAndKernel(destination);
-  return destination;
-}
-
-let generated: Promise<string> | undefined;
-
-function generatedRepository(): Promise<string> {
-  generated ??= bootstrapped();
-  return generated;
-}
+const generatedRepository = generatedRepositoryOnce("generated-lint-");
 
 function testFileOf(root: string): string {
   const file = ["tests/cli.test.ts", "tests/unit/unit.test.ts"].find((path) =>

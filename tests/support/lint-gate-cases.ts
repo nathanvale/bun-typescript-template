@@ -1,6 +1,6 @@
 export const antiSlopGate = [
   {
-    ruleId: "no-restricted-syntax",
+    ruleId: "anti-slop/no-chained-type-assertions",
     refused: `export const value = Number("1") as unknown as string;
 `,
     admitted: `export const value = ["a"] as const;
