@@ -1,8 +1,7 @@
 diff --git a/generated-repository/scripts/check-recorded-health-sizes.ts b/generated-repository/scripts/check-recorded-health-sizes.ts
-index 95e0f43..44ae5fb 100644
 --- a/generated-repository/scripts/check-recorded-health-sizes.ts
 +++ b/generated-repository/scripts/check-recorded-health-sizes.ts
-@@ -325,7 +325,6 @@ function grownMetricsFor(
+@@ -318,7 +318,6 @@ function grownMetricsFor(
        : [
            ["function lines", (m) => m.lineCount],
            ["cyclomatic complexity", (m) => m.cyclomatic],

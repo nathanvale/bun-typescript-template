@@ -1,8 +1,7 @@
 diff --git a/generated-repository/scripts/check-recorded-health-sizes.ts b/generated-repository/scripts/check-recorded-health-sizes.ts
-index 95e0f43..50fc7ab 100644
 --- a/generated-repository/scripts/check-recorded-health-sizes.ts
 +++ b/generated-repository/scripts/check-recorded-health-sizes.ts
-@@ -324,7 +324,6 @@ function grownMetricsFor(
+@@ -317,7 +317,6 @@ function grownMetricsFor(
        ? [["file lines", (m) => m.lineCount]]
        : [
            ["function lines", (m) => m.lineCount],

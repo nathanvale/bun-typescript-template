@@ -1,8 +1,7 @@
 diff --git a/generated-repository/scripts/check-recorded-health-sizes.ts b/generated-repository/scripts/check-recorded-health-sizes.ts
-index 95e0f43..2138f3b 100644
 --- a/generated-repository/scripts/check-recorded-health-sizes.ts
 +++ b/generated-repository/scripts/check-recorded-health-sizes.ts
-@@ -407,7 +407,8 @@ function suppressionRefusalFor(
+@@ -400,7 +400,8 @@ function suppressionRefusalFor(
    baseEntry: CountEntry | undefined,
    options: Options,
  ) {

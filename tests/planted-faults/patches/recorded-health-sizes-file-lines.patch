@@ -1,8 +1,7 @@
 diff --git a/generated-repository/scripts/check-recorded-health-sizes.ts b/generated-repository/scripts/check-recorded-health-sizes.ts
-index 95e0f43..3032503 100644
 --- a/generated-repository/scripts/check-recorded-health-sizes.ts
 +++ b/generated-repository/scripts/check-recorded-health-sizes.ts
-@@ -321,7 +321,7 @@ function grownMetricsFor(
+@@ -314,7 +314,7 @@ function grownMetricsFor(
  ) {
    const checks: readonly [string, (m: FindingMetric) => number][] =
      name === "<file>"
