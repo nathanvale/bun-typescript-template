@@ -273,8 +273,7 @@ function parseFileSuppressions(
   const suppressions = record.get("suppressions");
   if (typeof rel !== "string" || rel === "")
     badSuppressionsField(where, "path");
-  if (!Array.isArray(suppressions))
-    badSuppressionsField(where, "suppressions");
+  if (!Array.isArray(suppressions)) badSuppressionsField(where, "suppressions");
   return [rel, suppressions.map((item) => parseSuppressionLine(item, where))];
 }
 
@@ -386,7 +385,12 @@ function makeReportedMarkersInert(
   if (reported.size === 0) return;
   const realTree = realpathSync(tree);
   for (const [rel, lineNumbers] of reported)
-    inertFileLines(resolveInsideTree(realTree, rel, rev), rel, lineNumbers, rev);
+    inertFileLines(
+      resolveInsideTree(realTree, rel, rev),
+      rel,
+      lineNumbers,
+      rev,
+    );
 }
 
 function runInTree(
@@ -397,13 +401,7 @@ function runInTree(
 ): string {
   removeIgnoreFiles(options.root, rev, tree);
   makeReportedMarkersInert(options.fallow, rev, tree, settingsFile);
-  return runFallow(
-    options.fallow,
-    FALLOW_HEALTH_ARGS,
-    tree,
-    settingsFile,
-    rev,
-  );
+  return runFallow(options.fallow, FALLOW_HEALTH_ARGS, tree, settingsFile, rev);
 }
 
 // Interface: runs fallow health on base and head under the base's settings
