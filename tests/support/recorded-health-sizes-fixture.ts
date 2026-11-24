@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, symlinkSync } from "node:fs";
+import { readFileSync, symlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { ROOT } from "./bootstrap-cli-fixture.ts";
 import { ownedFolders } from "./fixture-files.ts";
@@ -13,10 +13,10 @@ const SHIPPED_WORKFLOW_PATH = join(
   "generated-repository/hosted-check/ci.yml",
 );
 export const SHIPPED_SETTINGS_DIR = join(ROOT, "generated-repository/settings");
-const SHIPPED_SCRIPT_PATH = join(
-  ROOT,
-  "generated-repository/scripts/check-recorded-health-sizes.ts",
-);
+const SHIPPED_SCRIPTS = [
+  "check-recorded-health-sizes.ts",
+  "fallow-health-at-base-settings.ts",
+] as const;
 const RECORDED_HITS_FILES = [
   "fallow-dead-code-recorded-hits.json",
   "fallow-duplicates-recorded-hits.json",
@@ -131,6 +131,51 @@ export function longFileSource(lineCount: number): string {
   return `${body}\nexport const total = value0;\n`;
 }
 
+export function longTestSource(lineCount: number): string {
+  const pads = Array.from(
+    { length: lineCount - 4 },
+    (_, index) => `const pad${index} = ${index};`,
+  );
+  const lines = [
+    'import { expect, test } from "bun:test";',
+    ...pads,
+    'test("pads", () => {',
+    "  expect(pad0).toBe(0);",
+    "});",
+  ];
+  return `${lines.join("\n")}\n`;
+}
+
+export function withFallowSettings(
+  change: (shipped: {
+    readonly ignorePatterns: readonly string[];
+    readonly health: Readonly<Record<string, unknown>>;
+    readonly rules: Readonly<Record<string, unknown>>;
+    readonly boundaries: {
+      readonly zones: readonly unknown[];
+      readonly rules: readonly unknown[];
+      readonly coverage: {
+        readonly requireAllFiles: boolean;
+        readonly allowUnmatched: readonly string[];
+      };
+    };
+  }) => object,
+): string {
+  const shipped = JSON.parse(
+    readFileSync(join(SHIPPED_SETTINGS_DIR, ".fallowrc.json"), "utf8"),
+  ) as Parameters<typeof change>[0];
+  return `${JSON.stringify(change(shipped), null, 2)}\n`;
+}
+
+export function shippedScripts(): Record<string, string> {
+  return Object.fromEntries(
+    SHIPPED_SCRIPTS.map((name) => [
+      `scripts/${name}`,
+      readFileSync(join(ROOT, "generated-repository/scripts", name), "utf8"),
+    ]),
+  );
+}
+
 export function simpleCommandsSource(): string {
   return `export function route(value: number): number {
   return value + 1;
@@ -218,27 +263,33 @@ async function baseRecordedHits(): Promise<Record<string, string>> {
         ]),
       ),
     });
-    const run = await spawnBounded(
-      [process.execPath, "run", "quality:fallow:record-hits"],
-      {
-        cwd: repo,
-        env: stepEnvironment(undefined),
-        processGroup: true,
-      },
-    );
-    if (run.exit !== 0) {
-      throw new Error(
-        `quality:fallow:record-hits failed with exit ${run.exit}: ${run.stderr}\n${run.stdout}`,
-      );
-    }
-    return Object.fromEntries(
-      RECORDED_HITS_FILES.map((file) => [
-        file,
-        readFileSync(join(repo, file), "utf8"),
-      ]),
-    );
+    return recordHitsIn(repo);
   })();
   return cachedBaseRecordedHits;
+}
+
+export async function recordHitsIn(
+  repo: string,
+): Promise<Record<string, string>> {
+  const run = await spawnBounded(
+    [process.execPath, "run", "quality:fallow:record-hits"],
+    {
+      cwd: repo,
+      env: stepEnvironment(undefined),
+      processGroup: true,
+    },
+  );
+  if (run.exit !== 0) {
+    throw new Error(
+      `quality:fallow:record-hits failed with exit ${run.exit}: ${run.stderr}\n${run.stdout}`,
+    );
+  }
+  return Object.fromEntries(
+    RECORDED_HITS_FILES.map((file) => [
+      file,
+      readFileSync(join(repo, file), "utf8"),
+    ]),
+  );
 }
 
 export async function createFixture(options?: {
@@ -290,12 +341,7 @@ export async function createFixture(options?: {
     );
   }
 
-  if (existsSync(SHIPPED_SCRIPT_PATH)) {
-    files["scripts/check-recorded-health-sizes.ts"] = readFileSync(
-      SHIPPED_SCRIPT_PATH,
-      "utf8",
-    );
-  }
+  Object.assign(files, shippedScripts());
 
   if (options?.eslintSuppressions !== undefined) {
     files["eslint-suppressions.json"] = options.eslintSuppressions;
@@ -320,12 +366,13 @@ export function runHostedGrowthStep(
 export function runScriptDirect(
   repo: string,
   args: readonly string[],
+  env: Readonly<Record<string, string>> = {},
 ): Promise<{ stdout: string; stderr: string; exit: number }> {
   return spawnBounded(
     [process.execPath, "scripts/check-recorded-health-sizes.ts", ...args],
     {
       cwd: repo,
-      env: stepEnvironment(undefined),
+      env: { ...stepEnvironment(undefined), ...env },
       processGroup: true,
     },
   );

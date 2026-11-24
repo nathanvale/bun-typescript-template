@@ -10,6 +10,7 @@ import {
   initRepository,
 } from "../../support/git-fixture.ts";
 import { processWatchdog, spawnBounded } from "../../support/process.ts";
+import { shippedScripts } from "../../support/recorded-health-sizes-fixture.ts";
 
 const folder = ownedFolders();
 
@@ -155,10 +156,7 @@ function createFixtureRepository(options: {
       "utf8",
     ),
     ".github/workflows/ci.yml": readFileSync(SHIPPED_WORKFLOW_PATH, "utf8"),
-    "scripts/check-recorded-health-sizes.ts": readFileSync(
-      join(ROOT, "generated-repository/scripts/check-recorded-health-sizes.ts"),
-      "utf8",
-    ),
+    ...shippedScripts(),
     "src/cli.ts":
       'import { decideBranch } from "./commands.ts";\nexport function main(): number {\n  return decideBranch(1);\n}\nmain();\n',
     "src/commands.ts": options.complexInBase

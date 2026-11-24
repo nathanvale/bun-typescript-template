@@ -61,6 +61,7 @@ const ownFiles = [
   "package.json",
   "scripts/check-gated-paths.ts",
   "scripts/check-recorded-health-sizes.ts",
+  "scripts/fallow-health-at-base-settings.ts",
   "scripts/test-run.ts",
   "src/cli.ts",
   "src/commands.ts",
