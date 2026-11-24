@@ -67,8 +67,8 @@ from edits already there.
 
 A witness is a commit or review thread that shows the mistake: the commit
 that fixed it, the review thread that caught it, or a commit that carries
-it, as the commits row cites commits that were red at their own head. Read a
-commit with `git show <sha>`. Cite it as `[<short sha>]` with a link
+it, as the commits row cites commits that failed install, type-check or lint
+at their own head. Read a commit with `git show <sha>`. Cite it as `[<short sha>]` with a link
 definition at the end of the file, built from `git rev-parse <sha>`. Copy
 the form the file already uses.
 

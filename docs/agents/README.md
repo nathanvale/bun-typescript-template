@@ -16,9 +16,9 @@ a hosted check or on the test host named in the brief.
 For a new or changed refusal or bound, use the
 [test proof guide](../standards/test-proof.md#refusals-and-bounds).
 
-For a red `commits` job, run `bun run check:commits <base>`. It checks each
-commit at its own head. For a red `fault-replay` job, run
-`bun run fault-replay <id>`.
+For a red `commits` job, run `bun run check:commits <base>`. It installs,
+type-checks and lints each commit at its own head. For a red `fault-replay`
+job, run `bun run fault-replay <id>`.
 
 `bun run doctor` verifies the pinned Bun, the installed toolchain, fallow's
 readiness and the machine's load, and names a repair for each failure.

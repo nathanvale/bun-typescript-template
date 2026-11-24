@@ -60,8 +60,8 @@ user relies on. It then uses exactly four H2 sections in this order.
   names the repair when it cannot.
 - [Commit hook](commit-hook.md) refuses a template commit that adds a badly
   named file, a comment, or an unused export.
-- [check:commits](check-commits.md) refuses a branch with any commit that is
-  red at its own head.
+- [check:commits](check-commits.md) refuses a branch with any commit whose
+  install, typecheck or lint fails at its own head.
 
 ## Not mapped yet
 
