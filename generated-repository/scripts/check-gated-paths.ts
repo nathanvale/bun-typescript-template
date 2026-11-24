@@ -49,8 +49,8 @@ if (
   firstGatedPath !== undefined &&
   (await readChangesets(root, baseRef)).length === 0
 ) {
-  console.error(
-    `This branch changes ${gatedPaths.length} gated path(s) (first: ${JSON.stringify(firstGatedPath)}) and adds no changeset. Repair: run bun run --bun changeset add, then git add .changeset. For a change with no consumer effect, run bun run --bun changeset add --empty instead.`,
+  process.stderr.write(
+    `This branch changes ${gatedPaths.length} gated path(s) (first: ${JSON.stringify(firstGatedPath)}) and adds no changeset. Repair: run bun run --bun changeset add, then git add .changeset. For a change with no consumer effect, run bun run --bun changeset add --empty instead.\n`,
   );
   process.exitCode = 1;
 }

@@ -4,7 +4,7 @@ import { ruleHits } from "../../support/template-lint.ts";
 
 const antiSlopCases = [
   {
-    rule: "no-restricted-syntax",
+    rule: "anti-slop/no-chained-type-assertions",
     witness: "anti-slop 13909c9",
     message: "This assertion chain discards type evidence.",
     filePath: "scripts/doctor.ts",
@@ -434,9 +434,8 @@ for (const item of antiSlopCases)
 
 test("every anti-slop rule has a case", () => {
   expect([...new Set(antiSlopCases.map(({ rule }) => rule))].sort()).toEqual(
-    [
-      "no-restricted-syntax",
-      ...Object.keys(antiSlop.rules).map((rule) => `anti-slop/${rule}`),
-    ].sort(),
+    Object.keys(antiSlop.rules)
+      .map((rule) => `anti-slop/${rule}`)
+      .sort(),
   );
 });

@@ -1,6 +1,6 @@
 import js from "@eslint/js";
 import { defineConfig } from "eslint/config";
-import antiSlop, { chainedTypeAssertions } from "./config/anti-slop-rules.mjs";
+import antiSlop from "./config/anti-slop-rules.mjs";
 import payloadRules from "./config/payload-rules.mjs";
 import platformRules from "./config/platform-rules.mjs";
 import templateRules from "./config/template-rules.mjs";
@@ -101,7 +101,7 @@ export default defineConfig(
     ],
     plugins: { "anti-slop": antiSlop },
     rules: {
-      "no-restricted-syntax": ["error", ...chainedTypeAssertions],
+      "anti-slop/no-chained-type-assertions": "error",
       "anti-slop/no-accumulating-spread": "error",
       "anti-slop/no-widen-then-assert": "error",
       "anti-slop/no-unknown-type-aliases": "error",

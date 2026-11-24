@@ -1,7 +1,19 @@
-import { existsSync, readFileSync } from "node:fs";
+import { afterAll } from "bun:test";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+} from "node:fs";
 import { join } from "node:path";
 import { ESLint } from "eslint";
+import { readKernelPin } from "../../src/kernel-pin.ts";
+import { invoke, requireSuccess, ROOT } from "./bootstrap-cli-fixture.ts";
+import { kernelCheckout } from "./kernel-sibling.ts";
 import { EXPECTED_RULE_FILES } from "./lint-rule-files.ts";
+import { testFolder } from "./test-folder.ts";
 
 const PROBES = [
   "probe.cjs",
@@ -35,8 +47,8 @@ async function settingsFor(eslint: ESLint, file: string): Promise<Settings> {
     | { rules?: Record<string, unknown> }
     | undefined;
   return new Map(
-    Object.entries(config?.rules ?? {}).filter(
-      ([rule]) => TEMPLATE_RULE.test(rule) || rule === "no-restricted-syntax",
+    Object.entries(config?.rules ?? {}).filter(([rule]) =>
+      TEMPLATE_RULE.test(rule),
     ),
   );
 }
@@ -121,5 +133,39 @@ export function generatedLint(root: string) {
     return (result?.messages ?? [])
       .filter(({ ruleId }) => ruleId === null || rules.has(ruleId))
       .map(({ ruleId, line }) => ({ ruleId, line }));
+  };
+}
+
+function installTemplatePackagesAndKernel(destination: string): void {
+  const modules = join(destination, "node_modules");
+  mkdirSync(modules);
+  for (const name of readdirSync(join(ROOT, "node_modules")))
+    symlinkSync(join(ROOT, "node_modules", name), join(modules, name));
+  kernelCheckout(join(modules, readKernelPin(ROOT).repository));
+}
+
+async function bootstrapped(folder: string): Promise<string> {
+  const destination = join(folder, "repository");
+  requireSuccess(
+    await invoke(
+      "--destination",
+      destination,
+      "--source-packet",
+      "https://example.test/spec",
+      "--json",
+    ),
+    "bootstrap",
+  );
+  installTemplatePackagesAndKernel(destination);
+  return destination;
+}
+
+export function generatedRepositoryOnce(prefix: string): () => Promise<string> {
+  const folder = testFolder(prefix);
+  afterAll(() => rmSync(folder, { recursive: true }));
+  let generated: Promise<string> | undefined;
+  return () => {
+    generated ??= bootstrapped(folder);
+    return generated;
   };
 }

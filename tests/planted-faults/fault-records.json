@@ -2879,5 +2879,33 @@
     "testFile": "tests/template/test-run/test-run-process.test.ts",
     "title": "^when all process listing routes fail, processRows refuses with a repair and leftoverProcessProblems fails closed$",
     "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "6ce33a5-generated-lint-kernel-syntax",
+    "patch": "tests/planted-faults/patches/6ce33a5-generated-lint-kernel-syntax.patch",
+    "testFile": "tests/template/toolchain/generated-kernel-lint.test.ts",
+    "title": "^a repository Bootstrap generates refuses a kernel refusal and a chained type assertion in one source file$",
+    "source": "6ce33a5 fix(generated-lint): keep every kernel lint rule in a generated repository"
+  },
+  {
+    "id": "6ce33a5-generated-lint-test-folders",
+    "patch": "tests/planted-faults/patches/6ce33a5-generated-lint-test-folders.patch",
+    "testFile": "tests/template/toolchain/generated-kernel-lint.test.ts",
+    "title": "^a repository Bootstrap generates keeps every lint rule setting the kernel's lint config gives each source and test path$",
+    "source": "6ce33a5 fix(generated-lint): keep every kernel lint rule in a generated repository"
+  },
+  {
+    "id": "6ce33a5-generated-lint-script-types",
+    "patch": "tests/planted-faults/patches/6ce33a5-generated-lint-script-types.patch",
+    "testFile": "tests/template/toolchain/generated-kernel-lint.test.ts",
+    "title": "^a repository Bootstrap generates refuses an unawaited promise, any, a non-null assertion and console in a script$",
+    "source": "6ce33a5 fix(generated-lint): keep every kernel lint rule in a generated repository"
+  },
+  {
+    "id": "6ce33a5-anti-slop-chained-levels",
+    "patch": "tests/planted-faults/patches/6ce33a5-anti-slop-chained-levels.patch",
+    "testFile": "tests/template/lint/anti-slop-rules.test.ts",
+    "title": "^anti-slop/no-chained-type-assertions refuses the anti-slop 13909c9 shape in scripts/doctor\\.ts and admits its clean form$",
+    "source": "6ce33a5 fix(generated-lint): keep every kernel lint rule in a generated repository"
   }
 ]

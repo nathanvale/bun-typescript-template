@@ -1,11 +1,11 @@
 diff --git a/eslint.config.mjs b/eslint.config.mjs
-index 2a8c555..a71a6d8 100644
+index b00f710..f0d7447 100644
 --- a/eslint.config.mjs
 +++ b/eslint.config.mjs
-@@ -115,7 +115,7 @@ export default defineConfig(
+@@ -102,7 +102,7 @@ export default defineConfig(
      plugins: { "anti-slop": antiSlop },
      rules: {
-       "no-restricted-syntax": ["error", ...chainedTypeAssertions],
+       "anti-slop/no-chained-type-assertions": "error",
 -      "anti-slop/no-accumulating-spread": "error",
 +      "anti-slop/no-accumulating-spread": "off",
        "anti-slop/no-widen-then-assert": "error",
