@@ -91,7 +91,12 @@ function specimen(tests: Readonly<Record<string, string>>): string {
 }
 
 function outsideRun(temp: string): Record<string, string | undefined> {
-  return { ...process.env, TMPDIR: temp, [testRunFolderVariable]: undefined };
+  return {
+    ...process.env,
+    TMPDIR: temp,
+    CI: undefined,
+    [testRunFolderVariable]: undefined,
+  };
 }
 
 async function runIn(
@@ -191,12 +196,16 @@ test(
   async () => {
     const temp = folder("test-run-temp-");
     const root = specimen({ "tests/running.test.ts": leftRunning });
-    const run = await runIn(root, temp, true);
+    const run = await spawnBounded([process.execPath, "scripts/test-run.ts"], {
+      cwd: root,
+      env: outsideRun(temp),
+      processGroup: true,
+    });
     expect(run.exit).toBe(1);
-    expect(run.text).toContain(
+    expect(run.stderr).toContain(
       "Tests left 1 process(es) running after bun test exited, and they were stopped:",
     );
-    expect(run.text).toContain(": sleep 303");
+    expect(run.stderr).toContain(": sleep 303");
     expect(sleepsLeft()).toEqual([]);
   },
   processWatchdog(1),
