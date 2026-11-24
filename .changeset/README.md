@@ -1,6 +1,6 @@
 # Changesets
 
-A branch that changes any gated path needs a changeset in this folder. Gated paths are `generated-repository/**`, `kernel-pin.json`, the six copied lint rule files under `config/`, `tests/support/test-folder.ts`, `tests/support/test-run-folder.ts`, `scripts/test-run.ts`, `src/bootstrap.ts`, `src/bootstrap-arguments.ts`, `src/kernel-pin.ts`, `src/recipe.ts`, and `src/token-substitution.ts`.
+A branch that changes any gated path needs a changeset in this folder. Gated paths are `generated-repository/**`, `kernel-pin.json`, the six copied lint rule files under `config/`, `tests/support/test-folder.ts`, `src/bootstrap.ts`, `src/bootstrap-arguments.ts`, `src/kernel-pin.ts`, `src/recipe.ts`, and `src/token-substitution.ts`.
 
 - Add a changeset: `bun run --bun changeset add --minor bun-typescript-template -m "<past-tense summary>"`, then run `git add .changeset`.
 - Record a gated change with no consumer effect: `bun run --bun changeset add --empty`, then run `git add .changeset`.

@@ -1,11 +1,28 @@
 import { afterEach } from "bun:test";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import { testFolder } from "./test-folder.ts";
 
 export function write(root: string, path: string, content: string): void {
   mkdirSync(dirname(join(root, path)), { recursive: true });
   writeFileSync(join(root, path), content);
+}
+
+export function writeExecutable(
+  root: string,
+  name: string,
+  body: string,
+): string {
+  const path = join(root, name);
+  writeFileSync(path, `#!/bin/sh\n${body}\n`);
+  chmodSync(path, 0o755);
+  return path;
 }
 
 export function ownedFolders(): (prefix: string) => string {

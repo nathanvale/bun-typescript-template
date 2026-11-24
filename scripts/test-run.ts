@@ -1,6 +1,8 @@
 import {
+  closeSync,
   existsSync,
   mkdtempSync,
+  openSync,
   readdirSync,
   realpathSync,
   rmSync,
@@ -22,29 +24,59 @@ export type ProcessRow = {
 };
 
 const psMilliseconds = 10_000;
+const signalGraceMilliseconds = 2_000;
+const runFolderPrefix = "test-run-";
+const listingWarningMark = ".test-run-listing-warning";
 const stoppedCodes = new Set<unknown>(["ESRCH", "EPERM"]);
+const missingCodes = new Set<unknown>(["ENOENT", "ENOTDIR"]);
 
 export function insideFolder(path: string, folder: string): boolean {
   const way = relative(folder, path);
   return way === "" || (!way.startsWith("..") && !isAbsolute(way));
 }
 
-export function processRows(): ProcessRow[] {
-  const ps = Bun.spawnSync(
-    ["ps", "-A", "-o", "pid=", "-o", "ppid=", "-o", "pgid=", "-o", "stat="],
-    {
-      env: process.env,
-      stdout: "pipe",
-      stderr: "pipe",
-      timeout: psMilliseconds,
-      killSignal: "SIGKILL",
-    },
-  );
-  if (ps.exitCode !== 0)
-    throw new Error(
-      `ps -A exited ${String(ps.exitCode)} within ${psMilliseconds} ms, so the test run cannot list the processes its tests left. Repair: make ps answer, then run the tests again.`,
+function refusedPs(detail: string) {
+  return {
+    ok: false as const,
+    message: `ps -A ${detail}, so the test run cannot list the processes its tests left. Repair: make ps answer, then run the tests again.`,
+  };
+}
+
+function spawnPs(args: readonly string[], env: TestRunEnvironment) {
+  return Bun.spawnSync(["ps", ...args], {
+    env,
+    stdout: "pipe",
+    stderr: "pipe",
+    timeout: psMilliseconds,
+    killSignal: "SIGKILL",
+  });
+}
+
+export function processRows(
+  env: TestRunEnvironment = process.env,
+):
+  | { readonly ok: true; readonly rows: ProcessRow[] }
+  | { readonly ok: false; readonly message: string } {
+  let ps: ReturnType<typeof spawnPs>;
+  try {
+    ps = spawnPs(
+      ["-A", "-o", "pid=", "-o", "ppid=", "-o", "pgid=", "-o", "stat="],
+      env,
     );
-  return ps.stdout
+  } catch (error) {
+    return refusedPs(
+      `could not start (${error instanceof Error ? error.message : String(error)})`,
+    );
+  }
+  if (ps.exitedDueToTimeout)
+    return refusedPs(`did not answer within ${psMilliseconds} ms`);
+  if (ps.exitCode !== 0) {
+    const stderr = ps.stderr.toString().trim();
+    return refusedPs(
+      `exited ${String(ps.exitCode)}${stderr === "" ? "" : ` (${stderr})`} within ${psMilliseconds} ms`,
+    );
+  }
+  const rows = ps.stdout
     .toString()
     .split("\n")
     .map((line) => line.trim().split(/\s+/))
@@ -56,17 +88,36 @@ export function processRows(): ProcessRow[] {
       text: `pid ${pid} (process group ${group}, state ${state})`,
     }))
     .filter((row) => row.pid !== ps.pid);
+  return { ok: true, rows };
 }
 
-export function commandOf(pid: number): string {
-  const ps = Bun.spawnSync(["ps", "-o", "args=", "-p", String(pid)], {
-    env: process.env,
-    stdout: "pipe",
-    stderr: "ignore",
-    timeout: psMilliseconds,
-    killSignal: "SIGKILL",
-  });
-  return ps.stdout.toString().trim();
+export function commandOf(
+  pid: number,
+  env: TestRunEnvironment = process.env,
+): string {
+  try {
+    const ps = spawnPs(["-o", "args=", "-p", String(pid)], env);
+    return ps.exitCode === 0 ? ps.stdout.toString().trim() : "";
+  } catch {
+    return "";
+  }
+}
+
+export function reportProcessRows(
+  runFolder: string,
+  message: string,
+  report: (line: string) => void,
+): void {
+  try {
+    closeSync(openSync(join(runFolder, listingWarningMark), "wx"));
+  } catch (error) {
+    const code: unknown = Reflect.get(Object(error), "code");
+    if (code === "EEXIST") return;
+    if (!missingCodes.has(code)) throw error;
+  }
+  report(
+    `Warning: process listing is unavailable, so leftover process names cannot be shown (${message}). Still stopping process groups.`,
+  );
 }
 
 export function stopProcess(
@@ -81,17 +132,21 @@ export function stopProcess(
   }
 }
 
-function described(rows: readonly ProcessRow[]): string {
+function described(
+  rows: readonly ProcessRow[],
+  env: TestRunEnvironment,
+): string {
   return rows
-    .map((row) => `  ${row.text}: ${commandOf(row.pid) || "(exited)"}`)
+    .map((row) => `  ${row.text}: ${commandOf(row.pid, env) || "(exited)"}`)
     .join("\n");
 }
 
 function namesIn(folder: string): Set<string> {
   try {
     return new Set(readdirSync(folder));
-  } catch {
-    return new Set();
+  } catch (error) {
+    if (missingCodes.has(Reflect.get(Object(error), "code"))) return new Set();
+    throw error;
   }
 }
 
@@ -99,21 +154,34 @@ function realFolder(path: string): string {
   return realpathSync.native(path);
 }
 
-function bareTemp(): string {
+function bareTemp(bun: string = process.execPath): string {
   const child = Bun.spawnSync(
-    [
-      process.execPath,
-      "-e",
-      "process.stdout.write(require('node:os').tmpdir())",
-    ],
-    { env: {}, stdout: "pipe", stderr: "pipe", timeout: psMilliseconds },
+    [bun, "-e", "process.stdout.write(require('node:os').tmpdir())"],
+    {
+      env: {},
+      stdout: "pipe",
+      stderr: "pipe",
+      timeout: psMilliseconds,
+      killSignal: "SIGKILL",
+    },
   );
+  if (child.exitedDueToTimeout || child.exitCode !== 0) {
+    const why = child.exitedDueToTimeout
+      ? `timed out after ${psMilliseconds} ms`
+      : `exited ${String(child.exitCode)}: ${child.stderr.toString().trim() || "(no output)"}`;
+    throw new Error(
+      `Reading the bare system temp folder with ${bun} ${why}. Repair: check that Bun starts cleanly, then run the tests again.`,
+    );
+  }
   return child.stdout.toString();
 }
 
-export function leftoverFolders(env: TestRunEnvironment): string[] {
+export function leftoverFolders(
+  env: TestRunEnvironment,
+  bun: string = process.execPath,
+): string[] {
   if (env[testRunFolderVariable] !== undefined) return [];
-  const folders = [env.TMPDIR || tmpdir(), bareTemp()]
+  const folders = [env.TMPDIR || tmpdir(), bareTemp(bun)]
     .filter((folder) => folder !== "" && existsSync(folder))
     .map(realFolder);
   return [...new Set(folders)];
@@ -135,7 +203,10 @@ function leftoversOf(
 ): string[] {
   return folders.flatMap((folder) =>
     [...namesIn(folder)]
-      .filter((name) => !before.get(folder)?.has(name))
+      .filter(
+        (name) =>
+          !before.get(folder)?.has(name) && !name.startsWith(runFolderPrefix),
+      )
       .map((name) => join(folder, name))
       .filter((path) => path !== runFolder),
   );
@@ -168,8 +239,21 @@ async function finished(
   child: ReturnType<typeof startBunTest>,
   limitMilliseconds: number | undefined,
 ): Promise<number> {
-  const forward = (signal: NodeJS.Signals) =>
+  let escalation: ReturnType<typeof setTimeout> | undefined;
+  let forwarded = false;
+  const forward = (signal: NodeJS.Signals) => {
+    if (forwarded) {
+      clearTimeout(escalation);
+      stopProcess(child.pid, true, "SIGKILL");
+      return;
+    }
+    forwarded = true;
     stopProcess(child.pid, true, signal);
+    escalation = setTimeout(
+      () => stopProcess(child.pid, true, "SIGKILL"),
+      signalGraceMilliseconds,
+    );
+  };
   const limit =
     limitMilliseconds === undefined
       ? undefined
@@ -180,6 +264,7 @@ async function finished(
     return await child.exited;
   } finally {
     clearTimeout(limit);
+    clearTimeout(escalation);
     for (const signal of signals) process.off(signal, forward);
   }
 }
@@ -205,18 +290,26 @@ export async function runTests(
     options.leftoverFolders.map((folder) => [folder, namesIn(folder)]),
   );
   const parent = realFolder(options.env.TMPDIR || tmpdir());
-  const runFolder = realFolder(mkdtempSync(join(parent, "test-run-")));
+  const runFolder = realFolder(mkdtempSync(join(parent, runFolderPrefix)));
   const child = startBunTest(args, options, runFolder);
   const problems: string[] = [];
   let code: number;
   let marked: boolean;
   try {
     code = await finished(child, options.limitMilliseconds);
-    const left = processRows().filter((row) => row.group === child.pid);
-    if (left.length > 0)
-      problems.push(
-        `Tests left ${left.length} process(es) running after bun test exited, and they were stopped:\n${described(left)}\nRepair: end each child a test starts before the test ends: await its exit, or stop it in finally.`,
-      );
+    if (child.signalCode === null) {
+      const listed = processRows(options.env);
+      if (!listed.ok) {
+        if (options.strict) problems.push(listed.message);
+        else reportProcessRows(runFolder, listed.message, options.report);
+      } else {
+        const left = listed.rows.filter((row) => row.group === child.pid);
+        if (left.length > 0)
+          problems.push(
+            `Tests left ${left.length} process(es) running after bun test exited, and they were stopped:\n${described(left, options.env)}\nRepair: end each child a test starts before the test ends: await its exit, or stop it in finally.`,
+          );
+      }
+    }
   } finally {
     stopProcess(child.pid, true);
     marked = existsSync(join(runFolder, teardownMark));

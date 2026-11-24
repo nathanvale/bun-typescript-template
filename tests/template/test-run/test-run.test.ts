@@ -1,17 +1,20 @@
 import { expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import {
   insideFolder,
   leftoverFolders,
+  processRows,
   runTests,
   stopProcess,
+  type TestRunEnvironment,
   testRunFolderVariable,
 } from "../../../scripts/test-run.ts";
 import {
   ownedFolders,
   testRunFiles,
   write,
+  writeExecutable,
 } from "../../support/fixture-files.ts";
 import { startChild } from "../../../scripts/process-runner.ts";
 import {
@@ -101,6 +104,14 @@ function outsideRun(temp: string): Record<string, string | undefined> {
   };
 }
 
+const psBlockedLocally = process.env.CI !== "true" && !processRows().ok;
+
+function withPs(env: TestRunEnvironment, body: string) {
+  const dir = folder("test-run-stub-");
+  writeExecutable(dir, "ps", body);
+  return { ...env, PATH: `${dir}${delimiter}${env.PATH ?? ""}` };
+}
+
 async function runIn(
   root: string,
   temp: string,
@@ -108,9 +119,10 @@ async function runIn(
   args: readonly string[] = [],
 ) {
   const lines: string[] = [];
+  const base = outsideRun(temp);
   const { exitCode: exit } = await runTests(args, {
     cwd: root,
-    env: outsideRun(temp),
+    env: psBlockedLocally ? withPs(base, "exit 0") : base,
     leftoverFolders: [temp],
     strict,
     report: (line) => lines.push(line),
@@ -119,15 +131,23 @@ async function runIn(
   return { exit, text: lines.join("\n") };
 }
 
-function sleepsLeft(): string[] {
+function sleepsLeft(env: TestRunEnvironment = process.env): string[] {
   const own = new Set(
     [301, 302, 303, 304, 305].map((seconds) => `sleep ${seconds}`),
   );
-  return Bun.spawnSync(["ps", "-A", "-o", "args="], {
-    env: process.env,
+  const ps = Bun.spawnSync(["ps", "-A", "-o", "args="], {
+    env,
+    stdout: "pipe",
+    stderr: "pipe",
     timeout: 10_000,
-  })
-    .stdout.toString()
+    killSignal: "SIGKILL",
+  });
+  if (ps.exitedDueToTimeout || ps.exitCode !== 0)
+    throw new Error(
+      `ps -A exited ${String(ps.exitCode)} while checking leftover sleep processes: ${ps.stderr.toString().trim() || "(no output)"}`,
+    );
+  return ps.stdout
+    .toString()
     .split("\n")
     .map((line) => line.trim())
     .filter((args) => own.has(args));
@@ -193,7 +213,7 @@ test(
   processWatchdog(1),
 );
 
-test(
+test.skipIf(psBlockedLocally)(
   "the test run fails, names and stops each child a test leaves running, by every spawn route",
   async () => {
     const temp = folder("test-run-temp-");
@@ -213,7 +233,7 @@ test(
   processWatchdog(1),
 );
 
-test(
+test.skipIf(psBlockedLocally)(
   "the teardown check fails the file and stops each child still running when its tests end",
   async () => {
     const temp = folder("test-run-temp-");
@@ -389,4 +409,15 @@ test(
 
 test("this run's own temp folder is a test run folder", () => {
   expect(process.env[testRunFolderVariable]).toBeString();
+});
+
+test("sleepsLeft refuses a non-zero ps exit instead of returning empty", () => {
+  expect(() =>
+    sleepsLeft(
+      withPs(
+        process.env,
+        'echo "ps: operation not permitted (EPERM)" >&2\nexit 1',
+      ),
+    ),
+  ).toThrow("ps -A exited 1");
 });

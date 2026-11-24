@@ -4,7 +4,9 @@ import { join } from "node:path";
 import {
   commandOf,
   insideFolder,
+  type ProcessRow,
   processRows,
+  reportProcessRows,
   stopProcess,
   teardownMark,
   testRunFolderVariable,
@@ -19,17 +21,26 @@ function real(path: string | undefined): string | undefined {
   }
 }
 
+function tryIgnore(step: () => void): void {
+  try {
+    step();
+  } catch (error) {
+    void error;
+  }
+}
+
 function guard(runFolder: string, testRunProcess: number): void {
   writeFileSync(join(runFolder, teardownMark), "");
   setInterval(() => {
     try {
       process.kill(testRunProcess, 0);
     } catch {
-      rmSync(runFolder, { recursive: true, force: true });
-      process.kill(0, "SIGKILL");
+      tryIgnore(stopChildGroups);
+      tryIgnore(() => rmSync(runFolder, { recursive: true, force: true }));
+      stopProcess(0, false, "SIGKILL");
     }
   }, 500).unref();
-  afterAll(stopChildrenLeft);
+  afterAll(() => stopChildrenLeft(runFolder));
 }
 
 const runFolder = real(process.env[testRunFolderVariable]);
@@ -54,8 +65,9 @@ else
     "Warning: bun test started without scripts/test-run.ts, so child processes can write outside a test run folder, into the system temp folder. bun run test is the guarded route.\n",
   );
 
-function childrenLeft(): { pid: number; group: number; text: string }[] {
-  const rows = processRows();
+function descendantsOf(
+  rows: readonly ProcessRow[],
+): { pid: number; group: number; row: ProcessRow }[] {
   const own = rows.find((row) => row.pid === process.pid)?.group;
   const family = new Set([process.pid]);
   for (let grew = true; grew; ) {
@@ -71,12 +83,35 @@ function childrenLeft(): { pid: number; group: number; text: string }[] {
     .map((row) => ({
       pid: row.pid,
       group: row.group === own ? 0 : row.group,
-      text: `  ${row.text}: ${commandOf(row.pid) || "(exited)"}`,
+      row,
     }));
 }
 
-function stopChildrenLeft(): void {
-  const left = childrenLeft();
+function stopChildGroups(): void {
+  const listed = processRows();
+  if (!listed.ok) return;
+  for (const child of descendantsOf(listed.rows))
+    tryIgnore(() =>
+      child.group === 0
+        ? stopProcess(child.pid, false)
+        : stopProcess(child.group, true),
+    );
+}
+
+function stopChildrenLeft(folder: string): void {
+  const listed = processRows();
+  if (!listed.ok) {
+    if (process.env.CI === "true") throw new Error(listed.message);
+    reportProcessRows(folder, listed.message, (line) =>
+      process.stderr.write(`${line}\n`),
+    );
+    return;
+  }
+  const left = descendantsOf(listed.rows).map(({ pid, group, row }) => ({
+    pid,
+    group,
+    text: `  ${row.text}: ${commandOf(row.pid) || "(exited)"}`,
+  }));
   for (const row of left)
     if (row.group === 0) stopProcess(row.pid, false);
     else stopProcess(row.group, true);
