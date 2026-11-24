@@ -1,0 +1,13 @@
+diff --git a/tests/template/names-check/recorded-lists.test.ts b/tests/template/names-check/recorded-lists.test.ts
+index 6306d06..fc46990 100644
+--- a/tests/template/names-check/recorded-lists.test.ts
++++ b/tests/template/names-check/recorded-lists.test.ts
+@@ -399,7 +399,7 @@ function unguardedLists(paths: readonly string[], root: string): string[] {
+       ...configProblems(paths, root),
+       ...paths.filter(
+         (path) =>
+-          /(?:^|\/)(?:\.fallowrc\.jsonc?|\.?fallow\.toml)$/.test(path) &&
++          false &&
+           !fallowConfigs.has(path),
+       ),
+       ...[...template].filter((path) => !guarded.has(path)),

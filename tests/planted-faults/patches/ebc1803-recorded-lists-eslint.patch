@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-additions.ts b/scripts/glossary-additions.ts
+index 2ec757b..fd76ab1 100644
+--- a/scripts/glossary-additions.ts
++++ b/scripts/glossary-additions.ts
+@@ -145,7 +145,7 @@ const recordedLists: readonly RecordedList[] = [
+       }),
+   },
+   {
+-    file: "eslint-suppressions.json",
++    file: "unread-suppressions.json",
+     gate: "lint",
+     repair: "fix the lint error, since eslint --suppress-rule writes the entry",
+     entries: (_file, text) =>

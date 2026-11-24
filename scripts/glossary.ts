@@ -143,7 +143,7 @@ export function readGlossary(text: string): Glossary {
   return { terms, qualify, qualifyTerms: qualifyTermsOf(qualify, termsByWord) };
 }
 
-export function recordedEntries(
+function recordedEntries(
   file: string,
   text: string,
   list: string,

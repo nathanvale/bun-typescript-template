@@ -234,7 +234,9 @@ async function problemsFor(
       throw new UsageError("--against takes one revision.");
     return [
       ...recordedAdditionProblems(environment.root, revision, (path) =>
-        readFileSync(join(environment.root, path), "utf8"),
+        existsSync(join(environment.root, path))
+          ? readFileSync(join(environment.root, path), "utf8")
+          : undefined,
       ),
       ...(await publicNameProblems(environment.root, false, undefined, true)),
       ...(await againstNameWordProblems(environment.root, revision)),

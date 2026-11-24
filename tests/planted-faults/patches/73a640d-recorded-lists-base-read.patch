@@ -1,0 +1,14 @@
+diff --git a/scripts/glossary-additions.ts b/scripts/glossary-additions.ts
+index 1eae1a8..3ee7061 100644
+--- a/scripts/glossary-additions.ts
++++ b/scripts/glossary-additions.ts
+@@ -303,7 +303,8 @@ function baseText(
+   if (listed.exitCode === 0 && listed.stdout.toString() === "")
+     return undefined;
+   const shown = gitInNamesCheck(root, ["show", `${base}:${file}`]);
+-  if (listed.exitCode !== 0 || shown.exitCode !== 0)
++  if (shown.exitCode !== 0) return undefined;
++  if (listed.exitCode !== 0)
+     throw new Error(
+       `git cannot read ${file} at ${base}: ${[listed, shown].map((run) => run.stderr.toString().trim()).join(" ")} Repair: run git fsck, or fetch the base again, then run bun run check:names --against <base> again.`,
+     );

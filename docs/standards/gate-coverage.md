@@ -300,6 +300,10 @@ file extensions in those directories.
 
 ## Recorded hits
 
+- A recorded list only shrinks: `check:names --against` refuses a new entry
+  or higher count unless this change adds an `approved` field.
+  `recorded-lists.test.ts` fails on an unguarded list. Review only: a health
+  hit's size.
 - `eslint-suppressions.json` holds the recorded hits each lint rule found
   when it landed.
 - ESLint records a count per lint rule and file. `bun run lint` fails when
@@ -308,12 +312,9 @@ file extensions in those directories.
 - Review replacements within a file. Replacing one violation with another
   for the same lint rule can keep the count and pass lint.
 - The template's lint rules live in `config/template-rules.mjs`,
-  `config/platform-rules.mjs` and `config/payload-rules.mjs`.
-  `platform-rules.mjs` owns `no-host-path-literal` and `payload-rules.mjs`
-  owns `no-in-operator`. `eslint.config.mjs` joins the three under the
-  `repository` plugin.
-- The kernel's lint rules and their recorded hits left with the kernel. The
-  kernel repository owns them.
+  `config/platform-rules.mjs` (`no-host-path-literal`) and
+  `config/payload-rules.mjs`.
+- The kernel repository owns its lint rules and recorded hits.
 
 [r4625491126]: https://github.com/nathanvale/bun-typescript-template/pull/114#discussion_r4625491126
 [47e2ec3]: https://github.com/nathanvale/bun-typescript-template/commit/47e2ec3c245279421f11ab054db621c97e213333
