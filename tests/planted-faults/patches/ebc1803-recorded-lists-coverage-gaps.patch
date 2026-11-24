@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-additions.ts b/scripts/glossary-additions.ts
+index 2ec757b..b17a180 100644
+--- a/scripts/glossary-additions.ts
++++ b/scripts/glossary-additions.ts
+@@ -118,7 +118,7 @@ const recordedLists: readonly RecordedList[] = [
+     ),
+   },
+   {
+-    file: "tests/template/standards/coverage-gaps-recorded-hits.json",
++    file: "tests/template/standards/unread.json",
+     gate: "the coverage gaps test",
+     repair: "add a test that imports it",
+     entries: arrayEntries(

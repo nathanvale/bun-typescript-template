@@ -2641,5 +2641,110 @@
     "testFile": "tests/template/names-check/changesets-path.test.ts",
     "title": "^hitsIn and unknownPathProblems exempt changeset markdown paths while still refusing declarations, README.md, and change-notes paths$",
     "source": "06a5aa3 feat(changesets): switch template and generated repos to upstream Changesets"
+  },
+  {
+    "id": "ebc1803-recorded-lists-plain-words",
+    "patch": "tests/planted-faults/patches/ebc1803-recorded-lists-plain-words.patch",
+    "testFile": "tests/template/names-check/recorded-lists.test.ts",
+    "title": "^every recorded list in this repository and in a generated repository has a shrink-only guard",
+    "source": "ebc1803 fix(recorded-lists): refuse growth in every recorded list under --against"
+  },
+  {
+    "id": "ebc1803-recorded-lists-coverage-gaps",
+    "patch": "tests/planted-faults/patches/ebc1803-recorded-lists-coverage-gaps.patch",
+    "testFile": "tests/template/names-check/recorded-lists.test.ts",
+    "title": "^every recorded list in this repository and in a generated repository has a shrink-only guard",
+    "source": "ebc1803 fix(recorded-lists): refuse growth in every recorded list under --against"
+  },
+  {
+    "id": "ebc1803-recorded-lists-file-size",
+    "patch": "tests/planted-faults/patches/ebc1803-recorded-lists-file-size.patch",
+    "testFile": "tests/template/names-check/recorded-lists.test.ts",
+    "title": "^every recorded list in this repository and in a generated repository has a shrink-only guard",
+    "source": "ebc1803 fix(recorded-lists): refuse growth in every recorded list under --against"
+  },
+  {
+    "id": "ebc1803-recorded-lists-eslint",
+    "patch": "tests/planted-faults/patches/ebc1803-recorded-lists-eslint.patch",
+    "testFile": "tests/template/names-check/recorded-lists.test.ts",
+    "title": "^every recorded list in this repository and in a generated repository has a shrink-only guard",
+    "source": "ebc1803 fix(recorded-lists): refuse growth in every recorded list under --against"
+  },
+  {
+    "id": "ebc1803-recorded-lists-fallow-health",
+    "patch": "tests/planted-faults/patches/ebc1803-recorded-lists-fallow-health.patch",
+    "testFile": "tests/template/names-check/recorded-lists.test.ts",
+    "title": "^every recorded list in this repository and in a generated repository has a shrink-only guard",
+    "source": "ebc1803 fix(recorded-lists): refuse growth in every recorded list under --against"
+  },
+  {
+    "id": "ebc1803-recorded-lists-rise",
+    "patch": "tests/planted-faults/patches/ebc1803-recorded-lists-rise.patch",
+    "testFile": "tests/template/names-check/recorded-lists.test.ts",
+    "title": "^eslint-suppressions.json refuses a planted addition or rise",
+    "source": "ebc1803 fix(recorded-lists): refuse growth in every recorded list under --against"
+  },
+  {
+    "id": "ebc1803-recorded-lists-held-approval",
+    "patch": "tests/planted-faults/patches/ebc1803-recorded-lists-held-approval.patch",
+    "testFile": "tests/template/names-check/recorded-lists.test.ts",
+    "title": "^an approval the base revision already holds does not admit a rise",
+    "source": "ebc1803 fix(recorded-lists): refuse growth in every recorded list under --against"
+  },
+  {
+    "id": "ebc1803-recorded-lists-lifetime",
+    "patch": "tests/planted-faults/patches/ebc1803-recorded-lists-lifetime.patch",
+    "testFile": "tests/template/names-check/recorded-lists.test.ts",
+    "title": "^scripts/file-size-recorded-hits.json refuses a planted addition or rise",
+    "source": "ebc1803 fix(recorded-lists): refuse growth in every recorded list under --against"
+  },
+  {
+    "id": "8d8f920-recorded-lists-strict",
+    "patch": "tests/planted-faults/patches/8d8f920-recorded-lists-strict.patch",
+    "testFile": "tests/template/names-check/recorded-lists.test.ts",
+    "title": "^a recorded list in a form its reader does not know is refused",
+    "source": "8d8f920 fix(recorded-lists): read each recorded list strictly and refuse other Fallow config forms"
+  },
+  {
+    "id": "8d8f920-recorded-lists-health-keys",
+    "patch": "tests/planted-faults/patches/8d8f920-recorded-lists-health-keys.patch",
+    "testFile": "tests/template/names-check/recorded-lists.test.ts",
+    "title": "^fallow-health-recorded-hits.json refuses a planted addition or rise",
+    "source": "8d8f920 fix(recorded-lists): read each recorded list strictly and refuse other Fallow config forms"
+  },
+  {
+    "id": "8d8f920-recorded-lists-trim",
+    "patch": "tests/planted-faults/patches/8d8f920-recorded-lists-trim.patch",
+    "testFile": "tests/template/names-check/recorded-lists.test.ts",
+    "title": "^an approval the base revision already holds does not admit a rise",
+    "source": "8d8f920 fix(recorded-lists): read each recorded list strictly and refuse other Fallow config forms"
+  },
+  {
+    "id": "8d8f920-recorded-lists-discovery",
+    "patch": "tests/planted-faults/patches/8d8f920-recorded-lists-discovery.patch",
+    "testFile": "tests/template/names-check/recorded-lists.test.ts",
+    "title": "^every recorded list in this repository and in a generated repository has a shrink-only guard",
+    "source": "8d8f920 fix(recorded-lists): read each recorded list strictly and refuse other Fallow config forms"
+  },
+  {
+    "id": "e9ba739-recorded-lists-pinned-runs",
+    "patch": "tests/planted-faults/patches/e9ba739-recorded-lists-pinned-runs.patch",
+    "testFile": "tests/template/names-check/recorded-lists.test.ts",
+    "title": "^a Fallow run or config that names a list another way is refused",
+    "source": "e9ba739 fix(recorded-lists): pin every Fallow run and walk the Fallow config"
+  },
+  {
+    "id": "e9ba739-recorded-lists-config-walk",
+    "patch": "tests/planted-faults/patches/e9ba739-recorded-lists-config-walk.patch",
+    "testFile": "tests/template/names-check/recorded-lists.test.ts",
+    "title": "^a Fallow run or config that names a list another way is refused",
+    "source": "e9ba739 fix(recorded-lists): pin every Fallow run and walk the Fallow config"
+  },
+  {
+    "id": "73a640d-recorded-lists-base-read",
+    "patch": "tests/planted-faults/patches/73a640d-recorded-lists-base-read.patch",
+    "testFile": "tests/template/names-check/recorded-lists.test.ts",
+    "title": "^a list the base revision holds but git cannot read stops the run",
+    "source": "73a640d fix(recorded-lists): stop on a base list git cannot read, and prove the walk reads compact config"
   }
 ]

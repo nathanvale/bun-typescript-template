@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-additions.ts b/scripts/glossary-additions.ts
+index 2ec757b..4c0f7ef 100644
+--- a/scripts/glossary-additions.ts
++++ b/scripts/glossary-additions.ts
+@@ -129,7 +129,7 @@ const recordedLists: readonly RecordedList[] = [
+     ),
+   },
+   {
+-    file: "scripts/file-size-recorded-hits.json",
++    file: "scripts/unread.json",
+     gate: "the file size check",
+     repair: "bring the file within the limit",
+     entries: (_file, text) =>

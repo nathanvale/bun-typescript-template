@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-additions.ts b/scripts/glossary-additions.ts
+index 2ec757b..46fb0de 100644
+--- a/scripts/glossary-additions.ts
++++ b/scripts/glossary-additions.ts
+@@ -156,7 +156,7 @@ const recordedLists: readonly RecordedList[] = [
+       ),
+   },
+   {
+-    file: "fallow-health-recorded-hits.json",
++    file: "unread-health.json",
+     gate: "the Fallow health audit",
+     repair:
+       "simplify the function or split the file, since fallow health --save-baseline writes the entry",

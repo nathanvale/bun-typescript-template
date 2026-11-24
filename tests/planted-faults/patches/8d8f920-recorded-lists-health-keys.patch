@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-additions.ts b/scripts/glossary-additions.ts
+index 1eae1a8..0017f17 100644
+--- a/scripts/glossary-additions.ts
++++ b/scripts/glossary-additions.ts
+@@ -121,7 +121,7 @@ const healthShape = `{ ${healthFields.join(", ")}? } as fallow health --save-bas
+ 
+ function healthEntries(file: string, text: string): RecordedEntry[] {
+   const own = shaped(JSON.parse(text), file, healthShape, healthFields);
+-  const arrays = ["runtime_coverage_findings", "target_keys"];
++  const arrays = ["runtime_coverage_findings"];
+   const approvals = shaped(
+     own.get("approved") ?? {},
+     file,

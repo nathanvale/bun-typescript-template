@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-additions.ts b/scripts/glossary-additions.ts
+index 8d39150..35a3032 100644
+--- a/scripts/glossary-additions.ts
++++ b/scripts/glossary-additions.ts
+@@ -55,7 +55,7 @@ function approvalOf(
+   const approved = own.get("approved");
+   if (approved !== undefined && typeof approved !== "string")
+     return refuse(file, shape);
+-  return approved?.trim() === "" ? undefined : approved?.trim();
++  return approved?.trim() === "" ? undefined : approved;
+ }
+ 
+ function arrayEntries(
