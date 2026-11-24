@@ -8,7 +8,7 @@ const CHECKOUT_ACTION = "actions/checkout";
 const SETUP_BUN_ACTION = "oven-sh/setup-bun";
 const REQUIRED_ACTIONS = [CHECKOUT_ACTION, SETUP_BUN_ACTION] as const;
 
-type PlainObject = Record<string, unknown>;
+export type PlainObject = Record<string, unknown>;
 
 type TemplatePins = {
   readonly bunVersion: string | undefined;
@@ -16,13 +16,13 @@ type TemplatePins = {
   readonly problems: readonly string[];
 };
 
-function asRecord(value: unknown): PlainObject | undefined {
+export function asRecord(value: unknown): PlainObject | undefined {
   if (typeof value !== "object" || value === null || Array.isArray(value))
     return undefined;
   return Object.fromEntries(Object.entries(value));
 }
 
-function own(record: PlainObject, key: string): unknown {
+export function own(record: PlainObject, key: string): unknown {
   return Object.hasOwn(record, key) ? record[key] : undefined;
 }
 
@@ -237,9 +237,11 @@ function stepSummary(step: PlainObject) {
   return {
     uses: scalar(own(step, "uses"))?.split("@")[0],
     if: scalar(own(step, "if")),
-    run: run?.includes('--fail-on-baseline-growth --baseline-base "$BASE"')
-      ? GROWTH_CHECK
-      : run,
+    run:
+      run?.includes('--fail-on-baseline-growth --baseline-base "$BASE"') &&
+      run.includes('bun scripts/check-recorded-health-sizes.ts --base "$BASE"')
+        ? GROWTH_CHECK
+        : run,
     fetchDepth: field(step, "with", "fetch-depth"),
     base: field(step, "env", "BASE"),
   };

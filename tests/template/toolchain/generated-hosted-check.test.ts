@@ -69,6 +69,7 @@ jobs:
             exit 0
           fi
           bun run --silent quality:fallow -- --fail-on-baseline-growth --baseline-base "$BASE"
+          bun scripts/check-recorded-health-sizes.ts --base "$BASE"
 `;
 
 function tree(files: Record<string, string>): string {

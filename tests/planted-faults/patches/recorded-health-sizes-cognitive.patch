@@ -1,0 +1,11 @@
+diff --git a/generated-repository/scripts/check-recorded-health-sizes.ts b/generated-repository/scripts/check-recorded-health-sizes.ts
+--- a/generated-repository/scripts/check-recorded-health-sizes.ts
++++ b/generated-repository/scripts/check-recorded-health-sizes.ts
+@@ -318,7 +318,6 @@ function grownMetricsFor(
+       : [
+           ["function lines", (m) => m.lineCount],
+           ["cyclomatic complexity", (m) => m.cyclomatic],
+-          ["cognitive complexity", (m) => m.cognitive],
+         ];
+   return checks.flatMap(([label, read]) => {
+     const change = metricGrowth(baseList, headList, read);
