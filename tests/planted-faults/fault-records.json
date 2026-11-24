@@ -2921,5 +2921,12 @@
     "testFile": "tests/template/template-upgrade/template-upgrade-recover-refusals.test.ts",
     "title": "^keeps saved branch, commit, and patch in worktree_unlock_failed on unlock timeout$",
     "source": "bf82cbc fix(template-upgrade): resume an interrupted recover from its recorded state, quote printed paths, keep saved effects on timeout"
+  },
+  {
+    "id": "template-upgrade-recover-unlock-record",
+    "patch": "tests/planted-faults/patches/template-upgrade-recover-unlock-record.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recover-retry.test.ts",
+    "title": "^refuses an unlocked worktree with worktree_not_owned when its recovery record is pre-unlock or mismatched$",
+    "source": "4184dde fix(template-upgrade): record recover steps and resume unlocked worktrees from a valid record"
   }
 ]

@@ -1,9 +1,9 @@
 diff --git a/src/template-upgrade-recover.ts b/src/template-upgrade-recover.ts
 --- a/src/template-upgrade-recover.ts
 +++ b/src/template-upgrade-recover.ts
-@@ -361,7 +361,7 @@ function buildRecoveryPatchBytes(
-     ],
-     { env, timeoutMilliseconds },
+@@ -438,7 +438,7 @@ function buildRecoveryPatchBytes(
+     env,
+     timeoutMilliseconds,
    );
 -  if (diffRun.timedOut || diffRun.exitCode !== 0) {
 +  if (diffRun.timedOut) {

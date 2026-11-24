@@ -1,0 +1,13 @@
+diff --git a/src/template-upgrade-recover-record.ts b/src/template-upgrade-recover-record.ts
+--- a/src/template-upgrade-recover-record.ts
++++ b/src/template-upgrade-recover-record.ts
+@@ -434,9 +434,6 @@ export async function verifyRecoverRecord(
+   if (saved === undefined || saved.commitSha === undefined) {
+     return undefined;
+   }
+-  if (saved.step !== "unlock" && saved.step !== "remove") {
+-    return undefined;
+-  }
+   if (options.head !== saved.commitSha) {
+     return undefined;
+   }

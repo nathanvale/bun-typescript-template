@@ -1,18 +1,10 @@
 diff --git a/src/template-upgrade-recover.ts b/src/template-upgrade-recover.ts
 --- a/src/template-upgrade-recover.ts
 +++ b/src/template-upgrade-recover.ts
-@@ -28,6 +28,7 @@ import {
- } from "./template-upgrade-report.ts";
- import {
-   assertWorktreePathAvailableForTemplateUpgrade,
-+  findGitWorktreeRecord,
-   type GitWorktreeRecord,
-   isRepositoryWorktree,
- } from "./template-upgrade-worktree-lock.ts";
-@@ -156,11 +157,7 @@ async function requireOwnedWorktree(
-   target7: string,
-   env: ProcessEnvMap,
- ): Promise<OwnedWorktreeState> {
+@@ -185,11 +185,7 @@ async function requireOwnedWorktree(
+       return unlocked;
+     }
+   }
 -  const record = await assertWorktreePathAvailableForTemplateUpgrade(
 -    repository,
 -    targetWorktree,
