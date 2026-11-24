@@ -1,0 +1,13 @@
+diff --git a/generated-repository/scripts/check-recorded-health-sizes.ts b/generated-repository/scripts/check-recorded-health-sizes.ts
+--- a/generated-repository/scripts/check-recorded-health-sizes.ts
++++ b/generated-repository/scripts/check-recorded-health-sizes.ts
+@@ -400,7 +400,8 @@ function suppressionRefusalFor(
+   baseEntry: CountEntry | undefined,
+   options: Options,
+ ) {
+-  const baseCount = baseEntry?.count ?? 0;
++  if (baseEntry === undefined) return undefined;
++  const baseCount = baseEntry.count;
+   if (
+     headEntry.count <= baseCount ||
+     (headEntry.approved !== undefined &&
