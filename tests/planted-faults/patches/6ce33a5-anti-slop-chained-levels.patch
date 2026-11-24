@@ -1,0 +1,13 @@
+diff --git a/config/anti-slop-rules.mjs b/config/anti-slop-rules.mjs
+index 2c94d75..2ce312a 100644
+--- a/config/anti-slop-rules.mjs
++++ b/config/anti-slop-rules.mjs
+@@ -53,7 +53,7 @@ function chainSelector(constDepth) {
+   return `${outermostAssertion}${consts}${assertionAt(assertedAt)}:not(${constAt(level)})`;
+ }
+ 
+-const chainedTypeAssertions = [0, 1, 2, 3].map(chainSelector).join(", ");
++const chainedTypeAssertions = [0, 2, 3].map(chainSelector).join(", ");
+ 
+ const noChainedTypeAssertions = {
+   meta: {

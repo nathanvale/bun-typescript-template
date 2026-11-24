@@ -1,13 +1,12 @@
 diff --git a/generated-repository/settings/eslint.config.mjs b/generated-repository/settings/eslint.config.mjs
-index 4aab76c..4f1ec50 100644
+index 75575f5..214801c 100644
 --- a/generated-repository/settings/eslint.config.mjs
 +++ b/generated-repository/settings/eslint.config.mjs
-@@ -61,13 +61,6 @@ export default tseslint.config(
-   },
-   {
-     files: ["scripts/**/*.ts"],
+@@ -77,12 +77,6 @@ export default tseslint.config(
+       js.configs.recommended,
+       ...tseslint.configs.recommendedTypeChecked,
+     ],
 -    languageOptions: {
--      parser: tseslint.parser,
 -      parserOptions: {
 -        projectService: true,
 -        tsconfigRootDir: import.meta.dirname,
@@ -15,4 +14,4 @@ index 4aab76c..4f1ec50 100644
 -    },
      plugins: { repository },
      rules: {
-       "repository/no-locale-compare": "error",
+       "@typescript-eslint/no-explicit-any": "error",

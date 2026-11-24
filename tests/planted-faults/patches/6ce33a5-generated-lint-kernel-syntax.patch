@@ -1,0 +1,13 @@
+diff --git a/generated-repository/settings/eslint.config.mjs b/generated-repository/settings/eslint.config.mjs
+index 75575f5..a149787 100644
+--- a/generated-repository/settings/eslint.config.mjs
++++ b/generated-repository/settings/eslint.config.mjs
+@@ -132,7 +132,7 @@ export default tseslint.config(
+     files: ["**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"],
+     plugins: { "anti-slop": antiSlop },
+     rules: {
+-      "anti-slop/no-chained-type-assertions": "error",
++      "no-restricted-syntax": ["error", "TSAsExpression > TSAsExpression"],
+       "anti-slop/no-accumulating-spread": "error",
+       "anti-slop/no-widen-then-assert": "error",
+       "anti-slop/no-unknown-type-aliases": "error",

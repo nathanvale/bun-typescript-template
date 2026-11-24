@@ -1,0 +1,13 @@
+diff --git a/generated-repository/settings/eslint.config.mjs b/generated-repository/settings/eslint.config.mjs
+index 75575f5..ea8ac62 100644
+--- a/generated-repository/settings/eslint.config.mjs
++++ b/generated-repository/settings/eslint.config.mjs
+@@ -72,7 +72,7 @@ export default tseslint.config(
+     plugin: repository,
+   }),
+   {
+-    files: ["scripts/**/*.ts"],
++    files: ["tests/**/*.ts"],
+     extends: [
+       js.configs.recommended,
+       ...tseslint.configs.recommendedTypeChecked,
