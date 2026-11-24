@@ -1,0 +1,11 @@
+diff --git a/generated-repository/scripts/fallow-health-at-base-settings.ts b/generated-repository/scripts/fallow-health-at-base-settings.ts
+--- a/generated-repository/scripts/fallow-health-at-base-settings.ts
++++ b/generated-repository/scripts/fallow-health-at-base-settings.ts
+@@ -192,7 +192,6 @@ function runInTree(
+   settingsFile: string,
+ ): string {
+   removeIgnoreFiles(options.root, rev, tree);
+-  makeInlineMarkersInert(options.root, rev, tree);
+   return runFallowHealth(options.fallow, tree, settingsFile, rev);
+ }
+ 

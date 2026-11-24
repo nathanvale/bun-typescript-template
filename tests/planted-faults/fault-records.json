@@ -2858,5 +2858,40 @@
     "testFile": "tests/template/toolchain/recorded-health-sizes.test.ts",
     "title": "^fails closed with exit 2 on malformed recorded lists$",
     "source": "9765d7a fix(recorded-health-sizes): refuse growth in a recorded health finding's size and in eslint-suppressions.json"
+  },
+  {
+    "id": "recorded-health-sizes-base-settings",
+    "patch": "tests/planted-faults/patches/recorded-health-sizes-base-settings.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes.test.ts",
+    "title": "^refuses recorded file line growth when the same diff raises maxFileLines, through the hosted step$",
+    "source": "2c57c68 fix(recorded-health-sizes): measure both revisions under the base's Fallow settings"
+  },
+  {
+    "id": "recorded-health-sizes-empty-base-settings",
+    "patch": "tests/planted-faults/patches/recorded-health-sizes-empty-base-settings.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes.test.ts",
+    "title": "^refuses recorded growth when the base has no Fallow settings file and the head adds one$",
+    "source": "2c57c68 fix(recorded-health-sizes): measure both revisions under the base's Fallow settings"
+  },
+  {
+    "id": "recorded-health-sizes-ignore-files",
+    "patch": "tests/planted-faults/patches/recorded-health-sizes-ignore-files.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes.test.ts",
+    "title": "^refuses recorded growth that a same-diff change to Fallow settings, an ignore file or an inline marker would hide, and passes the controls$",
+    "source": "2c57c68 fix(recorded-health-sizes): measure both revisions under the base's Fallow settings"
+  },
+  {
+    "id": "recorded-health-sizes-gitignore",
+    "patch": "tests/planted-faults/patches/recorded-health-sizes-gitignore.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes.test.ts",
+    "title": "^refuses recorded growth that a same-diff change to Fallow settings, an ignore file or an inline marker would hide, and passes the controls$",
+    "source": "2c57c68 fix(recorded-health-sizes): measure both revisions under the base's Fallow settings"
+  },
+  {
+    "id": "recorded-health-sizes-inline-markers",
+    "patch": "tests/planted-faults/patches/recorded-health-sizes-inline-markers.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes.test.ts",
+    "title": "^refuses recorded growth that a same-diff change to Fallow settings, an ignore file or an inline marker would hide, and passes the controls$",
+    "source": "2c57c68 fix(recorded-health-sizes): measure both revisions under the base's Fallow settings"
   }
 ]

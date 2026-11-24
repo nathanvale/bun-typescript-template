@@ -1,0 +1,12 @@
+diff --git a/generated-repository/scripts/fallow-health-at-base-settings.ts b/generated-repository/scripts/fallow-health-at-base-settings.ts
+--- a/generated-repository/scripts/fallow-health-at-base-settings.ts
++++ b/generated-repository/scripts/fallow-health-at-base-settings.ts
+@@ -34,7 +34,7 @@ const SETTINGS_FILES = [
+   "fallow.toml",
+   ".fallow.toml",
+ ] as const;
+-const IGNORE_FILES = new Set([".gitignore", ".ignore"]);
++const IGNORE_FILES = new Set([".ignore"]);
+ const INLINE_MARKER = "fallow-ignore";
+ const INERT_MARKER = "fallow-inert";
+ 
