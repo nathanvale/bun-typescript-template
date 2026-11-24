@@ -1,0 +1,7 @@
+{
+  "kind": "changed",
+  "breaking": false,
+  "affects": ["generated-repository", "kernel-pin"],
+  "summary": "Moved the template's kernel Pin from 426e5db to a006774 (agent-cli-kernel main), bringing in the my-agent-dojo per-user folder move for diagnostics logs (1f871cf) and the moons example (a006774), plus kernel state hardening and verify-cli forensics.",
+  "action": "Existing generated repositories move their own Pin separately with bun run pin-move a0067746b6480812306a2ee601990ce293f95eef --repository <path>. Newly bootstrapped repositories receive a006774 automatically."
+}
