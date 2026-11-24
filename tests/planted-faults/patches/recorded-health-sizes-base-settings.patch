@@ -1,0 +1,15 @@
+diff --git a/generated-repository/scripts/fallow-health-at-base-settings.ts b/generated-repository/scripts/fallow-health-at-base-settings.ts
+--- a/generated-repository/scripts/fallow-health-at-base-settings.ts
++++ b/generated-repository/scripts/fallow-health-at-base-settings.ts
+@@ -129,11 +129,9 @@ function runFallow(
+   try {
+     run = Bun.spawnSync(
+       [
+         fallowBin,
+         ...subcommandArgs,
+-        "--config",
+-        settingsFile,
+         "--root",
+         treeDir,
+       ],
+       {

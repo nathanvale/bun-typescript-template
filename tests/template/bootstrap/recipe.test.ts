@@ -139,6 +139,7 @@ describe("the recipe", () => {
     ).toEqual([
       "scripts/check-gated-paths.ts",
       "scripts/check-recorded-health-sizes.ts",
+      "scripts/fallow-health-at-base-settings.ts",
     ]);
   });
 });
