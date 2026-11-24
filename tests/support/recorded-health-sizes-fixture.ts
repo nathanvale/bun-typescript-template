@@ -151,6 +151,14 @@ export function withFallowSettings(
     readonly ignorePatterns: readonly string[];
     readonly health: Readonly<Record<string, unknown>>;
     readonly rules: Readonly<Record<string, unknown>>;
+    readonly boundaries: {
+      readonly zones: readonly unknown[];
+      readonly rules: readonly unknown[];
+      readonly coverage: {
+        readonly requireAllFiles: boolean;
+        readonly allowUnmatched: readonly string[];
+      };
+    };
   }) => object,
 ): string {
   const shipped = JSON.parse(

@@ -152,6 +152,20 @@ const hidingCases: readonly (readonly [string, Changes, string, string])[] = [
     ROUTE,
     "cyclomatic complexity 21 to 22",
   ],
+  [
+    "block comment fallow-ignore-next-line",
+    {
+      "src/commands.ts": `/* fallow-ignore-next-line complexity -- hide it */\n${growRoute["src/commands.ts"]}`,
+    },
+    ROUTE,
+    "cyclomatic complexity 21 to 22",
+  ],
+  [
+    "base ignorePatterns containing fallow-ignore",
+    { ".fallow-ignore/long.ts": longFileSource(520) },
+    ".fallow-ignore/long.ts (<file>)",
+    "file lines 510 to 520",
+  ],
 ];
 
 function expectRefusal(
@@ -257,12 +271,27 @@ test(
   "refuses recorded growth that a same-diff change to Fallow settings, an ignore file or an inline marker would hide, and passes the controls",
   async () => {
     const { repo } = await createFixture();
-    commitIn(repo, "add a long test file", {
+    commitIn(repo, "add a long test file and a .fallow-ignore file", {
       "tests/long.test.ts": longTestSource(510),
+      ".fallow-ignore/long.ts": longFileSource(510),
+      ".fallowrc.json": withFallowSettings((shipped) => ({
+        ...shipped,
+        ignorePatterns: [...shipped.ignorePatterns, "!.fallow-ignore/**"],
+        boundaries: {
+          ...shipped.boundaries,
+          coverage: {
+            ...shipped.boundaries.coverage,
+            allowUnmatched: [
+              ...shipped.boundaries.coverage.allowUnmatched,
+              ".fallow-ignore/**",
+            ],
+          },
+        },
+      })),
     });
     const { sha: baseSha } = commitIn(
       repo,
-      "record the long test file",
+      "record the long test file and .fallow-ignore file",
       await recordHitsIn(repo),
     );
     // Platform: Fallow reads .gitignore only inside a git repository, so the
@@ -314,7 +343,7 @@ test(
       hidingCases.map(([subject]) => ({ subject, exit: 1, refusal: true })),
     );
   },
-  processWatchdog(16),
+  processWatchdog(18),
 );
 
 test(
