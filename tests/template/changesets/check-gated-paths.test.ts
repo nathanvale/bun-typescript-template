@@ -15,6 +15,7 @@ import {
   initRepository,
 } from "../../support/git-fixture.ts";
 import { processWatchdog, spawnBounded } from "../../support/process.ts";
+import { withEnvironment } from "../../support/recipe-fixture.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 const folder = ownedFolders();
@@ -98,7 +99,11 @@ function createGeneratedFixtureRepo(): {
 
 function resetFixture(repo: string, sha: string): void {
   git(repo, "checkout", "--force", "--quiet", "--detach", sha);
-  git(repo, "clean", "-fdq");
+  git(repo, "clean", "-fdq", "-e", "node_modules");
+}
+
+function checkTemplateGate(repo: string, baseRef: string) {
+  return withEnvironment(gitEnv, () => checkGatedPaths(repo, baseRef));
 }
 
 function runGeneratedGate(repo: string) {
@@ -198,7 +203,7 @@ describe("template scripts/check-gated-paths.ts", () => {
         "generated-repository/application/src/cli.ts":
           "export const cli = 2;\n",
       });
-      const unnoted = await checkGatedPaths(repo, "origin/main");
+      const unnoted = await checkTemplateGate(repo, "origin/main");
       expect(unnoted.code).toBe(1);
       expect(unnoted.stderr).toContain(
         'This branch changes 1 gated path(s) (first: "generated-repository/application/src/cli.ts") and adds no changeset. Repair:',
@@ -207,7 +212,7 @@ describe("template scripts/check-gated-paths.ts", () => {
       commitIn(repo, "add empty changeset", {
         ".changeset/empty-change.md": "---\n---\n\n",
       });
-      expect(await checkGatedPaths(repo, "origin/main")).toEqual({
+      expect(await checkTemplateGate(repo, "origin/main")).toEqual({
         stdout: "",
         stderr: "",
         code: 0,
@@ -215,7 +220,7 @@ describe("template scripts/check-gated-paths.ts", () => {
 
       resetFixture(repo, baseSha);
       commitIn(repo, "non-gated edit", { "README.md": "# Updated\n" });
-      expect(await checkGatedPaths(repo, "origin/main")).toEqual({
+      expect(await checkTemplateGate(repo, "origin/main")).toEqual({
         stdout: "",
         stderr: "",
         code: 0,
@@ -230,7 +235,7 @@ describe("template scripts/check-gated-paths.ts", () => {
         "moved/cli.ts",
       );
       git(repo, "commit", "--quiet", "-m", "rename out");
-      const renamedOut = await checkGatedPaths(repo, "origin/main");
+      const renamedOut = await checkTemplateGate(repo, "origin/main");
       expect(renamedOut.code).toBe(1);
       expect(renamedOut.stderr).toContain(
         'gated path(s) (first: "generated-repository/application/src/cli.ts")',
@@ -238,7 +243,7 @@ describe("template scripts/check-gated-paths.ts", () => {
 
       resetFixture(repo, baseSha);
       commitIn(repo, "dot-file", { "generated-repository/.dot": "x\n" });
-      const dotFile = await checkGatedPaths(repo, "origin/main");
+      const dotFile = await checkTemplateGate(repo, "origin/main");
       expect(dotFile.code).toBe(1);
       expect(dotFile.stderr).toContain(
         'gated path(s) (first: "generated-repository/.dot")',
@@ -246,7 +251,7 @@ describe("template scripts/check-gated-paths.ts", () => {
 
       resetFixture(repo, baseSha);
       commitIn(repo, "non-ascii", { "generated-repository/café.txt": "x\n" });
-      const nonAscii = await checkGatedPaths(repo, "origin/main");
+      const nonAscii = await checkTemplateGate(repo, "origin/main");
       expect(nonAscii.code).toBe(1);
       expect(nonAscii.stderr).toContain(
         'gated path(s) (first: "generated-repository/café.txt")',
@@ -256,7 +261,7 @@ describe("template scripts/check-gated-paths.ts", () => {
       writeFileTree(repo, { "src/recipe.ts": "export const recipe = 2;\n" });
       git(repo, "add", "--", "src/recipe.ts");
       writeFileTree(repo, { "src/recipe.ts": "export const recipe = 1;\n" });
-      const stagedMasked = await checkGatedPaths(repo, "origin/main");
+      const stagedMasked = await checkTemplateGate(repo, "origin/main");
       expect(stagedMasked.code).toBe(1);
       expect(stagedMasked.stderr).toContain(
         'gated path(s) (first: "src/recipe.ts")',
@@ -267,13 +272,13 @@ describe("template scripts/check-gated-paths.ts", () => {
         "src/recipe.ts": "export const recipe = 2;\n",
       });
       writeFileTree(repo, { "src/recipe.ts": "export const recipe = 1;\n" });
-      const workingTreeMasked = await checkGatedPaths(repo, "origin/main");
+      const workingTreeMasked = await checkTemplateGate(repo, "origin/main");
       expect(workingTreeMasked.code).toBe(1);
       expect(workingTreeMasked.stderr).toContain(
         'gated path(s) (first: "src/recipe.ts")',
       );
       git(repo, "add", "--", "src/recipe.ts");
-      const stagedAndWorkingTreeMasked = await checkGatedPaths(
+      const stagedAndWorkingTreeMasked = await checkTemplateGate(
         repo,
         "origin/main",
       );
@@ -282,7 +287,11 @@ describe("template scripts/check-gated-paths.ts", () => {
         'gated path(s) (first: "src/recipe.ts")',
       );
 
-      expect(await runGatedPathCheck(["--unknown"], repo)).toMatchObject({
+      expect(
+        await withEnvironment(gitEnv, () =>
+          runGatedPathCheck(["--unknown"], repo),
+        ),
+      ).toMatchObject({
         code: 2,
       });
     },
@@ -292,7 +301,7 @@ describe("template scripts/check-gated-paths.ts", () => {
 
 describe("generated-repository/scripts/check-gated-paths.ts", () => {
   test(
-    "refuses unnoted gated edits, rename-out, dot-files, non-ASCII, and index-only masked edits, while admitting non-gated edits and added changesets",
+    "refuses unnoted gated edits and admits added changesets or non-gated edits",
     async () => {
       const { repo, baseSha } = createGeneratedFixtureRepo();
 
@@ -310,6 +319,14 @@ describe("generated-repository/scripts/check-gated-paths.ts", () => {
       resetFixture(repo, baseSha);
       commitIn(repo, "readme only", { "README.md": "# Changed\n" });
       expect((await runGeneratedGate(repo)).exit).toBe(0);
+    },
+    processWatchdog(4),
+  );
+
+  test(
+    "refuses rename-out, dot-files, non-ASCII paths, and index-only masked edits",
+    async () => {
+      const { repo, baseSha } = createGeneratedFixtureRepo();
 
       resetFixture(repo, baseSha);
       mkdirSync(join(repo, "moved"), { recursive: true });

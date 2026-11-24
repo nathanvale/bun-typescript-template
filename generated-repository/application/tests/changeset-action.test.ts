@@ -38,8 +38,9 @@ function plantedRoot(changesetPath: string, content: string): string {
   return root;
 }
 
-const major = '---\n"__REPOSITORY_NAME__": major\n---\n\n';
-const minor = '---\n"__REPOSITORY_NAME__": minor\n---\n\n';
+const packageName = "__REPOSITORY_NAME__";
+const major = `---\n"${packageName}": major\n---\n\n`;
+const minor = `---\n"${packageName}": minor\n---\n\n`;
 
 test.each([
   ["a major with no Action line", ".changeset/x.md", `${major}Removed x.\n`],
