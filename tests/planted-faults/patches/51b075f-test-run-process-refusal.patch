@@ -1,0 +1,12 @@
+diff --git a/scripts/test-run.ts b/scripts/test-run.ts
+--- a/scripts/test-run.ts
++++ b/scripts/test-run.ts
+@@ -70,7 +70,7 @@
+   }
+   if (ps.exitedDueToTimeout)
+     return refusedPs(`did not answer within ${psMilliseconds} ms`);
+-  if (ps.exitCode !== 0) {
++  if (ps.exitCode === -1) {
+     const stderr = ps.stderr.toString().trim();
+     return refusedPs(
+       `exited ${String(ps.exitCode)}${stderr === "" ? "" : ` (${stderr})`} within ${psMilliseconds} ms`,

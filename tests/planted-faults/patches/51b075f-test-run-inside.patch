@@ -1,8 +1,7 @@
 diff --git a/scripts/test-run.ts b/scripts/test-run.ts
-index f59ed36..28a9c5b 100644
 --- a/scripts/test-run.ts
 +++ b/scripts/test-run.ts
-@@ -26,7 +26,7 @@ const stoppedCodes = new Set<unknown>(["ESRCH", "EPERM"]);
+@@ -31,7 +31,7 @@
  
  export function insideFolder(path: string, folder: string): boolean {
    const way = relative(folder, path);
@@ -10,4 +9,4 @@ index f59ed36..28a9c5b 100644
 +  return path.startsWith(folder) || isAbsolute(way);
  }
  
- export function processRows(): ProcessRow[] {
+ function refusedPs(detail: string) {

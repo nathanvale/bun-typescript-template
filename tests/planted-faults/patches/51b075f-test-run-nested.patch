@@ -1,12 +1,11 @@
 diff --git a/scripts/test-run.ts b/scripts/test-run.ts
-index f59ed36..b65f99c 100644
 --- a/scripts/test-run.ts
 +++ b/scripts/test-run.ts
-@@ -112,7 +112,6 @@ function bareTemp(): string {
- }
- 
- export function leftoverFolders(env: TestRunEnvironment): string[] {
+@@ -167,7 +167,6 @@
+   env: TestRunEnvironment,
+   bun: string = process.execPath,
+ ): string[] {
 -  if (env[testRunFolderVariable] !== undefined) return [];
-   const folders = [env.TMPDIR || tmpdir(), bareTemp()]
+   const folders = [env.TMPDIR || tmpdir(), bareTemp(bun)]
      .filter((folder) => folder !== "" && existsSync(folder))
      .map(realFolder);

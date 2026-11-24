@@ -1,0 +1,13 @@
+diff --git a/scripts/test-run.ts b/scripts/test-run.ts
+--- a/scripts/test-run.ts
++++ b/scripts/test-run.ts
+@@ -145,8 +145,7 @@
+   try {
+     return new Set(readdirSync(folder));
+   } catch (error) {
+-    if (missingCodes.has(Reflect.get(Object(error), "code"))) return new Set();
+-    throw error;
++    return new Set();
+   }
+ }
+ 

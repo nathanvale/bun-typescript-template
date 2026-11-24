@@ -1,0 +1,15 @@
+diff --git a/scripts/test-run.ts b/scripts/test-run.ts
+--- a/scripts/test-run.ts
++++ b/scripts/test-run.ts
+@@ -249,10 +249,7 @@
+     }
+     forwarded = true;
+     stopProcess(child.pid, true, signal);
+-    escalation = setTimeout(
+-      () => stopProcess(child.pid, true, "SIGKILL"),
+-      signalGraceMilliseconds,
+-    );
++    escalation = undefined;
+   };
+   const limit =
+     limitMilliseconds === undefined

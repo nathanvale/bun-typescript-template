@@ -1,13 +1,12 @@
 diff --git a/scripts/test-run.ts b/scripts/test-run.ts
-index f59ed36..94e66d7 100644
 --- a/scripts/test-run.ts
 +++ b/scripts/test-run.ts
-@@ -212,7 +212,7 @@ export async function runTests(
-   let marked: boolean;
-   try {
-     code = await finished(child, options.limitMilliseconds);
--    const left = processRows().filter((row) => row.group === child.pid);
-+    const left = processRows().filter(() => false);
-     if (left.length > 0)
-       problems.push(
-         `Tests left ${left.length} process(es) running after bun test exited, and they were stopped:\n${described(left)}\nRepair: end each child a test starts before the test ends: await its exit, or stop it in finally.`,
+@@ -267,7 +267,7 @@
+         if (options.strict) problems.push(listed.message);
+         else reportProcessRows(runFolder, listed.message, options.report);
+       } else {
+-        const left = listed.rows.filter((row) => row.group === child.pid);
++        const left = listed.rows.filter(() => false);
+         if (left.length > 0)
+           problems.push(
+             `Tests left ${left.length} process(es) running after bun test exited, and they were stopped:\n${described(left, options.env)}\nRepair: end each child a test starts before the test ends: await its exit, or stop it in finally.`,

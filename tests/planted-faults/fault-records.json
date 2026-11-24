@@ -2809,5 +2809,40 @@
     "testFile": "tests/template/test-run/test-run.test.ts",
     "title": "^when the test run itself is killed, its bun test and their children stop within a second and its run folder is removed$",
     "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-process-refusal",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-process-refusal.patch",
+    "testFile": "tests/template/test-run/test-run-process.test.ts",
+    "title": "^when ps is refused under CI, the test run still stops its process group$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-limit",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-limit.patch",
+    "testFile": "tests/template/test-run/test-run-process.test.ts",
+    "title": "^limitMilliseconds stops a hanging test run and its process group before the test finishes$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-signal",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-signal.patch",
+    "testFile": "tests/template/test-run/test-run-process.test.ts",
+    "title": "^when bun test traps SIGTERM, the test run escalates to SIGKILL after the grace window$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-temp-read",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-temp-read.patch",
+    "testFile": "tests/template/test-run/test-run-process.test.ts",
+    "title": "^leftoverFolders refuses a failing bare temp subprocess instead of reading it as empty$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-folder-read",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-folder-read.patch",
+    "testFile": "tests/template/test-run/test-run-process.test.ts",
+    "title": "^an unreadable leftover folder is reported instead of read as empty$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
   }
 ]
