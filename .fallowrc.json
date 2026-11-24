@@ -72,6 +72,8 @@
     "scripts/kernel-trial-command.ts",
     "scripts/pin-verification.ts",
     "scripts/planted-faults.ts",
-    "scripts/test-area.ts"
+    "scripts/test-area.ts",
+    "scripts/test-run.ts",
+    "tests/support/test-run-folder.ts"
   ]
 }

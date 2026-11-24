@@ -222,7 +222,7 @@ async function step(
 }
 
 function testArgs(fault: Fault): string[] {
-  return ["test", `./${fault.testFile}`, "-t", fault.title];
+  return ["scripts/test-run.ts", `./${fault.testFile}`, "-t", fault.title];
 }
 
 function sourceAt(root: string, base: string): Source {

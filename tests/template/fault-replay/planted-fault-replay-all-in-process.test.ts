@@ -15,7 +15,7 @@ import {
   stepVariable,
   unguarded,
 } from "../../support/planted-fault-in-process-fixture.ts";
-import { write } from "../../support/fixture-files.ts";
+import { testRunFiles, write } from "../../support/fixture-files.ts";
 import { commit, gitOutput, worktrees } from "../../support/git-fixture.ts";
 
 const { isolated, planted, repository } = createPlantedFaultFixture();
@@ -189,6 +189,7 @@ describe("replayAll", () => {
       "package.json": JSON.stringify({ name: "fixture", private: true }),
       ".gitignore": "node_modules/\n",
       "src/limit.ts": unguarded,
+      ...testRunFiles(),
     });
     const fault: Fault = {
       ...sample,

@@ -20,7 +20,7 @@
     "pin-move": "bun run scripts/pin-move.ts",
     "pin-verification": "bun run scripts/pin-verification.ts",
     "pretest": "bun run doctor",
-    "test": "bun test --parallel=2 --path-ignore-patterns 'generated-repository/**'",
+    "test": "bun scripts/test-run.ts --parallel=2 --path-ignore-patterns 'generated-repository/**'",
     "test:area": "bun run scripts/test-area.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint . --max-warnings 0",

@@ -1,5 +1,5 @@
 import { afterEach } from "bun:test";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { testFolder } from "./test-folder.ts";
 
@@ -18,4 +18,16 @@ export function ownedFolders(): (prefix: string) => string {
     folders.push(path);
     return path;
   };
+}
+
+const templateRoot = join(import.meta.dir, "../..");
+
+export function testRunFiles(): Record<string, string> {
+  return Object.fromEntries(
+    [
+      "bunfig.toml",
+      "scripts/test-run.ts",
+      "tests/support/test-run-folder.ts",
+    ].map((path) => [path, readFileSync(join(templateRoot, path), "utf8")]),
+  );
 }
