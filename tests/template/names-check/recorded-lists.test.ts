@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import {
   recordedAdditionProblems,
@@ -133,6 +133,13 @@ const plants = new Map<string, Plant>([
         health(codeWeight),
         health({}, { runtime_coverage_findings: ["src/cli-error.ts:fn"] }),
         health({}, { target_keys: [targetKey] }),
+        health(
+          {},
+          {
+            target_keys: [targetKey],
+            approved: { runtime_coverage_findings: { [targetKey]: "MAG-1" } },
+          },
+        ),
       ],
       shrunk: health({}),
       approved: health(
@@ -141,7 +148,10 @@ const plants = new Map<string, Plant>([
             complexity_critical: { count: 1, approved: "MAG-1" },
           },
         },
-        { target_keys: [targetKey], approved: { [targetKey]: "MAG-1" } },
+        {
+          target_keys: [targetKey],
+          approved: { target_keys: { [targetKey]: "MAG-1" } },
+        },
       ),
     },
   ],
@@ -214,84 +224,190 @@ test("a recorded list in a form its reader does not know is refused, not read as
 
 const listName =
   /(?:recorded-[a-z-]+|plain-words|suppressions|baseline)\.json$/;
-const configuredList =
-  /--(?:[a-z]+-)*(?:baseline|suppressions-location)[ =]([^\s"&]+\.json)/g;
+
+let overlay: ReadonlyMap<string, string> = new Map();
 
 function readText(root: string, path: string): string {
-  return existsSync(join(root, path))
-    ? readFileSync(join(root, path), "utf8")
-    : "";
+  return (
+    overlay.get(path) ??
+    (existsSync(join(root, path)) && lstatSync(join(root, path)).isFile()
+      ? readFileSync(join(root, path), "utf8")
+      : "")
+  );
 }
 
-function listsIn(paths: readonly string[], root: string, settings: string) {
-  const configured = [
-    ...readText(root, `${settings}package.json`).matchAll(configuredList),
-    ...readText(root, `${settings}.fallowrc.json`).matchAll(
-      /Baseline": "([^"]+)"/g,
+const generatedSettings = "generated-repository/settings/";
+const ciBaseRef = '"origin/${{ github.base_ref }}"';
+const fallowRuns = new Map<string, readonly string[]>([
+  [
+    "package.json",
+    [
+      "bun run check:file-size && bun run lint && bun run format:check && bun run typecheck && bun run test && bun run --silent quality:fallow",
+      "node_modules/.bin/fallow audit --baseline-mode identity --format json --quiet",
+    ],
+  ],
+  [
+    `${generatedSettings}package.json`,
+    [
+      "bun run lint && bun run format:check && bun run typecheck && bun run test && bun run --silent quality:fallow",
+      "node_modules/.bin/fallow --format json --quiet --type-aware --type-aware-require complete --fail-on-issues --baseline-mode identity --baseline fallow-dead-code-recorded-hits.json --dupes-baseline fallow-duplicates-recorded-hits.json --health-baseline fallow-health-recorded-hits.json",
+      "node_modules/.bin/fallow --format json --quiet --type-aware --type-aware-require complete --save-baseline fallow-dead-code-recorded-hits.json && node_modules/.bin/fallow dupes --format json --quiet --save-baseline fallow-duplicates-recorded-hits.json && node_modules/.bin/fallow health --report-only --format json --quiet --baseline-mode identity --save-baseline fallow-health-recorded-hits.json && biome format --write fallow-dead-code-recorded-hits.json fallow-duplicates-recorded-hits.json fallow-health-recorded-hits.json",
+    ],
+  ],
+  [
+    ".github/workflows/ci.yml",
+    [
+      `bun run --silent quality:fallow --base ${ciBaseRef}`,
+      'bun run --silent quality:fallow --base "${{ github.event.before }}"',
+    ],
+  ],
+  [".github/workflows/macos-nightly.yml", ["bun run check"]],
+  [
+    "generated-repository/hosted-check/ci.yml",
+    [
+      "bun run check",
+      'if [ -z "${BASE:-}" ] || ! git cat-file -e "${BASE}^{commit}" 2>/dev/null; then\n  echo "Skipping Fallow recorded-hits growth check: no base commit ${BASE:-} in this checkout."\n  exit 0\nfi\nbun run --silent quality:fallow -- --fail-on-baseline-growth --baseline-base "$BASE"\n',
+    ],
+  ],
+]);
+function* walk(value: unknown, key = ""): Generator<[string, unknown]> {
+  yield [key, value];
+  if (typeof value === "object" && value !== null)
+    for (const [inner, child] of Object.entries(value))
+      if (key !== "rules") yield* walk(child, inner);
+}
+
+const generatedGuarded = new Set(
+  (fallowRuns.get(`${generatedSettings}package.json`)?.[1] ?? "")
+    .split(" ")
+    .filter((word) => word.endsWith(".json"))
+    .map((name) => `${generatedSettings}${name}`),
+);
+
+function fallowRunProblems(paths: readonly string[], root: string): string[] {
+  const scripts = paths
+    .filter((path) => basename(path) === "package.json")
+    .map((path): [string, [string, unknown][]] => [
+      path,
+      Object.entries(
+        (JSON.parse(readText(root, path)) as { scripts?: object }).scripts ??
+          {},
+      ),
+    ]);
+  const reachers = new Set(["fallow"]);
+  const reaches = (text: unknown) =>
+    typeof text === "string" &&
+    [...reachers].some((name) =>
+      new RegExp(`(?<![\\w:.-])${name}(?![\\w:.-])`).test(text),
+    );
+  for (let size = 0; size !== reachers.size; ) {
+    size = reachers.size;
+    for (const [, entries] of scripts)
+      for (const [name, text] of entries) if (reaches(text)) reachers.add(name);
+  }
+  const runs: [string, unknown][] = [
+    ...scripts.flatMap(([path, entries]) =>
+      entries.map(([, text]): [string, unknown] => [path, text]),
     ),
-  ].map(([, path]) => path ?? "");
+    ...paths
+      .filter((path) => /\.ya?ml$/.test(path))
+      .flatMap((path) =>
+        [...walk(Bun.YAML.parse(readText(root, path)))].flatMap(
+          ([key, value]): [string, unknown][] =>
+            key === "run" || key === "FALLOW_CONFIG"
+              ? [[path, value ?? key]]
+              : [],
+        ),
+      ),
+  ];
+  return [
+    ...runs.flatMap(([path, text]) =>
+      reaches(text) ||
+      /\bFALLOW_CONFIG\b|--suppressions-location/.test(String(text))
+        ? (fallowRuns.get(path) ?? []).includes(String(text))
+          ? []
+          : [path]
+        : [],
+    ),
+    ...paths.filter(
+      (path) =>
+        !/\.md$|^tests\/planted-faults\//.test(path) &&
+        path !== "tests/template/names-check/recorded-lists.test.ts" &&
+        /\bFALLOW_CONFIG\b/.test(readText(root, path)),
+    ),
+  ];
+}
+
+function configProblems(paths: readonly string[], root: string): string[] {
+  return [".fallowrc.json", `${generatedSettings}.fallowrc.json`].filter(
+    (config) => {
+      const folder = config.slice(0, -".fallowrc.json".length);
+      return [...walk(JSON.parse(readText(root, config)))].some(
+        ([key, value]) =>
+          key === "extends" ||
+          (/baseline|suppress/i.test(key) &&
+            !(
+              typeof value === "string" &&
+              paths.includes(`${folder}${value}`) &&
+              (folder === ""
+                ? recordedListFiles.includes(value)
+                : generatedGuarded.has(`${folder}${value}`))
+            )),
+      );
+    },
+  );
+}
+
+function listsIn(paths: readonly string[], settings: string) {
   return new Set([
     ...paths.filter((path) => listName.test(path)),
-    ...configured.map((path) => `${settings}${path}`),
     `${settings}eslint-suppressions.json`,
   ]);
 }
 
 function unguardedLists(paths: readonly string[], root: string): string[] {
-  const settings = "generated-repository/settings/";
   const generated = listsIn(
     paths.filter((path) => path.startsWith("generated-repository/")),
-    root,
-    settings,
+    generatedSettings,
   );
   const template = listsIn(
     paths.filter((path) => !path.startsWith("generated-repository/")),
-    root,
     "",
   );
   const guarded = new Set(recordedListFiles);
   const fallowConfigs = new Set([
     ".fallowrc.json",
-    `${settings}.fallowrc.json`,
+    `${generatedSettings}.fallowrc.json`,
   ]);
-  const dodges = paths.filter(
-    (path) =>
-      (/(?:^|\/)(?:\.fallowrc\.jsonc?|\.?fallow\.toml)$/.test(path) &&
-        !fallowConfigs.has(path)) ||
-      (fallowConfigs.has(path) && readText(root, path).includes('"extends"')) ||
-      (/(?:^|\/)(?:package\.json|[^/]+\.ya?ml)$/.test(path) &&
-        /fallow[^"\n]*\s(?:-c|--config)[\s=]|FALLOW_CONFIG|--suppressions-location/.test(
-          readText(root, path),
-        )),
-  );
-  const fallowScript = readText(root, `${settings}package.json`)
-    .split("\n")
-    .find((line) => line.includes('"quality:fallow":'));
-  const growthStep = readText(
-    root,
-    "generated-repository/hosted-check/ci.yml",
-  ).includes("quality:fallow -- --fail-on-baseline-growth");
-  const generatedGuarded = (path: string) =>
-    growthStep &&
-    path.startsWith(settings) &&
-    (fallowScript?.includes(` ${basename(path)}`) ?? false) &&
-    paths.includes(path);
   return [
-    ...dodges,
-    ...[...template].filter((path) => !guarded.has(path)),
-    ...[...generated].filter(
-      (path) =>
-        !generatedGuarded(path) &&
-        (paths.includes(path) || basename(path) !== "eslint-suppressions.json"),
-    ),
+    ...new Set([
+      ...fallowRunProblems(paths, root),
+      ...configProblems(paths, root),
+      ...paths.filter(
+        (path) =>
+          /(?:^|\/)(?:\.fallowrc\.jsonc?|\.?fallow\.toml)$/.test(path) &&
+          !fallowConfigs.has(path),
+      ),
+      ...[...template].filter((path) => !guarded.has(path)),
+      ...[...generated].filter(
+        (path) =>
+          !(generatedGuarded.has(path) && paths.includes(path)) &&
+          (paths.includes(path) ||
+            basename(path) !== "eslint-suppressions.json"),
+      ),
+    ]),
   ].sort();
 }
 
-test("every recorded list in this repository and in a generated repository has a shrink-only guard", () => {
-  const tracked = gitInNamesCheck(templateRoot, ["ls-files", "-z"])
+function trackedPaths(): string[] {
+  return gitInNamesCheck(templateRoot, ["ls-files", "-z"])
     .stdout.toString()
     .split("\0")
     .filter((path) => path !== "");
+}
+
+test("every recorded list in this repository and in a generated repository has a shrink-only guard", () => {
+  const tracked = trackedPaths();
   expect(unguardedLists(tracked, templateRoot)).toEqual([]);
   expect(
     unguardedLists(
@@ -310,4 +426,48 @@ test("every recorded list in this repository and in a generated repository has a
     "generated-repository/settings/fallow.toml",
     "tests/template/lint/lint-recorded-hits.json",
   ]);
+});
+
+const ciBase = 'quality:fallow --base "origin/${{ github.base_ref }}"';
+const growth = '--baseline-base "$BASE"';
+const auditScript = "--baseline-mode identity --format json --quiet";
+const dodgedRuns: readonly (readonly [string, string, string])[] = [
+  [
+    ".github/workflows/ci.yml",
+    ciBase,
+    `${ciBase} --health-baseline extra-exemptions.json`,
+  ],
+  [".github/workflows/ci.yml", ciBase, `${ciBase} --config extra-fallow.json`],
+  [
+    "generated-repository/hosted-check/ci.yml",
+    growth,
+    `${growth} --health-baseline extra-exemptions.json`,
+  ],
+  ["package.json", auditScript, `${auditScript} -cextra-fallow.json`],
+  [
+    "package.json",
+    auditScript,
+    `${auditScript} --health-baseline extra-exemptions.txt`,
+  ],
+  [
+    "package.json",
+    "eslint . --max-warnings 0",
+    "eslint . --max-warnings 0 --suppressions-location extra.json",
+  ],
+  [
+    ".fallowrc.json",
+    '"audit": {',
+    '"health": { "baseline": "extra.json" }, "audit": {',
+  ],
+];
+
+test("a Fallow run or config that names a list another way is refused", () => {
+  const tracked = trackedPaths();
+  const refused = dodgedRuns.map(([path, from, to]) => {
+    const text = readFileSync(join(templateRoot, path), "utf8");
+    overlay = new Map([[path, text.replace(from, to)]]);
+    return text.includes(from) ? unguardedLists(tracked, templateRoot) : [];
+  });
+  overlay = new Map();
+  expect(refused).toEqual(dodgedRuns.map(([path]) => [path]));
 });

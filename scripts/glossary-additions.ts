@@ -121,14 +121,17 @@ const healthShape = `{ ${healthFields.join(", ")}? } as fallow health --save-bas
 
 function healthEntries(file: string, text: string): RecordedEntry[] {
   const own = shaped(JSON.parse(text), file, healthShape, healthFields);
-  const approvals = shaped(own.get("approved") ?? {}, file, healthShape);
-  if (
-    own.get("kind") !== "health" ||
-    [...approvals.values()].some((approved) => typeof approved !== "string")
-  )
-    return refuse(file, healthShape);
-  const keys = ["runtime_coverage_findings", "target_keys"].flatMap((field) => {
+  const arrays = ["runtime_coverage_findings", "target_keys"];
+  const approvals = shaped(
+    own.get("approved") ?? {},
+    file,
+    healthShape,
+    arrays,
+  );
+  if (own.get("kind") !== "health") return refuse(file, healthShape);
+  const keys = arrays.flatMap((field) => {
     const listed = own.get(field);
+    const approved = shaped(approvals.get(field) ?? {}, file, healthShape);
     if (!Array.isArray(listed) || listed.some((key) => typeof key !== "string"))
       return refuse(file, healthShape);
     return listed.map((key: string) => ({
@@ -136,7 +139,7 @@ function healthEntries(file: string, text: string): RecordedEntry[] {
       label: `a recorded ${field} entry ${key}`,
       size: 1,
       approved: approvalOf(
-        new Map([["approved", approvals.get(key)]]),
+        new Map([["approved", approved.get(key)]]),
         file,
         healthShape,
       ),
@@ -253,7 +256,7 @@ const recordedLists: readonly RecordedList[] = [
     file: "fallow-health-recorded-hits.json",
     gate: "the Fallow health audit",
     repair:
-      "simplify the function or split the file, since fallow health --save-baseline writes the entry. A runtime_coverage_findings or target_keys entry takes its approval in the top-level approved object, keyed by the entry",
+      "simplify the function or split the file, since fallow health --save-baseline writes the entry. A runtime_coverage_findings or target_keys entry takes its approval in the top-level approved object, under its field and keyed by the entry",
     entries: healthEntries,
   },
 ];
