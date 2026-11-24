@@ -1,0 +1,13 @@
+diff --git a/scripts/test-run.ts b/scripts/test-run.ts
+index f59ed36..ac1be1c 100644
+--- a/scripts/test-run.ts
++++ b/scripts/test-run.ts
+@@ -190,7 +190,7 @@ function leftoverProblems(
+ ): string[] {
+   if (leftovers.length === 0) return [];
+   const message = `Tests left ${leftovers.length} entry(ies) in the system temp folder, outside the test run folder:\n${leftovers.map((path) => `  ${path}`).join("\n")}\nRepair: make temporary files under os.tmpdir() (testFolder in tests/support/test-folder.ts) and pass process.env to each child, so they land in the test run folder; write no fixed temp path. Then remove the entries above.`;
+-  if (options.strict) return [message];
++  if (!options.strict) return [message];
+   options.report(
+     `Warning (another program on this machine may have made these): ${message}`,
+   );

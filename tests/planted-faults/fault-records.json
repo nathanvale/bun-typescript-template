@@ -2641,5 +2641,68 @@
     "testFile": "tests/template/names-check/changesets-path.test.ts",
     "title": "^hitsIn and unknownPathProblems exempt changeset markdown paths while still refusing declarations, README.md, and change-notes paths$",
     "source": "06a5aa3 feat(changesets): switch template and generated repos to upstream Changesets"
+  },
+  {
+    "id": "51b075f-test-run-temp",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-temp.patch",
+    "testFile": "tests/template/test-run/test-run.test.ts",
+    "title": "^the test run keeps what every spawn route writes inside its run folder, and removes it$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-group",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-group.patch",
+    "testFile": "tests/template/test-run/test-run.test.ts",
+    "title": "^the test run fails, names and stops each child a test leaves running, by every spawn route$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-mark",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-mark.patch",
+    "testFile": "tests/template/test-run/test-run.test.ts",
+    "title": "^a test run whose bunfig\\.toml drops the preload fails naming the repair$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-strict",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-strict.patch",
+    "testFile": "tests/template/test-run/test-run.test.ts",
+    "title": "^a strict test run fails and names an entry a test writes at a fixed path in the system temp folder$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-nested",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-nested.patch",
+    "testFile": "tests/template/test-run/test-run.test.ts",
+    "title": "^leftoverFolders names none inside another test run, so a nested run leaves the system temp folder to the outer one$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-inside",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-inside.patch",
+    "testFile": "tests/template/test-run/test-run.test.ts",
+    "title": "^insideFolder admits the folder and what it holds, and refuses a sibling with the same prefix$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-folder-refusal",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-folder-refusal.patch",
+    "testFile": "tests/template/test-run/test-run.test.ts",
+    "title": "^bun test started without the test run is refused by the preload, so a test script that drops it fails$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-folder-teardown",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-folder-teardown.patch",
+    "testFile": "tests/template/test-run/test-run.test.ts",
+    "title": "^the teardown check fails the file and stops each child still running when its tests end$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-folder-orphan",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-folder-orphan.patch",
+    "testFile": "tests/template/test-run/test-run.test.ts",
+    "title": "^when the test run itself is killed, its bun test and their children stop within a second and its run folder is removed$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
   }
 ]
