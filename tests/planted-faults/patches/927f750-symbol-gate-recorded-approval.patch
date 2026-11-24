@@ -1,12 +1,15 @@
 diff --git a/scripts/glossary-additions.ts b/scripts/glossary-additions.ts
+index 7db7adb..9d2e3ad 100644
 --- a/scripts/glossary-additions.ts
 +++ b/scripts/glossary-additions.ts
-@@ -88,7 +88,7 @@
+@@ -175,8 +175,8 @@ const recordedLists: readonly RecordedList[] = [
      movable: true,
      entries: arrayEntries(
        "hits",
 -      ["path", "word", "declaration"],
+-      ["reason"],
 +      ["path", "word"],
++      ["declaration", "reason"],
        (own) =>
          `a recorded hit for "${String(own.get("word"))}" in ${String(own.get("path"))}${own.get("declaration") === undefined ? "" : ` declaration ${String(own.get("declaration"))}`}`,
      ),

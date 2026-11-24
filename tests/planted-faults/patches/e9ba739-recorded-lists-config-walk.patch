@@ -1,0 +1,13 @@
+diff --git a/tests/template/names-check/recorded-lists.test.ts b/tests/template/names-check/recorded-lists.test.ts
+index d19073a..4483acd 100644
+--- a/tests/template/names-check/recorded-lists.test.ts
++++ b/tests/template/names-check/recorded-lists.test.ts
+@@ -345,7 +345,7 @@ function configProblems(paths: readonly string[], root: string): string[] {
+       return [...walk(JSON.parse(readText(root, config)))].some(
+         ([key, value]) =>
+           key === "extends" ||
+-          (/baseline|suppress/i.test(key) &&
++          (/Baseline/.test(key) &&
+             !(
+               typeof value === "string" &&
+               paths.includes(`${folder}${value}`) &&

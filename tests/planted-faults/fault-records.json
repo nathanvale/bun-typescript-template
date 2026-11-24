@@ -2725,5 +2725,26 @@
     "testFile": "tests/template/names-check/recorded-lists.test.ts",
     "title": "^every recorded list in this repository and in a generated repository has a shrink-only guard",
     "source": "8d8f920 fix(recorded-lists): read each recorded list strictly and refuse other Fallow config forms"
+  },
+  {
+    "id": "e9ba739-recorded-lists-pinned-runs",
+    "patch": "tests/planted-faults/patches/e9ba739-recorded-lists-pinned-runs.patch",
+    "testFile": "tests/template/names-check/recorded-lists.test.ts",
+    "title": "^a Fallow run or config that names a list another way is refused",
+    "source": "e9ba739 fix(recorded-lists): pin every Fallow run and walk the Fallow config"
+  },
+  {
+    "id": "e9ba739-recorded-lists-config-walk",
+    "patch": "tests/planted-faults/patches/e9ba739-recorded-lists-config-walk.patch",
+    "testFile": "tests/template/names-check/recorded-lists.test.ts",
+    "title": "^a Fallow run or config that names a list another way is refused",
+    "source": "e9ba739 fix(recorded-lists): pin every Fallow run and walk the Fallow config"
+  },
+  {
+    "id": "73a640d-recorded-lists-base-read",
+    "patch": "tests/planted-faults/patches/73a640d-recorded-lists-base-read.patch",
+    "testFile": "tests/template/names-check/recorded-lists.test.ts",
+    "title": "^a list the base revision holds but git cannot read stops the run",
+    "source": "73a640d fix(recorded-lists): stop on a base list git cannot read, and prove the walk reads compact config"
   }
 ]
