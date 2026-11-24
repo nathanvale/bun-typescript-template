@@ -1,0 +1,18 @@
+diff --git a/scripts/pin-move-branch.ts b/scripts/pin-move-branch.ts
+--- a/scripts/pin-move-branch.ts
++++ b/scripts/pin-move-branch.ts
+@@ -137,14 +137,6 @@ export function parseStatusChanges(stdout: string): {
+     all.add(path);
+     if (y !== " ") needsAdd.add(path);
+     else maybeStagedOnly.add(path);
+-    if (x === "R" || x === "C" || y === "R" || y === "C") {
+-      index += 1;
+-      const oldPath = entries[index];
+-      if (oldPath) {
+-        all.add(oldPath);
+-        maybeStagedOnly.add(oldPath);
+-      }
+-    }
+   }
+   const stagedOnly = new Set(
+     [...maybeStagedOnly].filter((path) => !needsAdd.has(path)),

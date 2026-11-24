@@ -1,0 +1,22 @@
+diff --git a/scripts/pin-move-branch.ts b/scripts/pin-move-branch.ts
+--- a/scripts/pin-move-branch.ts
++++ b/scripts/pin-move-branch.ts
+@@ -166,17 +166,7 @@ function safeRepositoryGit(
+   args: readonly string[],
+   runGit: typeof repositoryGit = repositoryGit,
+ ) {
+-  try {
+-    return runGit(repository, args);
+-  } catch (error) {
+-    const said =
+-      error instanceof RepositoryPinRefusal
+-        ? error.reason
+-        : error instanceof Error
+-          ? error.message
+-          : String(error);
+-    return { ok: false, code: null, stdout: "", said };
+-  }
++  return runGit(repository, args);
+ }
+ 
+ function failedAttemptPaths(
