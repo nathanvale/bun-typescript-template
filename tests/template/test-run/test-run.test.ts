@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
 import {
+  commandOf,
   insideFolder,
   leftoverFolders,
   processRows,
@@ -131,25 +132,17 @@ async function runIn(
   return { exit, text: lines.join("\n") };
 }
 
-function sleepsLeft(env: TestRunEnvironment = process.env): string[] {
+function sleepsLeft(
+  env: TestRunEnvironment = process.env,
+  platform: NodeJS.Platform = process.platform,
+): string[] {
   const own = new Set(
     [301, 302, 303, 304, 305].map((seconds) => `sleep ${seconds}`),
   );
-  const ps = Bun.spawnSync(["ps", "-A", "-o", "args="], {
-    env,
-    stdout: "pipe",
-    stderr: "pipe",
-    timeout: 10_000,
-    killSignal: "SIGKILL",
-  });
-  if (ps.exitedDueToTimeout || ps.exitCode !== 0)
-    throw new Error(
-      `ps -A exited ${String(ps.exitCode)} while checking leftover sleep processes: ${ps.stderr.toString().trim() || "(no output)"}`,
-    );
-  return ps.stdout
-    .toString()
-    .split("\n")
-    .map((line) => line.trim())
+  const listed = processRows(env, platform);
+  if (!listed.ok) throw new Error(listed.message);
+  return listed.rows
+    .map((row) => commandOf(row.pid, env, platform))
     .filter((args) => own.has(args));
 }
 
@@ -418,6 +411,7 @@ test("sleepsLeft refuses a non-zero ps exit instead of returning empty", () => {
         process.env,
         'echo "ps: operation not permitted (EPERM)" >&2\nexit 1',
       ),
+      "freebsd",
     ),
   ).toThrow("ps -A exited 1");
 });

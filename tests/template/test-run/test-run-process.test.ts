@@ -10,13 +10,17 @@ import {
 import { delimiter, join } from "node:path";
 import { startChild } from "../../../scripts/process-runner.ts";
 import {
+  childProcessRows,
+  commandOf,
   leftoverFolders,
+  leftoverProcessProblems,
   processRows,
-  reportProcessRows,
   runTests,
   stopProcess,
   type TestRunEnvironment,
   testRunFolderVariable,
+  testRunProcessMark,
+  testRunProcessVariable,
 } from "../../../scripts/test-run.ts";
 import {
   ownedFolders,
@@ -101,45 +105,86 @@ const startRun = (
     graceMilliseconds: 0,
   });
 
-test.each([
-  ["without CI", undefined, 0],
-  ["under CI", "true", 1],
-] as const)(
-  "when ps is refused %s, the test run still stops its process group",
-  async (_label, ci, exit) => {
+test(
+  "when ps is refused, teardown stops a detached child and the launcher stops any remaining process group child",
+  async () => {
     const temp = folder("test-run-temp-");
-    const L = join(folder("test-run-ledger-"), "pid");
+    const L = join(folder("test-run-ledger-"), "pids");
     const child =
-      'import { test } from "bun:test";\ntest("c", () => { Bun.spawnSync(["sh", "-c", \'sleep 30 >/dev/null 2>&1 & echo "$!" > "$L"\']); });\n';
-    const run = await spawnBounded([process.execPath, "scripts/test-run.ts"], {
-      cwd: specimen({ "tests/c.test.ts": child, "tests/p.test.ts": pass }),
-      env: psEnv(temp, 'echo "ps: EPERM" >&2\nexit 1', { CI: ci, L }),
-      processGroup: true,
-    });
-    const pid = Number(readFileSync(L, "utf8").trim());
-    expect([pid > 0, run.exit]).toEqual([true, exit]);
-    if (ci === "true") {
-      expect(run.stderr).toContain("EPERM");
-      expect(run.stderr).toContain(psRepair);
-    } else
-      expect(
-        run.stderr.split("Warning: process listing is unavailable").length - 1,
-      ).toBe(1);
-    expect([...(await reap([pid])), ...readdirSync(temp)]).toEqual([]);
+      'import { test } from "bun:test";\nimport { appendFileSync } from "node:fs";\ntest("c", () => { const d = Bun.spawn(["sleep", "30"], { detached: true, stdin: "ignore", stdout: "ignore", stderr: "ignore" }); appendFileSync(process.env.L, `${d.pid}\\n`); Bun.spawnSync(["sh", "-c", \'sleep 31 >/dev/null 2>&1 & echo "$!" >> "$L"\']); });\n';
+    let left: number[] = [];
+    let pids: number[];
+    let run: Awaited<ReturnType<typeof spawnBounded>>;
+    try {
+      run = await spawnBounded([process.execPath, "scripts/test-run.ts"], {
+        cwd: specimen({ "tests/c.test.ts": child, "tests/p.test.ts": pass }),
+        env: psEnv(temp, 'echo "ps: EPERM" >&2\nexit 1', { L }),
+        processGroup: true,
+      });
+    } finally {
+      pids = existsSync(L)
+        ? readFileSync(L, "utf8").trim().split("\n").map(Number)
+        : [];
+      if (pids.length > 0) left = await reap(pids);
+    }
+    expect([pids.length === 2 && pids.every((p) => p > 0), run.exit]).toEqual([
+      true,
+      1,
+    ]);
+    expect(run.stderr).toContain(
+      "Tests left 1 child process(es) running at teardown, and they were stopped:",
+    );
+    expect(run.stderr).toContain(": sleep 30");
+    expect(run.stderr).toContain(": sleep 31");
+    expect([...left, ...readdirSync(temp)]).toEqual([]);
   },
   processWatchdog(1),
 );
 
-test("when ps cannot be spawned, processRows reports the refusal and reportProcessRows warns once", () => {
+test("when all process listing routes fail, processRows refuses with a repair and leftoverProcessProblems fails closed", () => {
+  const temp = folder("test-run-temp-");
   const empty = folder("test-run-empty-path-");
-  const result = processRows({ PATH: empty });
-  expect(result.ok).toBe(false);
-  if (result.ok) return;
-  expect(result.message).toContain(psRepair);
-  const lines: string[] = [];
-  reportProcessRows(empty, result.message, (l) => lines.push(l));
-  reportProcessRows(empty, result.message, (l) => lines.push(l));
-  expect(lines).toHaveLength(1);
+  const exited = processRows(
+    psEnv(temp, 'echo "ps: EPERM" >&2\nexit 1'),
+    "freebsd",
+  );
+  expect(exited.ok).toBe(false);
+  if (!exited.ok) {
+    expect(exited.message).toContain("EPERM");
+    expect(exited.message).toContain(psRepair);
+    expect(leftoverProcessProblems(1, exited)).toEqual([exited.message]);
+    expect(() => childProcessRows(exited, 1)).toThrow(psRepair);
+  }
+  const missing = processRows({ PATH: empty }, "linux", join(empty, "no-proc"));
+  expect(missing.ok).toBe(false);
+  if (!missing.ok) {
+    expect(missing.message).toContain("no-proc");
+    expect(missing.message).toContain("Fallback:");
+    expect(missing.message).toContain(psRepair);
+  }
+  const emptyProc = processRows({ PATH: empty }, "linux", empty);
+  expect(emptyProc.ok).toBe(false);
+  if (!emptyProc.ok)
+    expect(emptyProc.message).toContain("no readable processes");
+});
+
+test("linux /proc listing parses stat with spaces and parentheses, skips zombies, and reads cmdline", () => {
+  const proc = folder("test-run-proc-");
+  write(proc, "42/stat", "42 (my (app) 1) S 10 42 10 0 -1\n");
+  write(proc, "42/cmdline", "sleep\x0030\x00");
+  write(proc, "43/stat", "43 (defunct) Z 10 43 10 0 -1\n");
+  expect(processRows({}, "linux", proc)).toEqual({
+    ok: true,
+    rows: [
+      {
+        pid: 42,
+        parentPid: 10,
+        group: 42,
+        text: "pid 42 (process group 42, state S)",
+      },
+    ],
+  });
+  expect(commandOf(42, {}, "linux", proc)).toBe("sleep 30");
 });
 
 test(
@@ -187,16 +232,18 @@ test(
 );
 
 test(
-  "when the test run is killed, the preload stops detached child process groups before removing the run folder",
+  "when the test run is killed and ps is refused, the preload still stops detached child processes",
   async () => {
     const temp = folder("test-run-temp-");
-    const dir = folder("test-run-watchdog-");
-    const [L, P, O] = [join(dir, "l"), join(dir, "p"), join(dir, "o")];
-    const ps =
-      'if [ -n "$TEST_RUN_FOLDER" ] && [ -d "$TEST_RUN_FOLDER" ]; then echo "ok" >> "$O"; fi\nif [ -f "$P" ]; then read b c < "$P"; echo "$b 1 $b S"; echo "$c $b $c S"; fi';
+    const L = join(folder("test-run-ledger-"), "killed-detached");
     const body =
-      'import { test } from "bun:test";\nimport { appendFileSync, writeFileSync } from "node:fs";\ntest("h", async () => { const c = Bun.spawn(["sleep", "308"], { detached: true }); writeFileSync(process.env.P, `${process.pid} ${c.pid}\\n`); appendFileSync(process.env.L, `${process.pid}\\n${c.pid}\\nready\\n`); await new Promise(() => {}); }, 60_000);\n';
-    const run = startRun({ "tests/h.test.ts": body }, temp, ps, { L, P, O });
+      'import { test } from "bun:test";\nimport { appendFileSync } from "node:fs";\ntest("h", async () => { const c = Bun.spawn(["sleep", "308"], { detached: true, stdin: "ignore", stdout: "ignore", stderr: "ignore" }); appendFileSync(process.env.L, `${process.pid}\\n${c.pid}\\nready\\n`); await new Promise(() => {}); }, 60_000);\n';
+    const run = startRun(
+      { "tests/h.test.ts": body },
+      temp,
+      'echo "ps: EPERM" >&2\nexit 1',
+      { L },
+    );
     const w = watchLedger(L, "ready", bound);
     try {
       await w.reached;
@@ -208,7 +255,6 @@ test(
     const pids = readFileSync(L, "utf8").split("\n").slice(0, 2).map(Number);
     expect(pids.length === 2 && pids.every((p) => p > 0)).toBe(true);
     expect([...(await reap(pids)), ...readdirSync(temp)]).toEqual([]);
-    expect(existsSync(O) && readFileSync(O, "utf8")).toContain("ok");
   },
   processWatchdog(1),
 );
@@ -324,6 +370,58 @@ test(
       ...readdirSync(temp),
     ]).toEqual(["SIGKILL"]);
     expect(elapsed).toBeLessThan(3_500);
+  },
+  processWatchdog(1),
+);
+
+test(
+  "a strict test run fails and names leaked test-run-* files, folders, stale marks and links to live run folders",
+  async () => {
+    const temp = folder("test-run-temp-");
+    const live = folder("test-run-live-");
+    writeFileSync(
+      join(live, testRunProcessMark),
+      `${testRunProcessVariable}=${process.pid}\n`,
+    );
+    const leaked = [
+      "test-run-planted-file",
+      "test-run-planted-dir",
+      "test-run-planted-stale",
+      "test-run-planted-bom",
+      "test-run-planted-link",
+      "test-run-planted-mark-link",
+    ];
+    const body = `import { test } from "bun:test";
+import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+test("l", async () => {
+  const t = process.env.T, live = process.env.LIVE, m = ${JSON.stringify(testRunProcessMark)}, d = Bun.spawn(["true"]);
+  await d.exited;
+  writeFileSync(join(t, "test-run-planted-file"), "x");
+  mkdirSync(join(t, "test-run-planted-dir"));
+  mkdirSync(join(t, "test-run-planted-stale"));
+  writeFileSync(join(t, "test-run-planted-stale", m), \`${testRunProcessVariable}=\${d.pid}\\n\`);
+  mkdirSync(join(t, "test-run-planted-bom"));
+  writeFileSync(join(t, "test-run-planted-bom", m), \`\\uFEFF${testRunProcessVariable}=\${process.pid}\\n\`);
+  symlinkSync(live, join(t, "test-run-planted-link"));
+  mkdirSync(join(t, "test-run-planted-mark-link"));
+  symlinkSync(join(live, m), join(t, "test-run-planted-mark-link", m));
+});`;
+    const lines: string[] = [];
+    const result = await runCase(
+      { "tests/l.test.ts": body },
+      psEnv(temp, "exit 0", { T: temp, LIVE: live }),
+      [temp],
+      true,
+      lines,
+    );
+    const text = lines.join("\n");
+    expect(result.exitCode).toBe(1);
+    expect(text).toContain(
+      "Tests left 6 entry(ies) in the system temp folder, outside the test run folder:",
+    );
+    for (const name of leaked)
+      expect(text).toContain(`\n  ${join(temp, name)}`);
   },
   processWatchdog(1),
 );
