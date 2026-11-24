@@ -13,6 +13,7 @@ import {
   parseTemplateUpgradeArgs,
   TEMPLATE_UPGRADE_HELP,
 } from "./template-upgrade-arguments.ts";
+import { formatTemplateUpgradeCommand } from "./template-upgrade-git.ts";
 import { resolveTemplateUpgradeInputs } from "./template-upgrade-inputs.ts";
 import type { PackageDependencyChange } from "./template-upgrade-json-merge.ts";
 import type {
@@ -189,7 +190,7 @@ function formatWorktreeDiscardLines(
   const target7 = targetCommit.slice(0, 7);
   return [
     "To save any edits in this locked worktree and remove it instead of resuming, run:",
-    `  bun run upgrade recover --repository ${repository} --to ${target7}`,
+    `  ${formatTemplateUpgradeCommand("recover", repository, target7)}`,
   ];
 }
 

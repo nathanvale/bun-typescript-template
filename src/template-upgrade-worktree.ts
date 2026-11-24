@@ -1,13 +1,15 @@
+import { randomUUID } from "node:crypto";
 import type { Dirent } from "node:fs";
 import { constants, realpathSync } from "node:fs";
-import { open, readdir, readlink } from "node:fs/promises";
-import { join } from "node:path";
+import { access, open, readdir, readlink, rename, rm } from "node:fs/promises";
+import { basename, dirname, join } from "node:path";
 import {
   formatChangesetLines,
   type TemplateChangesetEntry,
 } from "./template-upgrade-changesets.ts";
 import { CliError } from "./cli-error.ts";
 import {
+  formatCommandPath,
   gitCommitIdentityArgs,
   lstatIfPresent,
   runGitCommand,
@@ -95,6 +97,59 @@ export async function readPlainFileBytes(
   } finally {
     await handle.close();
   }
+}
+
+export async function writePlainFile(
+  targetPath: string,
+  bytes: Uint8Array,
+): Promise<void> {
+  await assertNotSymlinkPath(targetPath, targetPath);
+  const tempPath = join(
+    dirname(targetPath),
+    `.${basename(targetPath)}.tmp-${process.pid}-${randomUUID()}`,
+  );
+  const flags =
+    constants.O_CREAT |
+    constants.O_EXCL |
+    constants.O_WRONLY |
+    constants.O_NOFOLLOW;
+  let handle: Awaited<ReturnType<typeof open>> | undefined;
+  let created = false;
+  try {
+    handle = await open(tempPath, flags, 0o644);
+    created = true;
+    await handle.writeFile(bytes);
+    await handle.close();
+    handle = undefined;
+    await rename(tempPath, targetPath);
+  } catch (error) {
+    if (handle !== undefined) {
+      await handle.close().catch(() => {});
+    }
+    if (created) {
+      await rm(tempPath, { force: true }).catch(() => {});
+    }
+    throw error;
+  }
+}
+
+async function verifyDirectoryTreeRemovable(
+  directoryPath: string,
+): Promise<void> {
+  await access(directoryPath, constants.R_OK | constants.W_OK | constants.X_OK);
+  const entries = await readdir(directoryPath, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.isDirectory() && !entry.isSymbolicLink()) {
+      await verifyDirectoryTreeRemovable(join(directoryPath, entry.name));
+    }
+  }
+}
+
+export async function verifyWorktreeRemoveTree(
+  worktreePath: string,
+): Promise<void> {
+  await access(dirname(worktreePath), constants.W_OK | constants.X_OK);
+  await verifyDirectoryTreeRemovable(worktreePath);
 }
 
 export function compareCodeUnits(left: string, right: string): number {
@@ -330,6 +385,7 @@ function stageWorktreePaths(
   deletedPaths: readonly string[],
   env: ProcessEnvMap,
 ): void {
+  const quotedWorktree = formatCommandPath(worktree);
   if (presentPaths.length > 0) {
     runGitText(
       worktree,
@@ -337,7 +393,7 @@ function stageWorktreePaths(
       {
         code: "worktree_stage_failed",
         message: `cannot stage upgraded files in ${worktree}`,
-        repair: `inspect ${worktree} with git status, then rerun`,
+        repair: `inspect ${quotedWorktree} with git status, then rerun`,
       },
       { env },
     );
@@ -358,7 +414,7 @@ function stageWorktreePaths(
       {
         code: "worktree_stage_failed",
         message: `cannot stage deleted files in ${worktree}`,
-        repair: `inspect ${worktree} with git status, then rerun`,
+        repair: `inspect ${quotedWorktree} with git status, then rerun`,
       },
       { env },
     );
@@ -372,6 +428,7 @@ export async function stageAndCommitWorktree(options: {
   readonly noVerify?: boolean;
 }): Promise<string> {
   const { worktree, message, env, noVerify = false } = options;
+  const quotedWorktree = formatCommandPath(worktree);
   const status = runGitCommand(
     worktree,
     ["status", "--porcelain=v1", "-z", "--untracked-files=all"],
@@ -381,7 +438,7 @@ export async function stageAndCommitWorktree(options: {
     throw new CliError(
       "worktree_status_failed",
       `cannot read git status in ${worktree}`,
-      `inspect ${worktree} with git status, then rerun`,
+      `inspect ${quotedWorktree} with git status, then rerun`,
       1,
       false,
     );
@@ -394,6 +451,7 @@ export async function stageAndCommitWorktree(options: {
   stageWorktreePaths(worktree, presentPaths, deletedPaths, env);
   const commitArgs = [
     ...gitCommitIdentityArgs(worktree, env),
+    ...(noVerify ? ["-c", "core.hooksPath=/dev/null"] : []),
     "commit",
     "--quiet",
     ...(noVerify ? ["--no-verify"] : []),
@@ -407,7 +465,7 @@ export async function stageAndCommitWorktree(options: {
     {
       code: "worktree_commit_failed",
       message: `cannot commit upgraded tree in ${worktree}`,
-      repair: `inspect ${worktree} with git status, then rerun`,
+      repair: `inspect ${quotedWorktree} with git status, then rerun`,
     },
     { env, timeoutMilliseconds: WORKTREE_TIMEOUT_MS },
   );
@@ -417,7 +475,7 @@ export async function stageAndCommitWorktree(options: {
     {
       code: "worktree_commit_failed",
       message: `cannot read committed HEAD in ${worktree}`,
-      repair: `inspect ${worktree} with git rev-parse HEAD`,
+      repair: `inspect ${quotedWorktree} with git rev-parse HEAD`,
     },
     { env },
   );

@@ -4,6 +4,8 @@ import { basename, dirname, join, resolve } from "node:path";
 import { CliError } from "./cli-error.ts";
 import {
   decodeUtf8Strict,
+  formatCommandPath,
+  formatTemplateUpgradeCommand,
   lstatIfPresent,
   type ProcessEnvMap,
   runGitCommand,
@@ -153,7 +155,7 @@ export function listGitWorktrees(
       detail === ""
         ? `cannot list git worktrees in ${repository}`
         : `cannot list git worktrees in ${repository}: ${detail}`,
-      `inspect git -C ${repository} worktree list, then rerun`,
+      `inspect git -C ${formatCommandPath(repository)} worktree list, then rerun`,
       1,
       false,
     );
@@ -309,6 +311,8 @@ function unownedWorktreePathError(
   record: GitWorktreeRecord | undefined,
   stats: Awaited<ReturnType<typeof lstatIfPresent>>,
 ): CliError {
+  const quotedRepository = formatCommandPath(repository);
+  const quotedWorktree = formatCommandPath(worktreePath);
   if (record !== undefined) {
     if (record.locked) {
       const reasonLabel =
@@ -318,7 +322,7 @@ function unownedWorktreePathError(
       return new CliError(
         "worktree_not_owned",
         `refused to touch ${worktreePath}: worktree is locked with ${reasonLabel}, not "${TEMPLATE_UPGRADE_LOCK_PREFIX.trim()}"`,
-        `save any work in ${worktreePath}, then run git worktree unlock ${worktreePath} and git worktree remove ${worktreePath} in ${repository} (or move it), then rerun`,
+        `save any work in ${worktreePath}, then run git worktree unlock ${quotedWorktree} and git worktree remove ${quotedWorktree} in ${quotedRepository} (or move it), then rerun`,
         4,
         false,
       );
@@ -327,7 +331,7 @@ function unownedWorktreePathError(
       return new CliError(
         "worktree_not_owned",
         `refused to touch ${worktreePath}: git has an unlocked worktree registration at that path`,
-        `inspect git -C ${repository} worktree list and move or clear ${worktreePath} before rerunning`,
+        `inspect git -C ${quotedRepository} worktree list and move or clear ${quotedWorktree} before rerunning`,
         4,
         false,
       );
@@ -335,7 +339,7 @@ function unownedWorktreePathError(
     return new CliError(
       "worktree_not_owned",
       `refused to touch ${worktreePath}: worktree is not locked by template-upgrade`,
-      `move or remove ${worktreePath} once you no longer need it (for example git worktree move or git worktree remove ${worktreePath} in ${repository}), then rerun`,
+      `move or remove ${worktreePath} once you no longer need it (for example git worktree move or git worktree remove ${quotedWorktree} in ${quotedRepository}), then rerun`,
       4,
       false,
     );
@@ -348,7 +352,7 @@ function unownedWorktreePathError(
   return new CliError(
     "worktree_not_owned",
     `refused to touch ${worktreePath}: existing plain ${entryKind} is not a worktree locked by template-upgrade`,
-    `move or remove ${worktreePath} after saving anything you need from it, then rerun`,
+    `move or remove ${quotedWorktree} after saving anything you need from it, then rerun`,
     4,
     false,
   );
@@ -409,7 +413,7 @@ export async function createLockedTemplateUpgradeWorktree(
     {
       code: "worktree_create_failed",
       message: `cannot create worktree at ${worktreePath}`,
-      repair: `inspect git -C ${repository} worktree list, then rerun`,
+      repair: `inspect git -C ${formatCommandPath(repository)} worktree list, then rerun`,
     },
     { env, timeoutMilliseconds: WORKTREE_TIMEOUT_MS },
   );
@@ -425,7 +429,7 @@ export async function createLockedTemplateUpgradeWorktree(
     {
       code: "worktree_lock_failed",
       message: `cannot lock worktree at ${worktreePath}`,
-      repair: `inspect git -C ${repository} worktree list and remove ${worktreePath} if unused, then rerun`,
+      repair: `inspect git -C ${formatCommandPath(repository)} worktree list and remove ${formatCommandPath(worktreePath)} if unused, then rerun`,
     },
     { env, timeoutMilliseconds: WORKTREE_TIMEOUT_MS },
   );
@@ -442,7 +446,7 @@ export async function moveLockedTemplateUpgradeWorktree(
     {
       code: "worktree_move_failed",
       message: `cannot move merge worktree into ${targetWorktree}`,
-      repair: `inspect git -C ${repository} worktree list, then rerun`,
+      repair: `inspect git -C ${formatCommandPath(repository)} worktree list, then rerun`,
     },
     { env, timeoutMilliseconds: WORKTREE_TIMEOUT_MS },
   );
@@ -492,7 +496,7 @@ export async function assertTargetWorktreeMatchesHead(
   throw new CliError(
     "worktree_exists_other_head",
     `leftover worktree ${targetWorktree} ${headDetail}`,
-    `run bun run upgrade recover --repository ${repository} --to ${target7} to save its edits and remove ${targetWorktree}, then rerun`,
+    `run ${formatTemplateUpgradeCommand("recover", repository, target7)} to save its edits and remove ${formatCommandPath(targetWorktree)}, then rerun`,
     4,
     false,
   );
