@@ -1,0 +1,12 @@
+diff --git a/generated-repository/scripts/fallow-health-at-base-settings.ts b/generated-repository/scripts/fallow-health-at-base-settings.ts
+--- a/generated-repository/scripts/fallow-health-at-base-settings.ts
++++ b/generated-repository/scripts/fallow-health-at-base-settings.ts
+@@ -168,7 +168,7 @@
+ // Platform: Fallow drops a finding that a fallow-ignore comment marks.
+ function makeInlineMarkersInert(root: string, rev: string, tree: string): void {
+   const marked = runGit(root, [
+-    ..."grep -l -z --full-name -F -e".split(" "),
++    ..."grep -I -l -z --full-name -F -e".split(" "),
+     INLINE_MARKER,
+     rev,
+     "--",

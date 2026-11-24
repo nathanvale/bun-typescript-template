@@ -2893,5 +2893,12 @@
     "testFile": "tests/template/toolchain/recorded-health-sizes.test.ts",
     "title": "^refuses recorded growth that a same-diff change to Fallow settings, an ignore file or an inline marker would hide, and passes the controls$",
     "source": "2c57c68 fix(recorded-health-sizes): measure both revisions under the base's Fallow settings"
+  },
+  {
+    "id": "recorded-health-sizes-binary-marker",
+    "patch": "tests/planted-faults/patches/recorded-health-sizes-binary-marker.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes.test.ts",
+    "title": "^refuses recorded growth that a same-diff change to Fallow settings, an ignore file or an inline marker would hide, and passes the controls$",
+    "source": "3fa9ca2 fix(recorded-health-sizes): make markers inert in files .gitattributes marks binary"
   }
 ]
