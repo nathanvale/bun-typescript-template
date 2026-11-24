@@ -1,0 +1,12 @@
+diff --git a/scripts/test-run.ts b/scripts/test-run.ts
+--- a/scripts/test-run.ts
++++ b/scripts/test-run.ts
+@@ -295,7 +295,7 @@
+   listed: ReturnType<typeof processRows>,
+   rootPid: number = process.pid,
+ ): { readonly pid: number; readonly group: number; readonly row: ProcessRow }[] {
+-  if (!listed.ok) throw new Error(listed.message);
++  if (!listed.ok) return [];
+   const own = listed.rows.find((row) => row.pid === rootPid)?.group;
+   const family = new Set([rootPid]);
+   for (let grew = true; grew; ) {

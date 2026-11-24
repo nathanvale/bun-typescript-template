@@ -1,11 +1,11 @@
 diff --git a/scripts/test-run.ts b/scripts/test-run.ts
 --- a/scripts/test-run.ts
 +++ b/scripts/test-run.ts
-@@ -257,7 +257,7 @@
+@@ -491,7 +491,7 @@
    const limit =
-     limitMilliseconds === undefined
+     options.limitMilliseconds === undefined
        ? undefined
--      : setTimeout(() => stopProcess(child.pid, true), limitMilliseconds);
+-      : setTimeout(killAll, options.limitMilliseconds);
 +      : undefined;
    const signals = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
    for (const signal of signals) process.on(signal, forward);

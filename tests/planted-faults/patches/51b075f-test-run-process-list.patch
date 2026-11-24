@@ -1,0 +1,17 @@
+diff --git a/scripts/test-run.ts b/scripts/test-run.ts
+--- a/scripts/test-run.ts
++++ b/scripts/test-run.ts
+@@ -252,12 +252,7 @@
+ ):
+   | { readonly ok: true; readonly rows: ProcessRow[] }
+   | { readonly ok: false; readonly message: string } {
+-  const native =
+-    platform === "darwin"
+-      ? darwinProcessRows()
+-      : platform === "linux"
+-        ? linuxProcessRows(processFolder)
+-        : undefined;
++  const native: { readonly ok: true; readonly rows: ProcessRow[] } | { readonly ok: false; readonly message: string } | undefined = undefined;
+   if (native?.ok) return native;
+   const fallback = psProcessRows(env);
+   if (fallback.ok || native === undefined) return fallback;

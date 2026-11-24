@@ -2814,7 +2814,7 @@
     "id": "51b075f-test-run-process-refusal",
     "patch": "tests/planted-faults/patches/51b075f-test-run-process-refusal.patch",
     "testFile": "tests/template/test-run/test-run-process.test.ts",
-    "title": "^when ps is refused under CI, the test run still stops its process group$",
+    "title": "^when all process listing routes fail, processRows refuses with a repair and leftoverProcessProblems fails closed$",
     "source": "51b075f feat(test-run): run every test in one test run folder"
   },
   {
@@ -2843,6 +2843,41 @@
     "patch": "tests/planted-faults/patches/51b075f-test-run-folder-read.patch",
     "testFile": "tests/template/test-run/test-run-process.test.ts",
     "title": "^an unreadable leftover folder is reported instead of read as empty$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-process-list",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-process-list.patch",
+    "testFile": "tests/template/test-run/test-run-process.test.ts",
+    "title": "^when ps is refused, teardown stops a detached child and the launcher stops any remaining process group child$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-process-problem",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-process-problem.patch",
+    "testFile": "tests/template/test-run/test-run-process.test.ts",
+    "title": "^when all process listing routes fail, processRows refuses with a repair and leftoverProcessProblems fails closed$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-folder-mark",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-folder-mark.patch",
+    "testFile": "tests/template/test-run/test-run-process.test.ts",
+    "title": "^a strict test run fails and names leaked test-run-\\* files, folders, stale marks and links to live run folders$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-folder-groups",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-folder-groups.patch",
+    "testFile": "tests/template/test-run/test-run-process.test.ts",
+    "title": "^when the test run is killed and ps is refused, the preload still stops detached child processes$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-child-rows",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-child-rows.patch",
+    "testFile": "tests/template/test-run/test-run-process.test.ts",
+    "title": "^when all process listing routes fail, processRows refuses with a repair and leftoverProcessProblems fails closed$",
     "source": "51b075f feat(test-run): run every test in one test run folder"
   }
 ]
