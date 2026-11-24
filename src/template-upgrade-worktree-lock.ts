@@ -227,6 +227,18 @@ function readGitCommonDir(
   return normalizeWorktreeTarget(resolve(folderPath, commonDirRaw));
 }
 
+export function isRepositoryWorktree(
+  repository: string,
+  worktreePath: string,
+  env: ProcessEnvMap = process.env,
+): boolean {
+  const repoCommonDir = readGitCommonDir(repository, env);
+  if (repoCommonDir === undefined) {
+    return false;
+  }
+  return readGitCommonDir(worktreePath, env) === repoCommonDir;
+}
+
 async function worktreesMetadataFolder(
   repository: string,
   env: ProcessEnvMap,
@@ -476,10 +488,11 @@ export async function assertTargetWorktreeMatchesHead(
     worktreeHead === undefined
       ? "is not a readable git worktree at the current HEAD"
       : `is at commit ${worktreeHead.slice(0, 7)}, not current HEAD ${repositoryHead.slice(0, 7)}`;
+  const target7 = options.targetCommit.slice(0, 7);
   throw new CliError(
     "worktree_exists_other_head",
     `leftover worktree ${targetWorktree} ${headDetail}`,
-    `copy what you need out of ${targetWorktree}, then run git worktree unlock ${targetWorktree} and git worktree remove --force ${targetWorktree} in ${repository}, then rerun`,
+    `run bun run upgrade recover --repository ${repository} --to ${target7} to save its edits and remove ${targetWorktree}, then rerun`,
     4,
     false,
   );
@@ -543,14 +556,12 @@ async function describeOwnedCheckoutBlock(
   const gitMarker = isDirectory
     ? await lstatIfPresent(join(worktreePath, ".git"))
     : undefined;
-  const repoCommonDir = readGitCommonDir(repository, env);
   const worktreeHead = gitMarker?.isFile()
     ? await readWorktreeOwnHead(worktreePath, env)
     : undefined;
   if (
-    repoCommonDir === undefined ||
     worktreeHead === undefined ||
-    readGitCommonDir(worktreePath, env) !== repoCommonDir
+    !isRepositoryWorktree(repository, worktreePath, env)
   ) {
     return "it is not a git worktree of this repository";
   }

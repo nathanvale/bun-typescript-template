@@ -19,10 +19,12 @@ import type {
   TemplateUpgradeCopyChange,
   TemplateUpgradeRow,
 } from "./template-upgrade-merge.ts";
+import { templateUpgradeRecover } from "./template-upgrade-recover.ts";
 import type {
   TemplateUpgradeApplyResult,
   TemplateUpgradeApplyStep,
   TemplateUpgradePlanResult,
+  TemplateUpgradeRecoverResult,
 } from "./template-upgrade-report.ts";
 
 const TEMPLATE_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -176,20 +178,24 @@ function formatPlan(result: TemplateUpgradePlanResult): string {
 
 const MAX_DISPLAYED_GATE_PROBLEMS = 50;
 
-function formatWorktreeDiscardLines(worktree: string | undefined): string[] {
+function formatWorktreeDiscardLines(
+  worktree: string | undefined,
+  repository: string,
+  targetCommit: string,
+): string[] {
   if (worktree === undefined || worktree === "") {
     return [];
   }
+  const target7 = targetCommit.slice(0, 7);
   return [
-    "To remove this locked worktree instead of resuming, save any edits you want to keep first, then run:",
-    `  git worktree unlock ${worktree}`,
-    `  git worktree remove ${worktree}`,
-    "Add --force to git worktree remove only after saving your work if you explicitly choose to discard uncommitted changes in that worktree.",
+    "To save any edits in this locked worktree and remove it instead of resuming, run:",
+    `  bun run upgrade recover --repository ${repository} --to ${target7}`,
   ];
 }
 
 function formatConflictApply(
   result: TemplateUpgradeApplyResult,
+  repository: string,
   headerDetails: readonly string[],
   notices: readonly string[],
 ): string {
@@ -207,13 +213,18 @@ function formatConflictApply(
     ...result.conflicts.map((path) => `  ${path}`),
     ...notices,
     instruction,
-    ...formatWorktreeDiscardLines(result.worktree),
+    ...formatWorktreeDiscardLines(
+      result.worktree,
+      repository,
+      result.targetCommit,
+    ),
   ];
   return `${lines.join("\n")}\n`;
 }
 
 function formatGateAdoptionApply(
   result: TemplateUpgradeApplyResult,
+  repository: string,
   headerDetails: readonly string[],
   notices: readonly string[],
 ): string {
@@ -239,13 +250,18 @@ function formatGateAdoptionApply(
     ...(result.gateRepair === undefined
       ? []
       : [`Repair: ${result.gateRepair}`]),
-    ...formatWorktreeDiscardLines(result.worktree),
+    ...formatWorktreeDiscardLines(
+      result.worktree,
+      repository,
+      result.targetCommit,
+    ),
   ];
   return `${lines.join("\n")}\n`;
 }
 
 function formatCheckCommandFailureApply(
   result: TemplateUpgradeApplyResult,
+  repository: string,
   headerDetails: readonly string[],
   notices: readonly string[],
 ): string {
@@ -262,12 +278,19 @@ function formatCheckCommandFailureApply(
   lines.push(
     ...notices,
     "Repair the failure in that worktree, then rerun the same upgrade apply command.",
-    ...formatWorktreeDiscardLines(result.worktree),
+    ...formatWorktreeDiscardLines(
+      result.worktree,
+      repository,
+      result.targetCommit,
+    ),
   );
   return `${lines.join("\n")}\n`;
 }
 
-function formatApply(result: TemplateUpgradeApplyResult): string {
+function formatApply(
+  result: TemplateUpgradeApplyResult,
+  repository: string,
+): string {
   const base7 = result.baseCommit.slice(0, 7);
   const target7 = result.targetCommit.slice(0, 7);
   const targetLines = formatTargetCommitLines(
@@ -305,12 +328,28 @@ function formatApply(result: TemplateUpgradeApplyResult): string {
     result.status === "conflicts" ||
     result.status === "resolution-in-progress"
   ) {
-    return formatConflictApply(result, headerDetails, notices);
+    return formatConflictApply(result, repository, headerDetails, notices);
   }
   if (result.status === "gate-adoption-required") {
-    return formatGateAdoptionApply(result, headerDetails, notices);
+    return formatGateAdoptionApply(result, repository, headerDetails, notices);
   }
-  return formatCheckCommandFailureApply(result, headerDetails, notices);
+  return formatCheckCommandFailureApply(
+    result,
+    repository,
+    headerDetails,
+    notices,
+  );
+}
+
+function formatRecover(result: TemplateUpgradeRecoverResult): string {
+  return `${[
+    `Template upgrade recover: removed ${result.worktree}`,
+    `Target commit: ${result.targetCommit}`,
+    `Branch: ${result.branch}`,
+    `Commit: ${result.commit}`,
+    `Patch: ${result.patchPath}`,
+    `Rerun: ${result.rerunCommand}`,
+  ].join("\n")}\n`;
 }
 
 export async function main(
@@ -326,6 +365,18 @@ export async function main(
     }
     const env = runtime.env ?? process.env;
     const templateRoot = runtime.templateRoot ?? TEMPLATE_ROOT;
+    if (options.action === "recover") {
+      const result = await templateUpgradeRecover({
+        templateRoot,
+        repository: options.repository,
+        targetRef: options.targetRef,
+        env,
+      });
+      process.stdout.write(
+        options.json ? `${JSON.stringify(result)}\n` : formatRecover(result),
+      );
+      return 0;
+    }
     const inputs = resolveTemplateUpgradeInputs({
       templateRoot,
       repository: options.repository,
@@ -346,7 +397,7 @@ export async function main(
     process.stdout.write(
       options.json
         ? `${JSON.stringify(execution.result)}\n`
-        : formatApply(execution.result),
+        : formatApply(execution.result, inputs.repository),
     );
     return execution.exitCode;
   } catch (error) {

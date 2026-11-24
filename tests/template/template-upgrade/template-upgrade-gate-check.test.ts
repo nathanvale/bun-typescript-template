@@ -153,6 +153,7 @@ exit 0
       ".worktrees",
       `template-upgrade-${targetCommit.slice(0, 7)}`,
     );
+    const target7 = targetCommit.slice(0, 7);
     const run = await invokeTemplateUpgradeMain(
       stdout,
       stderr,
@@ -164,13 +165,12 @@ exit 0
     expect(run.stdout).toContain(
       "Repair the failure in that worktree, then rerun the same upgrade apply command.",
     );
-    expect(run.stdout).toContain(`git worktree unlock ${expectedWorktree}`);
-    expect(run.stdout).toContain(`git worktree remove ${expectedWorktree}`);
-    expect(run.stdout).not.toContain(
-      `  git worktree remove --force ${expectedWorktree}`,
+    expect(run.stdout).toContain(
+      `bun run upgrade recover --repository ${repo} --to ${target7}`,
     );
     expect(run.stdout).toContain("save any edits");
-    expect(run.stdout).toContain("--force");
+    expect(run.stdout).not.toContain("--force");
+    expect(run.stdout).toContain(expectedWorktree);
     writeFileSync(join(worktree, "done.txt"), "ok\n");
   },
   processWatchdog(4),

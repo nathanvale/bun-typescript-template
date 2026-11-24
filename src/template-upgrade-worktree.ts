@@ -369,8 +369,9 @@ export async function stageAndCommitWorktree(options: {
   readonly worktree: string;
   readonly message: string;
   readonly env: ProcessEnvMap;
+  readonly noVerify?: boolean;
 }): Promise<string> {
-  const { worktree, message, env } = options;
+  const { worktree, message, env, noVerify = false } = options;
   const status = runGitCommand(
     worktree,
     ["status", "--porcelain=v1", "-z", "--untracked-files=all"],
@@ -395,6 +396,7 @@ export async function stageAndCommitWorktree(options: {
     ...gitCommitIdentityArgs(worktree, env),
     "commit",
     "--quiet",
+    ...(noVerify ? ["--no-verify"] : []),
     ...(changedPaths.length === 0 ? ["--allow-empty"] : []),
     "-m",
     message,

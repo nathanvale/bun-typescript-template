@@ -224,7 +224,10 @@ test(
     expect(errorPayload.error.code).toBe("worktree_exists_other_head");
     expect(errorPayload.error.message).toContain(worktreePath);
     expect(errorPayload.error.repair).toContain(worktreePath);
-    expect(errorPayload.error.repair).toContain("git worktree remove");
+    expect(errorPayload.error.repair).toContain(
+      `bun run upgrade recover --repository ${repo} --to ${targetCommit.slice(0, 7)}`,
+    );
+    expect(errorPayload.error.repair).not.toContain("--force");
     expect(existsSync(ownerResolutionFile)).toBe(true);
     expect(readFileSync(ownerResolutionFile, "utf8")).toBe(
       "owner work must survive\n",

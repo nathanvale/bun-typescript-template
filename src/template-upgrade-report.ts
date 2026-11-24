@@ -77,6 +77,27 @@ export interface TemplateUpgradeApplyResult {
   readonly gateRepair?: string;
 }
 
+export interface TemplateUpgradeRecoverResult {
+  readonly schemaVersion: 1;
+  readonly action: "recover";
+  readonly status: "recovered";
+  readonly targetCommit: string;
+  readonly worktree: string;
+  readonly branch: string;
+  readonly commit: string;
+  readonly patchPath: string;
+  readonly rerunCommand: string;
+}
+
+export interface TemplateUpgradeRecoverReportOptions {
+  readonly targetCommit: string;
+  readonly worktree: string;
+  readonly branch: string;
+  readonly commit: string;
+  readonly patchPath: string;
+  readonly rerunCommand: string;
+}
+
 export interface TemplateUpgradeApplyRun {
   readonly result: TemplateUpgradeApplyResult;
   readonly exitCode: number;
@@ -217,4 +238,20 @@ export function createTemplateUpgradeApplyRun(
     ...definedApplyFields(options, pinMoveNotice),
   };
   return { exitCode: options.exitCode, result: Object.freeze(result) };
+}
+
+export function createTemplateUpgradeRecoverResult(
+  options: TemplateUpgradeRecoverReportOptions,
+): TemplateUpgradeRecoverResult {
+  return Object.freeze({
+    schemaVersion: SCHEMA_VERSION,
+    action: "recover",
+    status: "recovered",
+    targetCommit: options.targetCommit,
+    worktree: options.worktree,
+    branch: options.branch,
+    commit: options.commit,
+    patchPath: options.patchPath,
+    rerunCommand: options.rerunCommand,
+  });
 }
