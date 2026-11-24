@@ -1,12 +1,29 @@
 diff --git a/generated-repository/scripts/fallow-health-at-base-settings.ts b/generated-repository/scripts/fallow-health-at-base-settings.ts
 --- a/generated-repository/scripts/fallow-health-at-base-settings.ts
 +++ b/generated-repository/scripts/fallow-health-at-base-settings.ts
-@@ -361,7 +361,6 @@ function makeInlineMarkersInert(root: string, rev: string, tree: string): void {
-     const path = join(tree, rel);
-     if (!lstatSync(path, { throwIfNoEntry: false })?.isFile()) continue;
-     const bytes = readFileSync(path, "latin1");
--    const updated = makeCommentMarkersInert(bytes, rel);
--    if (updated !== bytes) writeFileSync(path, updated, "latin1");
-+    writeFileSync(path, bytes.replaceAll(INLINE_MARKER, INERT_MARKER), "latin1");
-   }
+@@ -333,21 +333,10 @@ function inertFileLines(
+   lineNumbers: ReadonlySet<number>,
+   rev: string,
+ ): void {
+-  const lines = readFileSync(target, "latin1").split("\n");
+-  for (const lineNumber of lineNumbers) {
+-    const current = lines[lineNumber - 1];
+-    if (current === undefined)
+-      fail(
+-        `fallow suppressions at ${rev} reported ${rel}:${lineNumber}, past the end of the file. Repair: install the pinned fallow with bun install --frozen-lockfile, then run this check again.`,
+-      );
+-    const updated = blankReportedLine(current);
+-    if (updated === current)
+-      fail(
+-        `fallow suppressions at ${rev} reported ${rel}:${lineNumber}, which holds no recognised fallow-ignore marker. Repair: update scripts/fallow-health-at-base-settings.ts for this marker, then run this check again.`,
+-      );
+-    lines[lineNumber - 1] = updated;
+-  }
+-  writeFileSync(target, lines.join("\n"), "latin1");
++  void rel;
++  void lineNumbers;
++  void rev;
++  writeFileSync(target, blankReportedLine(readFileSync(target, "latin1")), "latin1");
  }
+ 
+ // Platform: Fallow drops a finding that an inline suppression comment marks,
