@@ -142,12 +142,24 @@ async function bootstrapBase(
     throw new Error(
       `bootstrap fixture failed (${bootstrap.exit}): ${bootstrap.stderr}`,
     );
+  const pinned = readKernelPin(ROOT).commit;
   const manifestPath = join(baseGenerated, "package.json");
   const manifest = readFileSync(manifestPath, "utf8").replace(
-    `"agent-cli-kernel": "github:nathanvale/agent-cli-kernel#${trialBase}"`,
+    `"agent-cli-kernel": "github:nathanvale/agent-cli-kernel#${pinned}"`,
     `"agent-cli-kernel": ${JSON.stringify(cloneSpecifier(kernelRepo, trialBase))}`,
   );
+  if (!manifest.includes(cloneSpecifier(kernelRepo, trialBase)))
+    throw new Error(
+      `bootstrap fixture manifest did not pin ${pinned}; cannot retarget to ${trialBase}`,
+    );
   writeFileSync(manifestPath, manifest);
+  for (const skill of ["agent-cli-kernel", "verify-cli"]) {
+    const pointer = join(baseGenerated, ".agents/skills", skill, "SKILL.md");
+    writeFileSync(
+      pointer,
+      readFileSync(pointer, "utf8").replaceAll(pinned, trialBase),
+    );
+  }
   rmSync(join(baseGenerated, "bun.lock"), { force: true });
   initRepository(baseGenerated);
   git(baseGenerated, "add", "--all");
