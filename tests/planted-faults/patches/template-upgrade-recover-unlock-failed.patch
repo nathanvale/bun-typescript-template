@@ -1,0 +1,21 @@
+diff --git a/src/template-upgrade-recover.ts b/src/template-upgrade-recover.ts
+--- a/src/template-upgrade-recover.ts
++++ b/src/template-upgrade-recover.ts
+@@ -324,18 +324,11 @@ function unlockAndRemoveWorktree(options: UnlockAndRemoveRequest): void {
+   } = options;
+   const recoverCommand = `bun run upgrade recover --repository ${repository} --to ${target7}`;
+   const savedEffects = `saved edits on branch ${branch} at ${commitSha.slice(0, 7)} and patch ${patchPath}`;
+-  runGitText(
++  runGitCommand(
+     repository,
+     ["worktree", "unlock", targetWorktree],
+-    {
+-      code: "worktree_unlock_failed",
+-      message: `cannot unlock worktree at ${targetWorktree} (${savedEffects})`,
+-      repair: `inspect git -C ${repository} worktree list, then rerun ${recoverCommand}`,
+-      exitCode: 1,
+-      retrySafe: false,
+-    },
+     { env, timeoutMilliseconds: WORKTREE_TIMEOUT_MS },
+   );
+   const removed = runGitCommand(
