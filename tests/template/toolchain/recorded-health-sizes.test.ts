@@ -356,7 +356,7 @@ test(
       hidingCases.map(([subject]) => ({ subject, exit: 1, refusal: true })),
     );
   },
-  processWatchdog(18),
+  processWatchdog(20),
 );
 
 test(

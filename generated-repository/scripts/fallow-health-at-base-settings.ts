@@ -43,6 +43,8 @@ const MARKER_REPLACEMENTS: readonly (readonly [string, string])[] = [
   ["fallow-ignore-next-line", "fallow-inert-next-line"],
   ["fallow-ignore-file", "fallow-inert-file"],
 ];
+const PINNED_FALLOW_REPAIR =
+  "Repair: install the pinned fallow with bun install --frozen-lockfile, then run this check again.";
 
 function fail(message: string): never {
   throw new Error(message);
@@ -247,16 +249,12 @@ function ownRecord(
   shape: string,
 ): ReadonlyMap<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value))
-    fail(
-      `${where} is not ${shape}. Repair: install the pinned fallow with bun install --frozen-lockfile, then run this check again.`,
-    );
+    fail(`${where} is not ${shape}. ${PINNED_FALLOW_REPAIR}`);
   return new Map<string, unknown>(Object.entries(value));
 }
 
 function badSuppressionsField(where: string, field: string): never {
-  fail(
-    `${where} has invalid field "${field}". Repair: install the pinned fallow with bun install --frozen-lockfile, then run this check again.`,
-  );
+  fail(`${where} has invalid field "${field}". ${PINNED_FALLOW_REPAIR}`);
 }
 
 function parseSuppressionLine(item: unknown, where: string): number {
@@ -290,7 +288,7 @@ function parseReportedMarkers(
     parsed = JSON.parse(stdout) as unknown;
   } catch (error) {
     fail(
-      `${where} is not valid JSON: ${error instanceof Error ? error.message : String(error)}. Repair: install the pinned fallow with bun install --frozen-lockfile, then run this check again.`,
+      `${where} is not valid JSON: ${error instanceof Error ? error.message : String(error)}. ${PINNED_FALLOW_REPAIR}`,
     );
   }
   const files = ownRecord(parsed, where, '{ "files": [...] }').get("files");
@@ -309,18 +307,36 @@ function parseReportedMarkers(
   return byFile;
 }
 
-function resolveInsideTree(realTree: string, rel: string): string | undefined {
-  if (rel.includes("\0")) return undefined;
+function resolveInsideTree(realTree: string, rel: string, rev: string): string {
+  if (rel.includes("\0"))
+    fail(
+      `fallow suppressions at ${rev} reported an invalid file path. ${PINNED_FALLOW_REPAIR}`,
+    );
   const target = resolve(realTree, rel);
-  if (!target.startsWith(`${realTree}${sep}`)) return undefined;
-  if (!lstatSync(target, { throwIfNoEntry: false })?.isFile()) return undefined;
-  const parent = realpathSync(dirname(target));
+  if (!target.startsWith(`${realTree}${sep}`))
+    fail(
+      `fallow suppressions at ${rev} reported ${rel}, outside the measured tree. Repair: commit regular files inside the repository, then run this check again.`,
+    );
+  let parent: string;
+  try {
+    parent = realpathSync(dirname(target));
+  } catch {
+    fail(
+      `fallow suppressions at ${rev} reported ${rel}, which does not exist in the measured tree. ${PINNED_FALLOW_REPAIR}`,
+    );
+  }
   if (parent !== realTree && !parent.startsWith(`${realTree}${sep}`))
-    return undefined;
+    fail(
+      `fallow suppressions at ${rev} reported ${rel}, through a symbolic link outside the measured tree. Repair: commit ${rel} as a regular file without a symbolic link, then run this check again.`,
+    );
+  if (!lstatSync(target, { throwIfNoEntry: false })?.isFile())
+    fail(
+      `fallow suppressions at ${rev} reported ${rel}, which is not a regular file. Repair: commit ${rel} as a regular file in the repository, then run this check again.`,
+    );
   return target;
 }
 
-function blankReportedLine(line: string): string {
+function inertMarkerOnLine(line: string): string {
   let updated = line;
   for (const [marker, inert] of MARKER_REPLACEMENTS)
     updated = updated.replaceAll(marker, inert);
@@ -338,9 +354,9 @@ function inertFileLines(
     const current = lines[lineNumber - 1];
     if (current === undefined)
       fail(
-        `fallow suppressions at ${rev} reported ${rel}:${lineNumber}, past the end of the file. Repair: install the pinned fallow with bun install --frozen-lockfile, then run this check again.`,
+        `fallow suppressions at ${rev} reported ${rel}:${lineNumber}, past the end of the file. ${PINNED_FALLOW_REPAIR}`,
       );
-    const updated = blankReportedLine(current);
+    const updated = inertMarkerOnLine(current);
     if (updated === current)
       fail(
         `fallow suppressions at ${rev} reported ${rel}:${lineNumber}, which holds no recognised fallow-ignore marker. Repair: update scripts/fallow-health-at-base-settings.ts for this marker, then run this check again.`,
@@ -369,10 +385,8 @@ function makeReportedMarkersInert(
   const reported = parseReportedMarkers(stdout, rev);
   if (reported.size === 0) return;
   const realTree = realpathSync(tree);
-  for (const [rel, lineNumbers] of reported) {
-    const target = resolveInsideTree(realTree, rel);
-    if (target !== undefined) inertFileLines(target, rel, lineNumbers, rev);
-  }
+  for (const [rel, lineNumbers] of reported)
+    inertFileLines(resolveInsideTree(realTree, rel, rev), rel, lineNumbers, rev);
 }
 
 function runInTree(

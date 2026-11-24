@@ -76,14 +76,6 @@ test(
       `import { lstatSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 const args = process.argv.slice(2);
-const runReal = () => {
-  const res = Bun.spawnSync([${JSON.stringify(REAL_FALLOW)}, ...args], {
-    stdout: "inherit",
-    stderr: "inherit",
-  });
-  process.exit(res.exitCode);
-};
-if (args[0] !== "health") runReal();
 const cfg = args[args.indexOf("--config") + 1] ?? "";
 const root = args[args.indexOf("--root") + 1] ?? "";
 const errors: string[] = [];
@@ -91,6 +83,20 @@ if (lstatSync(cfg).isSymbolicLink()) errors.push("config is a symlink");
 if (cfg.startsWith(\`\${root}/\`)) errors.push("config is inside measured tree");
 if (readFileSync(cfg, "utf8") !== ${JSON.stringify(baseSettings)})
   errors.push("base settings bytes changed");
+const runReal = () => {
+  if (errors.length > 0) {
+    process.stderr.write(\`\${errors.join("; ")}\\n\`);
+    process.exit(1);
+  }
+  const res = Bun.spawnSync([${JSON.stringify(REAL_FALLOW)}, ...args], {
+    stdout: "inherit",
+    stderr: "inherit",
+    timeout: 60_000,
+    killSignal: "SIGKILL",
+  });
+  process.exit(res.exitCode);
+};
+if (args[0] !== "health") runReal();
 const treeCfg = readFileSync(join(root, ".fallowrc.json"), "utf8");
 if (treeCfg !== ${JSON.stringify(baseSettings)} && treeCfg !== ${JSON.stringify(headSettings)})
   errors.push("tree settings bytes changed");
@@ -175,4 +181,60 @@ test(
     }
   },
   processWatchdog(5),
+);
+
+test(
+  "fails closed with exit 2 when fallow suppressions reports malformed JSON, an invalid path, or an unrecognised marker line",
+  async () => {
+    const { repo, baseSha } = await createFixture();
+    const cases: readonly (readonly [string, string])[] = [
+      ["not json", "is not valid JSON"],
+      ['{"files":"bad"}', 'invalid field "files"'],
+      [
+        JSON.stringify({
+          files: [{ path: "../outside.ts", suppressions: [{ line: 1 }] }],
+        }),
+        "outside the measured tree",
+      ],
+      [
+        JSON.stringify({
+          files: [{ path: "src/commands.ts", suppressions: [{ line: 9999 }] }],
+        }),
+        "past the end of the file",
+      ],
+      [
+        JSON.stringify({
+          files: [{ path: "src/commands.ts", suppressions: [{ line: 1 }] }],
+        }),
+        "holds no recognised",
+      ],
+    ];
+    for (const [payload, expected] of cases) {
+      const stubDir = stubFolders("fallow-bad-suppressions-");
+      const stubScript = join(stubDir, "stub.ts");
+      const stubPath = join(stubDir, "stub.sh");
+      write(
+        stubDir,
+        "stub.ts",
+        `process.stdout.write(${JSON.stringify(payload)});\n`,
+      );
+      write(
+        stubDir,
+        "stub.sh",
+        `#!/bin/sh\nexec ${JSON.stringify(process.execPath)} ${JSON.stringify(stubScript)} "$@"\n`,
+      );
+      chmodSync(stubPath, 0o755);
+
+      const res = await runScriptDirect(repo, [
+        "--base",
+        baseSha,
+        "--fallow",
+        stubPath,
+      ]);
+      expect(res.exit).toBe(2);
+      expect(res.stderr).toContain(expected);
+      expect(res.stderr).toContain("Repair:");
+    }
+  },
+  processWatchdog(6),
 );
