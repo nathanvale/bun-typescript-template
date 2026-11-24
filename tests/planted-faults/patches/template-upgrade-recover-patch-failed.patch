@@ -1,12 +1,12 @@
 diff --git a/src/template-upgrade-recover.ts b/src/template-upgrade-recover.ts
 --- a/src/template-upgrade-recover.ts
 +++ b/src/template-upgrade-recover.ts
-@@ -232,7 +232,7 @@ function buildRecoveryPatchBytes(
-     ["diff", "--no-color", "--no-ext-diff", "--binary", parentHead, commitSha],
-     { env, timeoutMilliseconds: WORKTREE_TIMEOUT_MS },
+@@ -361,7 +361,7 @@ function buildRecoveryPatchBytes(
+     ],
+     { env, timeoutMilliseconds },
    );
 -  if (diffRun.timedOut || diffRun.exitCode !== 0) {
 +  if (diffRun.timedOut) {
      const detail = diffRun.timedOut
-       ? `git diff did not finish within ${WORKTREE_TIMEOUT_MS} ms`
-       : UTF8.decode(diffRun.stderr).trim();
+       ? `git diff did not finish within ${timeoutMilliseconds} ms`
+       : UTF8_DECODER.decode(diffRun.stderr).trim();

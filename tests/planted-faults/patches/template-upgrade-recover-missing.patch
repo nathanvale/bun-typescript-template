@@ -1,12 +1,12 @@
 diff --git a/src/template-upgrade-recover.ts b/src/template-upgrade-recover.ts
 --- a/src/template-upgrade-recover.ts
 +++ b/src/template-upgrade-recover.ts
-@@ -186,7 +186,7 @@ async function requireOwnedWorktree(
+@@ -162,7 +162,7 @@ async function requireOwnedWorktree(
    );
    if (record === undefined) {
      throw new CliError(
 -      "worktree_missing",
 +      "worktree_not_owned",
        `no failed upgrade worktree found at ${targetWorktree}`,
-       `inspect git -C ${repository} worktree list, or run bun run upgrade apply --repository ${repository} --to ${target7}`,
+       `inspect git -C ${formatCommandPath(repository)} worktree list, or run ${formatTemplateUpgradeCommand("apply", repository, target7)}`,
        4,
