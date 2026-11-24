@@ -237,9 +237,11 @@ function stepSummary(step: PlainObject) {
   return {
     uses: scalar(own(step, "uses"))?.split("@")[0],
     if: scalar(own(step, "if")),
-    run: run?.includes('--fail-on-baseline-growth --baseline-base "$BASE"')
-      ? GROWTH_CHECK
-      : run,
+    run:
+      run?.includes('--fail-on-baseline-growth --baseline-base "$BASE"') &&
+      run.includes('bun scripts/check-recorded-health-sizes.ts --base "$BASE"')
+        ? GROWTH_CHECK
+        : run,
     fetchDepth: field(step, "with", "fetch-depth"),
     base: field(step, "env", "BASE"),
   };

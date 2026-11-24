@@ -154,6 +154,11 @@ function createFixtureRepository(options: {
       join(SHIPPED_SETTINGS_DIR, "tsconfig.json"),
       "utf8",
     ),
+    ".github/workflows/ci.yml": readFileSync(SHIPPED_WORKFLOW_PATH, "utf8"),
+    "scripts/check-recorded-health-sizes.ts": readFileSync(
+      join(ROOT, "generated-repository/scripts/check-recorded-health-sizes.ts"),
+      "utf8",
+    ),
     "src/cli.ts":
       'import { decideBranch } from "./commands.ts";\nexport function main(): number {\n  return decideBranch(1);\n}\nmain();\n',
     "src/commands.ts": options.complexInBase
