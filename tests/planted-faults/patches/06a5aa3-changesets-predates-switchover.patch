@@ -1,0 +1,20 @@
+diff --git a/src/template-upgrade-changesets.ts b/src/template-upgrade-changesets.ts
+--- a/src/template-upgrade-changesets.ts
++++ b/src/template-upgrade-changesets.ts
+@@ -247,16 +247,6 @@ export function readTemplateUpgradeChangesets(
+       LEGACY_NOTES_FOLDER,
+       env,
+     );
+-    if (collectLegacyJsonStems(targetLegacy).size > 0) {
+-      const target7 = targetCommit.slice(0, 7);
+-      throw new CliError(
+-        "changeset_predates_switchover",
+-        `target commit ${target7} predates the Changesets switchover`,
+-        `target predates the Changesets switchover; run upgrade from a template checkout at ${target7}`,
+-        1,
+-        false,
+-      );
+-    }
+     return Object.freeze([]);
+   }
+   const baseChangesets = listTreeAt(

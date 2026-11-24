@@ -1,0 +1,11 @@
+diff --git a/scripts/check-gated-paths.ts b/scripts/check-gated-paths.ts
+--- a/scripts/check-gated-paths.ts
++++ b/scripts/check-gated-paths.ts
+@@ -91,7 +91,6 @@ export async function checkGatedPaths(
+   ]).trim();
+   const gatedPaths = [
+     ...new Set([
+-      ...changedPaths(root, baseRef, mergeBase, "HEAD"),
+       ...changedPaths(root, baseRef, "--cached", mergeBase),
+       ...changedPaths(root, baseRef, mergeBase),
+     ]),

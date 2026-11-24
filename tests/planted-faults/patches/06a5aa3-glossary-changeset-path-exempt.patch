@@ -1,0 +1,12 @@
+diff --git a/scripts/glossary.ts b/scripts/glossary.ts
+--- a/scripts/glossary.ts
++++ b/scripts/glossary.ts
+@@ -246,7 +246,7 @@ export function isChangesetMarkdownPath(path: string): boolean {
+       : undefined;
+   if (prefix === undefined) return false;
+   const rest = path.slice(prefix.length);
+-  return rest !== "" && !rest.includes("/") && rest !== "README.md";
++  return false;
+ }
+ 
+ export function hitsIn(
