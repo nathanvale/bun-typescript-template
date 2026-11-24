@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { CliError } from "./cli-error.ts";
 
-export type TemplateUpgradeAction = "plan" | "apply";
+export type TemplateUpgradeAction = "plan" | "apply" | "recover";
 
 export interface TemplateUpgradeOptions {
   readonly action: TemplateUpgradeAction;
@@ -30,6 +30,7 @@ export const TEMPLATE_UPGRADE_HELP = `Carry template changes from a repository's
 Usage:
   bun run upgrade plan --repository PATH [--to REF] [--json]
   bun run upgrade apply --repository PATH [--to REF] [--no-check] [--json]
+  bun run upgrade recover --repository PATH [--to REF] [--json]
 
 Options:
   --repository PATH  Path to the generated repository to upgrade.
@@ -41,6 +42,8 @@ Safety:
   plan writes nothing to the repository.
   apply works in .worktrees/ and publishes only by creating a branch; it never
   pushes, switches the current branch, or edits the repository's working tree.
+  recover saves a failed upgrade worktree onto a branch and patch file before
+  unlocking and removing it with plain git worktree remove, deleting no branch.
 `;
 
 function valueAfter(
@@ -62,13 +65,13 @@ function valueAfter(
 }
 
 function parseAction(token: string | undefined): TemplateUpgradeAction {
-  if (token === "plan" || token === "apply") {
+  if (token === "plan" || token === "apply" || token === "recover") {
     return token;
   }
   throw new CliError(
     "unknown_subcommand",
     `unknown template upgrade subcommand: ${token ?? ""}`,
-    "run bun run upgrade plan --repository PATH or bun run upgrade apply --repository PATH",
+    "run bun run upgrade plan --repository PATH, bun run upgrade apply --repository PATH, or bun run upgrade recover --repository PATH",
     2,
     true,
   );
@@ -126,11 +129,11 @@ export function parseTemplateUpgradeArgs(
       true,
     );
   }
-  if (action === "plan" && flags.skipCheckCommand) {
+  if (action !== "apply" && flags.skipCheckCommand) {
     throw new CliError(
       "unsupported_argument",
       "--no-check is only valid with upgrade apply",
-      "remove --no-check from upgrade plan, or run upgrade apply --no-check",
+      `remove --no-check from upgrade ${action}, or run upgrade apply --no-check`,
       2,
       true,
     );

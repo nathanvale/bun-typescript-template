@@ -1,0 +1,12 @@
+diff --git a/src/template-upgrade-recover.ts b/src/template-upgrade-recover.ts
+--- a/src/template-upgrade-recover.ts
++++ b/src/template-upgrade-recover.ts
+@@ -451,7 +451,7 @@ async function ensureRecoveryPatchFile(options: {
+       false,
+     );
+   }
+-  if (Buffer.compare(existingBytes, expectedBytes) !== 0) {
++  if (existingBytes.length < 0) {
+     throw new CliError(
+       "worktree_patch_failed",
+       `existing recovery patch ${committed.patchPath} does not match expected diff (${existingBytes.length} bytes found, ${expectedBytes.length} expected; ${saved})`,

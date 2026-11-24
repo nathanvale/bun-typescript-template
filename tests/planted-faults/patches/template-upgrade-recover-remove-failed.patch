@@ -1,0 +1,12 @@
+diff --git a/src/template-upgrade-recover.ts b/src/template-upgrade-recover.ts
+--- a/src/template-upgrade-recover.ts
++++ b/src/template-upgrade-recover.ts
+@@ -508,7 +508,7 @@ async function unlockAndRemoveWorktree(
+     ["worktree", "remove", targetWorktree],
+     { env, timeoutMilliseconds },
+   );
+-  if (!removed.timedOut && removed.exitCode === 0) {
++  if (!removed.timedOut) {
+     return;
+   }
+   const detail = removed.timedOut

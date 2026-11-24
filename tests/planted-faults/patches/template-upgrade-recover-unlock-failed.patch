@@ -1,0 +1,23 @@
+diff --git a/src/template-upgrade-recover.ts b/src/template-upgrade-recover.ts
+--- a/src/template-upgrade-recover.ts
++++ b/src/template-upgrade-recover.ts
+@@ -577,18 +577,11 @@ async function unlockAndRemoveWorktree(
+   const statePath = join(worktreeGitDir, RECOVER_RECORD_FILE);
+   const unlockState = await writeRecoverStep(statePath, record, "unlock");
+   if (worktreeLocked) {
+-    runGitText(
++    runGitCommand(
+       repository,
+       ["worktree", "unlock", targetWorktree],
+-      {
+-        code: "worktree_unlock_failed",
+-        message: `cannot unlock worktree at ${targetWorktree} (${savedEffects})`,
+-        repair: `inspect git -C ${formatCommandPath(repository)} worktree list, then rerun ${recoverCmd}`,
+-        exitCode: 1,
+-        retrySafe: false,
+-      },
+       { env, timeoutMilliseconds },
+     );
+   }
+   await writeRecoverStep(statePath, unlockState, "remove");
+   const removed = runGitCommand(
