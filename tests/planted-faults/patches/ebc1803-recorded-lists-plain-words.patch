@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-additions.ts b/scripts/glossary-additions.ts
+index 2ec757b..bb1dce5 100644
+--- a/scripts/glossary-additions.ts
++++ b/scripts/glossary-additions.ts
+@@ -108,7 +108,7 @@ const recordedLists: readonly RecordedList[] = [
+     ),
+   },
+   {
+-    file: plainWordsFile,
++    file: "unread-plain-words.json",
+     gate: "the names check",
+     repair: "name it with a glossary word instead",
+     entries: arrayEntries(

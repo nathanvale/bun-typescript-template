@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-additions.ts b/scripts/glossary-additions.ts
+index 2ec757b..f202335 100644
+--- a/scripts/glossary-additions.ts
++++ b/scripts/glossary-additions.ts
+@@ -137,7 +137,7 @@ const recordedLists: readonly RecordedList[] = [
+         const own = ownFields(recorded);
+         const lifetime = String(own.get("lifetime"));
+         return {
+-          identity: JSON.stringify([path, lifetime]),
++          identity: JSON.stringify([path]),
+           label: `a ${lifetime} recorded hit for ${path}`,
+           size: 1,
+           approved: approvalOf(own),

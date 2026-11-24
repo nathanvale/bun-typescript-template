@@ -1,0 +1,13 @@
+diff --git a/scripts/glossary-additions.ts b/scripts/glossary-additions.ts
+index 2ec757b..59e5667 100644
+--- a/scripts/glossary-additions.ts
++++ b/scripts/glossary-additions.ts
+@@ -187,7 +187,7 @@ function widenings(
+   return (current === undefined ? [] : entries(file, current)).flatMap(
+     (entry) => {
+       const earlier = before.get(entry.identity);
+-      if (earlier !== undefined && entry.size <= earlier.size) return [];
++      if (earlier !== undefined) return [];
+       if (entry.approved !== undefined && entry.approved !== earlier?.approved)
+         return [];
+       return [

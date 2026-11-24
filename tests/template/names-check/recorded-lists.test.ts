@@ -136,47 +136,49 @@ const plants = new Map<string, Plant>([
   ],
 ]);
 
-function problemsAfter(file: string, landed: unknown, current: unknown) {
+function landedList(file: string, landed: unknown) {
   const root = emptyRepository();
   put(root, recordedHitsFile, JSON.stringify({ hits: [] }));
   put(root, recordedUnusedTermsFile, JSON.stringify({ terms: [] }));
   put(root, file, JSON.stringify(landed));
   git(root, "add", "--", recordedHitsFile, recordedUnusedTermsFile, file);
   git(root, "commit", "--quiet", "-m", "landed");
-  put(root, file, JSON.stringify(current));
-  return recordedAdditionProblems(root, "HEAD", (path) =>
-    existsSync(join(root, path))
-      ? readFileSync(join(root, path), "utf8")
-      : undefined,
-  );
+  return (current: unknown) => {
+    put(root, file, JSON.stringify(current));
+    return recordedAdditionProblems(root, "HEAD", (path) =>
+      existsSync(join(root, path))
+        ? readFileSync(join(root, path), "utf8")
+        : undefined,
+    );
+  };
 }
 
-test("every recorded list refuses a planted addition or rise, and passes a shrink and an approved landing", () => {
+test("every recorded list has a planted addition", () => {
   expect([...recordedListFiles].sort()).toEqual([...plants.keys()].sort());
-  for (const file of recordedListFiles) {
-    const { landed, grown, shrunk, approved } = plants.get(file) ?? {
-      landed: {},
-      grown: [],
-      shrunk: {},
-      approved: {},
-    };
+});
+
+for (const [file, { landed, grown, shrunk, approved }] of plants)
+  test(`${file} refuses a planted addition or rise, and passes a shrink and an approved landing`, () => {
+    const problemsAfter = landedList(file, landed);
     for (const plant of grown) {
-      const refused = problemsAfter(file, landed, plant);
+      const refused = problemsAfter(plant);
       expect(refused).toHaveLength(1);
       expect(refused[0]).toStartWith(`${file} `);
       expect(refused[0]).toContain("so this change widens what");
     }
-    expect(problemsAfter(file, landed, landed)).toEqual([]);
-    expect(problemsAfter(file, landed, shrunk)).toEqual([]);
-    expect(problemsAfter(file, landed, approved)).toEqual([]);
-  }
-});
+    expect(problemsAfter(landed)).toEqual([]);
+    expect(problemsAfter(shrunk)).toEqual([]);
+    expect(problemsAfter(approved)).toEqual([]);
+  });
 
 test("an approval the base revision already holds does not admit a rise", () => {
   const file = "eslint-suppressions.json";
   const landed = { "tests/a.test.ts": suppression(2, { approved: "MAG-1" }) };
   expect(
-    problemsAfter(file, landed, {
+    landedList(
+      file,
+      landed,
+    )({
       "tests/a.test.ts": suppression(3, { approved: "MAG-1" }),
     }),
   ).toEqual([
