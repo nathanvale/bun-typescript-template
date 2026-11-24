@@ -1,0 +1,11 @@
+diff --git a/scripts/pin-move-branch.ts b/scripts/pin-move-branch.ts
+--- a/scripts/pin-move-branch.ts
++++ b/scripts/pin-move-branch.ts
+@@ -22,7 +22,6 @@ export function repositoryGit(repository: string, args: readonly string[]) {
+       ...withoutRepositoryLocation(process.env),
+       GIT_TERMINAL_PROMPT: "0",
+       GIT_OPTIONAL_LOCKS: "0",
+-      GIT_LITERAL_PATHSPECS: "1",
+     },
+     stdin: "ignore",
+     stdout: "pipe",

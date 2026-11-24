@@ -1,0 +1,11 @@
+diff --git a/scripts/pin-move-branch.ts b/scripts/pin-move-branch.ts
+--- a/scripts/pin-move-branch.ts
++++ b/scripts/pin-move-branch.ts
+@@ -214,6 +214,7 @@ function keepFailedAttempt(
+     ["rev-parse", "--short", "HEAD"],
+     runGit,
+   );
++  if (head.ok) return { kept: branch, unrenamed: "" };
+   const wanted = `${branch}-failed-${head.stdout.trim()}`;
+   const renamed = head.ok
+     ? safeRepositoryGit(repository, ["branch", "-m", branch, wanted], runGit)

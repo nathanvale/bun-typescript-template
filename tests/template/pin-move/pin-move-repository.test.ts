@@ -1,32 +1,15 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import {
-  cpSync,
-  mkdirSync,
   readFileSync,
   realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
-import { delimiter, join } from "node:path";
-import { readKernelPin } from "../../../src/kernel-pin.ts";
-import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
-import { ownedFolders } from "../../support/fixture-files.ts";
-import {
-  commitIn,
-  git,
-  gitEnv,
-  gitOutput,
-  inherited,
-  initRepository,
-} from "../../support/git-fixture.ts";
-import { commitObjects } from "../../support/git-object-fixture.ts";
-import { gitReadingRemoteAs } from "../../support/hung-git.ts";
+import { join } from "node:path";
+import { commitIn, git, gitOutput } from "../../support/git-fixture.ts";
 import {
   absentCommit,
-  fileAt,
-  kernelClone,
-  moveBranch,
   templateCommitHoldingS5,
   trialBase,
 } from "../../support/kernel-sibling.ts";
@@ -35,170 +18,26 @@ import {
   cloneSpecifier,
   expectRefused,
   installedKernelCommit,
-  installStartingKernel,
-  sampleChangeNote,
+  pinMoveRepositoryFixture,
   updatedSkillDescription,
 } from "../../support/pin-move-repository-fixture.ts";
-import { processWatchdog, spawnBounded } from "../../support/process.ts";
-import { testFolder } from "../../support/test-folder.ts";
+import { processWatchdog } from "../../support/process.ts";
 
-const pin = readKernelPin(ROOT);
-const folder = ownedFolders();
+const fixture = pinMoveRepositoryFixture();
 
-let work = "";
-let kernelRepo = "";
-let remoteRepo = "";
-let nonKernelRepo = "";
-let targetCommit = "";
-let unpushedCommit = "";
-let nonKernelCommit = "";
-let remoteBin = "";
-let nonKernelBin = "";
-let bunCache = "";
-let baseGenerated = "";
-
-function pinMoveEnv(bin: string): Record<string, string | undefined> {
-  return {
-    ...inherited(),
-    ...gitEnv,
-    BUN_INSTALL_CACHE_DIR: bunCache,
-    PATH: `${bin}${delimiter}${process.env.PATH ?? ""}`,
-  };
+function keptAttempt(repo: string, branch: string): string {
+  const kept = git(
+    repo,
+    "for-each-ref",
+    "--format=%(refname:short)",
+    "refs/heads/pin-move",
+  );
+  expect(kept).toBe(
+    `${branch}-failed-${git(repo, "rev-parse", "--short", kept)}`,
+  );
+  return kept;
 }
-
-function runPinMove(
-  args: readonly string[],
-  bin = remoteBin,
-  boundMilliseconds = 120_000,
-) {
-  return spawnBounded(
-    [process.execPath, join(ROOT, "scripts/pin-move.ts"), ...args],
-    {
-      cwd: ROOT,
-      env: pinMoveEnv(bin),
-      boundMilliseconds,
-    },
-  );
-}
-
-async function installedRepository(prefix: string): Promise<string> {
-  const repo = freshRepository(prefix);
-  await installStartingKernel(repo, pinMoveEnv(remoteBin));
-  return repo;
-}
-
-function freshRepository(prefix: string): string {
-  const destination = join(folder(prefix), "generated");
-  cpSync(baseGenerated, destination, {
-    recursive: true,
-    verbatimSymlinks: true,
-  });
-  return destination;
-}
-
-beforeAll(async () => {
-  work = testFolder("pin-move-repo-");
-  bunCache = join(work, "bun-cache");
-  mkdirSync(bunCache, { recursive: true });
-
-  kernelRepo = kernelClone(join(work, "kernel-local"), trialBase);
-  const currentSkill = fileAt(
-    kernelRepo,
-    trialBase,
-    "skills/agent-cli-kernel/SKILL.md",
-  );
-  const nextSkill = currentSkill.replace(
-    /^description: .*$/m,
-    `description: ${updatedSkillDescription}`,
-  );
-  git(kernelRepo, "read-tree", trialBase);
-  targetCommit = commitObjects(
-    kernelRepo,
-    "fix(kernel): add change note and update skill trigger",
-    [
-      {
-        path: "change-notes/2026-11-22-kernel-fix.json",
-        bytes: `${sampleChangeNote}\n`,
-      },
-      {
-        path: "skills/agent-cli-kernel/SKILL.md",
-        bytes: nextSkill,
-      },
-    ],
-  );
-  moveBranch(kernelRepo, "main", targetCommit);
-
-  remoteRepo = join(work, "kernel-remote");
-  git(work, "clone", "--quiet", "--bare", kernelRepo, remoteRepo);
-  moveBranch(remoteRepo, "main", targetCommit);
-
-  unpushedCommit = commitObjects(
-    kernelRepo,
-    "feat(kernel): local unpushed commit",
-    [
-      {
-        path: "change-notes/2026-11-22-local-only.json",
-        bytes: `${sampleChangeNote}\n`,
-      },
-    ],
-  );
-  moveBranch(kernelRepo, "main", unpushedCommit);
-
-  nonKernelRepo = kernelClone(join(work, "non-kernel"), trialBase);
-  git(nonKernelRepo, "read-tree", trialBase);
-  nonKernelCommit = commitObjects(nonKernelRepo, "remove kernel declaration", [
-    { path: "kernel/config/kernel/kernel-declaration.json", removed: true },
-  ]);
-  moveBranch(nonKernelRepo, "main", nonKernelCommit);
-
-  remoteBin = join(work, "bin-remote");
-  mkdirSync(remoteBin, { recursive: true });
-  gitReadingRemoteAs(remoteBin, pin.remote, remoteRepo);
-
-  nonKernelBin = join(work, "bin-non-kernel");
-  mkdirSync(nonKernelBin, { recursive: true });
-  gitReadingRemoteAs(nonKernelBin, pin.remote, nonKernelRepo);
-
-  baseGenerated = join(work, "base-generated");
-  const bootstrap = await spawnBounded(
-    [
-      process.execPath,
-      "run",
-      join(ROOT, "src/bootstrap.ts"),
-      "--destination",
-      baseGenerated,
-      "--name",
-      "doorway-fixture",
-      "--source-packet",
-      "/doorway-fixture",
-    ],
-    {
-      cwd: ROOT,
-      env: { ...inherited(), ...gitEnv },
-      boundMilliseconds: 30_000,
-    },
-  );
-  if (bootstrap.exit !== 0)
-    throw new Error(
-      `bootstrap fixture failed (${bootstrap.exit}): ${bootstrap.stderr}`,
-    );
-
-  const manifestPath = join(baseGenerated, "package.json");
-  const manifest = readFileSync(manifestPath, "utf8").replace(
-    `"agent-cli-kernel": "github:nathanvale/agent-cli-kernel#${trialBase}"`,
-    `"agent-cli-kernel": ${JSON.stringify(cloneSpecifier(kernelRepo, trialBase))}`,
-  );
-  writeFileSync(manifestPath, manifest);
-  rmSync(join(baseGenerated, "bun.lock"), { force: true });
-
-  initRepository(baseGenerated);
-  git(baseGenerated, "add", "--all");
-  commitIn(baseGenerated, "initial generated repository", {});
-}, 60_000);
-
-afterAll(() => {
-  if (work !== "") rmSync(work, { recursive: true, force: true });
-}, 60_000);
+const { folder, freshRepository, installedRepository, runPinMove } = fixture;
 
 describe("pin-move --repository", () => {
   test(
@@ -207,9 +46,9 @@ describe("pin-move --repository", () => {
       const repo = freshRepository("pin-move-plan-");
       const beforeHead = git(repo, "rev-parse", "HEAD");
       const run = await runPinMove([
-        targetCommit,
+        fixture.targetCommit,
         "--kernel",
-        kernelRepo,
+        fixture.kernelRepo,
         "--repository",
         repo,
         "--plan",
@@ -219,7 +58,7 @@ describe("pin-move --repository", () => {
         stderr: "",
       });
       expect(run.stdout).toContain(
-        `Pin move report: ${trialBase} to ${targetCommit}`,
+        `Pin move report: ${trialBase} to ${fixture.targetCommit}`,
       );
       expect(run.stdout).toContain("Kernel change notes (1):");
       expect(run.stdout).toContain(
@@ -238,7 +77,7 @@ describe("pin-move --repository", () => {
 
   test("moves a generated repository Pin onto a new branch, prints change notes first, updates package.json, lockfile and pointer skills, runs check, and leaves main untouched", async () => {
     const repo = freshRepository("pin-move-apply-");
-    const oldSpecifier = cloneSpecifier(kernelRepo, trialBase);
+    const oldSpecifier = cloneSpecifier(fixture.kernelRepo, trialBase);
     const originalManifest = readFileSync(join(repo, "package.json"), "utf8");
     const withConfig = originalManifest.replace(
       `"version": "0.0.0",`,
@@ -248,11 +87,11 @@ describe("pin-move --repository", () => {
       "package.json": withConfig,
     });
     const mainBefore = git(repo, "rev-parse", "main");
-    const expectedBranch = `pin-move/${targetCommit.slice(0, 7)}`;
+    const expectedBranch = `pin-move/${fixture.targetCommit.slice(0, 7)}`;
     const run = await runPinMove([
-      targetCommit,
+      fixture.targetCommit,
       "--kernel",
-      kernelRepo,
+      fixture.kernelRepo,
       "--repository",
       repo,
     ]);
@@ -274,13 +113,25 @@ describe("pin-move --repository", () => {
     expect(
       gitOutput(repo, "status", "--porcelain", "--untracked-files=all"),
     ).toBe("");
+    expect(
+      gitOutput(repo, "show", "--name-only", "--format=", "HEAD").split("\n"),
+    ).toEqual([
+      ".agents/skills/agent-cli-kernel/SKILL.md",
+      ".agents/skills/verify-cli/SKILL.md",
+      "bun.lock",
+      "package.json",
+      "",
+    ]);
     const updatedManifest: unknown = JSON.parse(
       readFileSync(join(repo, "package.json"), "utf8"),
     );
     expect(updatedManifest).toMatchObject({
       config: { "agent-cli-kernel": oldSpecifier },
       dependencies: {
-        "agent-cli-kernel": cloneSpecifier(kernelRepo, targetCommit),
+        "agent-cli-kernel": cloneSpecifier(
+          fixture.kernelRepo,
+          fixture.targetCommit,
+        ),
       },
     });
     expect(
@@ -288,7 +139,7 @@ describe("pin-move --repository", () => {
         join(repo, ".agents/skills/agent-cli-kernel/SKILL.md"),
         "utf8",
       ),
-    ).toContain(`Pinned commit: \`${targetCommit}\``);
+    ).toContain(`Pinned commit: \`${fixture.targetCommit}\``);
     expect(
       readFileSync(
         join(repo, ".agents/skills/agent-cli-kernel/SKILL.md"),
@@ -297,7 +148,7 @@ describe("pin-move --repository", () => {
     ).toContain(`description: ${updatedSkillDescription}`);
     expect(
       readFileSync(join(repo, ".agents/skills/verify-cli/SKILL.md"), "utf8"),
-    ).toContain(`Pinned commit: \`${targetCommit}\``);
+    ).toContain(`Pinned commit: \`${fixture.targetCommit}\``);
   }, 180_000);
 
   test(
@@ -306,9 +157,9 @@ describe("pin-move --repository", () => {
       const repo = freshRepository("pin-move-dirty-");
       writeFileSync(join(repo, "untracked.txt"), "local work\n");
       const run = await runPinMove([
-        targetCommit,
+        fixture.targetCommit,
         "--kernel",
-        kernelRepo,
+        fixture.kernelRepo,
         "--repository",
         repo,
       ]);
@@ -324,24 +175,30 @@ describe("pin-move --repository", () => {
     async () => {
       const repo = freshRepository("pin-move-non-kernel-");
       const noDecl = await runPinMove(
-        [nonKernelCommit, "--kernel", nonKernelRepo, "--repository", repo],
-        nonKernelBin,
+        [
+          fixture.nonKernelCommit,
+          "--kernel",
+          fixture.nonKernelRepo,
+          "--repository",
+          repo,
+        ],
+        fixture.nonKernelBin,
       );
       expectRefused(noDecl, "kernel_declaration_missing");
 
       const missing = await runPinMove([
         absentCommit,
         "--kernel",
-        kernelRepo,
+        fixture.kernelRepo,
         "--repository",
         repo,
       ]);
       expectRefused(missing, "kernel_commit_missing");
 
       const short = await runPinMove([
-        targetCommit.slice(0, 10),
+        fixture.targetCommit.slice(0, 10),
         "--kernel",
-        kernelRepo,
+        fixture.kernelRepo,
         "--repository",
         repo,
       ]);
@@ -357,9 +214,9 @@ describe("pin-move --repository", () => {
     async () => {
       const repo = freshRepository("pin-move-verify-fail-");
       const unpushed = await runPinMove([
-        unpushedCommit,
+        fixture.unpushedCommit,
         "--kernel",
-        kernelRepo,
+        fixture.kernelRepo,
         "--repository",
         repo,
       ]);
@@ -368,7 +225,7 @@ describe("pin-move --repository", () => {
       const beforeCarryOut = await runPinMove([
         templateCommitHoldingS5,
         "--kernel",
-        kernelRepo,
+        fixture.kernelRepo,
         "--repository",
         repo,
       ]);
@@ -386,37 +243,37 @@ describe("pin-move --repository", () => {
       "tests/check-failure.test.ts": checkFailureTest,
     });
     const mainBefore = git(repo, "rev-parse", "main");
-    const expectedBranch = `pin-move/${targetCommit.slice(0, 7)}`;
+    const expectedBranch = `pin-move/${fixture.targetCommit.slice(0, 7)}`;
 
     const run = await runPinMove([
-      targetCommit,
+      fixture.targetCommit,
       "--kernel",
-      kernelRepo,
+      fixture.kernelRepo,
       "--repository",
       repo,
     ]);
     expect(run.exit).toBe(1);
     expect(run.stdout).toContain("Kernel change notes (1):");
     expect(run.stderr).toContain("repository_check_failed:");
+    const kept = keptAttempt(repo, expectedBranch);
     expect(run.stderr).toContain(
-      `The failed attempt is kept on branch ${expectedBranch} for inspection; main is checked out again and was not changed.`,
+      `The failed attempt is kept on branch ${kept} for inspection; main is checked out again and was not changed.`,
     );
     expect(run.stderr).toContain(
-      `Repair: Delete the failed attempt with git branch -D ${expectedBranch} in ${realpathSync(repo)} before running pin-move again.`,
+      "Repair: Fix the failure check command reports, then run pin-move again.",
     );
+    expect(run.stderr).not.toContain("branch -D");
     expect(git(repo, "rev-parse", "--abbrev-ref", "HEAD")).toBe("main");
     expect(git(repo, "rev-parse", "main")).toBe(mainBefore);
     expect(
       gitOutput(repo, "status", "--porcelain", "--untracked-files=all"),
     ).toBe("");
-    expect(git(repo, "rev-list", "--count", `main..${expectedBranch}`)).toBe(
-      "1",
+    expect(git(repo, "rev-list", "--count", `main..${kept}`)).toBe("1");
+    expect(git(repo, "log", "-1", "--format=%s", kept)).toBe(
+      `chore(kernel): failed Pin move from ${trialBase.slice(0, 7)} to ${fixture.targetCommit.slice(0, 7)} (repository_check_failed)`,
     );
-    expect(git(repo, "log", "-1", "--format=%s", expectedBranch)).toBe(
-      `chore(kernel): failed Pin move from ${trialBase.slice(0, 7)} to ${targetCommit.slice(0, 7)} (repository_check_failed)`,
-    );
-    expect(git(repo, "show", `${expectedBranch}:package.json`)).toContain(
-      cloneSpecifier(kernelRepo, targetCommit),
+    expect(git(repo, "show", `${kept}:package.json`)).toContain(
+      cloneSpecifier(fixture.kernelRepo, fixture.targetCommit),
     );
     expect(trialBase).toStartWith(installedKernelCommit(repo));
   }, 180_000);
@@ -434,26 +291,28 @@ describe("pin-move --repository", () => {
       "package.json": staleManifest,
       "tests/check-failure.test.ts": checkFailureTest,
     });
-    const expectedBranch = `pin-move/${targetCommit.slice(0, 7)}`;
+    const expectedBranch = `pin-move/${fixture.targetCommit.slice(0, 7)}`;
 
     const run = await runPinMove([
-      targetCommit,
+      fixture.targetCommit,
       "--kernel",
-      kernelRepo,
+      fixture.kernelRepo,
       "--repository",
       repo,
     ]);
     expect(run.exit).toBe(1);
     expect(run.stderr).toContain("repository_check_failed:");
+    const kept = keptAttempt(repo, expectedBranch);
     expect(run.stderr).toContain(
-      `The failed attempt is kept on branch ${expectedBranch} for inspection and main is checked out again, but its installed packages may still hold the failed attempt's kernel: bun install --frozen-lockfile on main failed:`,
+      `The failed attempt is kept on branch ${kept} for inspection and main is checked out again, but its installed packages may still hold the failed attempt's kernel: bun install --frozen-lockfile on main failed:`,
     );
     expect(run.stderr).not.toContain("was not changed");
     expect(run.stderr).toContain(
-      `Repair: Run bun install --frozen-lockfile in ${realpathSync(repo)}, then delete the failed attempt with git branch -D ${expectedBranch} before running pin-move again.`,
+      `Repair: Run bun install --frozen-lockfile in ${realpathSync(repo)} before running pin-move again.`,
     );
+    expect(run.stderr).not.toContain("branch -D");
     expect(git(repo, "rev-parse", "--abbrev-ref", "HEAD")).toBe("main");
-    expect(targetCommit).toStartWith(installedKernelCommit(repo));
+    expect(fixture.targetCommit).toStartWith(installedKernelCommit(repo));
   }, 180_000);
 
   test(
@@ -473,9 +332,9 @@ describe("pin-move --repository", () => {
         git(repo, "commit", "--quiet", "-m", `link ${linkedPath}`);
         const mainBefore = git(repo, "rev-parse", "main");
         const run = await runPinMove([
-          targetCommit,
+          fixture.targetCommit,
           "--kernel",
-          kernelRepo,
+          fixture.kernelRepo,
           "--repository",
           repo,
         ]);
@@ -501,23 +360,27 @@ describe("pin-move --repository", () => {
       const unchanged = await runPinMove([
         trialBase,
         "--kernel",
-        kernelRepo,
+        fixture.kernelRepo,
         "--repository",
         repo,
       ]);
       expectRefused(unchanged, "repository_pin_unchanged");
 
-      const existingBranch = `pin-move/${targetCommit.slice(0, 7)}`;
+      const existingBranch = `pin-move/${fixture.targetCommit.slice(0, 7)}`;
       git(repo, "branch", existingBranch);
       const branchExists = await runPinMove([
-        targetCommit,
+        fixture.targetCommit,
         "--kernel",
-        kernelRepo,
+        fixture.kernelRepo,
         "--repository",
         repo,
       ]);
       expectRefused(branchExists, "repository_branch_exists");
-      git(repo, "branch", "-D", existingBranch);
+      expect(branchExists.stderr).toContain(
+        `rename it with git branch -m ${existingBranch} <an unused branch name>`,
+      );
+      expect(branchExists.stderr).not.toContain("branch -D");
+      git(repo, "branch", "-d", existingBranch);
 
       commitIn(repo, "use foreign kernel remote", {
         "package.json": `${JSON.stringify(
@@ -532,9 +395,9 @@ describe("pin-move --repository", () => {
         )}\n`,
       });
       const foreignPin = await runPinMove([
-        targetCommit,
+        fixture.targetCommit,
         "--kernel",
-        kernelRepo,
+        fixture.kernelRepo,
         "--repository",
         repo,
       ]);
@@ -544,9 +407,9 @@ describe("pin-move --repository", () => {
         "package.json": `${JSON.stringify({ name: "broken", dependencies: {} }, null, 2)}\n`,
       });
       const missingPin = await runPinMove([
-        targetCommit,
+        fixture.targetCommit,
         "--kernel",
-        kernelRepo,
+        fixture.kernelRepo,
         "--repository",
         repo,
       ]);
@@ -560,9 +423,9 @@ describe("pin-move --repository", () => {
     async () => {
       const repo = freshRepository("pin-move-invalid-");
       const subdir = await runPinMove([
-        targetCommit,
+        fixture.targetCommit,
         "--kernel",
-        kernelRepo,
+        fixture.kernelRepo,
         "--repository",
         join(repo, "src"),
       ]);
@@ -572,9 +435,9 @@ describe("pin-move --repository", () => {
       const detached = freshRepository("pin-move-detached-");
       git(detached, "checkout", "--quiet", "--detach", "HEAD");
       const detachedRun = await runPinMove([
-        targetCommit,
+        fixture.targetCommit,
         "--kernel",
-        kernelRepo,
+        fixture.kernelRepo,
         "--repository",
         detached,
       ]);
@@ -589,9 +452,9 @@ describe("pin-move --repository", () => {
       git(linked, "add", "--", "package.json");
       git(linked, "commit", "--quiet", "-m", "replace package.json with link");
       const linkRun = await runPinMove([
-        targetCommit,
+        fixture.targetCommit,
         "--kernel",
-        kernelRepo,
+        fixture.kernelRepo,
         "--repository",
         linked,
       ]);

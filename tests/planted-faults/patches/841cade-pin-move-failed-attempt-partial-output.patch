@@ -1,0 +1,12 @@
+diff --git a/scripts/pin-move-branch.ts b/scripts/pin-move-branch.ts
+--- a/scripts/pin-move-branch.ts
++++ b/scripts/pin-move-branch.ts
+@@ -198,7 +198,7 @@ function failedAttemptPaths(
+     paths: attemptPaths(
+       attempt.repository,
+       attempt.edited,
+-      attempt.regenerate ? parsed.all : [],
++      [],
+     ),
+     stagedOnly: parsed.stagedOnly,
+   };

@@ -61,6 +61,7 @@ export const RECORDED_HITS_FILES: readonly string[] = [
   "fallow-health-recorded-hits.json",
 ];
 export const RECORDED_HITS_SCRIPT = "quality:fallow:record-hits";
+export const REGENERATE_SCRIPT = "regenerate";
 
 export const REPOSITORY_RECIPE_COPIES: readonly string[] = [
   "README.md",

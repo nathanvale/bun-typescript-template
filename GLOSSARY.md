@@ -120,6 +120,14 @@ The account a pin move produces of what changed in the kernel between the old
 and new pinned commits. It is what a reviewer of a pin move reads.
 _Avoid_: diff, changelog (for a pin move report)
 
+**Regenerate step**:
+The `regenerate` script a generated repository may declare in its
+`package.json` to rewrite the tracked files it builds from installed packages.
+A pin move runs it after installing the new kernel and before the check
+command, and commits what it changed with the Pin change. Running it again
+changes nothing. A repository without the script has no regenerate step.
+_Avoid_: build step, codegen (for the regenerate step)
+
 **Kernel trial**:
 Making one repository from a candidate kernel commit, with every add-on
 selected, and running that repository's check command.

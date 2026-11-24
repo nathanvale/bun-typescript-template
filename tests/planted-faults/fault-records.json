@@ -2606,5 +2606,68 @@
     "testFile": "tests/template/lint/lint-comments.test.ts",
     "title": "^no-comments refuses \"/\\* Platform: Bun supplies the types used here\\.\\\\n   @ts-expect-error",
     "source": "cc1aefc fix(lint): judge every comment as a directive candidate on its own, in the one form its tool reads"
+  },
+  {
+    "id": "841cade-pin-move-regenerate-skipped",
+    "patch": "tests/planted-faults/patches/841cade-pin-move-regenerate-skipped.patch",
+    "testFile": "tests/template/pin-move/pin-move-regenerate.test.ts",
+    "title": "commits what the regenerate step changed with the Pin change, and a second regenerate or pin-move changes nothing$",
+    "source": "841cade fix(pin-move): run the regenerate step and keep a failed attempt on a renamed branch"
+  },
+  {
+    "id": "841cade-pin-move-regenerate-uncommitted",
+    "patch": "tests/planted-faults/patches/841cade-pin-move-regenerate-uncommitted.patch",
+    "testFile": "tests/template/pin-move/pin-move-regenerate.test.ts",
+    "title": "commits what the regenerate step changed with the Pin change, and a second regenerate or pin-move changes nothing$",
+    "source": "841cade fix(pin-move): run the regenerate step and keep a failed attempt on a renamed branch"
+  },
+  {
+    "id": "841cade-pin-move-failed-attempt-unrenamed",
+    "patch": "tests/planted-faults/patches/841cade-pin-move-failed-attempt-unrenamed.patch",
+    "testFile": "tests/template/pin-move/pin-move-regenerate.test.ts",
+    "title": "refuses when the regenerate step exits non-zero, keeps the attempt and its partial output on a renamed branch, and a rerun after the fix moves the Pin with no force$",
+    "source": "841cade fix(pin-move): run the regenerate step and keep a failed attempt on a renamed branch"
+  },
+  {
+    "id": "841cade-pin-move-failed-attempt-partial-output",
+    "patch": "tests/planted-faults/patches/841cade-pin-move-failed-attempt-partial-output.patch",
+    "testFile": "tests/template/pin-move/pin-move-regenerate.test.ts",
+    "title": "refuses when the regenerate step exits non-zero, keeps the attempt and its partial output on a renamed branch, and a rerun after the fix moves the Pin with no force$",
+    "source": "841cade fix(pin-move): run the regenerate step and keep a failed attempt on a renamed branch"
+  },
+  {
+    "id": "841cade-pin-move-failed-attempt-force-delete",
+    "patch": "tests/planted-faults/patches/841cade-pin-move-failed-attempt-force-delete.patch",
+    "testFile": "tests/template/pin-move/pin-move-regenerate.test.ts",
+    "title": "refuses when the regenerate step exits non-zero, keeps the attempt and its partial output on a renamed branch, and a rerun after the fix moves the Pin with no force$",
+    "source": "841cade fix(pin-move): run the regenerate step and keep a failed attempt on a renamed branch"
+  },
+  {
+    "id": "fd303d9-pin-move-status-renames",
+    "patch": "tests/planted-faults/patches/fd303d9-pin-move-status-renames.patch",
+    "testFile": "tests/template/pin-move/pin-move-regenerate.test.ts",
+    "title": "in process: parseStatusChanges keeps both paths of a rename record and marks staged-only deletions$",
+    "source": "fd303d9 fix(pin-move): handle git renames, literal pathspecs, recovery timeouts, and commit-failure repairs"
+  },
+  {
+    "id": "fd303d9-pin-move-literal-pathspecs",
+    "patch": "tests/planted-faults/patches/fd303d9-pin-move-literal-pathspecs.patch",
+    "testFile": "tests/template/pin-move/pin-move-regenerate.test.ts",
+    "title": "commits a regenerate step that renames a tracked file with git mv and creates a colon-prefixed file$",
+    "source": "fd303d9 fix(pin-move): handle git renames, literal pathspecs, recovery timeouts, and commit-failure repairs"
+  },
+  {
+    "id": "fd303d9-pin-move-commit-failure-repair",
+    "patch": "tests/planted-faults/patches/fd303d9-pin-move-commit-failure-repair.patch",
+    "testFile": "tests/template/pin-move/pin-move-regenerate.test.ts",
+    "title": "when a pre-commit hook refuses the Pin move commit after regenerate deletes a tracked file, keeps the deletion on the renamed branch with a true repair$",
+    "source": "fd303d9 fix(pin-move): handle git renames, literal pathspecs, recovery timeouts, and commit-failure repairs"
+  },
+  {
+    "id": "fd303d9-pin-move-recovery-timeout",
+    "patch": "tests/planted-faults/patches/fd303d9-pin-move-recovery-timeout.patch",
+    "testFile": "tests/template/pin-move/pin-move-regenerate.test.ts",
+    "title": "in process: when git branch -m times out during failed-attempt recovery, checkout still runs and the original failure and repair stay$",
+    "source": "fd303d9 fix(pin-move): handle git renames, literal pathspecs, recovery timeouts, and commit-failure repairs"
   }
 ]
