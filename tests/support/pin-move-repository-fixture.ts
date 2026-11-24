@@ -155,10 +155,12 @@ async function bootstrapBase(
   writeFileSync(manifestPath, manifest);
   for (const skill of ["agent-cli-kernel", "verify-cli"]) {
     const pointer = join(baseGenerated, ".agents/skills", skill, "SKILL.md");
-    writeFileSync(
-      pointer,
-      readFileSync(pointer, "utf8").replaceAll(pinned, trialBase),
-    );
+    const text = readFileSync(pointer, "utf8");
+    if (!text.includes(pinned))
+      throw new Error(
+        `bootstrap fixture pointer ${pointer} did not pin ${pinned}; cannot retarget to ${trialBase}`,
+      );
+    writeFileSync(pointer, text.replaceAll(pinned, trialBase));
   }
   rmSync(join(baseGenerated, "bun.lock"), { force: true });
   initRepository(baseGenerated);
