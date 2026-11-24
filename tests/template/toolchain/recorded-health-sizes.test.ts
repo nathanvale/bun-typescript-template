@@ -26,8 +26,12 @@ const growLong: Changes = { "src/long.ts": longFileSource(520) };
 const growRoute: Changes = {
   "src/commands.ts": `${routeSource(21, 0)}\n${nestSource(false)}`,
 };
+const MARK = "// fallow-ignore-next-line complexity -- hide it\n";
 const markRoute: Changes = {
-  "src/commands.ts": `// fallow-ignore-next-line complexity -- hide it\n${routeSource(20, 1)}\n${nestSource(false)}`,
+  "src/commands.ts": `${MARK}${routeSource(20, 1)}\n${nestSource(false)}`,
+};
+const growMarkedRoute: Changes = {
+  "src/commands.ts": `${MARK}${growRoute["src/commands.ts"]}`,
 };
 
 function withHealth(health: Readonly<Record<string, unknown>>): string {
@@ -138,9 +142,13 @@ const hidingCases: readonly (readonly [string, Changes, string, string])[] = [
   ],
   [
     "fallow-ignore-next-line",
-    {
-      "src/commands.ts": `// fallow-ignore-next-line complexity -- hide it\n${growRoute["src/commands.ts"]}`,
-    },
+    growMarkedRoute,
+    ROUTE,
+    "cyclomatic complexity 21 to 22",
+  ],
+  [
+    "fallow-ignore-next-line in a file .gitattributes marks binary",
+    { ...growMarkedRoute, ".gitattributes": "src/commands.ts -diff\n" },
     ROUTE,
     "cyclomatic complexity 21 to 22",
   ],

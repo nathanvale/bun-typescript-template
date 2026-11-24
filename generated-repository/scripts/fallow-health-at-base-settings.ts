@@ -151,12 +151,12 @@ function baseSettingsFile(baseTree: string, tempDir: string): string {
   return empty;
 }
 
-// Platform: Fallow skips files that .gitignore or .ignore name, even outside a
-// git repository.
+// Platform: Fallow skips files that .ignore names, and inside a git repository
+// files that .gitignore names.
 function removeIgnoreFiles(root: string, rev: string, tree: string): void {
   const paths = mustGit(
     root,
-    ["ls-tree", "-r", "-z", "--name-only", rev],
+    ["ls-tree", "-r", "-z", "--full-tree", "--name-only", rev],
     {},
     `fetch ${rev} with full history`,
   ).split("\0");
@@ -168,9 +168,11 @@ function removeIgnoreFiles(root: string, rev: string, tree: string): void {
 // Platform: Fallow drops a finding that a fallow-ignore comment marks.
 function makeInlineMarkersInert(root: string, rev: string, tree: string): void {
   const marked = runGit(root, [
-    ..."grep -I -l -z -F -e".split(" "),
+    ..."grep -l -z --full-name -F -e".split(" "),
     INLINE_MARKER,
     rev,
+    "--",
+    ":/",
   ]);
   if (marked.exitCode > 1)
     fail(
@@ -180,8 +182,12 @@ function makeInlineMarkersInert(root: string, rev: string, tree: string): void {
     const path = join(tree, entry.slice(rev.length + 1));
     if (entry === "" || !lstatSync(path, { throwIfNoEntry: false })?.isFile())
       continue;
-    const text = readFileSync(path, "utf8");
-    writeFileSync(path, text.replaceAll(INLINE_MARKER, INERT_MARKER));
+    const bytes = readFileSync(path, "latin1");
+    writeFileSync(
+      path,
+      bytes.replaceAll(INLINE_MARKER, INERT_MARKER),
+      "latin1",
+    );
   }
 }
 
