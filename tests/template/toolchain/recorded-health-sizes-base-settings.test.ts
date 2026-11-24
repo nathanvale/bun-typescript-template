@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { chmodSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
+import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders, write } from "../../support/fixture-files.ts";
 import { commitIn, git } from "../../support/git-fixture.ts";
 import { processWatchdog } from "../../support/process.ts";
@@ -18,7 +19,7 @@ type Changes = Record<string, string | null>;
 
 const stubFolders = ownedFolders();
 const MARKER = ["fallow", "ignore"].join("-");
-const INERT = ["fallow", "inert"].join("-");
+const REAL_FALLOW = join(ROOT, "node_modules/.bin/fallow");
 const growLong: Changes = { "src/long.ts": longFileSource(520) };
 
 function withHealth(health: Readonly<Record<string, unknown>>): string {
@@ -29,83 +30,110 @@ function withHealth(health: Readonly<Record<string, unknown>>): string {
 }
 
 test(
-  "makes only comment markers inert, keeping settings values and non-comment file contents intact",
+  "makes only Fallow-reported markers inert, leaving JSX text, CSS URLs, Svelte strings and settings values byte-for-byte unchanged",
   async () => {
     const { repo } = await createFixture();
     const literalLine = `export const marker = "// ${MARKER}-file complexity";`;
     const pathLine = `export const dir = ".${MARKER}/long.ts";`;
     const templateLine = `export const tpl = \`/* ${MARKER}-next-line complexity */\`;`;
     const regexLine = 'if (true) /`/.test("a");';
-    const jsxCloseLine = `export const el = () => <div>ok</div>; // ${MARKER}-next-line complexity`;
+    const jsxApostrophe = `export const el = () => <div>Don't</div>; // ${MARKER}-next-line complexity`;
     const lineComment = `// ${MARKER}-next-line complexity -- hide it`;
     const blockComment = `/* ${MARKER}-next-line complexity */`;
-    const htmlAttr = `title="<!-- ${MARKER}-file -->"`;
+    const baseSettings = withFallowSettings((shipped) => ({
+      ...shipped,
+      ignorePatterns: [...shipped.ignorePatterns, `!.${MARKER}/**`],
+    }));
+    const headSettings = withHealth({ maxFileLines: 1000 });
+    const unchangedFiles: Record<string, string> = {
+      "src/jsx-text.tsx": `export const label = () => <div>// ${MARKER}-next-line complexity</div>;\n`,
+      "src/styles.css": `.icon { background: url(https://example.com/${MARKER}-file.png); }\n`,
+      "src/App.svelte": `<script>\nexport const msg = "// ${MARKER}-next-line complexity";\n</script>\n<div>{"<!-- ${MARKER}-file -->"}</div>\n`,
+      "src/literals.ts": `${literalLine}\n${pathLine}\n${templateLine}\n${regexLine}\n`,
+      "src/view.html": `<div title="<!-- ${MARKER}-file -->">Don't</div>\n`,
+    };
     const { sha: baseSha } = commitIn(
       repo,
-      "add settings and literal markers",
+      "add settings, active markers and non-marker text",
       {
-        ".fallowrc.json": withFallowSettings((shipped) => ({
-          ...shipped,
-          ignorePatterns: [...shipped.ignorePatterns, `!.${MARKER}/**`],
-        })),
+        ".fallowrc.json": baseSettings,
+        ...unchangedFiles,
         "src/commands.ts": `${literalLine}\n${pathLine}\n${templateLine}\n${regexLine}\n${lineComment}\n${routeSource(20, 1)}\n${blockComment}\n${nestSource(false)}`,
-        "src/view.tsx": `${jsxCloseLine}\n`,
-        "src/view.html": `<div ${htmlAttr}>Don't</div>\n<!-- ${MARKER}-file complexity -->\n`,
-        "src/page.astro": `---\n// ${MARKER}-file complexity\n---\n<!-- ${MARKER}-next-line complexity -->\n`,
+        "src/view.tsx": `${jsxApostrophe}\n${routeSource(20, 1)}`,
+        "src/page.astro": `---\n// ${MARKER}-file complexity\n---\n<!-- ${MARKER}-next-line complexity -->\n<div>ok</div>\n`,
       },
     );
     commitIn(repo, "change head settings", {
-      ".fallowrc.json": withHealth({ maxFileLines: 1000 }),
+      ".fallowrc.json": headSettings,
     });
 
-    const stubDir = stubFolders("fallow-stub-");
-    const stubScript = join(stubDir, "fallow-stub.ts");
-    const stubPath = join(stubDir, "fallow-stub.sh");
+    const stubDir = stubFolders("fallow-wrapper-");
+    const wrapperScript = join(stubDir, "fallow-wrapper.ts");
+    const wrapperPath = join(stubDir, "fallow-wrapper.sh");
     write(
       stubDir,
-      "fallow-stub.ts",
+      "fallow-wrapper.ts",
       `import { lstatSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 const args = process.argv.slice(2);
+const runReal = () => {
+  const res = Bun.spawnSync([${JSON.stringify(REAL_FALLOW)}, ...args], {
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  process.exit(res.exitCode);
+};
+if (args[0] !== "health") runReal();
 const cfg = args[args.indexOf("--config") + 1] ?? "";
 const root = args[args.indexOf("--root") + 1] ?? "";
-if (lstatSync(cfg).isSymbolicLink()) throw new Error("config is a symlink");
-if (cfg.startsWith(\`\${root}/\`)) throw new Error("config is inside measured tree");
-if (!readFileSync(cfg, "utf8").includes(${JSON.stringify(`!.${MARKER}/**`)})) throw new Error("settings rewritten");
+const errors: string[] = [];
+if (lstatSync(cfg).isSymbolicLink()) errors.push("config is a symlink");
+if (cfg.startsWith(\`\${root}/\`)) errors.push("config is inside measured tree");
+if (readFileSync(cfg, "utf8") !== ${JSON.stringify(baseSettings)})
+  errors.push("base settings bytes changed");
 const treeCfg = readFileSync(join(root, ".fallowrc.json"), "utf8");
-if (treeCfg.includes(${JSON.stringify(INERT)})) throw new Error("tree json rewritten");
+if (treeCfg !== ${JSON.stringify(baseSettings)} && treeCfg !== ${JSON.stringify(headSettings)})
+  errors.push("tree settings bytes changed");
+const unchanged = ${JSON.stringify(unchangedFiles)} as Record<string, string>;
+for (const [rel, expected] of Object.entries(unchanged)) {
+  const actual = readFileSync(join(root, rel), "utf8");
+  if (actual !== expected) errors.push(\`non-marker file changed: \${rel}\`);
+}
 const commands = readFileSync(join(root, "src/commands.ts"), "utf8");
 for (const keep of [${JSON.stringify(literalLine)}, ${JSON.stringify(pathLine)}, ${JSON.stringify(templateLine)}])
-  if (!commands.includes(keep)) throw new Error(\`non-comment rewritten: \${keep}\`);
-if (!commands.includes(${JSON.stringify(`// ${INERT}-next-line complexity -- hide it`)}) || !commands.includes(${JSON.stringify(`/* ${INERT}-next-line complexity */`)}))
-  throw new Error("code comment marker stayed active");
+  if (!commands.includes(keep)) errors.push(\`non-marker line changed: \${keep}\`);
+const commandLines = commands.split("\\n");
+if (commandLines.includes(${JSON.stringify(lineComment)}) || commandLines.includes(${JSON.stringify(blockComment)}))
+  errors.push("code comment marker stayed active");
 const tsx = readFileSync(join(root, "src/view.tsx"), "utf8");
-if (!tsx.includes(${JSON.stringify(`// ${INERT}-next-line complexity`)})) throw new Error("jsx closing tag broke comment marker");
-const html = readFileSync(join(root, "src/view.html"), "utf8");
-if (!html.includes(${JSON.stringify(htmlAttr)})) throw new Error("html attribute rewritten");
-if (!html.includes(${JSON.stringify(`<!-- ${INERT}-file complexity -->`)})) throw new Error("html comment marker stayed active");
+if (!tsx.includes("<div>Don't</div>") || tsx.includes(${JSON.stringify(MARKER)}))
+  errors.push("jsx apostrophe comment marker stayed active");
 const astro = readFileSync(join(root, "src/page.astro"), "utf8");
-if (!astro.includes(${JSON.stringify(`// ${INERT}-file complexity`)}) || !astro.includes(${JSON.stringify(`<!-- ${INERT}-next-line complexity -->`)}))
-  throw new Error("astro marker stayed active");
-process.stdout.write('{"findings":[]}\\n');
+if (astro.includes(${JSON.stringify(MARKER)}))
+  errors.push("astro marker stayed active");
+if (errors.length > 0) {
+  process.stderr.write(\`\${errors.join("; ")}\\n\`);
+  process.exit(1);
+}
+runReal();
 `,
     );
     write(
       stubDir,
-      "fallow-stub.sh",
-      `#!/bin/sh\nexec ${JSON.stringify(process.execPath)} ${JSON.stringify(stubScript)} "$@"\n`,
+      "fallow-wrapper.sh",
+      `#!/bin/sh\nexec ${JSON.stringify(process.execPath)} ${JSON.stringify(wrapperScript)} "$@"\n`,
     );
-    chmodSync(stubPath, 0o755);
+    chmodSync(wrapperPath, 0o755);
 
     const result = await runScriptDirect(repo, [
       "--base",
       baseSha,
       "--fallow",
-      stubPath,
+      wrapperPath,
     ]);
     expect(result).toMatchObject({ exit: 0, stderr: "" });
   },
-  processWatchdog(3),
+  processWatchdog(5),
 );
 
 test(

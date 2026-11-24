@@ -166,6 +166,14 @@ const hidingCases: readonly (readonly [string, Changes, string, string])[] = [
     ".fallow-ignore/long.ts (<file>)",
     "file lines 510 to 520",
   ],
+  [
+    "fallow-ignore-next-line after a JSX apostrophe",
+    {
+      "src/view.tsx": `export const el = () => <div>Don't</div>; // fallow-ignore-next-line complexity\n${routeSource(21, 0)}`,
+    },
+    "src/view.tsx function route",
+    "cyclomatic complexity 21 to 22",
+  ],
 ];
 
 function expectRefusal(
@@ -271,24 +279,29 @@ test(
   "refuses recorded growth that a same-diff change to Fallow settings, an ignore file or an inline marker would hide, and passes the controls",
   async () => {
     const { repo } = await createFixture();
-    commitIn(repo, "add a long test file and a .fallow-ignore file", {
-      "tests/long.test.ts": longTestSource(510),
-      ".fallow-ignore/long.ts": longFileSource(510),
-      ".fallowrc.json": withFallowSettings((shipped) => ({
-        ...shipped,
-        ignorePatterns: [...shipped.ignorePatterns, "!.fallow-ignore/**"],
-        boundaries: {
-          ...shipped.boundaries,
-          coverage: {
-            ...shipped.boundaries.coverage,
-            allowUnmatched: [
-              ...shipped.boundaries.coverage.allowUnmatched,
-              ".fallow-ignore/**",
-            ],
+    commitIn(
+      repo,
+      "add a long test file, a .tsx view and a .fallow-ignore file",
+      {
+        "tests/long.test.ts": longTestSource(510),
+        "src/view.tsx": routeSource(20, 1),
+        ".fallow-ignore/long.ts": longFileSource(510),
+        ".fallowrc.json": withFallowSettings((shipped) => ({
+          ...shipped,
+          ignorePatterns: [...shipped.ignorePatterns, "!.fallow-ignore/**"],
+          boundaries: {
+            ...shipped.boundaries,
+            coverage: {
+              ...shipped.boundaries.coverage,
+              allowUnmatched: [
+                ...shipped.boundaries.coverage.allowUnmatched,
+                ".fallow-ignore/**",
+              ],
+            },
           },
-        },
-      })),
-    });
+        })),
+      },
+    );
     const { sha: baseSha } = commitIn(
       repo,
       "record the long test file and .fallow-ignore file",

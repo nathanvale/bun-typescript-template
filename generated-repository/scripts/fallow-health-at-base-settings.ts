@@ -3,11 +3,12 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, extname, join } from "node:path";
+import { basename, dirname, join, resolve, sep } from "node:path";
 
 type MeasureOptions = { readonly root: string; readonly fallow: string };
 type GitResult = {
@@ -23,10 +24,12 @@ const GIT_LOC_VARS = new Set(
     " ",
   ),
 );
-const FALLOW_ARGS =
+const FALLOW_HEALTH_ARGS =
   "health --complexity --no-type-aware --report-only --format json --quiet --no-cache".split(
     " ",
   );
+const FALLOW_SUPPRESSIONS_ARGS =
+  "suppressions --no-type-aware --format json --quiet --no-cache".split(" ");
 // Platform: Fallow loads the first of these settings files that a folder holds.
 const SETTINGS_FILES = [
   ".fallowrc.json",
@@ -35,22 +38,11 @@ const SETTINGS_FILES = [
   ".fallow.toml",
 ] as const;
 const IGNORE_FILES = new Set([".gitignore", ".ignore"]);
-const INLINE_MARKER = "fallow-ignore";
-const INERT_MARKER = "fallow-inert";
 const REGULAR_MODES = new Set(["100644", "100755"]);
-const CODE_EXTS = new Set(
-  ".ts .tsx .mts .cts .js .jsx .mjs .cjs .css .scss .sass .less .jsonc".split(
-    " ",
-  ),
-);
-const MARKUP_EXTS = new Set([".html", ".htm", ".vue", ".svelte", ".astro"]);
-const REGEX_PREV_CHARS = new Set([..."([{:;,=!&|?+-*%^~<>}"]);
-const REGEX_PREV_KEYWORDS = new Set(
-  "return case throw in of typeof void delete await yield new else do default".split(
-    " ",
-  ),
-);
-const COND_KEYWORDS = new Set(["if", "while", "for", "with"]);
+const MARKER_REPLACEMENTS: readonly (readonly [string, string])[] = [
+  ["fallow-ignore-next-line", "fallow-inert-next-line"],
+  ["fallow-ignore-file", "fallow-inert-file"],
+];
 
 function fail(message: string): never {
   throw new Error(message);
@@ -125,16 +117,25 @@ function mustGit(
   return Buffer.from(mustGitBytes(root, args, extra, repair)).toString();
 }
 
-function runFallowHealth(
+function runFallow(
   fallowBin: string,
+  subcommandArgs: readonly string[],
   treeDir: string,
   settingsFile: string,
   rev: string,
 ): string {
+  const command = subcommandArgs[0] ?? "health";
   let run: Bun.SyncSubprocess<"pipe", "pipe">;
   try {
     run = Bun.spawnSync(
-      [fallowBin, ...FALLOW_ARGS, "--config", settingsFile, "--root", treeDir],
+      [
+        fallowBin,
+        ...subcommandArgs,
+        "--config",
+        settingsFile,
+        "--root",
+        treeDir,
+      ],
       {
         cwd: treeDir,
         stdout: "pipe",
@@ -150,11 +151,11 @@ function runFallowHealth(
   }
   if (run.exitedDueToTimeout)
     fail(
-      `fallow health at ${rev} did not finish within ${FALLOW_MS} ms. Repair: run fallow health by hand to see where it waits, then run this check again.`,
+      `fallow ${command} at ${rev} did not finish within ${FALLOW_MS} ms. Repair: run fallow ${command} by hand to see where it waits, then run this check again.`,
     );
   if (run.exitCode !== 0)
     fail(
-      `fallow health at ${rev} exited ${run.exitCode}: ${run.stderr.toString().trim()}. Repair: run bun install --frozen-lockfile and verify .fallowrc.json, then run this check again.`,
+      `fallow ${command} at ${rev} exited ${run.exitCode}: ${run.stderr.toString().trim()}. Repair: run bun install --frozen-lockfile and verify .fallowrc.json, then run this check again.`,
     );
   return run.stdout.toString();
 }
@@ -240,162 +241,137 @@ function removeIgnoreFiles(root: string, rev: string, tree: string): void {
       rmSync(join(tree, path), { force: true });
 }
 
-type CodeState = {
-  canStartRegex: boolean;
-  prevCond: boolean;
-  readonly braces: number[];
-  readonly condParens: boolean[];
-  nextIndex: number;
-};
-
-const TEMPLATE_TAIL = /(?:\\(?:\r\n|[\s\S])|\$(?!\{)|[^`\\$])*(?:\$\{|`|$)/y;
-const REGEX_TAIL = /(?:\\.|\[(?:\\.|[^\]\\\n\r])*(?:\]|$)|[^[/\\\n\r])*\/?/y;
-
-function pushTemplate(interpolated: boolean, state: CodeState): void {
-  if (interpolated) state.braces.push(0);
-  state.canStartRegex = interpolated;
-  state.prevCond = false;
+function ownRecord(
+  value: unknown,
+  where: string,
+  shape: string,
+): ReadonlyMap<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    fail(
+      `${where} is not ${shape}. Repair: install the pinned fallow with bun install --frozen-lockfile, then run this check again.`,
+    );
+  return new Map<string, unknown>(Object.entries(value));
 }
 
-function stepCodeBrace(text: string, tok: string, state: CodeState): void {
-  if (tok === "{") {
-    if (state.braces.length > 0)
-      state.braces[state.braces.length - 1] = (state.braces.at(-1) ?? 0) + 1;
-    state.canStartRegex = true;
-    state.prevCond = false;
-    return;
-  }
-  const depth = state.braces.at(-1) ?? 0;
-  if (depth > 0) {
-    state.braces[state.braces.length - 1] = depth - 1;
-    state.canStartRegex = true;
-    state.prevCond = false;
-    return;
-  }
-  state.braces.pop();
-  TEMPLATE_TAIL.lastIndex = state.nextIndex;
-  const tail = TEMPLATE_TAIL.exec(text);
-  if (tail !== null) state.nextIndex = TEMPLATE_TAIL.lastIndex;
-  pushTemplate(tail !== null && tail[0].endsWith("${"), state);
-}
-
-function stepCodeToken(text: string, tok: string, state: CodeState): void {
-  if (tok.startsWith('"') || tok.startsWith("'")) {
-    state.canStartRegex = false;
-    state.prevCond = false;
-    return;
-  }
-  if (tok.startsWith("`")) {
-    pushTemplate(tok.endsWith("${"), state);
-    return;
-  }
-  if (tok === "/" && state.canStartRegex) {
-    REGEX_TAIL.lastIndex = state.nextIndex;
-    if (REGEX_TAIL.exec(text) !== null) state.nextIndex = REGEX_TAIL.lastIndex;
-    state.canStartRegex = false;
-    state.prevCond = false;
-    return;
-  }
-  if (tok === "{" || (tok === "}" && state.braces.length > 0)) {
-    stepCodeBrace(text, tok, state);
-    return;
-  }
-  if (tok === "(") {
-    state.condParens.push(state.prevCond);
-    state.canStartRegex = true;
-    state.prevCond = false;
-    return;
-  }
-  if (tok === ")") {
-    state.canStartRegex = state.condParens.pop() ?? false;
-    state.prevCond = false;
-    return;
-  }
-  state.canStartRegex =
-    REGEX_PREV_CHARS.has(tok) || REGEX_PREV_KEYWORDS.has(tok);
-  state.prevCond = COND_KEYWORDS.has(tok);
-}
-
-function inertCodeComments(text: string): string {
-  const state: CodeState = {
-    canStartRegex: true,
-    prevCond: false,
-    braces: [],
-    condParens: [],
-    nextIndex: 0,
-  };
-  const parts: string[] = [];
-  let copied = 0;
-  const scanner =
-    /\/\/[^\n]*|\/\*[\s\S]*?(?:\*\/|$)|"(?:\\(?:\r\n|[\s\S])|[^"\\\n\r])*"?|'(?:\\(?:\r\n|[\s\S])|[^'\\\n\r])*'?|`(?:\\(?:\r\n|[\s\S])|\$(?!\{)|[^`\\$])*(?:\$\{|`|$)|<\/|[A-Za-z0-9_$]+|\+\+|--|[(){}]|\/|\S/g;
-  for (let m = scanner.exec(text); m !== null; m = scanner.exec(text)) {
-    const tok = m[0];
-    if (tok.startsWith("//") || tok.startsWith("/*")) {
-      if (tok.includes(INLINE_MARKER)) {
-        parts.push(
-          text.slice(copied, m.index),
-          tok.replaceAll(INLINE_MARKER, INERT_MARKER),
-        );
-        copied = scanner.lastIndex;
-      }
-      continue;
-    }
-    state.nextIndex = scanner.lastIndex;
-    stepCodeToken(text, tok, state);
-    scanner.lastIndex = state.nextIndex;
-  }
-  if (parts.length === 0) return text;
-  parts.push(text.slice(copied));
-  return parts.join("");
-}
-
-function inertMarkupComments(text: string): string {
-  return text.replace(
-    /<!--[\s\S]*?(?:-->|$)|(<(script|style)(?=[\s/>])(?:[^<>"']|"[^"]*"|'[^']*')*(?<!\/)>)([\s\S]*?)(<\/\2\s*>|$)|<\/?(?:[^<>"']|"[^"]*"|'[^']*')*>/gi,
-    (match, open?: string, _tag?: string, body?: string, close?: string) => {
-      if (match.startsWith("<!--"))
-        return match.replaceAll(INLINE_MARKER, INERT_MARKER);
-      if (open === undefined || body === undefined) return match;
-      return `${open}${inertCodeComments(body)}${close ?? ""}`;
-    },
+function badSuppressionsField(where: string, field: string): never {
+  fail(
+    `${where} has invalid field "${field}". Repair: install the pinned fallow with bun install --frozen-lockfile, then run this check again.`,
   );
 }
 
-function makeCommentMarkersInert(source: string, filePath: string): string {
-  const ext = extname(filePath).toLowerCase();
-  if (ext === ".astro") {
-    const front = /^(---\r?\n)([\s\S]*?)(\r?\n---(?=\r?\n|$))/.exec(source);
-    if (front !== null) {
-      const head = `${front[1] ?? ""}${inertCodeComments(front[2] ?? "")}${front[3] ?? ""}`;
-      return `${head}${inertMarkupComments(source.slice(front[0].length))}`;
-    }
-  }
-  if (MARKUP_EXTS.has(ext)) return inertMarkupComments(source);
-  if (CODE_EXTS.has(ext)) return inertCodeComments(source);
-  return source;
+function parseSuppressionLine(item: unknown, where: string): number {
+  const line = ownRecord(item, where, "a suppression").get("line");
+  if (typeof line !== "number" || !Number.isSafeInteger(line) || line < 1)
+    badSuppressionsField(where, "line");
+  return line;
 }
 
-// Platform: Fallow drops a finding that a fallow-ignore comment marks.
-function makeInlineMarkersInert(root: string, rev: string, tree: string): void {
-  const marked = runGit(root, [
-    ..."grep -l -z --full-name -F -e".split(" "),
-    INLINE_MARKER,
-    rev,
-    "--",
-    ":/",
-  ]);
-  if (marked.exitCode > 1)
+function parseFileSuppressions(
+  entry: unknown,
+  where: string,
+): readonly [string, readonly number[]] {
+  const record = ownRecord(entry, where, "a file suppression entry");
+  const rel = record.get("path");
+  const suppressions = record.get("suppressions");
+  if (typeof rel !== "string" || rel === "")
+    badSuppressionsField(where, "path");
+  if (!Array.isArray(suppressions))
+    badSuppressionsField(where, "suppressions");
+  return [rel, suppressions.map((item) => parseSuppressionLine(item, where))];
+}
+
+function parseReportedMarkers(
+  stdout: string,
+  rev: string,
+): ReadonlyMap<string, ReadonlySet<number>> {
+  const where = `fallow suppressions output at ${rev}`;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stdout) as unknown;
+  } catch (error) {
     fail(
-      `git grep failed at ${rev}: ${marked.stderr.trim() || `exit ${marked.exitCode}`}. Repair: run git fsck, then run this check again.`,
+      `${where} is not valid JSON: ${error instanceof Error ? error.message : String(error)}. Repair: install the pinned fallow with bun install --frozen-lockfile, then run this check again.`,
     );
-  for (const entry of marked.stdout.split("\0")) {
-    if (entry === "") continue;
-    const rel = entry.slice(rev.length + 1);
-    const path = join(tree, rel);
-    if (!lstatSync(path, { throwIfNoEntry: false })?.isFile()) continue;
-    const bytes = readFileSync(path, "latin1");
-    const updated = makeCommentMarkersInert(bytes, rel);
-    if (updated !== bytes) writeFileSync(path, updated, "latin1");
+  }
+  const files = ownRecord(parsed, where, '{ "files": [...] }').get("files");
+  if (!Array.isArray(files)) badSuppressionsField(where, "files");
+  const byFile = new Map<string, Set<number>>();
+  for (const entry of files) {
+    const [rel, lineNumbers] = parseFileSuppressions(entry, where);
+    if (lineNumbers.length === 0) continue;
+    let lines = byFile.get(rel);
+    if (lines === undefined) {
+      lines = new Set<number>();
+      byFile.set(rel, lines);
+    }
+    for (const line of lineNumbers) lines.add(line);
+  }
+  return byFile;
+}
+
+function resolveInsideTree(realTree: string, rel: string): string | undefined {
+  if (rel.includes("\0")) return undefined;
+  const target = resolve(realTree, rel);
+  if (!target.startsWith(`${realTree}${sep}`)) return undefined;
+  if (!lstatSync(target, { throwIfNoEntry: false })?.isFile()) return undefined;
+  const parent = realpathSync(dirname(target));
+  if (parent !== realTree && !parent.startsWith(`${realTree}${sep}`))
+    return undefined;
+  return target;
+}
+
+function blankReportedLine(line: string): string {
+  let updated = line;
+  for (const [marker, inert] of MARKER_REPLACEMENTS)
+    updated = updated.replaceAll(marker, inert);
+  return updated;
+}
+
+function inertFileLines(
+  target: string,
+  rel: string,
+  lineNumbers: ReadonlySet<number>,
+  rev: string,
+): void {
+  const lines = readFileSync(target, "latin1").split("\n");
+  for (const lineNumber of lineNumbers) {
+    const current = lines[lineNumber - 1];
+    if (current === undefined)
+      fail(
+        `fallow suppressions at ${rev} reported ${rel}:${lineNumber}, past the end of the file. Repair: install the pinned fallow with bun install --frozen-lockfile, then run this check again.`,
+      );
+    const updated = blankReportedLine(current);
+    if (updated === current)
+      fail(
+        `fallow suppressions at ${rev} reported ${rel}:${lineNumber}, which holds no recognised fallow-ignore marker. Repair: update scripts/fallow-health-at-base-settings.ts for this marker, then run this check again.`,
+      );
+    lines[lineNumber - 1] = updated;
+  }
+  writeFileSync(target, lines.join("\n"), "latin1");
+}
+
+// Platform: Fallow drops a finding that an inline suppression comment marks,
+// and fallow suppressions reports every active marker it recognises with file
+// and line.
+function makeReportedMarkersInert(
+  fallowBin: string,
+  rev: string,
+  tree: string,
+  settingsFile: string,
+): void {
+  const stdout = runFallow(
+    fallowBin,
+    FALLOW_SUPPRESSIONS_ARGS,
+    tree,
+    settingsFile,
+    rev,
+  );
+  const reported = parseReportedMarkers(stdout, rev);
+  if (reported.size === 0) return;
+  const realTree = realpathSync(tree);
+  for (const [rel, lineNumbers] of reported) {
+    const target = resolveInsideTree(realTree, rel);
+    if (target !== undefined) inertFileLines(target, rel, lineNumbers, rev);
   }
 }
 
@@ -406,13 +382,19 @@ function runInTree(
   settingsFile: string,
 ): string {
   removeIgnoreFiles(options.root, rev, tree);
-  makeInlineMarkersInert(options.root, rev, tree);
-  return runFallowHealth(options.fallow, tree, settingsFile, rev);
+  makeReportedMarkersInert(options.fallow, rev, tree, settingsFile);
+  return runFallow(
+    options.fallow,
+    FALLOW_HEALTH_ARGS,
+    tree,
+    settingsFile,
+    rev,
+  );
 }
 
 // Interface: runs fallow health on base and head under the base's settings
-// file, with no ignore file or inline marker in either tree, so the change
-// being judged cannot change what is measured.
+// file, with no ignore file or Fallow-reported inline marker in either tree,
+// so the change being judged cannot change what is measured.
 export function runFallowHealthAtBaseSettings(
   options: MeasureOptions,
   baseSha: string,
