@@ -1,13 +1,12 @@
 diff --git a/scripts/glossary-additions.ts b/scripts/glossary-additions.ts
-index f97c94b..0e368c2 100644
 --- a/scripts/glossary-additions.ts
 +++ b/scripts/glossary-additions.ts
-@@ -51,7 +51,7 @@ function additionProblems(
-     recordedEntries(file, base, list).map((own) => identityOf(own, identity)),
-   );
-   return recordedEntries(file, current, list).flatMap((own) =>
--    before.has(identityOf(own, identity)) || isApproved(own)
-+    true
-       ? []
-       : [
-           `${file} adds ${describe(own)}, which ${revision} does not record, so this change widens what the names check admits. Repair: remove it (rename the path, or use or remove the term); or, if it must stay, make a reviewed change that gives the entry an "approved" field naming the ticket or pull request that agreed it, with its reason.`,
+@@ -180,7 +180,7 @@
+   return (current === undefined ? [] : entries(file, current)).flatMap(
+     (entry) => {
+       const earlier = before.get(entry.identity);
+-      if (earlier !== undefined && entry.size <= earlier.size) return [];
++      if (true) return [];
+       if (entry.approved !== undefined && entry.approved !== earlier?.approved)
+         return [];
+       return [

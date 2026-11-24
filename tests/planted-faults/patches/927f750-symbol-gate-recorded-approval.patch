@@ -1,11 +1,12 @@
+diff --git a/scripts/glossary-additions.ts b/scripts/glossary-additions.ts
 --- a/scripts/glossary-additions.ts
 +++ b/scripts/glossary-additions.ts
-@@ -17,7 +17,7 @@
-   {
-     file: recordedHitsFile,
-     list: "hits",
--    identity: ["path", "word", "declaration"],
-+    identity: ["path", "word"],
-     describe: (own) =>
-       `a recorded hit for "${String(own.get("word"))}" in ${String(own.get("path"))}${own.get("declaration") === undefined ? "" : ` declaration ${String(own.get("declaration"))}`}`,
-   },
+@@ -88,7 +88,7 @@
+     movable: true,
+     entries: arrayEntries(
+       "hits",
+-      ["path", "word", "declaration"],
++      ["path", "word"],
+       (own) =>
+         `a recorded hit for "${String(own.get("word"))}" in ${String(own.get("path"))}${own.get("declaration") === undefined ? "" : ` declaration ${String(own.get("declaration"))}`}`,
+     ),

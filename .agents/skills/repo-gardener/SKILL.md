@@ -125,7 +125,9 @@ Done when each item holds:
    one. For a fault, follow the planted-fault guide until
    `bun run fault-replay <id>` prints `KILLED`.
 3. For a lint, record the existing hits as the recorded hits note says, with
-   `bunx eslint . --suppress-rule repository/<rule id>`.
+   `bunx eslint . --suppress-rule repository/<rule id>`. Give each new entry
+   an `approved` field naming the ticket or pull request, or
+   `check:names --against` refuses it.
 4. Move the row: name the gate in its Gates cell, as
    ``lint `repository/<rule id>` `` or ``fault `<record id>` ``, link its
    gate note, mark it Partial, and drop the gate from Planned (parked). Write
@@ -218,7 +220,7 @@ repository meets.
      rename belongs to a larger change: add a recorded hit with its reason
      and the change that will remove it. A name newer than its rule takes
      one of the two repairs above.
-     A new recorded hit or recorded unused term is refused by
+     A new recorded hit, recorded unused term or plain word is refused by
      `bun run check:names --against origin/main` (a hosted check) until a
      reviewed change gives the entry an `approved` field naming the ticket or
      pull request that agreed it.
