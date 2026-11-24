@@ -1,7 +1,8 @@
 diff --git a/generated-repository/scripts/check-recorded-health-sizes.ts b/generated-repository/scripts/check-recorded-health-sizes.ts
+index 95e0f43..822ce6c 100644
 --- a/generated-repository/scripts/check-recorded-health-sizes.ts
 +++ b/generated-repository/scripts/check-recorded-health-sizes.ts
-@@ -181,8 +181,6 @@ function parseHealthHits(text: string, rev: string): CountTable {
+@@ -182,8 +182,6 @@ function parseHealthHits(text: string, rev: string): CountTable {
    }
    const identities = own.get("identity_finding_counts");
    if (identities === undefined) {
