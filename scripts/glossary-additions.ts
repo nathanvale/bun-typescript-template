@@ -1,7 +1,6 @@
 import {
   gitInNamesCheck,
   mergeBaseOf,
-  recordedEntries,
   recordedHitsFile,
   recordedUnusedTermsFile,
   textAt,
@@ -28,54 +27,136 @@ type RecordedEntry = ReturnType<RecordedList["entries"]>[number];
 
 const namesRepair = "rename the path, or use or remove the term";
 
-function ownFields(value: unknown): Map<string, unknown> {
-  return new Map(
-    typeof value === "object" && value !== null && !Array.isArray(value)
-      ? Object.entries(value)
-      : [],
+function refuse(file: string, shape: string): never {
+  throw new Error(
+    `${file} is not ${shape}, so the recorded lists check cannot read it. Repair: restore that shape, then run bun run check:names --against <base> again.`,
   );
 }
 
-function approvalOf(own: ReadonlyMap<string, unknown>): string | undefined {
+function shaped(
+  value: unknown,
+  file: string,
+  shape: string,
+  keys?: readonly string[],
+): Map<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return refuse(file, shape);
+  const own = new Map<string, unknown>(Object.entries(value));
+  if (keys !== undefined && [...own.keys()].some((key) => !keys.includes(key)))
+    return refuse(file, shape);
+  return own;
+}
+
+function approvalOf(
+  own: ReadonlyMap<string, unknown>,
+  file: string,
+  shape: string,
+): string | undefined {
   const approved = own.get("approved");
-  return typeof approved === "string" && approved.trim() !== ""
-    ? approved
-    : undefined;
+  if (approved !== undefined && typeof approved !== "string")
+    return refuse(file, shape);
+  return approved?.trim() === "" ? undefined : approved?.trim();
 }
 
 function arrayEntries(
   list: string,
   identity: readonly string[],
+  fields: readonly string[],
   label: (own: ReadonlyMap<string, unknown>) => string,
 ): RecordedList["entries"] {
-  return (file, text) =>
-    recordedEntries(file, text, list).map((own) => ({
-      identity: JSON.stringify(identity.map((key) => own.get(key))),
-      label: label(own),
-      size: 1,
-      approved: approvalOf(own),
-    }));
+  const shape = `{ "${list}": [{ ${[...identity, ...fields].join(", ")}, approved? }] }`;
+  return (file, text) => {
+    const entries = shaped(JSON.parse(text), file, shape, ["about", list]).get(
+      list,
+    );
+    if (!Array.isArray(entries)) return refuse(file, shape);
+    return entries.map((entry: unknown) => {
+      const own = shaped(entry, file, shape, [
+        ...identity,
+        ...fields,
+        "approved",
+      ]);
+      return {
+        identity: JSON.stringify(identity.map((key) => own.get(key))),
+        label: label(own),
+        size: 1,
+        approved: approvalOf(own, file, shape),
+      };
+    });
+  };
 }
 
 function countEntries(
-  text: string,
-  field: string | undefined,
+  file: string,
+  table: unknown,
+  field: string,
   label: (key: string, kind: string) => string,
 ): RecordedEntry[] {
-  const parsed = ownFields(JSON.parse(text));
-  const table = field === undefined ? parsed : ownFields(parsed.get(field));
-  return [...table].flatMap(([key, kinds]) =>
-    [...ownFields(kinds)].map(([kind, recorded]) => {
-      const own = ownFields(recorded);
+  const shape = `{ "<path>": { "<kind>": { count, approved? } } } in ${field}`;
+  return [...shaped(table, file, shape)].flatMap(([key, kinds]) =>
+    [...shaped(kinds, file, shape)].map(([kind, recorded]) => {
+      const own = shaped(recorded, file, shape, ["count", "approved"]);
       const count = own.get("count");
+      if (!Number.isSafeInteger(count) || Number(count) < 0)
+        return refuse(file, shape);
       return {
         identity: JSON.stringify([field, key, kind]),
         label: label(key, kind),
-        size: typeof count === "number" ? count : Number.POSITIVE_INFINITY,
-        approved: approvalOf(own),
+        size: Number(count),
+        approved: approvalOf(own, file, shape),
       };
     }),
   );
+}
+
+const healthFields = [
+  "kind",
+  "finding_counts",
+  "identity_finding_counts",
+  "runtime_coverage_findings",
+  "target_keys",
+  "approved",
+];
+const healthShape = `{ ${healthFields.join(", ")}? } as fallow health --save-baseline writes it`;
+
+function healthEntries(file: string, text: string): RecordedEntry[] {
+  const own = shaped(JSON.parse(text), file, healthShape, healthFields);
+  const approvals = shaped(own.get("approved") ?? {}, file, healthShape);
+  if (
+    own.get("kind") !== "health" ||
+    [...approvals.values()].some((approved) => typeof approved !== "string")
+  )
+    return refuse(file, healthShape);
+  const keys = ["runtime_coverage_findings", "target_keys"].flatMap((field) => {
+    const listed = own.get(field);
+    if (!Array.isArray(listed) || listed.some((key) => typeof key !== "string"))
+      return refuse(file, healthShape);
+    return listed.map((key: string) => ({
+      identity: JSON.stringify([field, key]),
+      label: `a recorded ${field} entry ${key}`,
+      size: 1,
+      approved: approvalOf(
+        new Map([["approved", approvals.get(key)]]),
+        file,
+        healthShape,
+      ),
+    }));
+  });
+  return [
+    ...countEntries(
+      file,
+      own.get("identity_finding_counts"),
+      "identity_finding_counts",
+      healthLabel,
+    ),
+    ...countEntries(
+      file,
+      own.get("finding_counts"),
+      "finding_counts",
+      healthLabel,
+    ),
+    ...keys,
+  ];
 }
 
 function healthLabel(key: string, kind: string): string {
@@ -92,6 +173,7 @@ const recordedLists: readonly RecordedList[] = [
     entries: arrayEntries(
       "hits",
       ["path", "word", "declaration"],
+      ["reason"],
       (own) =>
         `a recorded hit for "${String(own.get("word"))}" in ${String(own.get("path"))}${own.get("declaration") === undefined ? "" : ` declaration ${String(own.get("declaration"))}`}`,
     ),
@@ -104,6 +186,7 @@ const recordedLists: readonly RecordedList[] = [
     entries: arrayEntries(
       "terms",
       ["term"],
+      ["reason", "ticket"],
       (own) => `a recorded unused term "${String(own.get("term"))}"`,
     ),
   },
@@ -114,6 +197,7 @@ const recordedLists: readonly RecordedList[] = [
     entries: arrayEntries(
       "words",
       ["word"],
+      ["reason"],
       (own) => `a plain word "${String(own.get("word"))}"`,
     ),
   },
@@ -124,6 +208,7 @@ const recordedLists: readonly RecordedList[] = [
     entries: arrayEntries(
       "hits",
       ["path", "export"],
+      ["reason"],
       (own) =>
         `a recorded coverage gap for ${String(own.get("path"))}${own.get("export") === undefined ? "" : ` export ${String(own.get("export"))}`}`,
     ),
@@ -132,26 +217,35 @@ const recordedLists: readonly RecordedList[] = [
     file: "scripts/file-size-recorded-hits.json",
     gate: "the file size check",
     repair: "bring the file within the limit",
-    entries: (_file, text) =>
-      [...ownFields(JSON.parse(text))].map(([path, recorded]) => {
-        const own = ownFields(recorded);
-        const lifetime = String(own.get("lifetime"));
+    entries: (file, text) => {
+      const shape = `{ "<path>": { lifetime: "standing" | "temporary", reason, approved? } }`;
+      return [...shaped(JSON.parse(text), file, shape)].map(([path, hit]) => {
+        const own = shaped(hit, file, shape, [
+          "lifetime",
+          "reason",
+          "approved",
+        ]);
+        const lifetime = own.get("lifetime");
+        if (lifetime !== "standing" && lifetime !== "temporary")
+          return refuse(file, shape);
         return {
           identity: JSON.stringify([path, lifetime]),
-          label: `a ${lifetime} recorded hit for ${path}`,
+          label: `a ${String(lifetime)} recorded hit for ${path}`,
           size: 1,
-          approved: approvalOf(own),
+          approved: approvalOf(own, file, shape),
         };
-      }),
+      });
+    },
   },
   {
     file: "eslint-suppressions.json",
     gate: "lint",
     repair: "fix the lint error, since eslint --suppress-rule writes the entry",
-    entries: (_file, text) =>
+    entries: (file, text) =>
       countEntries(
-        text,
-        undefined,
+        file,
+        JSON.parse(text),
+        "eslint-suppressions.json",
         (path, rule) => `a recorded ${rule} hit for ${path}`,
       ),
   },
@@ -159,11 +253,8 @@ const recordedLists: readonly RecordedList[] = [
     file: "fallow-health-recorded-hits.json",
     gate: "the Fallow health audit",
     repair:
-      "simplify the function or split the file, since fallow health --save-baseline writes the entry",
-    entries: (_file, text) => [
-      ...countEntries(text, "identity_finding_counts", healthLabel),
-      ...countEntries(text, "finding_counts", healthLabel),
-    ],
+      "simplify the function or split the file, since fallow health --save-baseline writes the entry. A runtime_coverage_findings or target_keys entry takes its approval in the top-level approved object, keyed by the entry",
+    entries: healthEntries,
   },
 ];
 

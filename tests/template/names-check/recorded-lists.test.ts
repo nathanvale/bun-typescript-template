@@ -26,11 +26,15 @@ type Plant = {
 const suppression = (count: number, extra: object = {}) => ({
   "repository/tests-use-test-folder": { count, ...extra },
 });
-const health = (identities: object) => ({
+const health = (identities: object, extra: object = {}) => ({
   kind: "health",
   finding_counts: {},
   identity_finding_counts: identities,
+  runtime_coverage_findings: [],
+  target_keys: [],
+  ...extra,
 });
+const targetKey = "src/cli-error.ts:high impact";
 const codeWeight = {
   "src/cli-error.ts\u0000codeWeight": { complexity_critical: { count: 1 } },
 };
@@ -125,13 +129,20 @@ const plants = new Map<string, Plant>([
     "fallow-health-recorded-hits.json",
     {
       landed: health({}),
-      grown: [health(codeWeight)],
+      grown: [
+        health(codeWeight),
+        health({}, { runtime_coverage_findings: ["src/cli-error.ts:fn"] }),
+        health({}, { target_keys: [targetKey] }),
+      ],
       shrunk: health({}),
-      approved: health({
-        "src/cli-error.ts\u0000codeWeight": {
-          complexity_critical: { count: 1, approved: "MAG-1" },
+      approved: health(
+        {
+          "src/cli-error.ts\u0000codeWeight": {
+            complexity_critical: { count: 1, approved: "MAG-1" },
+          },
         },
-      }),
+        { target_keys: [targetKey], approved: { [targetKey]: "MAG-1" } },
+      ),
     },
   ],
 ]);
@@ -171,7 +182,7 @@ for (const [file, { landed, grown, shrunk, approved }] of plants)
     expect(problemsAfter(approved)).toEqual([]);
   });
 
-test("an approval the base revision already holds does not admit a rise", () => {
+test("an approval the base revision already holds does not admit a rise, even with spaces around it", () => {
   const file = "eslint-suppressions.json";
   const landed = { "tests/a.test.ts": suppression(2, { approved: "MAG-1" }) };
   expect(
@@ -179,11 +190,26 @@ test("an approval the base revision already holds does not admit a rise", () => 
       file,
       landed,
     )({
-      "tests/a.test.ts": suppression(3, { approved: "MAG-1" }),
+      "tests/a.test.ts": suppression(3, { approved: " MAG-1 " }),
     }),
   ).toEqual([
     `${file} raises a recorded repository/tests-use-test-folder hit for tests/a.test.ts from 2 to 3, above what HEAD records, so this change widens what lint admits. Repair: remove it (fix the lint error, since eslint --suppress-rule writes the entry); or, if it must stay, make a reviewed change that gives the entry an "approved" field naming the ticket or pull request that agreed it, with its reason.`,
   ]);
+});
+
+test("a recorded list in a form its reader does not know is refused, not read as empty", () => {
+  const malformed: [string, unknown, unknown][] = [
+    ["eslint-suppressions.json", {}, []],
+    ["eslint-suppressions.json", {}, { "tests/a.test.ts": ["not-an-object"] }],
+    ["eslint-suppressions.json", {}, { "tests/a.test.ts": suppression(-1) }],
+    ["scripts/file-size-recorded-hits.json", {}, []],
+    ["fallow-health-recorded-hits.json", health({}), []],
+    ["fallow-health-recorded-hits.json", health({}), health({}, { more: [] })],
+    ["fallow-health-recorded-hits.json", health({}), { kind: "health" }],
+    ["names-plain-words.json", { words: [] }, { words: [{ word: "a", x: 1 }] }],
+  ];
+  for (const [file, landed, current] of malformed)
+    expect(() => landedList(file, landed)(current)).toThrow(`${file} is not `);
 });
 
 const listName =
@@ -224,6 +250,20 @@ function unguardedLists(paths: readonly string[], root: string): string[] {
     "",
   );
   const guarded = new Set(recordedListFiles);
+  const fallowConfigs = new Set([
+    ".fallowrc.json",
+    `${settings}.fallowrc.json`,
+  ]);
+  const dodges = paths.filter(
+    (path) =>
+      (/(?:^|\/)(?:\.fallowrc\.jsonc?|\.?fallow\.toml)$/.test(path) &&
+        !fallowConfigs.has(path)) ||
+      (fallowConfigs.has(path) && readText(root, path).includes('"extends"')) ||
+      (/(?:^|\/)(?:package\.json|[^/]+\.ya?ml)$/.test(path) &&
+        /fallow[^"\n]*\s(?:-c|--config)[\s=]|FALLOW_CONFIG|--suppressions-location/.test(
+          readText(root, path),
+        )),
+  );
   const fallowScript = readText(root, `${settings}package.json`)
     .split("\n")
     .find((line) => line.includes('"quality:fallow":'));
@@ -237,6 +277,7 @@ function unguardedLists(paths: readonly string[], root: string): string[] {
     (fallowScript?.includes(` ${basename(path)}`) ?? false) &&
     paths.includes(path);
   return [
+    ...dodges,
     ...[...template].filter((path) => !guarded.has(path)),
     ...[...generated].filter(
       (path) =>
@@ -258,11 +299,15 @@ test("every recorded list in this repository and in a generated repository has a
         ...tracked,
         "tests/template/lint/lint-recorded-hits.json",
         "generated-repository/settings/eslint-suppressions.json",
+        ".fallowrc.jsonc",
+        "generated-repository/settings/fallow.toml",
       ],
       templateRoot,
     ),
   ).toEqual([
+    ".fallowrc.jsonc",
     "generated-repository/settings/eslint-suppressions.json",
+    "generated-repository/settings/fallow.toml",
     "tests/template/lint/lint-recorded-hits.json",
   ]);
 });
