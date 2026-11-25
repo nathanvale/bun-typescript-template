@@ -313,7 +313,9 @@ function findReplacedFunctionGrowth(
   name: string,
   baseList: readonly FindingMetric[],
   data: HealthData,
-): { readonly otherPath: string; readonly grown: readonly string[] } | undefined {
+):
+  | { readonly otherPath: string; readonly grown: readonly string[] }
+  | undefined {
   if (name === "<file>" || name === "") return undefined;
   const suffix = `\0${name}`;
   for (const otherIdentity of [...data.headMetrics.keys()].toSorted(
