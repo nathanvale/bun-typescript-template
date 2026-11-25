@@ -2991,5 +2991,12 @@
     "testFile": "tests/template/toolchain/recorded-health-sizes-base-settings.test.ts",
     "title": "^fails closed with exit 2 when fallow suppressions reports malformed JSON, an invalid path, or an unrecognised marker line$",
     "source": "fd8b2dc fix(recorded-health-sizes): fail closed on invalid reported suppression paths and test refusals"
+  },
+  {
+    "id": "generated-hosted-check-missing-base",
+    "patch": "tests/planted-faults/patches/generated-hosted-check-missing-base.patch",
+    "testFile": "tests/template/toolchain/generated-hosted-check-missing-base.test.ts",
+    "title": "^fails on pull_request when BASE is empty, printing ::error:: with the missing base and repair$",
+    "source": "fix(generated-repository): fail the hosted growth check on pull_request when BASE is missing"
   }
 ]

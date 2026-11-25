@@ -1,8 +1,8 @@
 diff --git a/generated-repository/hosted-check/ci.yml b/generated-repository/hosted-check/ci.yml
 --- a/generated-repository/hosted-check/ci.yml
 +++ b/generated-repository/hosted-check/ci.yml
-@@ -33,4 +33,3 @@ jobs:
-             exit 0
+@@ -38,4 +38,3 @@ jobs:
+             exit 1
            fi
            bun run --silent quality:fallow -- --fail-on-baseline-growth --baseline-base "$BASE"
 -          bun scripts/check-recorded-health-sizes.ts --base "$BASE"

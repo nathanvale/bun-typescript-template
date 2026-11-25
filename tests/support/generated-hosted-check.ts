@@ -226,6 +226,7 @@ function permissionProblems(document: PlainObject, where: string): string[] {
 const GROWTH_CHECK = "the Fallow recorded-hits growth check";
 const GROWTH_BASE =
   "${{ github.event.pull_request.base.sha || github.event.before }}";
+const GROWTH_EVENT_NAME = "${{ github.event_name }}";
 
 function field(step: PlainObject, block: string, key: string) {
   const record = asRecord(own(step, block));
@@ -244,6 +245,7 @@ function stepSummary(step: PlainObject) {
         : run,
     fetchDepth: field(step, "with", "fetch-depth"),
     base: field(step, "env", "BASE"),
+    eventName: field(step, "env", "EVENT_NAME"),
   };
 }
 
@@ -344,6 +346,7 @@ function jobProblems(
       run: undefined,
       fetchDepth: "0",
       base: undefined,
+      eventName: undefined,
     },
     {
       uses: SETUP_BUN_ACTION,
@@ -351,6 +354,7 @@ function jobProblems(
       run: undefined,
       fetchDepth: undefined,
       base: undefined,
+      eventName: undefined,
     },
     {
       uses: undefined,
@@ -358,6 +362,7 @@ function jobProblems(
       run: "bun install --frozen-lockfile",
       fetchDepth: undefined,
       base: undefined,
+      eventName: undefined,
     },
     {
       uses: undefined,
@@ -365,6 +370,7 @@ function jobProblems(
       run: KERNEL_RECIPE.checkCommand,
       fetchDepth: undefined,
       base: undefined,
+      eventName: undefined,
     },
     {
       uses: undefined,
@@ -372,6 +378,7 @@ function jobProblems(
       run: "bun run check:changesets",
       fetchDepth: undefined,
       base: undefined,
+      eventName: undefined,
     },
     {
       uses: undefined,
@@ -379,11 +386,12 @@ function jobProblems(
       run: GROWTH_CHECK,
       fetchDepth: undefined,
       base: GROWTH_BASE,
+      eventName: GROWTH_EVENT_NAME,
     },
   ];
   if (!Bun.deepEquals(validSteps.map(stepSummary), expectedSummary))
     problems.push(
-      `${where} job check must run ${checkoutPin ?? CHECKOUT_ACTION} with fetch-depth: 0, ${setupBunPin ?? SETUP_BUN_ACTION}, bun install --frozen-lockfile, ${KERNEL_RECIPE.checkCommand}, the pull_request Changesets step (bun run check:changesets), then the Fallow recorded-hits growth check with BASE ${GROWTH_BASE}. Repair: match those six steps in order in generated-repository/hosted-check/ci.yml.`,
+      `${where} job check must run ${checkoutPin ?? CHECKOUT_ACTION} with fetch-depth: 0, ${setupBunPin ?? SETUP_BUN_ACTION}, bun install --frozen-lockfile, ${KERNEL_RECIPE.checkCommand}, the pull_request Changesets step (bun run check:changesets), then the Fallow recorded-hits growth check with BASE ${GROWTH_BASE} and EVENT_NAME ${GROWTH_EVENT_NAME}. Repair: match those six steps in order in generated-repository/hosted-check/ci.yml.`,
     );
   return problems;
 }

@@ -1,10 +1,10 @@
 diff --git a/generated-repository/hosted-check/ci.yml b/generated-repository/hosted-check/ci.yml
 --- a/generated-repository/hosted-check/ci.yml
 +++ b/generated-repository/hosted-check/ci.yml
-@@ -26,4 +26,4 @@ jobs:
-           if [ -z "${BASE:-}" ] || ! git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
-             echo "Skipping Fallow recorded-hits growth check: no base commit ${BASE:-} in this checkout."
-             exit 0
+@@ -37,5 +37,5 @@ jobs:
+             echo "::error::Fallow recorded-hits growth check cannot run: base commit '${BASE:-empty}' is missing from this checkout. Check out with fetch-depth: 0, then rerun the job."
+             exit 1
            fi
 -          bun run --silent quality:fallow -- --fail-on-baseline-growth --baseline-base "$BASE"
 +          bun run --silent quality:fallow
+           bun scripts/check-recorded-health-sizes.ts --base "$BASE"
