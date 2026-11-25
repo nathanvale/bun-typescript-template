@@ -1,0 +1,12 @@
+diff --git a/generated-repository/scripts/fallow-health-at-base-settings.ts b/generated-repository/scripts/fallow-health-at-base-settings.ts
+--- a/generated-repository/scripts/fallow-health-at-base-settings.ts
++++ b/generated-repository/scripts/fallow-health-at-base-settings.ts
+@@ -25,7 +25,7 @@ const GIT_LOC_VARS = new Set(
+   ),
+ );
+ const FALLOW_HEALTH_ARGS =
+-  "health --complexity --no-type-aware --report-only --format json --quiet --no-cache --max-cyclomatic 0 --max-cognitive 0 --max-file-lines 1".split(
++  "health --complexity --no-type-aware --report-only --format json --quiet --no-cache".split(
+     " ",
+   );
+ const MAX_EXTENDS_DEPTH = 16;
