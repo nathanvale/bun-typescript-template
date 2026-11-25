@@ -287,18 +287,19 @@ export async function runTests(
     options.env.STATE_TEST_DIR || options.env.TMPDIR || tmpdir(),
   );
   const runFolder = realFolder(mkdtempSync(join(parent, runFolderPrefix)));
-  writeFileSync(
-    join(runFolder, testRunProcessMark),
-    `${testRunProcessVariable}=${process.pid}\n`,
-  );
-  const child = startBunTest(args, options, runFolder);
   const problems: string[] = [];
+  let child: ReturnType<typeof startBunTest> | undefined;
   let code: number;
   let marked: boolean;
   try {
+    writeFileSync(
+      join(runFolder, testRunProcessMark),
+      `${testRunProcessVariable}=${process.pid}\n`,
+    );
+    child = startBunTest(args, options, runFolder);
     code = await finished(child, options);
   } finally {
-    stopProcess(child.pid, true);
+    if (child !== undefined) stopProcess(child.pid, true);
     marked = existsSync(join(runFolder, teardownMark));
     rmSync(runFolder, { recursive: true, force: true });
   }
