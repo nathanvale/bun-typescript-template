@@ -1,3 +1,4 @@
+import { afterAll } from "bun:test";
 import { realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -37,9 +38,11 @@ function guard(runFolder: string, testRunProcess: number): void {
   writeFileSync(join(runFolder, teardownMark), "");
   const removeRunFolder = () =>
     tryIgnore(() => rmSync(runFolder, { recursive: true, force: true }));
-  process.on("exit", () => {
+  const removeIfRunnerGone = () => {
     if (runnerGone(testRunProcess)) removeRunFolder();
-  });
+  };
+  afterAll(removeIfRunnerGone);
+  process.on("exit", removeIfRunnerGone);
   setInterval(() => {
     if (!runnerGone(testRunProcess)) return;
     removeRunFolder();
