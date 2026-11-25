@@ -44,9 +44,29 @@ interface DeclaredSymbols {
   readonly definesAnyName: boolean;
 }
 
+interface LocalExportAlias {
+  readonly localName: string;
+  readonly exportedName: string;
+}
+
 interface SymbolCollector {
   readonly names: Set<string>;
+  readonly importedNames: Set<string>;
+  readonly exportAliases: LocalExportAlias[];
   definesAnyName: boolean;
+}
+
+function resolveComputedPropertyName(
+  name: ts.ComputedPropertyName,
+): PropertyNameResult {
+  const { expression } = name;
+  if (
+    ts.isStringLiteral(expression) ||
+    ts.isNoSubstitutionTemplateLiteral(expression)
+  ) {
+    return { kind: "name", text: expression.text };
+  }
+  return { kind: "any" };
 }
 
 function resolvePropertyName(name: ts.PropertyName): PropertyNameResult {
@@ -63,14 +83,7 @@ function resolvePropertyName(name: ts.PropertyName): PropertyNameResult {
     return { kind: "name", text: name.text };
   }
   if (ts.isComputedPropertyName(name)) {
-    const { expression } = name;
-    if (
-      ts.isStringLiteral(expression) ||
-      ts.isNoSubstitutionTemplateLiteral(expression)
-    ) {
-      return { kind: "name", text: expression.text };
-    }
-    return { kind: "any" };
+    return resolveComputedPropertyName(name);
   }
   return { kind: "none" };
 }
@@ -130,21 +143,42 @@ function addMemberName(node: ts.Node, collector: SymbolCollector): boolean {
   return true;
 }
 
-function addTypeOrExportName(node: ts.Node, names: Set<string>): void {
+function addImportNames(node: ts.Node, importedNames: Set<string>): boolean {
+  if (ts.isImportEqualsDeclaration(node)) {
+    importedNames.add(node.name.text);
+    return true;
+  }
+  if (!ts.isImportDeclaration(node)) return false;
+  const clause = node.importClause;
+  if (clause === undefined) return true;
+  if (clause.name !== undefined) importedNames.add(clause.name.text);
+  const bindings = clause.namedBindings;
+  if (bindings === undefined) return true;
+  if (ts.isNamespaceImport(bindings)) {
+    importedNames.add(bindings.name.text);
+    return true;
+  }
+  for (const element of bindings.elements) {
+    importedNames.add(element.name.text);
+  }
+  return true;
+}
+
+function addTypeOrExportName(node: ts.Node, collector: SymbolCollector): void {
   if (
     ts.isInterfaceDeclaration(node) ||
     ts.isTypeAliasDeclaration(node) ||
     ts.isEnumDeclaration(node)
   ) {
-    names.add(node.name.text);
+    collector.names.add(node.name.text);
     return;
   }
   if (ts.isModuleDeclaration(node) && ts.isIdentifier(node.name)) {
-    names.add(node.name.text);
+    collector.names.add(node.name.text);
     return;
   }
   if (ts.isExportAssignment(node)) {
-    names.add("default");
+    collector.names.add("default");
     return;
   }
   if (
@@ -152,18 +186,22 @@ function addTypeOrExportName(node: ts.Node, names: Set<string>): void {
     node.propertyName !== undefined &&
     node.parent.parent.moduleSpecifier === undefined
   ) {
-    names.add(node.name.text);
+    collector.exportAliases.push({
+      localName: node.propertyName.text,
+      exportedName: node.name.text,
+    });
   }
 }
 
 function recordDeclaredNode(node: ts.Node, collector: SymbolCollector): void {
+  if (addImportNames(node, collector.importedNames)) return;
   if (addFunctionOrClassName(node, collector.names)) return;
   if (ts.isVariableDeclaration(node)) {
     addBindingNames(node.name, collector.names);
     return;
   }
   if (addMemberName(node, collector)) return;
-  addTypeOrExportName(node, collector.names);
+  addTypeOrExportName(node, collector);
 }
 
 function collectDeclaredSymbols(
@@ -182,6 +220,8 @@ function collectDeclaredSymbols(
   }
   const collector: SymbolCollector = {
     names: new Set<string>(),
+    importedNames: new Set<string>(),
+    exportAliases: [],
     definesAnyName: false,
   };
   const visit = (node: ts.Node): void => {
@@ -189,6 +229,14 @@ function collectDeclaredSymbols(
     ts.forEachChild(node, visit);
   };
   visit(sourceFile);
+  for (const alias of collector.exportAliases) {
+    if (
+      collector.names.has(alias.localName) &&
+      !collector.importedNames.has(alias.localName)
+    ) {
+      collector.names.add(alias.exportedName);
+    }
+  }
   return collector;
 }
 
@@ -241,9 +289,41 @@ function readSourceFileText(fullPath: string): FileReadResult {
   }
 }
 
-function loadTrackedSourceFiles(
+function parseFallowIgnorePatterns(
+  text: string,
+): ReadonlySet<string> | undefined {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    return undefined;
+  }
+  if (!Object.hasOwn(parsed, "ignorePatterns")) return new Set<string>();
+  const patterns: unknown = Reflect.get(parsed, "ignorePatterns");
+  if (
+    !Array.isArray(patterns) ||
+    !patterns.every((entry): entry is string => typeof entry === "string")
+  ) {
+    return undefined;
+  }
+  return new Set(patterns);
+}
+
+function loadFallowIgnoredPaths(
   worktree: string,
-): ReadonlyMap<string, string> | undefined {
+): ReadonlySet<string> | undefined {
+  const configPath = resolveWorktreePath(worktree, ".fallowrc.json");
+  if (configPath === undefined) return undefined;
+  const read = readSourceFileText(configPath);
+  if (read.kind === "missing") return new Set<string>();
+  if (read.kind === "unreadable") return undefined;
+  return parseFallowIgnorePatterns(read.text);
+}
+
+function listWorktreePaths(worktree: string): string[] | undefined {
   const listed = runGitCommand(worktree, [
     "ls-files",
     "--cached",
@@ -252,18 +332,31 @@ function loadTrackedSourceFiles(
     "-z",
   ]);
   if (listed.timedOut || listed.exitCode !== 0) return undefined;
-  let decoded: string;
   try {
-    decoded = UTF8_STRICT.decode(listed.stdout);
+    return UTF8_STRICT.decode(listed.stdout).split("\u0000");
   } catch {
     return undefined;
   }
+}
+
+function loadTrackedSourceFiles(
+  worktree: string,
+): ReadonlyMap<string, string> | undefined {
+  const ignoredPaths = loadFallowIgnoredPaths(worktree);
+  const paths = listWorktreePaths(worktree);
+  if (ignoredPaths === undefined || paths === undefined) return undefined;
   const seen = new Set<string>();
   const sources = new Map<string, string>();
-  for (const relativePath of decoded.split("\u0000")) {
-    if (relativePath === "" || seen.has(relativePath)) continue;
+  for (const relativePath of paths) {
+    if (
+      relativePath === "" ||
+      seen.has(relativePath) ||
+      !SOURCE_FILE_PATTERN.test(relativePath) ||
+      ignoredPaths.has(relativePath)
+    ) {
+      continue;
+    }
     seen.add(relativePath);
-    if (!SOURCE_FILE_PATTERN.test(relativePath)) continue;
     const fullPath = resolveWorktreePath(worktree, relativePath);
     if (fullPath === undefined) return undefined;
     const read = readSourceFileText(fullPath);

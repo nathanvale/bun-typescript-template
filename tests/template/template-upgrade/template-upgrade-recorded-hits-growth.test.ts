@@ -475,3 +475,47 @@ test(
   },
   processWatchdog(6),
 );
+
+test(
+  "passes when the old file is deleted and a third tracked file re-exports the moved symbol through an import-then-export barrel",
+  async () => {
+    const { branch, run } = await runMoveCase(
+      "import-export-barrel-app",
+      "src/old.ts",
+      "src/new.ts",
+      "rm src/old.ts",
+      CALC_FN,
+      CALC_FN,
+      {
+        "src/barrel.ts":
+          'import { calculate as moved } from "./new";\nexport { moved as calculate };\n',
+      },
+    );
+    expect(run.exitCode).toBe(0);
+    expect(run.stderr).toBe("");
+    expect(JSON.parse(run.stdout)).toMatchObject({ status: "applied", branch });
+  },
+  processWatchdog(4),
+);
+
+test(
+  "refuses with recorded_hits_would_grow when the old file is deleted and a third tracked file re-exports a local definition under the symbol name, commits nothing, and leaves the file byte-identical to the base",
+  async () => {
+    const { repo, branch, worktree, baseBytes, run } = await runMoveCase(
+      "local-alias-export-twin-app",
+      "src/old.ts",
+      "src/new.ts",
+      "rm src/old.ts",
+      CALC_FN,
+      "export function calculate(v: number): number {\n  return v + 1;\n}\n",
+      {
+        "src/alias.ts":
+          "const localCalc = (v: number): number => v;\nexport { localCalc as calculate };\n",
+      },
+    );
+    expectGrowthRefusal(run, repo, branch, worktree, baseBytes, [
+      "src/new.ts\u0000calculate",
+    ]);
+  },
+  processWatchdog(4),
+);
