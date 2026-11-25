@@ -83,7 +83,10 @@ function specimen(tests: Readonly<Record<string, string>>): string {
 function outsideRun(temp: string): Record<string, string | undefined> {
   return {
     ...process.env,
+    STATE_TEST_DIR: undefined,
     TMPDIR: temp,
+    TMP: undefined,
+    TEMP: undefined,
     CI: undefined,
     npm_lifecycle_event: undefined,
     [testRunFolderVariable]: undefined,

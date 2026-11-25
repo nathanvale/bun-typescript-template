@@ -44,7 +44,10 @@ const specimen = (tests: Readonly<Record<string, string>>) => {
 
 const outsideRun = (temp: string, extra: TestRunEnvironment = {}) => ({
   ...process.env,
+  STATE_TEST_DIR: undefined,
   TMPDIR: temp,
+  TMP: undefined,
+  TEMP: undefined,
   CI: undefined,
   npm_lifecycle_event: undefined,
   [testRunFolderVariable]: undefined,

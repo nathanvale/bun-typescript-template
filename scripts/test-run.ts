@@ -90,8 +90,11 @@ export function leftoverFolders(
   bun: string = process.execPath,
 ): string[] {
   if (env[testRunFolderVariable] !== undefined) return [];
-  const folders = [env.TMPDIR || tmpdir(), bareTemp(bun)]
-    .filter((folder) => folder !== "" && existsSync(folder))
+  const folders = [env.STATE_TEST_DIR, env.TMPDIR || tmpdir(), bareTemp(bun)]
+    .filter(
+      (folder): folder is string =>
+        folder !== undefined && folder !== "" && existsSync(folder),
+    )
     .map(realFolder);
   return [...new Set(folders)];
 }
@@ -172,6 +175,9 @@ function startBunTest(
     cwd: options.cwd,
     env: {
       ...options.env,
+      STATE_TEST_DIR: runFolder,
+      TMP: runFolder,
+      TEMP: runFolder,
       TMPDIR: runFolder,
       [testRunFolderVariable]: runFolder,
       [testRunProcessVariable]: String(process.pid),
@@ -243,7 +249,9 @@ export async function runTests(
   const before = new Map(
     options.leftoverFolders.map((folder) => [folder, namesIn(folder)]),
   );
-  const parent = realFolder(options.env.TMPDIR || tmpdir());
+  const parent = realFolder(
+    options.env.STATE_TEST_DIR || options.env.TMPDIR || tmpdir(),
+  );
   const runFolder = realFolder(mkdtempSync(join(parent, runFolderPrefix)));
   writeFileSync(
     join(runFolder, testRunProcessMark),
