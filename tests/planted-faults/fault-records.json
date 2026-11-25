@@ -3075,5 +3075,12 @@
     "testFile": "tests/template/toolchain/recorded-health-sizes-base-settings.test.ts",
     "title": "^fails closed with exit 2 when fallow suppressions reports malformed JSON, an invalid path, or an unrecognised marker line$",
     "source": "fd8b2dc fix(recorded-health-sizes): fail closed on invalid reported suppression paths and test refusals"
+  },
+  {
+    "id": "planted-faults-ci-lifecycle-event",
+    "patch": "tests/planted-faults/patches/planted-faults-ci-lifecycle-event.patch",
+    "testFile": "tests/template/fault-replay/planted-faults.test.ts",
+    "title": "FR\\.z ",
+    "source": "068f1cd fix(fault-replay): omit npm_lifecycle_event when replaying bun test"
   }
 ]
