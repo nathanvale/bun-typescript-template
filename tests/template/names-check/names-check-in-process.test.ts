@@ -5,6 +5,7 @@ import {
   stagedNewPaths,
   stagedText,
 } from "../../../scripts/glossary.ts";
+import { testRunFolderVariable } from "../../../scripts/test-run.ts";
 import { git, gitEnv, inherited } from "../../support/git-fixture.ts";
 import { timed, whileGitHangs } from "../../support/hung-git.ts";
 import { processWatchdog } from "../../support/process.ts";
@@ -104,7 +105,9 @@ test.each([["GLOSSARY.md"], [recordedHitsFile]])(
 test("in process: a folder meant to sit outside any repository is refused when STATE_TEST_DIR puts a repository above it", () => {
   const above = namesRepository();
   const chosen = process.env.STATE_TEST_DIR;
+  const runFolder = process.env[testRunFolderVariable];
   process.env.STATE_TEST_DIR = above;
+  delete process.env[testRunFolderVariable];
   try {
     expect(thrownBy(outsideRepository)).toContain(
       `sits inside the repository at ${above}, so a case that needs no repository would find it.`,
@@ -112,6 +115,8 @@ test("in process: a folder meant to sit outside any repository is refused when S
   } finally {
     if (chosen === undefined) delete process.env.STATE_TEST_DIR;
     else process.env.STATE_TEST_DIR = chosen;
+    if (runFolder === undefined) delete process.env[testRunFolderVariable];
+    else process.env[testRunFolderVariable] = runFolder;
   }
 });
 
