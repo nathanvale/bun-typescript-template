@@ -1,0 +1,12 @@
+diff --git a/src/template-upgrade-recorded-hits-move.ts b/src/template-upgrade-recorded-hits-move.ts
+--- a/src/template-upgrade-recorded-hits-move.ts
++++ b/src/template-upgrade-recorded-hits-move.ts
+@@ -82,8 +82,5 @@ function resolvePropertyName(name: ts.PropertyName): PropertyNameResult {
+   ) {
+     return { kind: "name", text: name.text };
+   }
+-  if (ts.isComputedPropertyName(name)) {
+-    return resolveComputedPropertyName(name);
+-  }
+   return { kind: "none" };
+ }

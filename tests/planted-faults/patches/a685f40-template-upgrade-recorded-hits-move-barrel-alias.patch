@@ -1,0 +1,14 @@
+diff --git a/src/template-upgrade-recorded-hits-move.ts b/src/template-upgrade-recorded-hits-move.ts
+--- a/src/template-upgrade-recorded-hits-move.ts
++++ b/src/template-upgrade-recorded-hits-move.ts
+@@ -186,9 +186,6 @@ function addTypeOrExportName(node: ts.Node, collector: SymbolCollector): void {
+     node.propertyName !== undefined &&
+     node.parent.parent.moduleSpecifier === undefined
+   ) {
+-    collector.exportAliases.push({
+-      localName: node.propertyName.text,
+-      exportedName: node.name.text,
+-    });
++    collector.names.add(node.name.text);
+   }
+ }

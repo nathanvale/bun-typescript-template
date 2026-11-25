@@ -448,6 +448,22 @@ function restoreSnapshots(
   }
 }
 
+function findRecordedHitsGrowthOrRestore(
+  worktree: string,
+  snapshots: ReadonlyMap<string, Uint8Array | undefined>,
+  pendingDir?: string,
+): RecordedHitsFileGrowth[] {
+  try {
+    return findRecordedHitsGrowth(worktree, snapshots);
+  } catch (error) {
+    restoreSnapshots(worktree, snapshots);
+    if (pendingDir !== undefined) {
+      rmSync(pendingDir, { force: true, recursive: true });
+    }
+    throw error;
+  }
+}
+
 function preparePendingRecording(
   request: RecordedHitsRequest,
   pendingDir: string,
@@ -493,7 +509,7 @@ export function runRecordedHitsRepairStep(
       ],
     };
   }
-  const growth = findRecordedHitsGrowth(request.worktree, snapshots);
+  const growth = findRecordedHitsGrowthOrRestore(request.worktree, snapshots);
   if (growth.length > 0) {
     restoreSnapshots(request.worktree, snapshots);
     throw recordedHitsWouldGrowError(growth);
@@ -553,7 +569,11 @@ export function runRecordedHitsStep(
   }
   let reason: string | undefined;
   if (pending.action === "refresh-changed") {
-    const growth = findRecordedHitsGrowth(request.worktree, pending.snapshots);
+    const growth = findRecordedHitsGrowthOrRestore(
+      request.worktree,
+      pending.snapshots,
+      pendingDir,
+    );
     if (growth.length > 0) {
       if (
         snapshotsRefreshedAnalysisIdentity(request.worktree, pending.snapshots)
