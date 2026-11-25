@@ -10,11 +10,12 @@ import {
   readdirSync,
   readSync,
   realpathSync,
+  renameSync,
   rmSync,
   writeSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, relative } from "node:path";
+import { basename, isAbsolute, join, relative } from "node:path";
 
 export type TestRunEnvironment = Readonly<Record<string, string | undefined>>;
 
@@ -25,7 +26,11 @@ export const testRunProcessMark = ".test-run-process";
 
 const bareTempMilliseconds = 10_000;
 const signalGraceMilliseconds = 2_000;
+const startupMarkMilliseconds = 250;
+const startupPollMilliseconds = 10;
 const runFolderPrefix = "test-run-";
+const startingFolderPattern = new RegExp(`^${runFolderPrefix}([1-9]\\d*)-`);
+const pauseWord = new Int32Array(new SharedArrayBuffer(4));
 const missingCodes = new Set<unknown>(["ENOENT", "ENOTDIR"]);
 const stoppedCodes = new Set<unknown>(["ESRCH", "EPERM"]);
 const liveMarkPattern = new RegExp(
@@ -54,8 +59,9 @@ function releaseLock(fd: number): void {
 }
 
 function writeProcessMark(runFolder: string, pid: number): number {
+  const tempMark = join(runFolder, `${testRunProcessMark}.tmp`);
   const fd = openSync(
-    join(runFolder, testRunProcessMark),
+    tempMark,
     constants.O_CREAT |
       constants.O_EXCL |
       constants.O_RDWR |
@@ -64,8 +70,9 @@ function writeProcessMark(runFolder: string, pid: number): number {
   );
   try {
     if (!acquireExclusiveLock(fd))
-      throw new Error(`Could not lock ${join(runFolder, testRunProcessMark)}.`);
+      throw new Error(`Could not lock ${tempMark}.`);
     writeSync(fd, `${testRunProcessVariable}=${pid}\n`);
+    renameSync(tempMark, join(runFolder, testRunProcessMark));
     return fd;
   } catch (error) {
     closeSync(fd);
@@ -179,20 +186,47 @@ function readProcessMark(folder: string): number | undefined {
   }
 }
 
-function isLiveRunFolder(path: string): boolean {
-  try {
-    if (!lstatSync(path).isDirectory()) return false;
-  } catch (error) {
-    return missingCodes.has(Reflect.get(Object(error), "code"));
-  }
-  const pid = readProcessMark(path);
-  if (pid === undefined) return false;
+function processAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
   } catch (error) {
     return Reflect.get(Object(error), "code") === "EPERM";
   }
+}
+
+function entryKind(path: string): "directory" | "missing" | "other" {
+  try {
+    return lstatSync(path).isDirectory() ? "directory" : "other";
+  } catch (error) {
+    return missingCodes.has(Reflect.get(Object(error), "code"))
+      ? "missing"
+      : "other";
+  }
+}
+
+function isStartingRunFolder(path: string): boolean {
+  const pid = Number(startingFolderPattern.exec(basename(path))?.[1]);
+  return Number.isSafeInteger(pid) && processAlive(pid);
+}
+
+function isLiveRunFolder(path: string): boolean {
+  const kind = entryKind(path);
+  if (kind !== "directory") return kind === "missing";
+  const pid = readProcessMark(path);
+  if (pid !== undefined) return processAlive(pid);
+  if (existsSync(join(path, testRunProcessMark)) || !isStartingRunFolder(path))
+    return false;
+  const deadline = Date.now() + startupMarkMilliseconds;
+  while (Date.now() < deadline) {
+    Atomics.wait(pauseWord, 0, 0, startupPollMilliseconds);
+    const current = entryKind(path);
+    if (current !== "directory") return current === "missing";
+    const marked = readProcessMark(path);
+    if (marked !== undefined) return processAlive(marked);
+    if (existsSync(join(path, testRunProcessMark))) return false;
+  }
+  return false;
 }
 
 const bunNodeFolder = `bun-node-${process.getuid?.()}-${Bun.revision.slice(0, 9)}`;
@@ -332,7 +366,9 @@ export async function runTests(
   const parent = realFolder(
     options.env.STATE_TEST_DIR || options.env.TMPDIR || tmpdir(),
   );
-  const runFolder = realFolder(mkdtempSync(join(parent, runFolderPrefix)));
+  const runFolder = realFolder(
+    mkdtempSync(join(parent, `${runFolderPrefix}${process.pid}-`)),
+  );
   const problems: string[] = [];
   let markFd: number | undefined;
   let child: ReturnType<typeof startBunTest> | undefined;
