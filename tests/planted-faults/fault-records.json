@@ -3096,5 +3096,12 @@
     "testFile": "tests/template/test-run/test-run-folder.test.ts",
     "title": "^when STATE_TEST_DIR is set, testFolder lands inside the run folder under STATE_TEST_DIR and nothing is left after the run$",
     "source": "511a529 fix(test-run): keep test folders inside the test run folder when STATE_TEST_DIR is set"
+  },
+  {
+    "id": "a1f8275-test-run-bun-node",
+    "patch": "tests/planted-faults/patches/a1f8275-test-run-bun-node.patch",
+    "testFile": "tests/template/test-run/test-run-folder.test.ts",
+    "title": "^a strict test run ignores Bun's own bun-node-<uid>-<build> folder",
+    "source": "a1f8275 fix(test-run): ignore Bun's own bun-node folder in the leftover check"
   }
 ]
