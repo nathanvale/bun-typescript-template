@@ -3187,5 +3187,12 @@
     "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-growth.test.ts",
     "title": "^passes when the old file is deleted and a third tracked file re-exports the moved symbol through an import-then-export barrel$",
     "source": "a685f40 fix(template-upgrade): ignore imported export aliases and fallow-ignored files in move check"
+  },
+  {
+    "id": "a49800c-template-upgrade-recorded-hits-health-keys",
+    "patch": "tests/planted-faults/patches/a49800c-template-upgrade-recorded-hits-health-keys.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-health.test.ts",
+    "title": "^drops advisory target_keys additions in fallow-health-recorded-hits\\.json, keeps the file byte-identical to the base, and applies when bun run check passes without them$",
+    "source": "a49800c fix(template-upgrade): drop advisory target_keys additions in recorded hits"
   }
 ]
