@@ -464,3 +464,95 @@ test(
   },
   processWatchdog(4),
 );
+
+test(
+  "upgrade fills __PACKAGE_NAME__ from package.json in .changeset/README.md while keeping __REPOSITORY_NAME__ elsewhere",
+  async () => {
+    const { templateClone } = cloneTemplateAtHead(folder);
+    const changesetReadmePath = join(
+      templateClone,
+      "generated-repository/changeset/README.md",
+    );
+    const currentReadme = readFileSync(changesetReadmePath, "utf8");
+    const preFixReadme = currentReadme.replaceAll(
+      "__PACKAGE_NAME__",
+      "__REPOSITORY_NAME__",
+    );
+    writeFileSync(changesetReadmePath, preFixReadme);
+    git(templateClone, "add", "--", "generated-repository/changeset/README.md");
+    git(
+      templateClone,
+      "commit",
+      "--quiet",
+      "--allow-empty",
+      "-m",
+      "base before package name token",
+    );
+    const baseCommit = git(templateClone, "rev-parse", "HEAD");
+
+    const repo = await bootstrapGeneratedRepository(
+      folder,
+      templateClone,
+      baseCommit,
+      "skills-private",
+    );
+    const packageJson = JSON.parse(
+      readFileSync(join(repo, "package.json"), "utf8"),
+    ) as Record<string, unknown>;
+    commitIn(repo, "rename package in package.json", {
+      "package.json": `${JSON.stringify({ ...packageJson, name: "nathanvale-skills-private" }, null, 2)}\n`,
+    });
+
+    writeFileSync(changesetReadmePath, currentReadme);
+    git(templateClone, "add", "--", "generated-repository/changeset/README.md");
+    const targetCommit = commitTemplateUpgradeChanges(templateClone);
+    const branch = `template-upgrade/${baseCommit.slice(0, 7)}-${targetCommit.slice(0, 7)}`;
+
+    const runtime = { templateRoot: templateClone, env: templateUpgradeEnv() };
+    const stdout = captureStream(process.stdout);
+    const stderr = captureStream(process.stderr);
+
+    const applyRun = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      applyNoCheckJsonArgs(repo, targetCommit),
+      runtime,
+    );
+    expect(applyRun.exitCode).toBe(0);
+
+    const upgradedReadme = gitOutput(
+      repo,
+      "show",
+      `${branch}:.changeset/README.md`,
+    );
+    expect(upgradedReadme).toContain(
+      'bun run --bun changeset add --minor nathanvale-skills-private -m "<past-tense summary>"',
+    );
+    expect(upgradedReadme).toContain("--package nathanvale-skills-private");
+    expect(upgradedReadme).not.toContain("__PACKAGE_NAME__");
+    expect(upgradedReadme).not.toContain("__REPOSITORY_NAME__");
+    expect(upgradedReadme).not.toContain("--minor skills-private");
+    expect(upgradedReadme).not.toContain("--patch skills-private");
+    expect(upgradedReadme).not.toContain("--package skills-private");
+
+    expect(gitOutput(repo, "show", `${branch}:src/cli.ts`)).toContain(
+      'cli: "skills-private",',
+    );
+    expect(gitOutput(repo, "show", `${branch}:README.md`)).toContain(
+      "# `skills-private`",
+    );
+    expect(
+      JSON.parse(gitOutput(repo, "show", `${branch}:package.json`)) as Record<
+        string,
+        unknown
+      >,
+    ).toMatchObject({ name: "nathanvale-skills-private" });
+    expect(
+      JSON.parse(gitOutput(repo, "show", `${branch}:.template.json`)) as Record<
+        string,
+        unknown
+      >,
+    ).toMatchObject({ name: "skills-private" });
+  },
+  processWatchdog(4),
+);

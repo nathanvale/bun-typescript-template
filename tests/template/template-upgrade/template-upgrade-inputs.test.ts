@@ -282,6 +282,41 @@ test("reads repository name from stamp first and falls back to HEAD:package.json
   ).toBe("legacy-name");
 });
 
+test("refuses when HEAD:package.json has no non-empty string name even if stamp has name", () => {
+  const { templateRoot, baseCommit, targetCommit } = makeTemplateHistory();
+  const baseStamp = {
+    name: "skills-private",
+    templateRevision: baseCommit,
+    templateDirty: false,
+    sourcePacket: "/abs/packet",
+  };
+  for (const manifest of [
+    { dependencies: { "agent-cli-kernel": DEFAULT_KERNEL_PIN } },
+    { name: "", dependencies: { "agent-cli-kernel": DEFAULT_KERNEL_PIN } },
+    { name: "   ", dependencies: { "agent-cli-kernel": DEFAULT_KERNEL_PIN } },
+    { name: 42, dependencies: { "agent-cli-kernel": DEFAULT_KERNEL_PIN } },
+  ]) {
+    const repository = folder("missing-package-name-");
+    initRepository(repository);
+    commitIn(repository, "initial", {
+      ".template.json": `${JSON.stringify(baseStamp, null, 2)}\n`,
+      "package.json": `${JSON.stringify(manifest, null, 2)}\n`,
+    });
+    const refusal = captureCliError(() =>
+      resolveTemplateUpgradeInputs({
+        templateRoot,
+        repository,
+        targetRef: targetCommit,
+        env: gitEnv,
+      }),
+    );
+    expect(refusal.code).toBe("repository_name_missing");
+    expect(refusal.message).toContain("package.json");
+    expect(refusal.message).toContain('"name"');
+    expect(refusal.repair).toContain("package.json");
+  }
+});
+
 test("returns up-to-date and writes nothing when base equals target", async () => {
   const { templateRoot, targetCommit } = makeTemplateHistory();
   const { repository } = makeStampedRepository(

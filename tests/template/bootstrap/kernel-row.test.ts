@@ -132,7 +132,7 @@ describe("the kernel row", () => {
       const withToken = ownFiles
         .filter((file) => !file.startsWith(".claude/"))
         .filter((file) =>
-          /__REPOSITORY_NAME__|__SOURCE_PACKET__|__KERNEL_PIN__|__KERNEL_COMMIT__/.test(
+          /__REPOSITORY_NAME__|__PACKAGE_NAME__|__SOURCE_PACKET__|__KERNEL_PIN__|__KERNEL_COMMIT__/.test(
             readFileSync(join(destination, file), "utf8"),
           ),
         );
@@ -140,6 +140,14 @@ describe("the kernel row", () => {
       expect(readFileSync(join(destination, "src/cli.ts"), "utf8")).toContain(
         'cli: "demo-app",',
       );
+      const changesetReadme = readFileSync(
+        join(destination, ".changeset/README.md"),
+        "utf8",
+      );
+      expect(changesetReadme).toContain(
+        'bun run --bun changeset add --minor demo-app -m "<past-tense summary>"',
+      );
+      expect(changesetReadme).toContain("--package demo-app");
     },
   );
 

@@ -3140,6 +3140,13 @@
     "source": "2cbeeb0 fix(test-run): report only leftovers owned by the user the tests run as"
   },
   {
+    "id": "f648810-token-substitution-package-name",
+    "patch": "tests/planted-faults/patches/f648810-token-substitution-package-name.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-changesets.test.ts",
+    "title": "^upgrade fills __PACKAGE_NAME__ from package\\.json in \\.changeset/README\\.md while keeping __REPOSITORY_NAME__ elsewhere$",
+    "source": "f648810 fix(changeset): fill __PACKAGE_NAME__ from package.json in generated changeset README"
+  },
+  {
     "id": "7cf59dd-template-upgrade-recorded-hits-move-old-path",
     "patch": "tests/planted-faults/patches/7cf59dd-template-upgrade-recorded-hits-move-old-path.patch",
     "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-growth.test.ts",
