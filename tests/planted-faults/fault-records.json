@@ -3234,7 +3234,7 @@
     "id": "a7d4ce8-test-run",
     "patch": "tests/planted-faults/patches/a7d4ce8-test-run.patch",
     "testFile": "tests/template/test-run/test-run-mark.test.ts",
-    "title": "^a strict run does not report a concurrent run folder seen before its process marker appears, and still refuses a forged folder with no marker$",
+    "title": "^a strict run does not report a concurrent run folder seen before its process marker appears$",
     "source": "a7d4ce8 fix(test-run): tolerate the startup window before a live run folder writes its marker"
   },
   {
@@ -3250,5 +3250,19 @@
     "testFile": "tests/template/test-run/test-run-folder.test.ts",
     "title": "^a nested kernel-trial test run under CI ignores an unrelated entry created in the outer temp folder$",
     "source": "94a37ec fix(test-run): isolate nested kernel-trial test runs from outer temp folders"
+  },
+  {
+    "id": "dbc85cf-test-run",
+    "patch": "tests/planted-faults/patches/dbc85cf-test-run.patch",
+    "testFile": "tests/template/test-run/test-run-mark.test.ts",
+    "title": "^a strict run does not report a markerless test-run-<pid>-x folder while that pid lives past 250 ms, and reports it once the pid exits$",
+    "source": "dbc85cf fix(test-run): treat a markerless run folder as live while its pid lives"
+  },
+  {
+    "id": "8e2a407-test-run-folder",
+    "patch": "tests/planted-faults/patches/8e2a407-test-run-folder.patch",
+    "testFile": "tests/template/test-run/test-run.test.ts",
+    "title": "^when bun test has been reparented away from a live unreaped runner pid, the preload removes the run folder on exit$",
+    "source": "8e2a407 fix(test-run): treat a reparented runner as gone in the preload guard"
   }
 ]

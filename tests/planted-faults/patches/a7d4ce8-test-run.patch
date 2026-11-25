@@ -1,19 +1,13 @@
 diff --git a/scripts/test-run.ts b/scripts/test-run.ts
 --- a/scripts/test-run.ts
 +++ b/scripts/test-run.ts
-@@ -228,13 +228,7 @@
- 
+@@ -190,8 +190,8 @@
  function isLiveRunFolder(path: string): boolean {
-   const initial = probeLiveRunFolder(path);
--  if (initial !== "starting") return initial === "live";
--  const deadline = Date.now() + startupMarkMilliseconds;
--  while (Date.now() < deadline) {
--    Atomics.wait(pauseWord, 0, 0, startupPollMilliseconds);
--    const current = probeLiveRunFolder(path);
--    if (current !== "starting") return current === "live";
--  }
--  return false;
-+  return initial === "live";
+   const kind = entryKind(path);
+   if (kind !== "directory") return kind === "missing";
+   const pid = readProcessMark(path);
+   if (pid !== undefined) return processAlive(pid);
+   if (hasMarkEntry(path)) return false;
+-  return isStartingRunFolder(path);
++  return false;
  }
- 
- const bunNodeFolder = `bun-node-${process.getuid?.()}-${Bun.revision.slice(0, 9)}`;
