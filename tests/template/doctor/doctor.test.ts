@@ -9,6 +9,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { testRunFiles } from "../../support/fixture-files.ts";
 
 const repository = join(import.meta.dir, "../../..");
 const scripts = [
@@ -41,7 +42,10 @@ function project(
     copyFileSync(join(repository, path), join(root, path));
   }
   write(root, "package.json", JSON.stringify(manifest));
-  for (const [path, content] of Object.entries(files))
+  for (const [path, content] of Object.entries({
+    ...testRunFiles(),
+    ...files,
+  }))
     write(root, path, content);
   return root;
 }

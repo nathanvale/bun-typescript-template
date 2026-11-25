@@ -1,0 +1,12 @@
+diff --git a/scripts/test-run.ts b/scripts/test-run.ts
+--- a/scripts/test-run.ts
++++ b/scripts/test-run.ts
+@@ -261,7 +261,7 @@
+     marked = existsSync(join(runFolder, teardownMark));
+     rmSync(runFolder, { recursive: true, force: true });
+   }
+-  if (code === 0 && !marked)
++  if (code !== 0 && !marked)
+     problems.push(
+       `bun test did not load tests/support/test-run-folder.ts, so plain bun test is unguarded and a killed test run would leave its folder behind. Repair: add preload = ["./tests/support/test-run-folder.ts"] under [test] in bunfig.toml.`,
+     );

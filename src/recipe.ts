@@ -44,11 +44,16 @@ export const KERNEL_RECIPE: Recipe = {
     { from: "generated-repository/changeset", into: CHANGESET_FOLDER },
     { from: "generated-repository/hosted-check", into: HOSTED_CHECK_FOLDER },
     { from: "generated-repository/scripts", into: "scripts" },
+    {
+      from: "scripts",
+      into: "scripts",
+      only: ["test-run.ts"],
+    },
     { from: "generated-repository/skills", into: SKILL_FOLDER },
     {
       from: "tests/support",
       into: "tests/support",
-      only: ["test-folder.ts"],
+      only: ["test-folder.ts", "test-run-folder.ts"],
     },
     { from: "config", into: "config", only: LINT_RULE_FILES },
   ],

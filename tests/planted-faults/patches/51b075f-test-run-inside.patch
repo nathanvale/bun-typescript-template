@@ -1,0 +1,12 @@
+diff --git a/scripts/test-run.ts b/scripts/test-run.ts
+--- a/scripts/test-run.ts
++++ b/scripts/test-run.ts
+@@ -35,7 +35,7 @@
+ 
+ export function insideFolder(path: string, folder: string): boolean {
+   const way = relative(folder, path);
+-  return way === "" || (!way.startsWith("..") && !isAbsolute(way));
++  return path.startsWith(folder) || isAbsolute(way);
+ }
+ 
+ export function stopProcess(

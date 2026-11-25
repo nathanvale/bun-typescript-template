@@ -1,0 +1,12 @@
+diff --git a/scripts/test-run.ts b/scripts/test-run.ts
+--- a/scripts/test-run.ts
++++ b/scripts/test-run.ts
+@@ -402,7 +402,7 @@
+     [...namesIn(folder)]
+       .filter((name) => !before.get(folder)?.has(name))
+       .map((name) => join(folder, name))
+-      .filter((path) => path !== runFolder && !isLiveRunFolder(path)),
++      .filter((path) => path !== runFolder && !path.split("/").at(-1)?.startsWith(runFolderPrefix)),
+   );
+ }
+ 

@@ -62,6 +62,7 @@ const ownFiles = [
   "scripts/check-gated-paths.ts",
   "scripts/check-recorded-health-sizes.ts",
   "scripts/fallow-health-at-base-settings.ts",
+  "scripts/test-run.ts",
   "src/cli.ts",
   "src/commands.ts",
   "tests/add-on-start-up.test.ts",
@@ -71,6 +72,7 @@ const ownFiles = [
   "tests/pointer-skills.test.ts",
   "tests/support/git-fixture.ts",
   "tests/support/test-folder.ts",
+  "tests/support/test-run-folder.ts",
   "tsconfig.base.json",
   "tsconfig.json",
 ];

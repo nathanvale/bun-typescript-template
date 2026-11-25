@@ -118,10 +118,13 @@ export async function testArea(
     return 2;
   }
   if (!(await doctor(root))) return 1;
-  const run = Bun.spawn([process.execPath, "test", ...paths, ...options], {
-    cwd: root,
-    stdio: ["inherit", "inherit", "inherit"],
-  });
+  const run = Bun.spawn(
+    [process.execPath, "scripts/test-run.ts", ...paths, ...options],
+    {
+      cwd: root,
+      stdio: ["inherit", "inherit", "inherit"],
+    },
+  );
   return await run.exited;
 }
 

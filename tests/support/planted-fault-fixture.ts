@@ -249,7 +249,7 @@ export function createPlantedFaultFixture() {
       pids = pidLedger(),
     }: {
       signalAt?: SignalAt;
-      env?: Readonly<Record<string, string>>;
+      env?: Readonly<Record<string, string | undefined>>;
       launcher?: readonly string[];
       boundMilliseconds?: number;
       pids?: string;

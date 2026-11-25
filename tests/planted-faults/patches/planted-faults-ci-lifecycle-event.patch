@@ -1,0 +1,17 @@
+diff --git a/scripts/planted-faults.ts b/scripts/planted-faults.ts
+--- a/scripts/planted-faults.ts
++++ b/scripts/planted-faults.ts
+@@ -295,12 +295,9 @@ export async function replay(
+     const tested = async (name: string) => {
+       const report = join(folder, `${name}.xml`);
+       const args = ["--reporter=junit", `--reporter-outfile=${report}`];
+       return testRun(
+-        await inTree(
+-          [process.execPath, ...testArgs(fault), ...args],
+-          ["npm_lifecycle_event"],
+-        ),
++        await inTree([process.execPath, ...testArgs(fault), ...args]),
+         report,
+       );
+     };
+     const faulted = () => {
