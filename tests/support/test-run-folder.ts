@@ -26,6 +26,7 @@ function tryIgnore(step: () => void): void {
 }
 
 function runnerGone(testRunProcess: number): boolean {
+  if (process.ppid !== testRunProcess) return true;
   try {
     process.kill(testRunProcess, 0);
     return false;
