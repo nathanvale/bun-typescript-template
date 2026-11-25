@@ -49,7 +49,11 @@ function createGeneratedChangesetFixture(
 }
 
 function runChangesetVersion(repo: string) {
-  return spawnBounded([process.execPath, changesetBinary, "version"], {
+  return runChangeset(repo, ["version"]);
+}
+
+function runChangeset(repo: string, args: readonly string[]) {
+  return spawnBounded([process.execPath, changesetBinary, ...args], {
     cwd: repo,
     env: { ...inherited(), ...gitEnv, NO_COLOR: "1", FORCE_COLOR: "0" },
     processGroup: true,
@@ -96,6 +100,40 @@ describe("generated-repository/changeset/config.json with changeset version", ()
       expect(run.exit).toBe(1);
       expect(run.stdout).toContain("No unreleased changesets found.");
       expect(git(repo, "status", "--porcelain")).toBe("");
+    },
+    processWatchdog(1),
+  );
+  test(
+    "the documented release steps leave changeset status green on the version branch only once an empty changeset is added",
+    async () => {
+      const repo = createGeneratedChangesetFixture({
+        ".changeset/2026-11-25-add-widget.md":
+          '---\n"demo-app": minor\n---\n\nAdded widget command.\n',
+      });
+      git(repo, "switch", "--quiet", "-c", "release");
+      expect((await runChangesetVersion(repo)).exit).toBe(0);
+      git(
+        repo,
+        "add",
+        "--all",
+        "--",
+        "package.json",
+        "CHANGELOG.md",
+        ".changeset",
+      );
+      git(repo, "commit", "--quiet", "-m", "version");
+
+      expect(
+        (await runChangeset(repo, ["status", "--since", "main"])).exit,
+      ).toBe(1);
+
+      expect((await runChangeset(repo, ["add", "--empty"])).exit).toBe(0);
+      git(repo, "add", "--", ".changeset");
+      git(repo, "commit", "--quiet", "-m", "empty changeset");
+
+      expect(
+        (await runChangeset(repo, ["status", "--since", "main"])).exit,
+      ).toBe(0);
     },
     processWatchdog(1),
   );
