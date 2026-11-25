@@ -3096,5 +3096,12 @@
     "testFile": "tests/template/test-run/test-run-folder.test.ts",
     "title": "^when STATE_TEST_DIR is set, testFolder lands inside the run folder under STATE_TEST_DIR and nothing is left after the run$",
     "source": "511a529 fix(test-run): keep test folders inside the test run folder when STATE_TEST_DIR is set"
+  },
+  {
+    "id": "469b32b-template-upgrade-apply",
+    "patch": "tests/planted-faults/patches/469b32b-template-upgrade-apply.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-changeset-write.test.ts",
+    "title": "^writes a patch changeset on covered upgrade changes so check:changesets passes$",
+    "source": "469b32b feat(upgrade): write repository changeset in upgrade apply and show it in plan"
   }
 ]

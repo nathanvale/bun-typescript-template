@@ -1,0 +1,17 @@
+diff --git a/src/template-upgrade-apply.ts b/src/template-upgrade-apply.ts
+--- a/src/template-upgrade-apply.ts
++++ b/src/template-upgrade-apply.ts
+@@ -413,13 +413,6 @@ async function publishTemplateUpgradeBranch(
+ ): Promise<TemplateUpgradeApplyRun> {
+   const { inputs, branch, commitMessage, changesets, targetWorktree, env } =
+     session;
+-  await writeTemplateUpgradeChangeset({
+-    repository: inputs.repository,
+-    worktree: targetWorktree,
+-    baseCommit: inputs.baseCommit,
+-    targetCommit: inputs.targetCommit,
+-    env,
+-  });
+   const commitSha = await stageAndCommitWorktree({
+     worktree: targetWorktree,
+     message: commitMessage,
