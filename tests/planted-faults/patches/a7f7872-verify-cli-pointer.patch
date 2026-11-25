@@ -6,7 +6,7 @@ index 20630a8..9ba188c 100644
  {
    "repository": "agent-cli-kernel",
    "remote": "https://github.com/nathanvale/agent-cli-kernel.git",
--  "commit": "5eb8f295f0b97a98f23d3bfa2b3d1a4f9059374c",
+-  "commit": "7a3c430369a7adf3c91b28fe9bcde3aad342298e",
 +  "commit": "9d5d5a81785bfe548a9448348c68ee3b5720cd95",
    "branch": "main",
    "carryOutIdentity": "4be9a3772839195ef0ceb152fbeea4901001a2ff"
