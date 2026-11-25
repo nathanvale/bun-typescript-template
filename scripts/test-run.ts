@@ -25,11 +25,8 @@ export const testRunProcessMark = ".test-run-process";
 
 const bareTempMilliseconds = 10_000;
 const signalGraceMilliseconds = 2_000;
-const startupMarkMilliseconds = 250;
-const startupPollMilliseconds = 10;
 const runFolderPrefix = "test-run-";
 const startingFolderPattern = new RegExp(`^${runFolderPrefix}([1-9]\\d*)-`);
-const pauseWord = new Int32Array(new SharedArrayBuffer(4));
 const missingCodes = new Set<unknown>(["ENOENT", "ENOTDIR"]);
 const stoppedCodes = new Set<unknown>(["ESRCH", "EPERM"]);
 const liveMarkPattern = new RegExp(
@@ -190,25 +187,13 @@ function hasMarkEntry(path: string): boolean {
   );
 }
 
-function probeLiveRunFolder(path: string): "live" | "starting" | "leftover" {
-  const kind = entryKind(path);
-  if (kind !== "directory") return kind === "missing" ? "live" : "leftover";
-  const pid = readProcessMark(path);
-  if (pid !== undefined) return processAlive(pid) ? "live" : "leftover";
-  if (hasMarkEntry(path)) return "leftover";
-  return isStartingRunFolder(path) ? "starting" : "leftover";
-}
-
 function isLiveRunFolder(path: string): boolean {
-  const initial = probeLiveRunFolder(path);
-  if (initial !== "starting") return initial === "live";
-  const deadline = Date.now() + startupMarkMilliseconds;
-  while (Date.now() < deadline) {
-    Atomics.wait(pauseWord, 0, 0, startupPollMilliseconds);
-    const current = probeLiveRunFolder(path);
-    if (current !== "starting") return current === "live";
-  }
-  return false;
+  const kind = entryKind(path);
+  if (kind !== "directory") return kind === "missing";
+  const pid = readProcessMark(path);
+  if (pid !== undefined) return processAlive(pid);
+  if (hasMarkEntry(path)) return false;
+  return isStartingRunFolder(path);
 }
 
 const bunNodeFolder = `bun-node-${process.getuid?.()}-${Bun.revision.slice(0, 9)}`;

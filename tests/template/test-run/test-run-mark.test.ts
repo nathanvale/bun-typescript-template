@@ -114,7 +114,7 @@ test(
 );
 
 test(
-  "a strict run does not report a concurrent run folder seen before its process marker appears, and still refuses a forged folder with no marker",
+  "a strict run does not report a concurrent run folder seen before its process marker appears",
   async () => {
     const temp = folder("test-run-temp-");
     const ledger = join(folder("test-run-ledger-"), "startup-race");
@@ -167,21 +167,69 @@ await new Promise((resolve) => {
       racer.stop();
       await racer.finished;
     }
+  },
+  processWatchdog(1),
+);
 
-    const forgedTemp = folder("test-run-forged-empty-");
-    const forgedDir = join(forgedTemp, "test-run-1-no-mark");
-    const forgedLines: string[] = [];
-    const forgedResult = await runCase(
+test(
+  "a strict run does not report a markerless test-run-<pid>-x folder while that pid lives past 250 ms, and reports it once the pid exits",
+  async () => {
+    const temp = folder("test-run-temp-");
+    const ledger = join(folder("test-run-ledger-"), "live-markerless");
+    const stopFile = join(folder("test-run-stop-"), "stop");
+    const holderScript = `import { appendFileSync, existsSync } from "node:fs";
+appendFileSync(process.env.L, "ready\\n");
+await new Promise((resolve) => {
+  const poll = setInterval(() => {
+    if (!existsSync(process.env.STOP)) return;
+    clearInterval(poll);
+    resolve(undefined);
+  }, 10);
+});`;
+    const holder = startChild([process.execPath, "-e", holderScript], {
+      env: outsideTestRun(temp, { L: ledger, STOP: stopFile }),
+      limitMilliseconds: bound,
+      graceMilliseconds: 0,
+    });
+    const ready = watchLedger(ledger, "ready", bound);
+    const liveDir = join(temp, `test-run-${holder.pid}-x`);
+    const liveLines: string[] = [];
+    try {
+      await ready.reached;
+      const liveResult = await runCase(
+        {
+          "tests/live-markerless.test.ts": `import { test } from "bun:test";\nimport { mkdirSync } from "node:fs";\ntest("makes markerless live pid dir", () => { mkdirSync(${JSON.stringify(liveDir)}); Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 300); });\n`,
+        },
+        outsideTestRun(temp),
+        [temp],
+        true,
+        liveLines,
+      );
+      expect({ exitCode: liveResult.exitCode, lines: liveLines }).toEqual({
+        exitCode: 0,
+        lines: [],
+      });
+    } finally {
+      ready.stop();
+      writeFileSync(stopFile, "1");
+      holder.stop();
+      await holder.finished;
+    }
+
+    const deadTemp = folder("test-run-dead-markerless-");
+    const deadDir = join(deadTemp, `test-run-${holder.pid}-x`);
+    const deadLines: string[] = [];
+    const deadResult = await runCase(
       {
-        "tests/forged.test.ts": `import { test } from "bun:test";\nimport { mkdirSync } from "node:fs";\ntest("makes empty pid dir", () => { mkdirSync(${JSON.stringify(forgedDir)}); });\n`,
+        "tests/dead-markerless.test.ts": `import { test } from "bun:test";\nimport { mkdirSync } from "node:fs";\ntest("makes markerless dead pid dir", () => { mkdirSync(${JSON.stringify(deadDir)}); });\n`,
       },
-      outsideTestRun(forgedTemp),
-      [forgedTemp],
+      outsideTestRun(deadTemp),
+      [deadTemp],
       true,
-      forgedLines,
+      deadLines,
     );
-    expect(forgedResult.exitCode).toBe(1);
-    expect(forgedLines.join("\n")).toContain(`\n  ${forgedDir}\n`);
+    expect(deadResult.exitCode).toBe(1);
+    expect(deadLines.join("\n")).toContain(`\n  ${deadDir}\n`);
   },
   processWatchdog(1),
 );
