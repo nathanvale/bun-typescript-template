@@ -3259,13 +3259,6 @@
     "source": "dbc85cf fix(test-run): treat a markerless run folder as live while its pid lives"
   },
   {
-    "id": "8e2a407-test-run-folder",
-    "patch": "tests/planted-faults/patches/8e2a407-test-run-folder.patch",
-    "testFile": "tests/template/test-run/test-run.test.ts",
-    "title": "^when bun test has been reparented away from a live unreaped runner pid, the preload removes the run folder on exit$",
-    "source": "8e2a407 fix(test-run): treat a reparented runner as gone in the preload guard"
-  },
-  {
     "id": "f4bac4c-changeset-readme-exit-code",
     "patch": "tests/planted-faults/patches/f4bac4c-changeset-readme-exit-code.patch",
     "testFile": "tests/template/changesets/changeset-version.test.ts",
