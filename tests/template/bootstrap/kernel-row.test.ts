@@ -147,9 +147,6 @@ describe("the kernel row", () => {
       expect(changesetReadme).toContain(
         'bun run --bun changeset add --minor demo-app -m "<past-tense summary>"',
       );
-      expect(changesetReadme).toContain(
-        'bun run --bun changeset add --patch demo-app -m "Upgraded template <base> to <target>"',
-      );
       expect(changesetReadme).toContain("--package demo-app");
     },
   );

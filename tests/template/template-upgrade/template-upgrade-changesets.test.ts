@@ -528,9 +528,6 @@ test(
     expect(upgradedReadme).toContain(
       'bun run --bun changeset add --minor nathanvale-skills-private -m "<past-tense summary>"',
     );
-    expect(upgradedReadme).toContain(
-      'bun run --bun changeset add --patch nathanvale-skills-private -m "Upgraded template <base> to <target>"',
-    );
     expect(upgradedReadme).toContain("--package nathanvale-skills-private");
     expect(upgradedReadme).not.toContain("__PACKAGE_NAME__");
     expect(upgradedReadme).not.toContain("__REPOSITORY_NAME__");

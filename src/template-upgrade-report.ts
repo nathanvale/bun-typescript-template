@@ -1,3 +1,4 @@
+import type { TemplateUpgradeChangesetPlan } from "./template-upgrade-changeset-write.ts";
 import type { TemplateChangesetEntry } from "./template-upgrade-changesets.ts";
 import type {
   TemplateUpgradeGateName,
@@ -40,6 +41,7 @@ export interface TemplateUpgradePlanResult {
   readonly dependencyChanges: readonly PackageDependencyChange[];
   readonly templateCopyChanges: readonly TemplateUpgradeCopyChange[];
   readonly changesets: readonly TemplateChangesetEntry[];
+  readonly upgradeChangeset?: TemplateUpgradeChangesetPlan;
   readonly pinMoveNotice?: string;
   readonly templateHeadNotice?: string;
 }
@@ -134,6 +136,7 @@ export interface TemplateUpgradePlanReportOptions {
   readonly dependencyChanges: readonly PackageDependencyChange[];
   readonly templateCopyChanges: readonly TemplateUpgradeCopyChange[];
   readonly changesets: readonly TemplateChangesetEntry[];
+  readonly upgradeChangeset?: TemplateUpgradeChangesetPlan;
 }
 
 function pinMoveNoticeFor(inputs: TemplateUpgradeInputs): string | undefined {
@@ -193,6 +196,9 @@ export function createTemplateUpgradePlanResult(
     dependencyChanges: options.dependencyChanges,
     templateCopyChanges: options.templateCopyChanges,
     changesets: options.changesets,
+    ...(options.upgradeChangeset === undefined
+      ? {}
+      : { upgradeChangeset: options.upgradeChangeset }),
     ...(pinMoveNotice === undefined ? {} : { pinMoveNotice }),
     ...(templateHeadNotice === undefined ? {} : { templateHeadNotice }),
   });
