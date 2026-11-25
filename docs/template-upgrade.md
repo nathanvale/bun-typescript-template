@@ -148,20 +148,21 @@ bun run upgrade recover --repository PATH [--to REF] [--json]
 4. Rerunning `apply` after completion reports `already-done` and exits `0`.
 5. If a run is interrupted at any step before completion, rerunning the same `apply` command converges to the same branch and tree. If `.worktrees/template-upgrade-<target7>` is left over from an older `HEAD`, `apply` refuses and leaves it untouched so your edits are never lost.
 
-### Recording existing Fallow findings
+### Refreshing Fallow recorded-hits identities
 
-The first Template upgrade that brings the recorded-hits files (`fallow-dead-code-recorded-hits.json`, `fallow-duplicates-recorded-hits.json`, `fallow-health-recorded-hits.json`) runs `bun run quality:fallow:record-hits` itself, after `bun install` and before `bun run check`, and reports it as a step. The repository's existing findings are recorded, so the check fails only on new ones.
+The first Template upgrade that adds the recorded-hits files (`fallow-dead-code-recorded-hits.json`, `fallow-duplicates-recorded-hits.json`, `fallow-health-recorded-hits.json`) runs `bun run quality:fallow:record-hits` after `bun install` and before `bun run check`.
 
-When a repository already has committed recorded-hits files and a later Template upgrade changes Fallow or TypeScript settings (`.fallowrc.json`, `tsconfig*.json`, Fallow or TypeScript dependencies, or the Fallow scripts in `package.json`), `apply` runs `bun run quality:fallow:record-hits` once in the worktree:
+When a repository already commits recorded-hits files and a later upgrade changes Fallow or TypeScript settings (`.fallowrc.json`, `tsconfig*.json`, Fallow or TypeScript dependencies, or the Fallow scripts in `package.json`), `apply` runs `bun run quality:fallow:record-hits` once and never grows the recorded lists:
 
-- If no new finding entries are added (for example, only `analysis_identity.project_config_hash` changed after a `tsconfig.base.json` update), the refreshed recorded-hits files are kept and `bun run check` proceeds normally.
-- If new finding entries would be added (for example, `.fallowrc.json` enabled a new gate such as `boundary-violation`), `apply` updates only `analysis_identity` and preserves the repository's previously recorded hits without silently absorbing the new findings. `bun run check` then surfaces the exact existing problems under `gate-adoption-required` (exit `6`) instead of failing on `project_config_hash`.
+- Pure re-identification (same entries, a moved function at its new path, or refreshed `analysis_identity` with no added or widened entry) is kept and `bun run check` proceeds.
+- If recording would add entries while refreshing `analysis_identity`, `apply` updates only `analysis_identity` and keeps the existing recorded hits so `bun run check` reports `gate-adoption-required` (exit `6`).
+- If recording would add or widen entries without an `analysis_identity` refresh, `apply` restores the files and refuses with `recorded_hits_would_grow`, naming each file and entry.
 
-The recording step runs before `bun run check` once per upgrade worktree. When it passes, the upgrade marks the worktree's Git folder (`git rev-parse --git-path template-upgrade-recorded-hits-done`). A rerun after `check-failed` or `gate-adoption-required` records again only after the check passes. A finding added during the repair still fails the check, and a recorded function that the repair moved is keyed to its new path. Removing the worktree removes the mark.
+The recording step runs before `bun run check` once per worktree, marked at `git rev-parse --git-path template-upgrade-recorded-hits-done`. A rerun after `check-failed` or `gate-adoption-required` records again only after `bun run check` passes, allowing moved-entry re-identification and refusing growth with `recorded_hits_would_grow`. Removing the worktree removes the mark.
 
 When the check passes, `apply` runs a push's Fallow audit (`fallow audit --base <HEAD> --quiet`) and stops as `check-failed` with its output when the audit fails.
 
-With `--no-check`, the upgrade records no findings and commits the upgrade branch with empty or unrefreshed recorded-hits files. Before merging, run `bun install` and `bun run quality:fallow:record-hits` in the upgrade worktree or on the upgrade branch and commit the updated recorded-hits files.
+With `--no-check`, the upgrade skips the recording step and commits the upgrade branch with empty or unrefreshed recorded-hits files. Before merging, run `bun install` and `bun run check` in the upgrade worktree or on the upgrade branch, and record any chosen hits in a separate commit.
 
 ### Adopting a gate added or changed by an upgrade
 

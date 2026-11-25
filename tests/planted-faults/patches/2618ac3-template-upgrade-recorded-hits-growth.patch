@@ -1,0 +1,14 @@
+diff --git a/src/template-upgrade-recorded-hits.ts b/src/template-upgrade-recorded-hits.ts
+--- a/src/template-upgrade-recorded-hits.ts
++++ b/src/template-upgrade-recorded-hits.ts
+@@ -567,10 +567,6 @@ export function runRecordedHitsStep(
+           request.env,
+         );
+         reason = REFRESHED_IDENTITY_REASON;
+-      } else {
+-        restoreSnapshots(request.worktree, pending.snapshots);
+-        rmSync(pendingDir, { force: true, recursive: true });
+-        throw recordedHitsWouldGrowError(growth);
+       }
+     }
+   }
