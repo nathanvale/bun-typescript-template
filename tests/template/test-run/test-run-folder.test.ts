@@ -6,20 +6,19 @@ import {
   insideFolder,
   leftoverFolders,
   stopProcess,
-  type TestRunEnvironment,
   testRunFolderVariable,
 } from "../../../scripts/test-run.ts";
-import {
-  ownedFolders,
-  testRunFiles,
-  write,
-} from "../../support/fixture-files.ts";
+import { ownedFolders } from "../../support/fixture-files.ts";
 import {
   processAlive,
   processWatchdog,
   spawnBounded,
   watchLedger,
 } from "../../support/process.ts";
+import {
+  outsideTestRun,
+  testRunSpecimen,
+} from "../../support/test-run-fixture.ts";
 
 const folder = ownedFolders();
 const runBound = 20_000;
@@ -29,31 +28,10 @@ const testFolderSource = readFileSync(
 );
 
 function specimen(tests: Readonly<Record<string, string>>): string {
-  const root = folder("test-run-specimen-");
-  for (const [path, text] of Object.entries({
-    ...testRunFiles(),
+  return testRunSpecimen(folder, {
     "tests/support/test-folder.ts": testFolderSource,
     ...tests,
-  }))
-    write(root, path, text);
-  return root;
-}
-
-function outsideRun(
-  temp: string,
-  extra: TestRunEnvironment = {},
-): Record<string, string | undefined> {
-  return {
-    ...process.env,
-    STATE_TEST_DIR: undefined,
-    TMPDIR: temp,
-    TMP: undefined,
-    TEMP: undefined,
-    CI: undefined,
-    npm_lifecycle_event: undefined,
-    [testRunFolderVariable]: undefined,
-    ...extra,
-  };
+  });
 }
 
 function waitUntilGone(
@@ -145,11 +123,11 @@ test(
   async () => {
     const temp = folder("test-run-temp-");
     const stateDir = folder("test-run-state-");
-    const recordFile = join(folder("test-run-record-"), "record.json");
+    const recordFile = join(folder("test-run-record-"), "record.txt");
     const root = specimen({ "tests/state-folder.test.ts": recordTestFolder });
     const run = await spawnBounded([process.execPath, "scripts/test-run.ts"], {
       cwd: root,
-      env: outsideRun(temp, {
+      env: outsideTestRun(temp, {
         STATE_TEST_DIR: stateDir,
         RECORD_FILE: recordFile,
       }),
@@ -172,11 +150,11 @@ test(
   "when STATE_TEST_DIR is empty, the run folder uses TMPDIR and leaves nothing behind",
   async () => {
     const temp = folder("test-run-temp-");
-    const recordFile = join(folder("test-run-record-"), "record.json");
+    const recordFile = join(folder("test-run-record-"), "record.txt");
     const root = specimen({ "tests/state-folder.test.ts": recordTestFolder });
     const run = await spawnBounded([process.execPath, "scripts/test-run.ts"], {
       cwd: root,
-      env: outsideRun(temp, {
+      env: outsideTestRun(temp, {
         STATE_TEST_DIR: "",
         RECORD_FILE: recordFile,
       }),
@@ -201,7 +179,7 @@ test(
     });
     const run = await spawnBounded([process.execPath, "scripts/test-run.ts"], {
       cwd: root,
-      env: outsideRun(temp, { STATE_TEST_DIR: stateDir, CI: "true" }),
+      env: outsideTestRun(temp, { STATE_TEST_DIR: stateDir, CI: "true" }),
     });
     expect(run.exit).toBe(1);
     expect(run.stderr).toContain(
@@ -223,28 +201,33 @@ test(
     });
     const run = startChild([process.execPath, "scripts/test-run.ts"], {
       cwd: root,
-      env: outsideRun(temp, {
+      env: outsideTestRun(temp, {
         STATE_TEST_DIR: stateDir,
         HANG_LEDGER: ledger,
       }),
+      limitMilliseconds: runBound,
       graceMilliseconds: 0,
     });
     const watch = watchLedger(ledger, "ready", runBound);
+    let pids: number[] = [];
     try {
       await watch.reached;
+      run.stop();
+      await run.finished;
+      const lines = readFileSync(ledger, "utf8").split("\n");
+      pids = lines.slice(0, 2).map(Number);
+      const created = lines[2] ?? "";
+      expect(pids.every((pid) => pid > 0)).toBe(true);
+      expect(insideFolder(created, stateDir)).toBe(true);
+      const after = await waitUntilGone(pids, stateDir, 2_000);
+      expect(after.alive).toEqual([]);
+      expect(after.entries).toEqual([]);
+      expect(readdirSync(temp)).toEqual([]);
     } finally {
       run.stop();
       watch.stop();
+      for (const pid of pids) if (pid > 0) stopProcess(pid, true);
     }
-    await run.finished;
-    const lines = readFileSync(ledger, "utf8").split("\n");
-    const pids = lines.slice(0, 2).map(Number);
-    expect(pids.every((pid) => pid > 0)).toBe(true);
-    const after = await waitUntilGone(pids, stateDir, 2_000);
-    for (const pid of after.alive) stopProcess(pid, true);
-    expect(after.alive).toEqual([]);
-    expect(after.entries).toEqual([]);
-    expect(readdirSync(temp)).toEqual([]);
   },
   processWatchdog(1),
 );
