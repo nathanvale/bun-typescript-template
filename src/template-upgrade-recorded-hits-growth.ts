@@ -1,5 +1,10 @@
 import { lstatSync, readFileSync } from "node:fs";
-import { isAbsolute, join, resolve, sep } from "node:path";
+import { join } from "node:path";
+import {
+  createWorktreeSourceReader,
+  isSymbolMove,
+  type WorktreeSourceReader,
+} from "./template-upgrade-recorded-hits-move.ts";
 
 const UTF8_STRICT = new TextDecoder("utf-8", { fatal: true });
 const SYMBOL_FIELDS = ["export", "name", "symbol", "type", "function"] as const;
@@ -144,66 +149,9 @@ function collectRemovedIdentities(
   return removedBySymbol;
 }
 
-function escapeRegExp(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function symbolPartPresentInSource(text: string, part: string): boolean {
-  if (/^[$\w]+$/.test(part)) {
-    return new RegExp(`(?<![$\\w])${escapeRegExp(part)}(?![$\\w])`).test(text);
-  }
-  return text.includes(part);
-}
-
-function symbolExistsInSource(text: string, symbol: string): boolean {
-  const parts = symbol.split(/[.#]/).filter((part) => part.length > 0);
-  if (parts.length === 0) return true;
-  return parts.every((part) => symbolPartPresentInSource(text, part));
-}
-
-function resolveWorktreePath(
-  worktree: string,
-  relativePath: string,
-): string | undefined {
-  if (
-    relativePath === "" ||
-    relativePath.includes("\u0000") ||
-    isAbsolute(relativePath)
-  ) {
-    return undefined;
-  }
-  const root = resolve(worktree);
-  const fullPath = resolve(root, relativePath);
-  return fullPath.startsWith(`${root}${sep}`) ? fullPath : undefined;
-}
-
-function oldPathAllowsMove(
-  worktree: string,
-  oldPath: string,
-  symbol: string | undefined,
-): boolean {
-  const fullPath = resolveWorktreePath(worktree, oldPath);
-  if (fullPath === undefined) return false;
-  let stats: ReturnType<typeof lstatSync>;
-  try {
-    stats = lstatSync(fullPath);
-  } catch (error) {
-    const code: unknown = Reflect.get(Object(error), "code");
-    if (code === "ENOENT" || code === "ENOTDIR") return true;
-    throw error;
-  }
-  if (symbol === undefined || !stats.isFile()) return false;
-  let text: string;
-  try {
-    text = UTF8_STRICT.decode(readFileSync(fullPath));
-  } catch {
-    return false;
-  }
-  return !symbolExistsInSource(text, symbol);
-}
-
 function findMatchingRemovedIdentity(
-  worktree: string,
+  scanner: WorktreeSourceReader,
+  newPath: string,
   symbol: string,
   afterValue: unknown,
   removedBySymbol: ReadonlyMap<string, readonly string[]>,
@@ -217,12 +165,12 @@ function findMatchingRemovedIdentity(
     const oldParts = splitIdentityKey(oldKey);
     if (
       oldParts === undefined ||
-      !oldPathAllowsMove(worktree, oldParts.path, oldParts.symbol)
+      !isSymbolMove(scanner, oldParts.path, newPath, oldParts.symbol)
     ) {
       continue;
     }
     if (
-      propertyGrowthEntries(worktree, "", beforeRecord[oldKey], afterValue)
+      propertyGrowthEntries(scanner, "", beforeRecord[oldKey], afterValue)
         .length === 0
     ) {
       return oldKey;
@@ -232,7 +180,7 @@ function findMatchingRemovedIdentity(
 }
 
 function compareKeyedCountTable(
-  worktree: string,
+  scanner: WorktreeSourceReader,
   fieldName: string,
   beforeValue: unknown,
   afterValue: unknown,
@@ -245,7 +193,7 @@ function compareKeyedCountTable(
 ): string[] {
   const afterRecord = asRecord(afterValue);
   if (afterRecord === undefined) {
-    return propertyGrowthEntries(worktree, fieldName, beforeValue, afterValue);
+    return propertyGrowthEntries(scanner, fieldName, beforeValue, afterValue);
   }
   const beforeRecord = beforeValue === undefined ? {} : asRecord(beforeValue);
   if (beforeRecord === undefined) return [fieldName];
@@ -255,7 +203,7 @@ function compareKeyedCountTable(
     if (Object.hasOwn(beforeRecord, key)) {
       grown.push(
         ...propertyGrowthEntries(
-          worktree,
+          scanner,
           nestedPath,
           beforeRecord[key],
           entryValue,
@@ -271,7 +219,7 @@ function compareKeyedCountTable(
 }
 
 function identityFindingCountsGrowth(
-  worktree: string,
+  scanner: WorktreeSourceReader,
   beforeValue: unknown,
   afterValue: unknown,
   movedPaths: Map<string, Set<string>>,
@@ -279,7 +227,7 @@ function identityFindingCountsGrowth(
   const consumed = new Set<string>();
   let removedBySymbol: Map<string, string[]> | undefined;
   return compareKeyedCountTable(
-    worktree,
+    scanner,
     "identity_finding_counts",
     beforeValue,
     afterValue,
@@ -288,7 +236,8 @@ function identityFindingCountsGrowth(
       const parts = splitIdentityKey(key);
       if (parts === undefined) return false;
       const matched = findMatchingRemovedIdentity(
-        worktree,
+        scanner,
+        parts.path,
         parts.symbol,
         entryValue,
         removedBySymbol,
@@ -307,7 +256,7 @@ function identityFindingCountsGrowth(
 }
 
 function findMatchingMovedPath(
-  worktree: string,
+  scanner: WorktreeSourceReader,
   newPath: string,
   afterValue: unknown,
   movedPaths: ReadonlyMap<string, ReadonlySet<string>>,
@@ -322,7 +271,7 @@ function findMatchingMovedPath(
     if (!Object.hasOwn(beforeRecord, oldPath)) continue;
     if (Object.hasOwn(afterRecord, oldPath)) continue;
     if (
-      propertyGrowthEntries(worktree, "", beforeRecord[oldPath], afterValue)
+      propertyGrowthEntries(scanner, "", beforeRecord[oldPath], afterValue)
         .length === 0
     ) {
       return oldPath;
@@ -332,20 +281,20 @@ function findMatchingMovedPath(
 }
 
 function findingCountsGrowth(
-  worktree: string,
+  scanner: WorktreeSourceReader,
   beforeValue: unknown,
   afterValue: unknown,
   movedPaths: ReadonlyMap<string, ReadonlySet<string>>,
 ): string[] {
   const consumed = new Set<string>();
   return compareKeyedCountTable(
-    worktree,
+    scanner,
     "finding_counts",
     beforeValue,
     afterValue,
     (key, entryValue, beforeRecord, afterRecord) => {
       const matched = findMatchingMovedPath(
-        worktree,
+        scanner,
         key,
         entryValue,
         movedPaths,
@@ -429,10 +378,34 @@ function consumeOneCandidate(
   return false;
 }
 
+interface RemovedArrayCandidate {
+  readonly key: string;
+  readonly path: string;
+}
+
+function extractSamplePathAndSymbol(
+  sample: unknown,
+): { readonly path: string; readonly symbol: string | undefined } | undefined {
+  const deadCode = parseDeadCodeString(sample);
+  if (deadCode !== undefined) {
+    return { path: deadCode.path, symbol: deadCode.symbol };
+  }
+  const record = asRecord(sample);
+  if (record === undefined || typeof record.path !== "string") return undefined;
+  for (const field of SYMBOL_FIELDS) {
+    const candidate = Object.hasOwn(record, field) ? record[field] : undefined;
+    if (typeof candidate === "string" && candidate !== "") {
+      return { path: record.path, symbol: candidate };
+    }
+  }
+  return { path: record.path, symbol: undefined };
+}
+
 function takeMovedArrayCounterpart(
+  scanner: WorktreeSourceReader,
   sample: unknown,
   removedCounts: Map<string, number>,
-  removedByNonPath: ReadonlyMap<string, readonly string[]>,
+  removedByNonPath: ReadonlyMap<string, readonly RemovedArrayCandidate[]>,
   movedPaths: ReadonlyMap<string, ReadonlySet<string>>,
 ): boolean {
   if (
@@ -445,29 +418,24 @@ function takeMovedArrayCounterpart(
     return true;
   }
   const nonPathKey = itemWithoutPathKey(sample);
-  return nonPathKey === undefined
-    ? false
-    : consumeOneCandidate(removedByNonPath.get(nonPathKey), removedCounts);
-}
-
-function arrayOriginMoved(worktree: string, sample: unknown): boolean {
-  const deadCode = parseDeadCodeString(sample);
-  if (deadCode !== undefined) {
-    return oldPathAllowsMove(worktree, deadCode.path, deadCode.symbol);
-  }
-  const record = asRecord(sample);
-  if (record === undefined || typeof record.path !== "string") return false;
-  for (const field of SYMBOL_FIELDS) {
-    const candidate = Object.hasOwn(record, field) ? record[field] : undefined;
-    if (typeof candidate === "string" && candidate !== "") {
-      return oldPathAllowsMove(worktree, record.path, candidate);
+  if (nonPathKey === undefined) return false;
+  const added = extractSamplePathAndSymbol(sample);
+  if (added === undefined || added.symbol === undefined) return false;
+  const candidates = removedByNonPath.get(nonPathKey);
+  if (candidates === undefined) return false;
+  for (const candidate of candidates) {
+    const remaining = removedCounts.get(candidate.key) ?? 0;
+    if (remaining <= 0) continue;
+    if (!isSymbolMove(scanner, candidate.path, added.path, added.symbol)) {
+      continue;
     }
+    removedCounts.set(candidate.key, remaining - 1);
+    return true;
   }
-  return oldPathAllowsMove(worktree, record.path, undefined);
+  return false;
 }
 
 function collectRemovedArrayEntries(
-  worktree: string,
   beforeCounts: ReadonlyMap<
     string,
     { readonly count: number; readonly sample: unknown }
@@ -478,17 +446,25 @@ function collectRemovedArrayEntries(
   >,
 ): {
   readonly removedCounts: Map<string, number>;
-  readonly removedByNonPath: Map<string, string[]>;
+  readonly removedByNonPath: Map<string, RemovedArrayCandidate[]>;
 } {
   const removedCounts = new Map<string, number>();
-  const removedByNonPath = new Map<string, string[]>();
+  const removedByNonPath = new Map<string, RemovedArrayCandidate[]>();
   for (const [key, { count, sample }] of beforeCounts) {
     const afterCount = afterCounts.get(key)?.count ?? 0;
     if (count <= afterCount) continue;
     removedCounts.set(key, count - afterCount);
     const nonPathKey = itemWithoutPathKey(sample);
-    if (nonPathKey !== undefined && arrayOriginMoved(worktree, sample)) {
-      pushMapList(removedByNonPath, nonPathKey, key);
+    const origin = extractSamplePathAndSymbol(sample);
+    if (
+      nonPathKey !== undefined &&
+      origin !== undefined &&
+      origin.symbol !== undefined
+    ) {
+      const list = removedByNonPath.get(nonPathKey);
+      const entry: RemovedArrayCandidate = { key, path: origin.path };
+      if (list !== undefined) list.push(entry);
+      else removedByNonPath.set(nonPathKey, [entry]);
     }
   }
   return { removedCounts, removedByNonPath };
@@ -506,7 +482,7 @@ function formatArrayGrowthEntry(
 }
 
 function arrayGrowthEntries(
-  worktree: string,
+  scanner: WorktreeSourceReader,
   fieldPath: string,
   beforeValue: unknown,
   afterValue: readonly unknown[],
@@ -518,7 +494,6 @@ function arrayGrowthEntries(
   const beforeCounts = countArrayItems(beforeValue ?? []);
   const afterCounts = countArrayItems(afterValue);
   const { removedCounts, removedByNonPath } = collectRemovedArrayEntries(
-    worktree,
     beforeCounts,
     afterCounts,
   );
@@ -529,6 +504,7 @@ function arrayGrowthEntries(
     while (
       unmatched > 0 &&
       takeMovedArrayCounterpart(
+        scanner,
         sample,
         removedCounts,
         removedByNonPath,
@@ -545,7 +521,7 @@ function arrayGrowthEntries(
 }
 
 function objectGrowthEntries(
-  worktree: string,
+  scanner: WorktreeSourceReader,
   fieldPath: string,
   beforeValue: unknown,
   afterValue: Readonly<Record<string, unknown>>,
@@ -561,7 +537,7 @@ function objectGrowthEntries(
       : undefined;
     grown.push(
       ...propertyGrowthEntries(
-        worktree,
+        scanner,
         nestedPath,
         prior,
         entryValue,
@@ -573,7 +549,7 @@ function objectGrowthEntries(
 }
 
 function propertyGrowthEntries(
-  worktree: string,
+  scanner: WorktreeSourceReader,
   fieldPath: string,
   beforeValue: unknown,
   afterValue: unknown,
@@ -581,7 +557,7 @@ function propertyGrowthEntries(
 ): string[] {
   if (Array.isArray(afterValue)) {
     return arrayGrowthEntries(
-      worktree,
+      scanner,
       fieldPath,
       beforeValue,
       afterValue,
@@ -591,7 +567,7 @@ function propertyGrowthEntries(
   const afterRecord = asRecord(afterValue);
   if (afterRecord !== undefined) {
     return objectGrowthEntries(
-      worktree,
+      scanner,
       fieldPath,
       beforeValue,
       afterRecord,
@@ -611,17 +587,17 @@ function propertyGrowthEntries(
 }
 
 function fieldGrowthForTopLevelKey(
-  worktree: string,
+  scanner: WorktreeSourceReader,
   key: string,
   beforeValue: unknown,
   afterValue: unknown,
   movedPaths: ReadonlyMap<string, ReadonlySet<string>>,
 ): string[] {
   if (key === "finding_counts") {
-    return findingCountsGrowth(worktree, beforeValue, afterValue, movedPaths);
+    return findingCountsGrowth(scanner, beforeValue, afterValue, movedPaths);
   }
   return propertyGrowthEntries(
-    worktree,
+    scanner,
     key,
     beforeValue,
     afterValue,
@@ -630,7 +606,7 @@ function fieldGrowthForTopLevelKey(
 }
 
 function fileGrowthEntries(
-  worktree: string,
+  scanner: WorktreeSourceReader,
   beforeBytes: Uint8Array,
   afterBytes: Uint8Array,
 ): string[] {
@@ -645,7 +621,7 @@ function fileGrowthEntries(
     : undefined;
   const grown: string[] = Object.hasOwn(after, "identity_finding_counts")
     ? identityFindingCountsGrowth(
-        worktree,
+        scanner,
         beforeIdentities,
         after.identity_finding_counts,
         movedPaths,
@@ -656,7 +632,7 @@ function fileGrowthEntries(
     const beforeValue = Object.hasOwn(before, key) ? before[key] : undefined;
     grown.push(
       ...fieldGrowthForTopLevelKey(
-        worktree,
+        scanner,
         key,
         beforeValue,
         afterValue,
@@ -671,6 +647,7 @@ export function findRecordedHitsGrowth(
   worktree: string,
   snapshots: ReadonlyMap<string, Uint8Array | undefined>,
 ): RecordedHitsFileGrowth[] {
+  const scanner = createWorktreeSourceReader(worktree);
   const growth: RecordedHitsFileGrowth[] = [];
   for (const [file, beforeBytes] of snapshots) {
     const afterBytes = readWorktreeFileBytes(join(worktree, file));
@@ -684,7 +661,7 @@ export function findRecordedHitsGrowth(
       growth.push({ file, entries: ["file removed"] });
       continue;
     }
-    const entries = fileGrowthEntries(worktree, beforeBytes, afterBytes);
+    const entries = fileGrowthEntries(scanner, beforeBytes, afterBytes);
     if (entries.length > 0) {
       growth.push({ file, entries });
     }

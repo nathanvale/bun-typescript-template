@@ -490,3 +490,113 @@ exit 0
   },
   processWatchdog(4),
 );
+
+const CALC_FN =
+  "export function calculate(v: number): number {\n  return v;\n}\n";
+const HEALTH_FILE = "fallow-health-recorded-hits.json";
+
+function healthHitJson(path: string): string {
+  return `${JSON.stringify({ kind: "health", finding_counts: { [path]: 1 }, identity_finding_counts: { [`${path}\u0000calculate`]: 1 }, runtime_coverage_findings: [], target_keys: [path] }, null, 2)}\n`;
+}
+
+async function runMoveCase(
+  app: string,
+  oldPath: string,
+  newPath: string,
+  action: string,
+  oldSource = CALC_FN,
+  newSource = CALC_FN,
+) {
+  const { templateClone, baseCommit } = cloneTemplateAtHead(folder);
+  const repo = await bootstrapGeneratedRepository(
+    folder,
+    templateClone,
+    baseCommit,
+    app,
+  );
+  commitIn(repo, "owner hit", {
+    [oldPath]: oldSource,
+    [HEALTH_FILE]: healthHitJson(oldPath),
+  });
+  const baseBytes = readFileSync(join(repo, HEALTH_FILE));
+  const target = commitFallowGateChange(templateClone);
+  const branch = `template-upgrade/${baseCommit.slice(0, 7)}-${target.slice(0, 7)}`;
+  const worktree = join(
+    repo,
+    ".worktrees",
+    `template-upgrade-${target.slice(0, 7)}`,
+  );
+  const { env } = writeScriptedBun(
+    folder,
+    `scripted-bun-${app}-`,
+    `#!/bin/sh\necho "$*" >> __LEDGER__\nif [ "$1 $2" = "run quality:fallow:record-hits" ]; then\n${action}\ncat <<'EOF' > ${newPath}\n${newSource}EOF\ncat <<'EOF' > ${HEALTH_FILE}\n${healthHitJson(newPath)}EOF\nfi\nif [ "$1 $2 $3" = "run --bun changeset" ]; then\nmkdir -p .changeset && printf -- '---\\n---\\n' > .changeset/a.md\nfi\nexit 0\n`,
+  );
+  const run = await invokeTemplateUpgradeMain(
+    captureStream(process.stdout),
+    captureStream(process.stderr),
+    ["apply", "--repository", repo, "--to", target, "--json"],
+    { templateRoot: templateClone, env },
+  );
+  return { repo, branch, worktree, baseBytes, run };
+}
+
+test(
+  "refuses with recorded_hits_would_grow when an old recorded file is renamed keeping its function and a same-named function is added at a new path, commits nothing, and leaves the file byte-identical to the base",
+  async () => {
+    const { repo, branch, worktree, baseBytes, run } = await runMoveCase(
+      "renamed-old-file-twin-app",
+      "src/old0.ts",
+      "src/new0.ts",
+      "mv src/old0.ts src/renamed0.ts",
+      CALC_FN,
+      "export function calculate(v: number): number {\n  return v + 1;\n}\n",
+    );
+    expect(run.exitCode).not.toBe(0);
+    const refusal = JSON.parse(run.stderr) as {
+      readonly status: string;
+      readonly error: { readonly code: string; readonly message: string };
+    };
+    expect(refusal.status).toBe("refused");
+    expect(refusal.error.code).toBe("recorded_hits_would_grow");
+    expect(refusal.error.message).toContain(HEALTH_FILE);
+    expect(refusal.error.message).toContain("src/new0.ts\u0000calculate");
+    expect(git(repo, "branch", "--list", branch)).toBe("");
+    expect(
+      Buffer.compare(readFileSync(join(worktree, HEALTH_FILE)), baseBytes),
+    ).toBe(0);
+  },
+  processWatchdog(4),
+);
+
+test(
+  "passes when a recorded function is truly moved out of its old file and defined only at the new path",
+  async () => {
+    const { branch, run } = await runMoveCase(
+      "truly-moved-symbol-app",
+      "src/old.ts",
+      "src/new.ts",
+      "printf 'export const keep = 1;\\n' > src/old.ts",
+      `export const keep = 1;\n${CALC_FN}`,
+    );
+    expect(run.exitCode).toBe(0);
+    expect(run.stderr).toBe("");
+    expect(JSON.parse(run.stdout)).toMatchObject({ status: "applied", branch });
+  },
+  processWatchdog(4),
+);
+
+test(
+  "passes when an old recorded file is deleted entirely and its function is defined only at the new path",
+  async () => {
+    const { branch, run } = await runMoveCase(
+      "deleted-old-file-move-app",
+      "src/old.ts",
+      "src/new.ts",
+      "rm src/old.ts",
+    );
+    expect(run.exitCode).toBe(0);
+    expect(run.stderr).toBe("");
+    expect(JSON.parse(run.stdout)).toMatchObject({ status: "applied", branch });
+  },
+  processWatchdog(4),
+);
