@@ -45,6 +45,9 @@ test(
       folder,
       "scripted-bun-record-hits-",
       `#!/bin/sh
+if [ "$1" = "run" ] && [ "$2" = "--bun" ] && [ "$3" = "changeset" ]; then
+  exec ${JSON.stringify(process.execPath)} "$@"
+fi
 echo "$*" >> __LEDGER__
 if [ "$1" = "run" ] && [ "$2" = "quality:fallow:record-hits" ]; then
   printf '{"recorded":true,"file":"dead-code"}\\n' > fallow-dead-code-recorded-hits.json
@@ -247,6 +250,9 @@ exit 0
       folder,
       "scripted-bun-no-check-record-",
       `#!/bin/sh
+if [ "$1" = "run" ] && [ "$2" = "--bun" ] && [ "$3" = "changeset" ]; then
+  exec ${JSON.stringify(process.execPath)} "$@"
+fi
 echo "$*" >> __LEDGER__
 exit 0
 `,
@@ -386,6 +392,9 @@ test(
       folder,
       "scripted-bun-retry-record-hits-",
       `#!/bin/sh
+if [ "$1" = "run" ] && [ "$2" = "--bun" ] && [ "$3" = "changeset" ]; then
+  exec ${JSON.stringify(process.execPath)} "$@"
+fi
 echo "$*" >> __LEDGER__
 if [ "$1" = "run" ] && [ "$2" = "quality:fallow:record-hits" ]; then
   if grep -q '"pass":1' fallow-dead-code-recorded-hits.json 2>/dev/null; then

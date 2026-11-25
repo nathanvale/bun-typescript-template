@@ -1,6 +1,10 @@
 import { rmdir } from "node:fs/promises";
 import { join } from "node:path";
 import {
+  planTemplateUpgradeChangeset,
+  writeTemplateUpgradeChangeset,
+} from "./template-upgrade-changeset-write.ts";
+import {
   readTemplateUpgradeChangesets,
   type TemplateChangesetEntry,
 } from "./template-upgrade-changesets.ts";
@@ -185,6 +189,13 @@ async function executePlanInWorktree(options: {
   const sharedMerges = rows
     .filter((row) => row.ownerLabel === "shared" && row.outcome === "merge")
     .map((row) => row.path);
+  const upgradeChangeset = await planTemplateUpgradeChangeset({
+    repository: inputs.repository,
+    worktree: planWorktree,
+    baseCommit: inputs.baseCommit,
+    targetCommit: inputs.targetCommit,
+    env,
+  });
   return createTemplateUpgradePlanResult({
     inputs,
     status: conflicts.length > 0 ? "conflicts" : "planned",
@@ -194,6 +205,7 @@ async function executePlanInWorktree(options: {
     dependencyChanges,
     templateCopyChanges,
     changesets,
+    ...(upgradeChangeset === undefined ? {} : { upgradeChangeset }),
   });
 }
 
@@ -401,6 +413,13 @@ async function publishTemplateUpgradeBranch(
 ): Promise<TemplateUpgradeApplyRun> {
   const { inputs, branch, commitMessage, changesets, targetWorktree, env } =
     session;
+  await writeTemplateUpgradeChangeset({
+    repository: inputs.repository,
+    worktree: targetWorktree,
+    baseCommit: inputs.baseCommit,
+    targetCommit: inputs.targetCommit,
+    env,
+  });
   const commitSha = await stageAndCommitWorktree({
     worktree: targetWorktree,
     message: commitMessage,
