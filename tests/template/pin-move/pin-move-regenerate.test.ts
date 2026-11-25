@@ -113,6 +113,7 @@ describe("pin-move --repository with a regenerate step", () => {
     ).toEqual([
       ".agents/skills/agent-cli-kernel/SKILL.md",
       ".agents/skills/verify-cli/SKILL.md",
+      `.changeset/kernel-pin-${fixture.targetCommit.slice(0, 7)}.md`,
       "bun.lock",
       "package.json",
       "regenerated.txt",

@@ -1,5 +1,6 @@
 import { lstatSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { CliError } from "../src/cli-error.ts";
 import { type TrialActive, trialStep } from "./kernel-trial.ts";
 import { withoutRepositoryLocation } from "./process-runner.ts";
 
@@ -358,6 +359,15 @@ export async function failedAttempt(
       attempt,
       error.code,
       error.reason,
+      error.repair,
+      installRan,
+      runGit,
+    );
+  if (error instanceof CliError)
+    return keptAttemptRefusal(
+      attempt,
+      error.code,
+      error.message,
       error.repair,
       installRan,
       runGit,

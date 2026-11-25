@@ -44,7 +44,7 @@ export interface TemplateUpgradeChangesetOptions {
   readonly env: ProcessEnvMap;
 }
 
-interface RepositoryChangesetOptions {
+export interface RepositoryChangesetOptions {
   readonly repository: string;
   readonly worktree: string;
   readonly fileName: string;
@@ -394,14 +394,14 @@ async function resolveRepositoryChangesetPlan(
   };
 }
 
-async function planRepositoryChangeset(
+export async function planRepositoryChangeset(
   options: RepositoryChangesetOptions,
 ): Promise<TemplateUpgradeChangesetPlan | undefined> {
   const resolved = await resolveRepositoryChangesetPlan(options, true);
   return resolved?.plan;
 }
 
-async function writeRepositoryChangeset(
+export async function writeRepositoryChangeset(
   options: RepositoryChangesetOptions,
 ): Promise<TemplateUpgradeChangesetPlan | undefined> {
   const resolved = await resolveRepositoryChangesetPlan(options, false);
