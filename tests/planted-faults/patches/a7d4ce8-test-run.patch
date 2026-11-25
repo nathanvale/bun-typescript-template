@@ -1,119 +1,19 @@
 diff --git a/scripts/test-run.ts b/scripts/test-run.ts
-index 2af67e7..d4c1d06 100644
 --- a/scripts/test-run.ts
 +++ b/scripts/test-run.ts
-@@ -10,12 +10,11 @@ import {
-   readdirSync,
-   readSync,
-   realpathSync,
--  renameSync,
-   rmSync,
-   writeSync,
- } from "node:fs";
- import { tmpdir } from "node:os";
--import { basename, isAbsolute, join, relative } from "node:path";
-+import { isAbsolute, join, relative } from "node:path";
+@@ -228,13 +228,7 @@
  
- export type TestRunEnvironment = Readonly<Record<string, string | undefined>>;
- 
-@@ -26,11 +25,7 @@ export const testRunProcessMark = ".test-run-process";
- 
- const bareTempMilliseconds = 10_000;
- const signalGraceMilliseconds = 2_000;
--const startupMarkMilliseconds = 250;
--const startupPollMilliseconds = 10;
- const runFolderPrefix = "test-run-";
--const startingFolderPattern = new RegExp(`^${runFolderPrefix}([1-9]\\d*)-`);
--const pauseWord = new Int32Array(new SharedArrayBuffer(4));
- const missingCodes = new Set<unknown>(["ENOENT", "ENOTDIR"]);
- const stoppedCodes = new Set<unknown>(["ESRCH", "EPERM"]);
- const liveMarkPattern = new RegExp(
-@@ -59,9 +54,8 @@ function releaseLock(fd: number): void {
- }
- 
- function writeProcessMark(runFolder: string, pid: number): number {
--  const tempMark = join(runFolder, `${testRunProcessMark}.tmp`);
-   const fd = openSync(
--    tempMark,
-+    join(runFolder, testRunProcessMark),
-     constants.O_CREAT |
-       constants.O_EXCL |
-       constants.O_RDWR |
-@@ -70,9 +64,8 @@ function writeProcessMark(runFolder: string, pid: number): number {
-   );
-   try {
-     if (!acquireExclusiveLock(fd))
--      throw new Error(`Could not lock ${tempMark}.`);
-+      throw new Error(`Could not lock ${join(runFolder, testRunProcessMark)}.`);
-     writeSync(fd, `${testRunProcessVariable}=${pid}\n`);
--    renameSync(tempMark, join(runFolder, testRunProcessMark));
-     return fd;
-   } catch (error) {
-     closeSync(fd);
-@@ -186,47 +179,20 @@ function readProcessMark(folder: string): number | undefined {
-   }
- }
- 
--function processAlive(pid: number): boolean {
-+function isLiveRunFolder(path: string): boolean {
-   try {
--    process.kill(pid, 0);
--    return true;
-+    if (!lstatSync(path).isDirectory()) return false;
-   } catch (error) {
--    return Reflect.get(Object(error), "code") === "EPERM";
-+    return missingCodes.has(Reflect.get(Object(error), "code"));
-   }
--}
--
--function entryKind(path: string): "directory" | "missing" | "other" {
-+  const pid = readProcessMark(path);
-+  if (pid === undefined) return false;
-   try {
--    return lstatSync(path).isDirectory() ? "directory" : "other";
-+    process.kill(pid, 0);
-+    return true;
-   } catch (error) {
--    return missingCodes.has(Reflect.get(Object(error), "code"))
--      ? "missing"
--      : "other";
--  }
--}
--
--function isStartingRunFolder(path: string): boolean {
--  const pid = Number(startingFolderPattern.exec(basename(path))?.[1]);
--  return Number.isSafeInteger(pid) && processAlive(pid);
--}
--
--function isLiveRunFolder(path: string): boolean {
--  const kind = entryKind(path);
--  if (kind !== "directory") return kind === "missing";
--  const pid = readProcessMark(path);
--  if (pid !== undefined) return processAlive(pid);
--  if (existsSync(join(path, testRunProcessMark)) || !isStartingRunFolder(path))
--    return false;
+ function isLiveRunFolder(path: string): boolean {
+   const initial = probeLiveRunFolder(path);
+-  if (initial !== "starting") return initial === "live";
 -  const deadline = Date.now() + startupMarkMilliseconds;
 -  while (Date.now() < deadline) {
 -    Atomics.wait(pauseWord, 0, 0, startupPollMilliseconds);
--    const current = entryKind(path);
--    if (current !== "directory") return current === "missing";
--    const marked = readProcessMark(path);
--    if (marked !== undefined) return processAlive(marked);
--    if (existsSync(join(path, testRunProcessMark))) return false;
-+    return Reflect.get(Object(error), "code") === "EPERM";
-   }
+-    const current = probeLiveRunFolder(path);
+-    if (current !== "starting") return current === "live";
+-  }
 -  return false;
++  return initial === "live";
  }
  
  const bunNodeFolder = `bun-node-${process.getuid?.()}-${Bun.revision.slice(0, 9)}`;
-@@ -366,9 +332,7 @@ export async function runTests(
-   const parent = realFolder(
-     options.env.STATE_TEST_DIR || options.env.TMPDIR || tmpdir(),
-   );
--  const runFolder = realFolder(
--    mkdtempSync(join(parent, `${runFolderPrefix}${process.pid}-`)),
--  );
-+  const runFolder = realFolder(mkdtempSync(join(parent, runFolderPrefix)));
-   const problems: string[] = [];
-   let markFd: number | undefined;
-   let child: ReturnType<typeof startBunTest> | undefined;

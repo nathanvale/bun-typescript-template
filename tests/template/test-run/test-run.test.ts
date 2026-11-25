@@ -321,8 +321,8 @@ test(
     const temp = folder("test-run-temp-");
     const runFolder = join(temp, "test-run-fast-exit");
     mkdirSync(runFolder);
-    const dead = Bun.spawn(["true"]);
-    await dead.exited;
+    const dead = startChild(["true"], { limitMilliseconds: runBound });
+    await dead.finished;
     const root = specimen({ "tests/passing.test.ts": passing });
     const run = await spawnBounded([process.execPath, "test"], {
       cwd: root,

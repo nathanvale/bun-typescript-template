@@ -210,21 +210,30 @@ function isStartingRunFolder(path: string): boolean {
   return Number.isSafeInteger(pid) && processAlive(pid);
 }
 
-function isLiveRunFolder(path: string): boolean {
+function hasMarkEntry(path: string): boolean {
+  return (
+    lstatSync(join(path, testRunProcessMark), { throwIfNoEntry: false }) !==
+    undefined
+  );
+}
+
+function probeLiveRunFolder(path: string): "live" | "starting" | "leftover" {
   const kind = entryKind(path);
-  if (kind !== "directory") return kind === "missing";
+  if (kind !== "directory") return kind === "missing" ? "live" : "leftover";
   const pid = readProcessMark(path);
-  if (pid !== undefined) return processAlive(pid);
-  if (existsSync(join(path, testRunProcessMark)) || !isStartingRunFolder(path))
-    return false;
+  if (pid !== undefined) return processAlive(pid) ? "live" : "leftover";
+  if (hasMarkEntry(path)) return "leftover";
+  return isStartingRunFolder(path) ? "starting" : "leftover";
+}
+
+function isLiveRunFolder(path: string): boolean {
+  const initial = probeLiveRunFolder(path);
+  if (initial !== "starting") return initial === "live";
   const deadline = Date.now() + startupMarkMilliseconds;
   while (Date.now() < deadline) {
     Atomics.wait(pauseWord, 0, 0, startupPollMilliseconds);
-    const current = entryKind(path);
-    if (current !== "directory") return current === "missing";
-    const marked = readProcessMark(path);
-    if (marked !== undefined) return processAlive(marked);
-    if (existsSync(join(path, testRunProcessMark))) return false;
+    const current = probeLiveRunFolder(path);
+    if (current !== "starting") return current === "live";
   }
   return false;
 }

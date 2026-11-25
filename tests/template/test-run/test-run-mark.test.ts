@@ -138,7 +138,7 @@ test(
     } catch (error) {
       caught = error;
     }
-    expect(caught).toBeDefined();
+    expect(String(caught)).toMatch(/ENOENT|No such file/i);
     expect(readdirSync(temp)).toEqual([]);
   },
   processWatchdog(1),
