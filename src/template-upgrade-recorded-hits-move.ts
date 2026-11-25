@@ -1,5 +1,6 @@
 import { lstatSync, readFileSync } from "node:fs";
 import { isAbsolute, resolve, sep } from "node:path";
+import ts from "typescript";
 import { runGitCommand } from "./template-upgrade-git.ts";
 
 const UTF8_STRICT = new TextDecoder("utf-8", { fatal: true });
@@ -15,51 +16,149 @@ export interface WorktreeSourceReader {
   readAll(): ReadonlyMap<string, string> | undefined;
 }
 
-function escapeRegExp(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function addBindingNames(binding: ts.BindingName, names: Set<string>): void {
+  if (ts.isIdentifier(binding)) {
+    names.add(binding.text);
+    return;
+  }
+  if (ts.isObjectBindingPattern(binding)) {
+    for (const element of binding.elements) {
+      addBindingNames(element.name, names);
+    }
+    return;
+  }
+  for (const element of binding.elements) {
+    if (ts.isBindingElement(element)) {
+      addBindingNames(element.name, names);
+    }
+  }
 }
 
-function symbolPartPresentInSource(text: string, part: string): boolean {
-  if (/^[$\w]+$/.test(part)) {
-    return new RegExp(`(?<![$\\w])${escapeRegExp(part)}(?![$\\w])`).test(text);
+function propertyNameText(name: ts.PropertyName): string | undefined {
+  if (ts.isIdentifier(name)) return name.text;
+  if (ts.isPrivateIdentifier(name)) {
+    return name.text.startsWith("#") ? name.text.slice(1) : name.text;
   }
-  return text.includes(part);
+  if (ts.isStringLiteral(name) || ts.isNumericLiteral(name)) return name.text;
+  return undefined;
 }
 
-function identifierDefinedInSource(text: string, identifier: string): boolean {
-  if (identifier === "default") {
-    return /\bexport\s+default\b/.test(text);
-  }
-  if (!/^[$\w]+$/.test(identifier)) {
-    return text.includes(identifier);
-  }
-  const id = escapeRegExp(identifier);
-  const declarationPattern = new RegExp(
-    `(?:^|[;{}])\\s*(?:export\\s+(?:default\\s+)?)?(?:declare\\s+)?(?:abstract\\s+|const\\s+|async\\s+)?(?:function\\s*\\*?|class|interface|type|enum|namespace|const|let|var)\\s+${id}(?![$\\w])`,
-    "m",
+function hasDefaultModifier(node: ts.Node): boolean {
+  if (!ts.canHaveModifiers(node)) return false;
+  const modifiers = ts.getModifiers(node);
+  return (
+    modifiers?.some(
+      (modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword,
+    ) ?? false
   );
-  if (declarationPattern.test(text)) return true;
-  if (new RegExp(`\\bfunction\\s*\\*?\\s*${id}(?![$\\w])`).test(text)) {
+}
+
+function addFunctionOrClassName(node: ts.Node, names: Set<string>): boolean {
+  if (
+    !ts.isFunctionDeclaration(node) &&
+    !ts.isFunctionExpression(node) &&
+    !ts.isClassDeclaration(node) &&
+    !ts.isClassExpression(node)
+  ) {
+    return false;
+  }
+  if (node.name !== undefined) names.add(node.name.text);
+  if (hasDefaultModifier(node)) names.add("default");
+  return true;
+}
+
+function addMemberName(node: ts.Node, names: Set<string>): boolean {
+  if (
+    ts.isMethodDeclaration(node) ||
+    ts.isGetAccessorDeclaration(node) ||
+    ts.isSetAccessorDeclaration(node) ||
+    ts.isPropertyDeclaration(node)
+  ) {
+    const memberName = propertyNameText(node.name);
+    if (memberName !== undefined) names.add(memberName);
     return true;
   }
-  const methodPattern = new RegExp(
-    `^\\s*(?:(?:public|private|protected|static|readonly|override|abstract|async|declare|get|set)\\s+)*\\*?\\s*${id}\\s*(?:<[^>\\n]*>\\s*)?\\([^)\\n]*\\)\\s*(?::[^{\\n]+)?\\{`,
-    "m",
-  );
-  if (methodPattern.test(text)) return true;
-  const propertyFunctionPattern = new RegExp(
-    `(?<![$\\w])${id}\\s*:\\s*(?:async\\s+)?(?:function\\b|\\([^)\\n]*\\)\\s*(?::[^\\n=>]+)?=>|[$\\w]+\\s*=>)`,
-  );
-  if (propertyFunctionPattern.test(text)) return true;
-  return new RegExp(`\\bexport\\s*\\{[^}]*\\bas\\s+${id}(?![$\\w])`).test(text);
+  if (
+    ts.isPropertyAssignment(node) &&
+    (ts.isFunctionLike(node.initializer) ||
+      ts.isClassExpression(node.initializer))
+  ) {
+    const memberName = propertyNameText(node.name);
+    if (memberName !== undefined) names.add(memberName);
+    return true;
+  }
+  return false;
 }
 
-function symbolDefinedInSource(text: string, symbol: string): boolean {
-  const parts = symbol.split(/[.#]/).filter((part) => part.length > 0);
-  const [rootPart, ...restParts] = parts;
-  if (rootPart === undefined) return false;
-  if (!identifierDefinedInSource(text, rootPart)) return false;
-  return restParts.every((part) => symbolPartPresentInSource(text, part));
+function addTypeOrExportName(node: ts.Node, names: Set<string>): void {
+  if (
+    ts.isInterfaceDeclaration(node) ||
+    ts.isTypeAliasDeclaration(node) ||
+    ts.isEnumDeclaration(node)
+  ) {
+    names.add(node.name.text);
+    return;
+  }
+  if (ts.isModuleDeclaration(node) && ts.isIdentifier(node.name)) {
+    names.add(node.name.text);
+    return;
+  }
+  if (ts.isExportAssignment(node)) {
+    names.add("default");
+    return;
+  }
+  if (ts.isExportSpecifier(node)) {
+    names.add(node.name.text);
+  }
+}
+
+function recordDeclaredNode(node: ts.Node, names: Set<string>): void {
+  if (addFunctionOrClassName(node, names)) return;
+  if (ts.isVariableDeclaration(node)) {
+    addBindingNames(node.name, names);
+    return;
+  }
+  if (addMemberName(node, names)) return;
+  addTypeOrExportName(node, names);
+}
+
+function collectDeclaredSymbols(
+  filePath: string,
+  text: string,
+): ReadonlySet<string> | undefined {
+  const sourceFile = ts.createSourceFile(
+    filePath,
+    text,
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  const diagnostics: unknown = Reflect.get(sourceFile, "parseDiagnostics");
+  if (!Array.isArray(diagnostics) || diagnostics.length > 0) {
+    return undefined;
+  }
+  const names = new Set<string>();
+  const visit = (node: ts.Node): void => {
+    recordDeclaredNode(node, names);
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return names;
+}
+
+function symbolParts(symbol: string): string[] {
+  return symbol.split(/[.#]/).filter((part) => part.length > 0);
+}
+
+function symbolDefinedInSource(
+  filePath: string,
+  text: string,
+  symbol: string,
+): boolean {
+  const parts = symbolParts(symbol);
+  if (parts.length === 0) return false;
+  const declared = collectDeclaredSymbols(filePath, text);
+  if (declared === undefined) return true;
+  return parts.every((part) => declared.has(part));
 }
 
 function resolveWorktreePath(
@@ -145,25 +244,49 @@ export function createWorktreeSourceReader(
   };
 }
 
+function readTargetSourceText(
+  sources: ReadonlyMap<string, string>,
+  newFullPath: string,
+): string | undefined {
+  const existing = sources.get(newFullPath);
+  if (existing !== undefined) return existing;
+  const read = readSourceFileText(newFullPath);
+  return read.kind === "text" ? read.text : undefined;
+}
+
 function isSoleSymbolDefinition(
   reader: WorktreeSourceReader,
   newPath: string,
   symbol: string,
 ): boolean {
+  const parts = symbolParts(symbol);
   const newFullPath = resolveWorktreePath(reader.worktree, newPath);
-  if (newFullPath === undefined) return false;
   const sources = reader.readAll();
-  if (sources === undefined) return false;
-  let newText = sources.get(newFullPath);
-  if (newText === undefined) {
-    const read = readSourceFileText(newFullPath);
-    if (read.kind !== "text") return false;
-    newText = read.text;
+  if (
+    parts.length === 0 ||
+    newFullPath === undefined ||
+    sources === undefined
+  ) {
+    return false;
   }
-  if (!symbolDefinedInSource(newText, symbol)) return false;
+  const newText = readTargetSourceText(sources, newFullPath);
+  const newDeclared =
+    newText === undefined
+      ? undefined
+      : collectDeclaredSymbols(newFullPath, newText);
+  if (
+    newDeclared === undefined ||
+    !parts.every((part) => newDeclared.has(part))
+  ) {
+    return false;
+  }
   for (const [fullPath, text] of sources) {
-    if (fullPath === newFullPath) continue;
-    if (symbolDefinedInSource(text, symbol)) return false;
+    if (
+      fullPath !== newFullPath &&
+      symbolDefinedInSource(fullPath, text, symbol)
+    ) {
+      return false;
+    }
   }
   return true;
 }
@@ -182,6 +305,6 @@ export function isSymbolMove(
   if (oldRead.kind === "missing") {
     return isSoleSymbolDefinition(sourceReader, newPath, symbol);
   }
-  if (symbolDefinedInSource(oldRead.text, symbol)) return false;
+  if (symbolDefinedInSource(oldFullPath, oldRead.text, symbol)) return false;
   return isSoleSymbolDefinition(sourceReader, newPath, symbol);
 }
