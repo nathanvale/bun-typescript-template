@@ -1,23 +1,15 @@
 import { expect, test } from "bun:test";
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ownedFolders } from "../../support/fixture-files.ts";
-import { commitIn, git, gitEnv, inherited } from "../../support/git-fixture.ts";
-import { processWatchdog, spawnBounded } from "../../support/process.ts";
+import { commitIn, git } from "../../support/git-fixture.ts";
+import { processWatchdog } from "../../support/process.ts";
 import { streamWrites } from "../../support/stream-writes.ts";
 import {
   bootstrapGeneratedRepository,
   cloneTemplateAtHead,
   invokeTemplateUpgradeMain,
-  linkTemplateNodeModules,
   prepareFastInstallBun,
-  templateUpgradeCalls,
   writeScriptedBun,
 } from "../../support/template-upgrade-fixture.ts";
 
@@ -89,204 +81,31 @@ async function createCatalogRepository(
   return { repo, repositoryHead: sha };
 }
 
-async function pushAudit(
-  repo: string,
-  branch: string,
-  base: string,
-): Promise<{
-  readonly exit: number | null;
-  readonly verdict: unknown;
-  readonly complexity: readonly string[];
-}> {
-  const checkout = join(folder("push-audit-"), "checkout");
-  git(repo, "worktree", "add", "--quiet", "--detach", checkout, branch);
-  linkTemplateNodeModules(checkout);
-  const audit = await spawnBounded(
-    [
-      join(checkout, "node_modules/.bin/fallow"),
-      "audit",
-      "--base",
-      base,
-      "--format",
-      "json",
-      "--quiet",
-    ],
-    {
-      cwd: checkout,
-      env: { ...inherited(), ...gitEnv, NO_COLOR: "1" },
-      processGroup: true,
-    },
-  );
-  const report = JSON.parse(audit.stdout) as {
-    readonly verdict?: unknown;
-    readonly complexity?: {
-      readonly findings?: readonly {
-        readonly path: string;
-        readonly name: string;
-      }[];
-    };
-  };
-  return {
-    exit: audit.exit,
-    verdict: report.verdict,
-    complexity: (report.complexity?.findings ?? []).map(
-      (finding) => `${finding.path} ${finding.name}`,
-    ),
-  };
-}
-
-function recordedHealthKeys(repo: string, branch: string): string[] {
-  const hits = JSON.parse(
-    git(repo, "show", `${branch}:fallow-health-recorded-hits.json`),
-  ) as { readonly identity_finding_counts: Record<string, unknown> };
-  return Object.keys(hits.identity_finding_counts);
-}
-
 test(
-  "an upgrade whose gate-adoption repair moves a recorded complex function records it again at its new path, so the push's Fallow audit passes, and a function added during the repair is not recorded",
+  "refuses with recorded_hits_would_grow when upgrading a repository with an unrecorded complex function across the first recorded-hits addition",
   async () => {
     const { templateClone, baseCommit: targetCommit } =
       cloneTemplateAtHead(folder);
-    const { repo, repositoryHead } = await createCatalogRepository(
+    const { repo } = await createCatalogRepository(
       templateClone,
-      "moved-catalog-app",
-      "catalog.ts",
+      "settled-catalog-app",
+      "catalog/catalog.ts",
     );
-    const { ledger, env } = prepareFastInstallBun(folder, "moved-catalog-bun-");
+    const { env } = prepareFastInstallBun(folder, "settled-catalog-bun-");
     const stdout = captureStream(process.stdout);
     const stderr = captureStream(process.stderr);
-    const args = [
-      "apply",
-      "--repository",
-      repo,
-      "--to",
-      targetCommit,
-      "--json",
-    ];
-    const runtime = { templateRoot: templateClone, env };
     const worktree = join(
       repo,
       ".worktrees",
       `template-upgrade-${targetCommit.slice(0, 7)}`,
     );
     const branch = `template-upgrade/${BEFORE_LAYOUT_GATE_COMMIT.slice(0, 7)}-${targetCommit.slice(0, 7)}`;
-
-    const first = await invokeTemplateUpgradeMain(
-      stdout,
-      stderr,
-      args,
-      runtime,
+    const expectedBaseHealth = readFileSync(
+      join(
+        templateClone,
+        "generated-repository/settings/fallow-health-recorded-hits.json",
+      ),
     );
-    expect(first.exitCode).toBe(6);
-    expect(JSON.parse(first.stdout)).toMatchObject({
-      status: "gate-adoption-required",
-      gate: "lint",
-      gateProblems: [
-        {
-          code: "repository/no-loose-source-with-subjects",
-          path: "src/catalog.ts",
-        },
-      ],
-    });
-
-    mkdirSync(join(worktree, "src/catalog"));
-    renameSync(
-      join(worktree, "src/catalog.ts"),
-      join(worktree, "src/catalog/catalog.ts"),
-    );
-    const commandsPath = join(worktree, "src/commands.ts");
-    const movedCommands = readFileSync(commandsPath, "utf8").replace(
-      '"./catalog.ts"',
-      '"./catalog/catalog.ts"',
-    );
-    writeFileSync(commandsPath, movedCommands);
-    const addedPath = join(worktree, "src/catalog/rank.ts");
-    writeFileSync(addedPath, complexFunction("catalogRank"));
-    writeFileSync(
-      commandsPath,
-      `import { catalogRank } from "./catalog/rank.ts";\n${movedCommands.replace(
-        "noteCount([])",
-        "noteCount([]) + catalogRank([])",
-      )}`,
-    );
-
-    const added = await invokeTemplateUpgradeMain(
-      stdout,
-      stderr,
-      args,
-      runtime,
-    );
-    expect(added.exitCode).toBe(1);
-    expect(JSON.parse(added.stdout)).toMatchObject({
-      status: "check-failed",
-      failedStep: "bun run check",
-    });
-    expect(
-      readFileSync(join(worktree, "fallow-health-recorded-hits.json"), "utf8"),
-    ).not.toContain("catalogRank");
-
-    writeFileSync(commandsPath, movedCommands);
-    renameSync(addedPath, join(folder("removed-rank-"), "rank.ts"));
-    const moved = await invokeTemplateUpgradeMain(
-      stdout,
-      stderr,
-      args,
-      runtime,
-    );
-    expect(moved.stderr).toBe("");
-    expect(JSON.parse(moved.stdout)).toMatchObject({
-      status: "applied",
-      steps: [
-        { command: "bun install", ran: true, outcome: "passed" },
-        { command: "bun run check", ran: true, outcome: "passed" },
-        {
-          command: "bun run quality:fallow:record-hits",
-          ran: true,
-          outcome: "passed",
-          reason: "recorded again after a repair that bun run check passed",
-        },
-        { command: "fallow audit", ran: true, outcome: "passed" },
-      ],
-    });
-    expect(templateUpgradeCalls(ledger)).toEqual([
-      "install",
-      "run quality:fallow:record-hits",
-      "run check",
-      "install",
-      "run check",
-      "install",
-      "run check",
-      "run quality:fallow:record-hits",
-    ]);
-    expect(recordedHealthKeys(repo, branch)).toEqual([
-      "src/catalog/catalog.ts\u0000catalogScore",
-    ]);
-    expect(await pushAudit(repo, branch, repositoryHead)).toEqual({
-      exit: 0,
-      verdict: "pass",
-      complexity: [],
-    });
-  },
-  processWatchdog(8),
-);
-
-test(
-  "an upgrade where no file moves records its hits once and lands a branch that the push's Fallow audit passes",
-  async () => {
-    const { templateClone, baseCommit: targetCommit } =
-      cloneTemplateAtHead(folder);
-    const { repo, repositoryHead } = await createCatalogRepository(
-      templateClone,
-      "settled-catalog-app",
-      "catalog/catalog.ts",
-    );
-    const { ledger, env } = prepareFastInstallBun(
-      folder,
-      "settled-catalog-bun-",
-    );
-    const stdout = captureStream(process.stdout);
-    const stderr = captureStream(process.stderr);
-    const branch = `template-upgrade/${BEFORE_LAYOUT_GATE_COMMIT.slice(0, 7)}-${targetCommit.slice(0, 7)}`;
 
     const run = await invokeTemplateUpgradeMain(
       stdout,
@@ -294,33 +113,26 @@ test(
       ["apply", "--repository", repo, "--to", targetCommit, "--json"],
       { templateRoot: templateClone, env },
     );
-    expect(run.stderr).toBe("");
-    expect(JSON.parse(run.stdout)).toMatchObject({
-      status: "applied",
-      steps: [
-        { command: "bun install", ran: true, outcome: "passed" },
-        {
-          command: "bun run quality:fallow:record-hits",
-          ran: true,
-          outcome: "passed",
-        },
-        { command: "bun run check", ran: true, outcome: "passed" },
-        { command: "fallow audit", ran: true, outcome: "passed" },
-      ],
-    });
-    expect(templateUpgradeCalls(ledger)).toEqual([
-      "install",
-      "run quality:fallow:record-hits",
-      "run check",
-    ]);
-    expect(recordedHealthKeys(repo, branch)).toEqual([
-      "src/catalog/catalog.ts\u0000catalogScore",
-    ]);
-    expect(await pushAudit(repo, branch, repositoryHead)).toEqual({
-      exit: 0,
-      verdict: "pass",
-      complexity: [],
-    });
+    expect(run.exitCode).toBe(4);
+    expect(run.stdout).toBe("");
+    const refusal = JSON.parse(run.stderr) as {
+      readonly status: string;
+      readonly error: {
+        readonly code: string;
+        readonly message: string;
+      };
+    };
+    expect(refusal.status).toBe("refused");
+    expect(refusal.error.code).toBe("recorded_hits_would_grow");
+    expect(refusal.error.message).toContain("fallow-health-recorded-hits.json");
+    expect(refusal.error.message).toContain("catalogScore");
+    expect(git(repo, "branch", "--list", branch)).toBe("");
+    expect(
+      Buffer.compare(
+        readFileSync(join(worktree, "fallow-health-recorded-hits.json")),
+        expectedBaseHealth,
+      ),
+    ).toBe(0);
   },
   processWatchdog(6),
 );

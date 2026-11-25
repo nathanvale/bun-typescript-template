@@ -122,7 +122,7 @@ function commandsWithExtraCall(
 }
 
 test(
-  "refreshes stale Fallow analysis identity and reports gate-adoption-required when upgrading a wiki-shaped repository across changed Fallow and layout gates",
+  "refuses with recorded_hits_would_grow and restores recorded-hits files when upgrading a wiki-shaped repository across changed Fallow gates would add a boundary violation",
   async () => {
     const { templateClone, baseCommit: targetCommit } =
       cloneTemplateAtHead(folder);
@@ -142,7 +142,10 @@ test(
           'import { findSummary } from "../records/find.ts";\nimport { noteCount } from "../wiki/notes.ts";\n\nexport function recordsSummary(items: readonly string[]): string {\n  return `${findSummary(items)}/${noteCount(items)}`;\n}\n',
       },
     });
-    const { ledger, env } = prepareFastInstallBun(folder, "wiki-shaped-bun-");
+    const baseDeadCodeBytes = readFileSync(
+      join(repo, "fallow-dead-code-recorded-hits.json"),
+    );
+    const { env } = prepareFastInstallBun(folder, "wiki-shaped-bun-");
     const stdout = captureStream(process.stdout);
     const stderr = captureStream(process.stderr);
     const worktree = join(
@@ -158,121 +161,32 @@ test(
       ["apply", "--repository", repo, "--to", targetCommit, "--json"],
       { templateRoot: templateClone, env },
     );
-    expect(first.stderr).toBe("");
-    expect(first.exitCode).toBe(6);
-    const payload = JSON.parse(first.stdout) as {
+    expect(first.exitCode).toBe(4);
+    expect(first.stdout).toBe("");
+    const refusal = JSON.parse(first.stderr) as {
       readonly status: string;
-      readonly worktree?: string;
-      readonly steps: readonly {
-        readonly command: string;
-        readonly ran: boolean;
-        readonly outcome: string;
-        readonly reason?: string;
-      }[];
-      readonly gate?: string;
-      readonly gateFiles?: readonly string[];
-      readonly gateProblems?: readonly {
-        readonly gate: string;
+      readonly error: {
         readonly code: string;
-        readonly path: string;
         readonly message: string;
-      }[];
-      readonly gateRepair?: string;
-      readonly checkCommandOutput?: string;
+        readonly repair: string;
+      };
     };
-    expect(payload.status).toBe("gate-adoption-required");
-    expect(payload.worktree).toBe(worktree);
-    expect(payload.gate).toBe("fallow");
-    expect(payload.gateFiles).toContain(".fallowrc.json");
-    expect(payload.steps).toEqual([
-      { command: "bun install", ran: true, outcome: "passed" },
-      {
-        command: "bun run quality:fallow:record-hits",
-        ran: true,
-        outcome: "passed",
-        reason: "refreshed analysis identity; kept existing recorded hits",
-      },
-      { command: "bun run check", ran: true, outcome: "failed" },
-    ]);
-    expect(payload.checkCommandOutput ?? "").not.toContain(
-      "baseline analysis identity is incompatible",
+    expect(refusal.status).toBe("refused");
+    expect(refusal.error.code).toBe("recorded_hits_would_grow");
+    expect(refusal.error.message).toContain(
+      "fallow-dead-code-recorded-hits.json",
     );
-    const problemPaths = (payload.gateProblems ?? []).map((p) => p.path);
-    expect(problemPaths).toEqual(["src/records/find.ts"]);
-    expect(
-      (payload.gateProblems ?? []).every(
-        (p) => p.code === "boundary-violation",
-      ),
-    ).toBe(true);
-    expect(payload.gateRepair).toContain("quality:fallow:record-hits");
+    expect(refusal.error.message).toContain(
+      "boundary-violation:src/records/find.ts:src/wiki/notes.ts",
+    );
     expect(existsSync(worktree)).toBe(true);
-
-    const deadCodeHits = JSON.parse(
-      readFileSync(
-        join(worktree, "fallow-dead-code-recorded-hits.json"),
-        "utf8",
+    expect(git(repo, "branch", "--list", branch)).toBe("");
+    expect(
+      Buffer.compare(
+        readFileSync(join(worktree, "fallow-dead-code-recorded-hits.json")),
+        baseDeadCodeBytes,
       ),
-    ) as { readonly boundary_violations?: readonly string[] };
-    expect(deadCodeHits.boundary_violations ?? []).toEqual([]);
-
-    const second = await invokeTemplateUpgradeMain(
-      stdout,
-      stderr,
-      ["apply", "--repository", repo, "--to", targetCommit],
-      { templateRoot: templateClone, env },
-    );
-    expect(second.exitCode).toBe(6);
-    expect(second.stdout).toContain("existing code needs gate adoption");
-    expect(second.stdout).toContain("src/records/find.ts");
-    expect(second.stdout).not.toContain("src/commands/records.ts");
-    expect(second.stdout).toContain(
-      `bun run upgrade recover --repository ${repo} --to ${targetCommit.slice(0, 7)}`,
-    );
-    expect(second.stdout).not.toContain("--force");
-    expect(second.stdout).toContain("save any edits");
-    expect(templateUpgradeCalls(ledger)).toEqual([
-      "install",
-      "run quality:fallow:record-hits",
-      "run check",
-      "install",
-      "run check",
-    ]);
-
-    const recordInWorktree = await spawnBounded(
-      [process.execPath, "run", "quality:fallow:record-hits"],
-      {
-        cwd: worktree,
-        env: { ...inherited(), ...gitEnv, NO_COLOR: "1" },
-        processGroup: true,
-      },
-    );
-    expect(recordInWorktree.exit).toBe(0);
-
-    const third = await invokeTemplateUpgradeMain(
-      stdout,
-      stderr,
-      ["apply", "--repository", repo, "--to", targetCommit, "--json"],
-      { templateRoot: templateClone, env },
-    );
-    expect(third.exitCode).toBe(0);
-    expect(JSON.parse(third.stdout)).toMatchObject({
-      status: "applied",
-      branch,
-    });
-    expect(existsSync(worktree)).toBe(false);
-    expect(git(repo, "branch", "--list", branch)).not.toBe("");
-
-    const fourth = await invokeTemplateUpgradeMain(
-      stdout,
-      stderr,
-      ["apply", "--repository", repo, "--to", targetCommit, "--json"],
-      { templateRoot: templateClone, env },
-    );
-    expect(fourth.exitCode).toBe(0);
-    expect(JSON.parse(fourth.stdout)).toMatchObject({
-      status: "already-done",
-      branch,
-    });
+    ).toBe(0);
   },
   processWatchdog(6),
 );
@@ -433,8 +347,8 @@ test(
     writeFileSync(
       helperPath,
       readFileSync(helperPath, "utf8").replace(
-        "export function testFolder(",
-        "export function renamedTestFolder(",
+        "export function testFolder(prefix: string",
+        "export function testFolder(prefix: string, requiredExtra: number",
       ),
     );
     git(brokenTemplate, "add", "--", "tests/support/test-folder.ts");
@@ -443,15 +357,15 @@ test(
       "commit",
       "--quiet",
       "-m",
-      "rename template test helper export",
+      "change template test helper signature",
     );
     const brokenTarget = git(brokenTemplate, "rev-parse", "HEAD");
     const brokenRepo = await createPreGateRepository({
       templateClone: brokenTemplate,
-      name: "removed-export-app",
+      name: "changed-signature-app",
       files: {
         "tests/owner.test.ts":
-          'import { expect, test } from "bun:test";\nimport { testFolder } from "./support/test-folder.ts";\n\ntest("uses template helper", () => {\n  expect(typeof testFolder).toBe("function");\n});\n',
+          'import { expect, test } from "bun:test";\nimport { testFolder } from "./support/test-folder.ts";\n\ntest("uses template helper", () => {\n  expect(typeof testFolder("owner-")).toBe("string");\n});\n',
       },
     });
     const brokenBun = prepareFastInstallBun(folder, "removed-export-bun-");

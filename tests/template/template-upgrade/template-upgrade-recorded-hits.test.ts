@@ -47,14 +47,12 @@ test(
       `#!/bin/sh
 echo "$*" >> __LEDGER__
 if [ "$1" = "run" ] && [ "$2" = "quality:fallow:record-hits" ]; then
-  printf '{"recorded":true,"file":"dead-code"}\\n' > fallow-dead-code-recorded-hits.json
-  printf '{"recorded":true,"file":"duplicates"}\\n' > fallow-duplicates-recorded-hits.json
-  printf '{"recorded":true,"file":"health"}\\n' > fallow-health-recorded-hits.json
+  sed 's/"deferred:no-semantic-queries"/"refreshed-config-hash"/' fallow-dead-code-recorded-hits.json > fallow-dead-code-recorded-hits.json.tmp && mv fallow-dead-code-recorded-hits.json.tmp fallow-dead-code-recorded-hits.json
   exit 0
 fi
 if [ "$1" = "run" ] && [ "$2" = "check" ]; then
-  if ! grep -q '"recorded":true' fallow-dead-code-recorded-hits.json; then
-    echo "existing findings were not recorded before check" >&2
+  if ! grep -q '"refreshed-config-hash"' fallow-dead-code-recorded-hits.json; then
+    echo "analysis identity was not refreshed before check" >&2
     exit 1
   fi
   exit 0
@@ -98,13 +96,13 @@ exit 0
     ]);
     expect(
       git(repo, "show", `${branch}:fallow-dead-code-recorded-hits.json`),
-    ).toContain('"recorded":true');
+    ).toContain('"refreshed-config-hash"');
     expect(
       git(repo, "show", `${branch}:fallow-duplicates-recorded-hits.json`),
-    ).toContain('"recorded":true');
+    ).toContain('"kind": "dupes"');
     expect(
       git(repo, "show", `${branch}:fallow-health-recorded-hits.json`),
-    ).toContain('"recorded":true');
+    ).toContain('"kind": "health"');
 
     const textRepo = await bootstrapGeneratedRepository(
       folder,
@@ -388,10 +386,10 @@ test(
       `#!/bin/sh
 echo "$*" >> __LEDGER__
 if [ "$1" = "run" ] && [ "$2" = "quality:fallow:record-hits" ]; then
-  if grep -q '"pass":1' fallow-dead-code-recorded-hits.json 2>/dev/null; then
-    printf '{"pass":2,"file":"dead-code"}\\n' > fallow-dead-code-recorded-hits.json
+  if grep -q '"pass1"' fallow-dead-code-recorded-hits.json 2>/dev/null; then
+    sed 's/"pass1"/"pass2"/' fallow-dead-code-recorded-hits.json > fallow-dead-code-recorded-hits.json.tmp && mv fallow-dead-code-recorded-hits.json.tmp fallow-dead-code-recorded-hits.json
   else
-    printf '{"pass":1,"file":"dead-code"}\\n' > fallow-dead-code-recorded-hits.json
+    sed 's/"deferred:no-semantic-queries"/"pass1"/' fallow-dead-code-recorded-hits.json > fallow-dead-code-recorded-hits.json.tmp && mv fallow-dead-code-recorded-hits.json.tmp fallow-dead-code-recorded-hits.json
   fi
   exit 0
 fi
@@ -445,7 +443,7 @@ exit 0
         join(worktree, "fallow-dead-code-recorded-hits.json"),
         "utf8",
       ),
-    ).toBe('{"pass":1,"file":"dead-code"}\n');
+    ).toContain('"pass1"');
 
     rmSync(failFlag);
     const retryRun = await invokeTemplateUpgradeMain(
@@ -485,7 +483,7 @@ exit 0
     ]);
     expect(
       git(repo, "show", `${branch}:fallow-dead-code-recorded-hits.json`),
-    ).toBe('{"pass":2,"file":"dead-code"}');
+    ).toContain('"pass2"');
   },
   processWatchdog(4),
 );
@@ -530,10 +528,10 @@ test(
       `#!/bin/sh
 echo "$*" >> __LEDGER__
 if [ "$1" = "run" ] && [ "$2" = "quality:fallow:record-hits" ]; then
-  if grep -q '"pass":1' fallow-dead-code-recorded-hits.json 2>/dev/null; then
-    printf '{"pass":2,"file":"dead-code"}\\n' > fallow-dead-code-recorded-hits.json
+  if grep -q '"pass1"' fallow-dead-code-recorded-hits.json 2>/dev/null; then
+    sed 's/"pass1"/"pass2"/' fallow-dead-code-recorded-hits.json > fallow-dead-code-recorded-hits.json.tmp && mv fallow-dead-code-recorded-hits.json.tmp fallow-dead-code-recorded-hits.json
   else
-    printf '{"pass":1,"file":"dead-code"}\\n' > fallow-dead-code-recorded-hits.json
+    sed 's/"deferred:no-semantic-queries"/"pass1"/' fallow-dead-code-recorded-hits.json > fallow-dead-code-recorded-hits.json.tmp && mv fallow-dead-code-recorded-hits.json.tmp fallow-dead-code-recorded-hits.json
   fi
   exit 0
 fi
@@ -572,7 +570,7 @@ exit 0
         join(worktree, "fallow-dead-code-recorded-hits.json"),
         "utf8",
       ),
-    ).toBe('{"pass":1,"file":"dead-code"}\n');
+    ).toContain('"pass1"');
 
     const retry = runRecordedHitsStep(request, 10_000);
     expect(retry).toEqual({ ok: true, steps: [] });
@@ -584,7 +582,7 @@ exit 0
         join(worktree, "fallow-dead-code-recorded-hits.json"),
         "utf8",
       ),
-    ).toBe('{"pass":1,"file":"dead-code"}\n');
+    ).toContain('"pass1"');
     expect(
       noCheckTemplateUpgradeSteps(request, []).map((step) => step.command),
     ).toEqual(["bun install", "bun run check"]);

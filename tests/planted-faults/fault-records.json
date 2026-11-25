@@ -2202,17 +2202,10 @@
     "source": "b9d4e2d fix(template-upgrade): refresh stale Fallow hits and report gate adoption"
   },
   {
-    "id": "b9d4e2d-template-upgrade-no-silent-absorption",
-    "patch": "tests/planted-faults/patches/b9d4e2d-template-upgrade-no-silent-absorption.patch",
-    "testFile": "tests/template/template-upgrade/template-upgrade-gates.test.ts",
-    "title": "^refreshes stale Fallow analysis identity and reports gate-adoption-required when upgrading a wiki-shaped repository across changed Fallow and layout gates$",
-    "source": "b9d4e2d fix(template-upgrade): refresh stale Fallow hits and report gate adoption"
-  },
-  {
     "id": "b9d4e2d-template-upgrade-gate-adoption",
     "patch": "tests/planted-faults/patches/b9d4e2d-template-upgrade-gate-adoption.patch",
     "testFile": "tests/template/template-upgrade/template-upgrade-gates.test.ts",
-    "title": "^refreshes stale Fallow analysis identity and reports gate-adoption-required when upgrading a wiki-shaped repository across changed Fallow and layout gates$",
+    "title": "^reports gate-adoption-required for ESLint and TypeScript gates added by an upgrade while keeping broken upgrades as check-failed$",
     "source": "b9d4e2d fix(template-upgrade): refresh stale Fallow hits and report gate adoption"
   },
   {
@@ -2449,8 +2442,8 @@
   {
     "id": "77d30d8-template-upgrade-gate-check",
     "patch": "tests/planted-faults/patches/77d30d8-template-upgrade-gate-check.patch",
-    "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-move.test.ts",
-    "title": "an upgrade whose gate-adoption repair moves a recorded complex function records it again at its new path, so the push's Fallow audit passes, and a function added during the repair is not recorded$",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits.test.ts",
+    "title": "^does not rerun the recorded-hits script before bun run check on retry after check-failed, and records again only after the retried check passes$",
     "source": "77d30d8 fix(template-upgrade): record hits again after a repair passes the check"
   },
   {
