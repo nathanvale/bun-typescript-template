@@ -393,3 +393,100 @@ exit 0
   },
   processWatchdog(4),
 );
+
+test(
+  "refuses with recorded_hits_would_grow when an old recorded function is still defined at its old path and a same-named function is added at a new path, commits nothing, and leaves the file byte-identical to the base",
+  async () => {
+    const { templateClone, baseCommit } = cloneTemplateAtHead(folder);
+    const repo = await bootstrapGeneratedRepository(
+      folder,
+      templateClone,
+      baseCommit,
+      "same-symbol-new-path-app",
+    );
+    const baseHealth = `${JSON.stringify(
+      {
+        kind: "health",
+        finding_counts: { "src/old.ts": 1 },
+        identity_finding_counts: { "src/old.ts\u0000calculate": 1 },
+        runtime_coverage_findings: [],
+        target_keys: ["src/old.ts"],
+      },
+      null,
+      2,
+    )}\n`;
+    commitIn(repo, "owner recorded hit at old path", {
+      "src/old.ts":
+        "export function calculate(value: number): number {\n  return value;\n}\n",
+      "fallow-health-recorded-hits.json": baseHealth,
+    });
+    const baseHealthBytes = readFileSync(
+      join(repo, "fallow-health-recorded-hits.json"),
+    );
+    const targetCommit = commitFallowGateChange(templateClone);
+    const branch = `template-upgrade/${baseCommit.slice(0, 7)}-${targetCommit.slice(0, 7)}`;
+    const worktree = join(
+      repo,
+      ".worktrees",
+      `template-upgrade-${targetCommit.slice(0, 7)}`,
+    );
+    const replacedHealth = `${JSON.stringify(
+      {
+        kind: "health",
+        finding_counts: { "src/new.ts": 1 },
+        identity_finding_counts: { "src/new.ts\u0000calculate": 1 },
+        runtime_coverage_findings: [],
+        target_keys: ["src/new.ts"],
+      },
+      null,
+      2,
+    )}\n`;
+    const { env } = writeScriptedBun(
+      folder,
+      "scripted-bun-same-symbol-",
+      `#!/bin/sh
+echo "$*" >> __LEDGER__
+if [ "$1" = "run" ] && [ "$2" = "quality:fallow:record-hits" ]; then
+  cat <<'EOF' > src/new.ts
+export function calculate(value: number): number {
+  return value + 1;
+}
+EOF
+  cat <<'EOF' > fallow-health-recorded-hits.json
+${replacedHealth}EOF
+  exit 0
+fi
+exit 0
+`,
+    );
+    const stdout = captureStream(process.stdout);
+    const stderr = captureStream(process.stderr);
+
+    const run = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      ["apply", "--repository", repo, "--to", targetCommit, "--json"],
+      { templateRoot: templateClone, env },
+    );
+
+    expect(run.exitCode).not.toBe(0);
+    const refusal = JSON.parse(run.stderr) as {
+      readonly status: string;
+      readonly error: {
+        readonly code: string;
+        readonly message: string;
+        readonly repair: string;
+      };
+    };
+    expect(refusal.status).toBe("refused");
+    expect(refusal.error.code).toBe("recorded_hits_would_grow");
+    expect(refusal.error.message).toContain("fallow-health-recorded-hits.json");
+    expect(refusal.error.message).toContain("src/new.ts\u0000calculate");
+    expect(git(repo, "branch", "--list", branch)).toBe("");
+    const afterBytes = readFileSync(
+      join(worktree, "fallow-health-recorded-hits.json"),
+    );
+    expect(Buffer.compare(afterBytes, baseHealthBytes)).toBe(0);
+  },
+  processWatchdog(4),
+);
