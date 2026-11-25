@@ -1,3 +1,4 @@
+import { dlopen, FFIType } from "bun:ffi";
 import {
   closeSync,
   constants,
@@ -10,7 +11,7 @@ import {
   readSync,
   realpathSync,
   rmSync,
-  writeFileSync,
+  writeSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, relative } from "node:path";
@@ -32,6 +33,45 @@ const liveMarkPattern = new RegExp(
 );
 const markFlags =
   constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
+const flockExclusive = 2;
+const flockNonBlocking = 4;
+const flockUnlock = 8;
+const flockLibrary = dlopen(
+  process.platform === "darwin" ? "libSystem.B.dylib" : "libc.so.6",
+  {
+    flock: { args: [FFIType.i32, FFIType.i32], returns: FFIType.i32 },
+  },
+);
+
+function acquireExclusiveLock(fd: number): boolean {
+  return (
+    flockLibrary.symbols.flock(fd, flockExclusive | flockNonBlocking) === 0
+  );
+}
+
+function releaseLock(fd: number): void {
+  flockLibrary.symbols.flock(fd, flockUnlock);
+}
+
+function writeProcessMark(runFolder: string, pid: number): number {
+  const fd = openSync(
+    join(runFolder, testRunProcessMark),
+    constants.O_CREAT |
+      constants.O_EXCL |
+      constants.O_RDWR |
+      constants.O_NOFOLLOW,
+    0o600,
+  );
+  try {
+    if (!acquireExclusiveLock(fd))
+      throw new Error(`Could not lock ${join(runFolder, testRunProcessMark)}.`);
+    writeSync(fd, `${testRunProcessVariable}=${pid}\n`);
+    return fd;
+  } catch (error) {
+    closeSync(fd);
+    throw error;
+  }
+}
 
 export function insideFolder(path: string, folder: string): boolean {
   const way = relative(folder, path);
@@ -117,7 +157,8 @@ function readProcessMark(folder: string): number | undefined {
     return undefined;
   }
   try {
-    if (!fstatSync(fd).isFile()) return undefined;
+    const stat = fstatSync(fd);
+    if (!stat.isFile() || stat.nlink !== 1) return undefined;
     const buffer = new Uint8Array(64);
     const bytes = readSync(fd, buffer, 0, 64, 0);
     const text = new TextDecoder("utf-8", {
@@ -125,7 +166,12 @@ function readProcessMark(folder: string): number | undefined {
       ignoreBOM: true,
     }).decode(buffer.subarray(0, bytes));
     const pid = Number(liveMarkPattern.exec(text)?.[1]);
-    return Number.isSafeInteger(pid) ? pid : undefined;
+    if (!Number.isSafeInteger(pid)) return undefined;
+    if (acquireExclusiveLock(fd)) {
+      releaseLock(fd);
+      return undefined;
+    }
+    return pid;
   } catch {
     return undefined;
   } finally {
@@ -288,19 +334,18 @@ export async function runTests(
   );
   const runFolder = realFolder(mkdtempSync(join(parent, runFolderPrefix)));
   const problems: string[] = [];
+  let markFd: number | undefined;
   let child: ReturnType<typeof startBunTest> | undefined;
   let code: number;
   let marked: boolean;
   try {
-    writeFileSync(
-      join(runFolder, testRunProcessMark),
-      `${testRunProcessVariable}=${process.pid}\n`,
-    );
+    markFd = writeProcessMark(runFolder, process.pid);
     child = startBunTest(args, options, runFolder);
     code = await finished(child, options);
   } finally {
     if (child !== undefined) stopProcess(child.pid, true);
     marked = existsSync(join(runFolder, teardownMark));
+    if (markFd !== undefined) closeSync(markFd);
     rmSync(runFolder, { recursive: true, force: true });
   }
   if (code === 0 && !marked)
