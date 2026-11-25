@@ -1,10 +1,11 @@
 diff --git a/src/template-upgrade-recorded-hits-move.ts b/src/template-upgrade-recorded-hits-move.ts
 --- a/src/template-upgrade-recorded-hits-move.ts
 +++ b/src/template-upgrade-recorded-hits-move.ts
-@@ -126,21 +126,11 @@ function collectDeclaredSymbols(
+@@ -207,35 +207,12 @@ function recordDeclaredNode(node: ts.Node, collector: SymbolCollector): void {
+ function collectDeclaredSymbols(
    filePath: string,
    text: string,
- ): ReadonlySet<string> | undefined {
+ ): DeclaredSymbols | undefined {
 -  const sourceFile = ts.createSourceFile(
 -    filePath,
 -    text,
@@ -15,16 +16,30 @@ diff --git a/src/template-upgrade-recorded-hits-move.ts b/src/template-upgrade-r
 -  if (!Array.isArray(diagnostics) || diagnostics.length > 0) {
 -    return undefined;
 -  }
-   const names = new Set<string>();
+-  const collector: SymbolCollector = {
+-    names: new Set<string>(),
+-    importedNames: new Set<string>(),
+-    exportAliases: [],
+-    definesAnyName: false,
+-  };
 -  const visit = (node: ts.Node): void => {
--    recordDeclaredNode(node, names);
+-    recordDeclaredNode(node, collector);
 -    ts.forEachChild(node, visit);
 -  };
 -  visit(sourceFile);
+-  for (const alias of collector.exportAliases) {
+-    if (
+-      collector.names.has(alias.localName) &&
+-      !collector.importedNames.has(alias.localName)
+-    ) {
+-      collector.names.add(alias.exportedName);
+-    }
++  const names = new Set<string>();
 +  const declarationPattern =
 +    /(?:^|[;{}])\s*(?:export\s+(?:default\s+)?)?(?:declare\s+)?(?:abstract\s+|const\s+|async\s+)?(?:function\s*\*?|class|interface|type|enum|namespace|const|let|var)\s+([$\w]+)/gm;
 +  for (const match of text.matchAll(declarationPattern)) {
 +    if (match[1] !== undefined) names.add(match[1]);
-+  }
-   return names;
+   }
+-  return collector;
++  return { names, definesAnyName: false };
  }
