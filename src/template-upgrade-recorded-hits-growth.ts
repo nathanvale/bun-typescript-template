@@ -1,6 +1,10 @@
 import { lstatSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  isOptionalHealthKey,
+  keyJsonValue,
+} from "./template-upgrade-recorded-hits-health.ts";
+import {
   createWorktreeSourceReader,
   isSymbolMove,
   type WorktreeSourceReader,
@@ -65,25 +69,10 @@ export function readWorktreeFileBytes(
   return readFileSync(fullPath);
 }
 
-function canonicalizeJson(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(canonicalizeJson);
-  }
-  if (typeof value === "object" && value !== null) {
-    const entries = Object.entries(value).sort((left, right) =>
-      left[0] < right[0] ? -1 : left[0] > right[0] ? 1 : 0,
-    );
-    return Object.fromEntries(
-      entries.map(([key, item]) => [key, canonicalizeJson(item)]),
-    );
-  }
-  return value;
-}
-
 function formatEntryValue(value: unknown): string {
   return typeof value === "string"
     ? value
-    : JSON.stringify(canonicalizeJson(value));
+    : JSON.stringify(keyJsonValue(value));
 }
 
 function countArrayItems(
@@ -94,7 +83,7 @@ function countArrayItems(
     { readonly count: number; readonly sample: unknown }
   >();
   for (const item of items) {
-    const key = JSON.stringify(canonicalizeJson(item));
+    const key = JSON.stringify(keyJsonValue(item));
     const existing = counts.get(key);
     counts.set(key, {
       count: (existing?.count ?? 0) + 1,
@@ -335,7 +324,7 @@ function objectWithoutPathKey(value: unknown): string | undefined {
   if (record === undefined || typeof record.path !== "string") return undefined;
   const rest = Object.entries(record).filter(([key]) => key !== "path");
   if (rest.length === 0) return undefined;
-  return JSON.stringify(canonicalizeJson(Object.fromEntries(rest)));
+  return JSON.stringify(keyJsonValue(Object.fromEntries(rest)));
 }
 
 function parseDeadCodeString(
@@ -580,8 +569,8 @@ function propertyGrowthEntries(
       ? [`${fieldPath} (${beforeValue} -> ${afterValue})`]
       : [];
   }
-  return JSON.stringify(canonicalizeJson(beforeValue)) ===
-    JSON.stringify(canonicalizeJson(afterValue))
+  return JSON.stringify(keyJsonValue(beforeValue)) ===
+    JSON.stringify(keyJsonValue(afterValue))
     ? []
     : [fieldPath];
 }
@@ -592,9 +581,24 @@ function fieldGrowthForTopLevelKey(
   beforeValue: unknown,
   afterValue: unknown,
   movedPaths: ReadonlyMap<string, ReadonlySet<string>>,
+  isHealth: boolean,
 ): string[] {
   if (key === "finding_counts") {
     return findingCountsGrowth(scanner, beforeValue, afterValue, movedPaths);
+  }
+  if (
+    isHealth &&
+    key === "target_keys" &&
+    Array.isArray(afterValue) &&
+    (beforeValue === undefined || Array.isArray(beforeValue))
+  ) {
+    return arrayGrowthEntries(
+      scanner,
+      key,
+      beforeValue,
+      afterValue.filter((item) => !isOptionalHealthKey(item)),
+      movedPaths,
+    );
   }
   return propertyGrowthEntries(
     scanner,
@@ -603,6 +607,13 @@ function fieldGrowthForTopLevelKey(
     afterValue,
     movedPaths,
   );
+}
+
+function isHealthPair(
+  before: Readonly<Record<string, unknown>>,
+  after: Readonly<Record<string, unknown>>,
+): boolean {
+  return before.kind === "health" && after.kind === "health";
 }
 
 function fileGrowthEntries(
@@ -615,6 +626,7 @@ function fileGrowthEntries(
   if (before === undefined || after === undefined) {
     return ["unreadable recorded-hits JSON"];
   }
+  const isHealth = isHealthPair(before, after);
   const movedPaths = new Map<string, Set<string>>();
   const beforeIdentities = Object.hasOwn(before, "identity_finding_counts")
     ? before.identity_finding_counts
@@ -637,6 +649,7 @@ function fileGrowthEntries(
         beforeValue,
         afterValue,
         movedPaths,
+        isHealth,
       ),
     );
   }

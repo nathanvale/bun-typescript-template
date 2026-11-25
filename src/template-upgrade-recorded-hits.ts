@@ -27,6 +27,7 @@ import {
 } from "./template-upgrade-git.ts";
 import type { PackageDependencyChange } from "./template-upgrade-json-merge.ts";
 import type { TemplateUpgradeRow } from "./template-upgrade-merge.ts";
+import { keepBaseHealthKeys } from "./template-upgrade-recorded-hits-health.ts";
 import {
   asRecord,
   decodeJsonObjectBytes,
@@ -398,6 +399,33 @@ function keepIdentityOnly(
   formatRewrittenFiles(worktree, rewritten, timeoutMilliseconds, env);
 }
 
+function dropAdvisoryAdditions(
+  worktree: string,
+  snapshots: ReadonlyMap<string, Uint8Array | undefined>,
+  timeoutMilliseconds: number,
+  env: ProcessEnvMap,
+): void {
+  const rewritten: string[] = [];
+  for (const [file, beforeBytes] of snapshots) {
+    if (beforeBytes === undefined) continue;
+    const fullPath = join(worktree, file);
+    const afterBytes = readWorktreeFileBytes(fullPath);
+    if (afterBytes === undefined) continue;
+    const beforeObj = decodeJsonObjectBytes(beforeBytes);
+    const afterObj = decodeJsonObjectBytes(afterBytes);
+    if (beforeObj === undefined || afterObj === undefined) continue;
+    const dropped = keepBaseHealthKeys(beforeObj, afterObj);
+    if (dropped === undefined) continue;
+    if (dropped.equalToBefore) {
+      writeFileSync(fullPath, beforeBytes);
+    } else {
+      writeFileSync(fullPath, `${JSON.stringify(dropped.restored, null, 2)}\n`);
+      rewritten.push(file);
+    }
+  }
+  formatRewrittenFiles(worktree, rewritten, timeoutMilliseconds, env);
+}
+
 function recordedHitsWouldGrowError(
   growth: readonly RecordedHitsFileGrowth[],
 ): CliError {
@@ -514,6 +542,12 @@ export function runRecordedHitsRepairStep(
     restoreSnapshots(request.worktree, snapshots);
     throw recordedHitsWouldGrowError(growth);
   }
+  dropAdvisoryAdditions(
+    request.worktree,
+    snapshots,
+    timeoutMilliseconds,
+    request.env,
+  );
   return {
     ok: true,
     steps: [
@@ -590,6 +624,13 @@ export function runRecordedHitsStep(
         rmSync(pendingDir, { force: true, recursive: true });
         throw recordedHitsWouldGrowError(growth);
       }
+    } else {
+      dropAdvisoryAdditions(
+        request.worktree,
+        pending.snapshots,
+        timeoutMilliseconds,
+        request.env,
+      );
     }
   }
   markRecordingDone(request);
