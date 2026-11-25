@@ -1,0 +1,16 @@
+diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
+--- a/scripts/pin-move-repository.ts
++++ b/scripts/pin-move-repository.ts
+@@ -484,12 +484,6 @@ async function applyRepositoryPinMove(
+       active,
+       attempt.regenerate,
+     );
+-    const changeset = await writeRepositoryChangeset(
+-      pinMoveChangesetOptions(repository, current.oldCommit, kernelCommit),
+-    );
+-    if (changeset !== undefined) {
+-      editedPaths.push(changeset.path);
+-    }
+     const written = attemptPaths(repository, editedPaths, regenerated);
+     const commit = commitPinMoveBranch(
+       repository,

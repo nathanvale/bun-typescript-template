@@ -1,0 +1,16 @@
+diff --git a/src/template-upgrade-changesets.ts b/src/template-upgrade-changesets.ts
+--- a/src/template-upgrade-changesets.ts
++++ b/src/template-upgrade-changesets.ts
+@@ -174,7 +174,10 @@ export function changesetPackageLevel(
+   packageName: string,
+ ): boolean {
+   const parsed = parseChangesetFrontmatter(raw, path);
+-  return parsed.releases.some(
+-    (release) => release.name === packageName && isBumpLevel(release.type),
++  return (
++    parsed.releases.length === 0 ||
++    parsed.releases.some(
++      (release) => release.name === packageName && isBumpLevel(release.type),
++    )
+   );
+ }

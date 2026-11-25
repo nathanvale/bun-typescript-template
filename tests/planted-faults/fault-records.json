@@ -3187,5 +3187,19 @@
     "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-growth.test.ts",
     "title": "^passes when the old file is deleted and a third tracked file re-exports the moved symbol through an import-then-export barrel$",
     "source": "a685f40 fix(template-upgrade): ignore imported export aliases and fallow-ignored files in move check"
+  },
+  {
+    "id": "4ba28d8-template-upgrade-changesets-empty",
+    "patch": "tests/planted-faults/patches/4ba28d8-template-upgrade-changesets-empty.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-changeset-write.test.ts",
+    "title": "^does not let an empty changeset already on the branch suppress the upgrade changeset$",
+    "source": "4ba28d8 fix(changeset): count only package-bumping changesets when planning or writing"
+  },
+  {
+    "id": "2b47c8e-pin-move-repository-changeset",
+    "patch": "tests/planted-faults/patches/2b47c8e-pin-move-repository-changeset.patch",
+    "testFile": "tests/template/pin-move/pin-move-changeset.test.ts",
+    "title": "^pin-move --repository changeset writes one patch changeset on a Pin move so check:changesets passes, and a rerun leaves one$",
+    "source": "2b47c8e feat(pin-move): write a patch changeset on repository Pin moves"
   }
 ]
