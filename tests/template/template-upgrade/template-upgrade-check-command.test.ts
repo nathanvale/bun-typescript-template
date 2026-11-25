@@ -185,6 +185,9 @@ test(
       folder,
       "scripted-bun-",
       `#!/bin/sh
+if [ "$1" = "run" ] && [ "$2" = "--bun" ] && [ "$3" = "changeset" ]; then
+  exec ${JSON.stringify(process.execPath)} "$@"
+fi
 echo "$*" >> __LEDGER__
 if [ "$1" = "run" ] && [ "$2" = "check" ] && [ -f ${JSON.stringify(failFlag)} ]; then
   echo "planted check failure" >&2

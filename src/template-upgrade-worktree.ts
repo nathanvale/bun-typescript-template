@@ -421,13 +421,10 @@ function stageWorktreePaths(
   }
 }
 
-export async function stageAndCommitWorktree(options: {
-  readonly worktree: string;
-  readonly message: string;
-  readonly env: ProcessEnvMap;
-  readonly noVerify?: boolean;
-}): Promise<string> {
-  const { worktree, message, env, noVerify = false } = options;
+export function readWorktreePaths(
+  worktree: string,
+  env: ProcessEnvMap,
+): readonly string[] {
   const quotedWorktree = formatCommandPath(worktree);
   const status = runGitCommand(
     worktree,
@@ -443,7 +440,18 @@ export async function stageAndCommitWorktree(options: {
       false,
     );
   }
-  const changedPaths = parseStatusPaths(status.stdout);
+  return parseStatusPaths(status.stdout);
+}
+
+export async function stageAndCommitWorktree(options: {
+  readonly worktree: string;
+  readonly message: string;
+  readonly env: ProcessEnvMap;
+  readonly noVerify?: boolean;
+}): Promise<string> {
+  const { worktree, message, env, noVerify = false } = options;
+  const quotedWorktree = formatCommandPath(worktree);
+  const changedPaths = readWorktreePaths(worktree, env);
   const { presentPaths, deletedPaths } = await partitionChangedPaths(
     worktree,
     changedPaths,

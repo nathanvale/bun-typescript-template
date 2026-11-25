@@ -1,4 +1,12 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { findSiblingKernel, readKernelPin } from "../src/kernel-pin.ts";
@@ -282,6 +290,25 @@ async function verifyPublishedBranchCheck(
   );
 }
 
+function linkGateNodeModules(
+  sourceRoot: string,
+  repositoryDir: string,
+  checkEnabled: boolean,
+): void {
+  if (checkEnabled) {
+    return;
+  }
+  const sourceModules = join(sourceRoot, "node_modules");
+  if (!existsSync(sourceModules)) {
+    return;
+  }
+  const targetModules = join(repositoryDir, "node_modules");
+  mkdirSync(targetModules, { recursive: true });
+  for (const entry of readdirSync(sourceModules)) {
+    symlinkSync(join(sourceModules, entry), join(targetModules, entry));
+  }
+}
+
 export async function runUpgradeGateCase(
   options: UpgradeGateCaseOptions,
 ): Promise<UpgradeGateCaseReport> {
@@ -312,6 +339,7 @@ export async function runUpgradeGateCase(
       alignRepositoryKernelPin(repositoryDir, initialPin, expectedPin);
     }
     await commitInitialRepository(repositoryDir, env);
+    linkGateNodeModules(options.templateRoot, repositoryDir, options.check);
     const headBefore = await runGit(repositoryDir, ["rev-parse", "HEAD"], env);
     const worktreesBefore = await runGit(
       repositoryDir,

@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { TemplateUpgradeChangesetPlan } from "./template-upgrade-changeset-write.ts";
 import {
   formatChangesetLines,
   type TemplateChangesetEntry,
@@ -145,6 +146,17 @@ function formatPinMoveNoticeLines(pinMoveNotice: string | undefined): string[] {
   return pinMoveNotice === undefined ? [] : [pinMoveNotice];
 }
 
+function formatUpgradeChangesetLine(
+  changeset: TemplateUpgradeChangesetPlan | undefined,
+): string[] {
+  if (changeset === undefined) {
+    return [];
+  }
+  return [
+    `Changeset: ${changeset.path} (${changeset.level}, ${changeset.summary})`,
+  ];
+}
+
 function formatPlan(result: TemplateUpgradePlanResult): string {
   const base7 = result.baseCommit.slice(0, 7);
   const target7 = result.targetCommit.slice(0, 7);
@@ -158,6 +170,7 @@ function formatPlan(result: TemplateUpgradePlanResult): string {
   const lines = [
     `Template upgrade plan: ${base7} -> ${target7}`,
     ...targetLines,
+    ...formatUpgradeChangesetLine(result.upgradeChangeset),
     ...formatChangesetsSection(result.changesets),
     ...(result.changesets.length > 0 ? [""] : []),
     ...formatRows(result.rows),
