@@ -27,10 +27,15 @@ jobs:
       - name: Check Fallow recorded hits did not grow
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           if [ -z "${BASE:-}" ] || ! git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
-            echo "Skipping Fallow recorded-hits growth check: no base commit ${BASE:-} in this checkout."
-            exit 0
+            if [ "${EVENT_NAME:-}" = "push" ]; then
+              echo "::notice::Skipping Fallow recorded-hits growth check: no earlier commit to compare (${BASE:-empty})."
+              exit 0
+            fi
+            echo "::error::Fallow recorded-hits growth check cannot run: base commit '${BASE:-empty}' is missing from this checkout. Check out with fetch-depth: 0, then rerun the job."
+            exit 1
           fi
           bun run --silent quality:fallow -- --fail-on-baseline-growth --baseline-base "$BASE"
           bun scripts/check-recorded-health-sizes.ts --base "$BASE"

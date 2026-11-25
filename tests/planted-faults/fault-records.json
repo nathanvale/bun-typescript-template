@@ -3077,6 +3077,13 @@
     "source": "fd8b2dc fix(recorded-health-sizes): fail closed on invalid reported suppression paths and test refusals"
   },
   {
+    "id": "generated-hosted-check-missing-base",
+    "patch": "tests/planted-faults/patches/generated-hosted-check-missing-base.patch",
+    "testFile": "tests/template/toolchain/generated-hosted-check-missing-base.test.ts",
+    "title": "^fails on pull_request when BASE is empty, printing ::error:: with the missing base and repair$",
+    "source": "aba2412 fix(generated-repository): fail hosted growth check on pull_request without base commit"
+  },
+  {
     "id": "planted-faults-ci-lifecycle-event",
     "patch": "tests/planted-faults/patches/planted-faults-ci-lifecycle-event.patch",
     "testFile": "tests/template/fault-replay/planted-faults.test.ts",

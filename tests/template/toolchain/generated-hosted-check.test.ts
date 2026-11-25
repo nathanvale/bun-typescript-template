@@ -63,10 +63,15 @@ jobs:
       - name: Check Fallow recorded hits did not grow
         env:
           BASE: \${{ github.event.pull_request.base.sha || github.event.before }}
+          EVENT_NAME: \${{ github.event_name }}
         run: |
           if [ -z "\${BASE:-}" ] || ! git cat-file -e "\${BASE}^{commit}" 2>/dev/null; then
-            echo "Skipping Fallow recorded-hits growth check: no base commit \${BASE:-} in this checkout."
-            exit 0
+            if [ "\${EVENT_NAME:-}" = "push" ]; then
+              echo "::notice::Skipping Fallow recorded-hits growth check: no earlier commit to compare (\${BASE:-empty})."
+              exit 0
+            fi
+            echo "::error::Fallow recorded-hits growth check cannot run: base commit '\${BASE:-empty}' is missing from this checkout. Check out with fetch-depth: 0, then rerun the job."
+            exit 1
           fi
           bun run --silent quality:fallow -- --fail-on-baseline-growth --baseline-base "$BASE"
           bun scripts/check-recorded-health-sizes.ts --base "$BASE"
@@ -194,12 +199,20 @@ test.each<[string, string, string]>([
   [
     "a check command other than bun run check",
     GENERATED_WORKFLOW.replace("bun run check", "bun test"),
-    "recipe .github/workflows/ci.yml job check must run actions/checkout@v4 with fetch-depth: 0, oven-sh/setup-bun@v2, bun install --frozen-lockfile, bun run check, the pull_request Changesets step (bun run check:changesets), then the Fallow recorded-hits growth check with BASE ${{ github.event.pull_request.base.sha || github.event.before }}. Repair: match those six steps in order in generated-repository/hosted-check/ci.yml.",
+    "recipe .github/workflows/ci.yml job check must run actions/checkout@v4 with fetch-depth: 0, oven-sh/setup-bun@v2, bun install --frozen-lockfile, bun run check, the pull_request Changesets step (bun run check:changesets), then the Fallow recorded-hits growth check with BASE ${{ github.event.pull_request.base.sha || github.event.before }} and EVENT_NAME ${{ github.event_name }}. Repair: match those six steps in order in generated-repository/hosted-check/ci.yml.",
   ],
   [
     "a shallow checkout without fetch-depth: 0",
     GENERATED_WORKFLOW.replace("        with:\n          fetch-depth: 0\n", ""),
-    "recipe .github/workflows/ci.yml job check must run actions/checkout@v4 with fetch-depth: 0, oven-sh/setup-bun@v2, bun install --frozen-lockfile, bun run check, the pull_request Changesets step (bun run check:changesets), then the Fallow recorded-hits growth check with BASE ${{ github.event.pull_request.base.sha || github.event.before }}. Repair: match those six steps in order in generated-repository/hosted-check/ci.yml.",
+    "recipe .github/workflows/ci.yml job check must run actions/checkout@v4 with fetch-depth: 0, oven-sh/setup-bun@v2, bun install --frozen-lockfile, bun run check, the pull_request Changesets step (bun run check:changesets), then the Fallow recorded-hits growth check with BASE ${{ github.event.pull_request.base.sha || github.event.before }} and EVENT_NAME ${{ github.event_name }}. Repair: match those six steps in order in generated-repository/hosted-check/ci.yml.",
+  ],
+  [
+    "a growth check step without EVENT_NAME",
+    GENERATED_WORKFLOW.replace(
+      "          EVENT_NAME: ${{ github.event_name }}\n",
+      "",
+    ),
+    "recipe .github/workflows/ci.yml job check must run actions/checkout@v4 with fetch-depth: 0, oven-sh/setup-bun@v2, bun install --frozen-lockfile, bun run check, the pull_request Changesets step (bun run check:changesets), then the Fallow recorded-hits growth check with BASE ${{ github.event.pull_request.base.sha || github.event.before }} and EVENT_NAME ${{ github.event_name }}. Repair: match those six steps in order in generated-repository/hosted-check/ci.yml.",
   ],
   [
     "a GitHub secret reference",

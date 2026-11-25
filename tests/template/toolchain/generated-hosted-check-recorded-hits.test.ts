@@ -98,6 +98,7 @@ function simpleModuleSource(name: string): string {
 
 function stepEnvironment(
   base: string | undefined,
+  eventName = "pull_request",
 ): Record<string, string | undefined> {
   const baseEnv = inherited();
   const bunBin = dirname(process.execPath);
@@ -108,6 +109,7 @@ function stepEnvironment(
   const env: Record<string, string | undefined> = {
     ...baseEnv,
     ...gitEnv,
+    EVENT_NAME: eventName,
     NO_COLOR: "1",
     PATH: nextPath,
   };
@@ -204,11 +206,12 @@ function readRecordedHitsFiles(repo: string): Record<string, string> {
 function runHostedGrowthStep(
   repo: string,
   base: string | undefined,
+  eventName = "pull_request",
 ): Promise<{ stdout: string; stderr: string; exit: number }> {
   const stepRun = readRecordedHitsGrowthStepRun();
   return spawnBounded(["bash", "-e", "-c", stepRun], {
     cwd: repo,
-    env: stepEnvironment(base),
+    env: stepEnvironment(base, eventName),
     processGroup: true,
   });
 }
@@ -317,15 +320,15 @@ test(
       complexInBase: false,
     });
 
-    const fortyZeros = await runHostedGrowthStep(repo, "0".repeat(40));
+    const fortyZeros = await runHostedGrowthStep(repo, "0".repeat(40), "push");
     expect(fortyZeros.exit).toBe(0);
     expect(fortyZeros.stdout.toLowerCase()).toContain("skip");
 
-    const emptyBase = await runHostedGrowthStep(repo, "");
+    const emptyBase = await runHostedGrowthStep(repo, "", "push");
     expect(emptyBase.exit).toBe(0);
     expect(emptyBase.stdout.toLowerCase()).toContain("skip");
 
-    const missingBase = await runHostedGrowthStep(repo, "1".repeat(40));
+    const missingBase = await runHostedGrowthStep(repo, "1".repeat(40), "push");
     expect(missingBase.exit).toBe(0);
     expect(missingBase.stdout.toLowerCase()).toContain("skip");
   },

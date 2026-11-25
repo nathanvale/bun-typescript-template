@@ -23,7 +23,7 @@ const RECORDED_HITS_FILES = [
   "fallow-health-recorded-hits.json",
 ] as const;
 
-function readRecordedHitsGrowthStepRun(): string {
+export function readRecordedHitsGrowthStepRun(): string {
   const parsed = asRecord(
     Bun.YAML.parse(readFileSync(SHIPPED_WORKFLOW_PATH, "utf8")),
   );
