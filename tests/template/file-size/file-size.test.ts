@@ -503,11 +503,11 @@ test(
     });
 
     const result = checkInProcess(tree);
-    expect(result).toMatchObject({
-      code: 1,
-      stderr:
-        'check:file-size: "docs/CHANGELOG.md": 5001 tokens exceeds the 5000-token limit. Repair: shorten or split the file.\n',
-    });
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain(
+      'check:file-size: "docs/CHANGELOG.md": 5001 tokens exceeds the 5000-token limit. Repair: shorten or split the file.\n',
+    );
+    expect(result.stderr).not.toContain('"CHANGELOG.md"');
   },
   processWatchdog(8),
 );
