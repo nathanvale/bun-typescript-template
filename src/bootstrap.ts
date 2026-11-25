@@ -470,7 +470,13 @@ async function lockfileFor(lockfile: KernelBootstrap["lockfile"]) {
 export async function bootstrapWithKernel(
   request: KernelBootstrap,
 ): Promise<BootstrapResult> {
-  const { destination, sourcePacket, declarationPath, kernelFrom } = request;
+  const {
+    destination,
+    packageName,
+    sourcePacket,
+    declarationPath,
+    kernelFrom,
+  } = request;
   const { kernel: seam, lockfile: given } = request;
   const kernel = { repository: seam.repository, commit: seam.commit };
   validateSourcePacket(sourcePacket);
@@ -481,9 +487,7 @@ export async function bootstrapWithKernel(
     destination: resolve(destination),
     json: false,
     name,
-    ...(request.packageName === undefined
-      ? {}
-      : { packageName: request.packageName }),
+    ...(packageName === undefined ? {} : { packageName }),
     sourcePacket,
     kernelPin:
       kernelFrom === "clone"
