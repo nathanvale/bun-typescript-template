@@ -1,0 +1,9 @@
+diff --git a/generated-repository/changeset/README.md b/generated-repository/changeset/README.md
+--- a/generated-repository/changeset/README.md
++++ b/generated-repository/changeset/README.md
+@@ -17,4 +17,4 @@ Cut a version pull request on a branch:
+ 2. Add an empty changeset so the branch's own changeset check passes: `bun run --bun changeset add --empty`.
+ 3. Stage `package.json`, `CHANGELOG.md`, the removed `.changeset/*.md` files and the new empty changeset with explicit paths, commit, run `bun run check:changesets`, and open a pull request for Nathan to merge. Version pull requests only update files; never publish or tag.
+ 
+-One-time backfill: run `agent-gates changelog backfill --pull-requests <file> --changelog CHANGELOG.md --package __PACKAGE_NAME__ --changesets-from <n> --json`, confirm `.result.data.changelog` has one `## Earlier changes` heading, and write it to `CHANGELOG.md`.
++One-time backfill: run `agent-gates changelog earlier --pull-requests <file> --changelog CHANGELOG.md --package __PACKAGE_NAME__ --changesets-from <n> --json`, confirm `.result.data.changelog` has one `## Earlier changes` heading, and write it to `CHANGELOG.md`.
