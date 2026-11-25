@@ -15,8 +15,13 @@ import {
   readKernel,
 } from "../src/kernel-reader.ts";
 import { REGENERATE_SCRIPT, SKILL_FOLDER } from "../src/recipe.ts";
+import {
+  planRepositoryChangeset,
+  writeRepositoryChangeset,
+} from "../src/template-upgrade-changeset-write.ts";
 import { type TrialActive, TrialRefusal, trialStep } from "./kernel-trial.ts";
 import { pinMoveReport, pinMoveReportText } from "./pin-move-report.ts";
+import { withoutRepositoryLocation } from "./process-runner.ts";
 import {
   attemptPaths,
   changedPaths,
@@ -426,6 +431,28 @@ function createPinMoveBranch(repository: string, kernelCommit: string): string {
   return branch;
 }
 
+function pinMoveChangesetOptions(
+  repository: string,
+  oldCommit: string,
+  kernelCommit: string,
+  changedPaths?: readonly string[],
+) {
+  const old7 = oldCommit.slice(0, 7);
+  const new7 = kernelCommit.slice(0, 7);
+  return {
+    repository,
+    worktree: repository,
+    fileName: `kernel-pin-${new7}.md`,
+    summary: `Moved the kernel Pin from ${old7} to ${new7}`,
+    env: withoutRepositoryLocation(process.env),
+    ...(changedPaths === undefined ? {} : { changedPaths }),
+  };
+}
+
+function isTrackedInHead(repository: string, path: string): boolean {
+  return repositoryGit(repository, ["cat-file", "-e", `HEAD:${path}`]).ok;
+}
+
 async function applyRepositoryPinMove(
   repository: string,
   startingRef: string,
@@ -437,12 +464,13 @@ async function applyRepositoryPinMove(
   active: TrialActive,
   kernelPackage: string,
 ): Promise<number> {
+  const editedPaths = edits.map((edit) => edit.path);
   const attempt: PinMoveAttempt = {
     repository,
     startingRef,
     branch,
     subject: `chore(kernel): failed Pin move from ${current.oldCommit.slice(0, 7)} to ${kernelCommit.slice(0, 7)}`,
-    edited: edits.map((edit) => edit.path),
+    edited: editedPaths,
     kernelPackage,
     startingPin: current.oldCommit,
     regenerate: declaresRegenerate(current.packageText),
@@ -460,7 +488,19 @@ async function applyRepositoryPinMove(
       active,
       attempt.regenerate,
     );
-    const written = attemptPaths(repository, attempt.edited, regenerated);
+    const changeset = await writeRepositoryChangeset(
+      pinMoveChangesetOptions(repository, current.oldCommit, kernelCommit),
+    );
+    if (changeset !== undefined) {
+      editedPaths.push(changeset.path);
+      if (
+        changeset.createdPath !== undefined &&
+        isTrackedInHead(repository, changeset.createdPath)
+      ) {
+        editedPaths.push(changeset.createdPath);
+      }
+    }
+    const written = attemptPaths(repository, editedPaths, regenerated);
     const commit = commitPinMoveBranch(
       repository,
       current.oldCommit,
@@ -474,6 +514,32 @@ async function applyRepositoryPinMove(
   } catch (error) {
     throw await failedAttempt(attempt, error, installRan);
   }
+}
+
+async function writePinMovePlan(
+  repository: string,
+  oldCommit: string,
+  kernelCommit: string,
+  reportText: string,
+): Promise<number> {
+  const plannedChangeset =
+    oldCommit === kernelCommit
+      ? undefined
+      : await planRepositoryChangeset(
+          pinMoveChangesetOptions(repository, oldCommit, kernelCommit, [
+            "package.json",
+          ]),
+        );
+  process.stdout.write(reportText);
+  if (plannedChangeset !== undefined) {
+    process.stdout.write(
+      `Changeset: ${plannedChangeset.path} (${plannedChangeset.level}, ${plannedChangeset.summary})\n`,
+    );
+  }
+  process.stdout.write(
+    `Plan only: no branch or file changed in ${repository}.\n`,
+  );
+  return 0;
 }
 
 export async function moveRepositoryPin(
@@ -500,11 +566,12 @@ export async function moveRepositoryPin(
     pinMoveReport(kernelRepository, current.oldCommit, kernel.commit),
   );
   if (planOnly) {
-    process.stdout.write(reportText);
-    process.stdout.write(
-      `Plan only: no branch or file changed in ${repository}.\n`,
+    return writePinMovePlan(
+      repository,
+      current.oldCommit,
+      kernel.commit,
+      reportText,
     );
-    return 0;
   }
   if (current.oldCommit === kernel.commit)
     throw new RepositoryPinRefusal(

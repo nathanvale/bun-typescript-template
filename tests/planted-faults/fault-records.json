@@ -3189,10 +3189,31 @@
     "source": "a685f40 fix(template-upgrade): ignore imported export aliases and fallow-ignored files in move check"
   },
   {
+    "id": "4ba28d8-template-upgrade-changesets-empty",
+    "patch": "tests/planted-faults/patches/4ba28d8-template-upgrade-changesets-empty.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-changeset-write.test.ts",
+    "title": "^does not let an empty changeset already on the branch suppress the upgrade changeset$",
+    "source": "4ba28d8 fix(changeset): count only package-bumping changesets when planning or writing"
+  },
+  {
+    "id": "2b47c8e-pin-move-repository-changeset",
+    "patch": "tests/planted-faults/patches/2b47c8e-pin-move-repository-changeset.patch",
+    "testFile": "tests/template/pin-move/pin-move-changeset.test.ts",
+    "title": "^pin-move --repository changeset writes one patch changeset on a Pin move so check:changesets passes, and a rerun leaves one$",
+    "source": "2b47c8e feat(pin-move): write a patch changeset on repository Pin moves"
+  },
+  {
     "id": "a49800c-template-upgrade-recorded-hits-health-keys",
     "patch": "tests/planted-faults/patches/a49800c-template-upgrade-recorded-hits-health-keys.patch",
     "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-health.test.ts",
     "title": "^drops advisory target_keys additions in fallow-health-recorded-hits\\.json, keeps the file byte-identical to the base, and applies when bun run check passes without them$",
     "source": "a49800c fix(template-upgrade): drop advisory target_keys additions in recorded hits"
+  },
+  {
+    "id": "56b924c-pin-move-changeset-commit-true-rename",
+    "patch": "tests/planted-faults/patches/56b924c-pin-move-changeset-commit-true-rename.patch",
+    "testFile": "tests/template/pin-move/pin-move-changeset.test.ts",
+    "title": "^pin-move --repository changeset commits both sides of the changeset rename when \\.changeset/config\\.json sets \"commit\": true$",
+    "source": "56b924c fix(pin-move): commit tracked changeset rename source and isolate failedAttempt git env"
   }
 ]
