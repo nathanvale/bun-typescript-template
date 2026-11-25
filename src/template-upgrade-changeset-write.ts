@@ -403,7 +403,9 @@ export async function planRepositoryChangeset(
 
 export async function writeRepositoryChangeset(
   options: RepositoryChangesetOptions,
-): Promise<TemplateUpgradeChangesetPlan | undefined> {
+): Promise<
+  (TemplateUpgradeChangesetPlan & { readonly createdPath?: string }) | undefined
+> {
   const resolved = await resolveRepositoryChangesetPlan(options, false);
   if (resolved === undefined) {
     return undefined;
@@ -450,14 +452,18 @@ export async function writeRepositoryChangeset(
   }
   const [createdFile] = addedFiles;
   const targetFile = basename(plan.path);
+  let createdPath: string | undefined;
   if (createdFile !== undefined && createdFile !== targetFile) {
+    createdPath = `${CHANGESET_PREFIX}${createdFile}`;
     const sourcePath = join(worktree, CHANGESET_FOLDER, createdFile);
     const targetPath = join(worktree, CHANGESET_FOLDER, targetFile);
-    await assertNotSymlinkPath(sourcePath, `${CHANGESET_PREFIX}${createdFile}`);
+    await assertNotSymlinkPath(sourcePath, createdPath);
     await assertNotSymlinkPath(targetPath, plan.path);
     await rename(sourcePath, targetPath);
   }
-  return plan;
+  return createdPath === undefined
+    ? plan
+    : Object.freeze({ ...plan, createdPath });
 }
 
 function upgradeChangesetOptions(

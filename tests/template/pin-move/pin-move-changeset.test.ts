@@ -7,13 +7,14 @@ import {
 } from "../../../scripts/pin-move-branch.ts";
 import { CliError } from "../../../src/cli-error.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
-import { commitIn, git, gitOutput } from "../../support/git-fixture.ts";
+import { commitIn, git, gitEnv, gitOutput } from "../../support/git-fixture.ts";
 import { trialBase } from "../../support/kernel-sibling.ts";
 import {
   expectRefused,
   pinMoveRepositoryFixture,
 } from "../../support/pin-move-repository-fixture.ts";
 import { processWatchdog, spawnBounded } from "../../support/process.ts";
+import { withEnvironment } from "../../support/recipe-fixture.ts";
 import { testFolder } from "../../support/test-folder.ts";
 
 const fixture = pinMoveRepositoryFixture();
@@ -107,6 +108,52 @@ describe("pin-move --repository changeset", () => {
     expect(
       gitOutput(repo, "status", "--porcelain", "--untracked-files=all"),
     ).toBe("");
+  }, 180_000);
+
+  test('commits both sides of the changeset rename when .changeset/config.json sets "commit": true', async () => {
+    const repo = lockedRepository("pin-move-commit-true-changeset-");
+    const configText = readFileSync(
+      join(repo, ".changeset/config.json"),
+      "utf8",
+    );
+    const updatedConfig = configText.replace(
+      '"commit": false',
+      '"commit": true',
+    );
+    expect(updatedConfig).not.toBe(configText);
+    commitIn(repo, "enable changesets commit mode", {
+      ".changeset/config.json": updatedConfig,
+    });
+    git(repo, "update-ref", "refs/remotes/origin/main", "HEAD");
+    const new7 = fixture.targetCommit.slice(0, 7);
+    const expectedBranch = `pin-move/${new7}`;
+    const expectedPath = `.changeset/kernel-pin-${new7}.md`;
+
+    const run = await runPinMove([
+      fixture.targetCommit,
+      "--kernel",
+      fixture.kernelRepo,
+      "--repository",
+      repo,
+    ]);
+    expect({ exit: run.exit, stderr: run.stderr }).toEqual({
+      exit: 0,
+      stderr: "",
+    });
+    expect(
+      gitOutput(repo, "status", "--porcelain", "--untracked-files=all"),
+    ).toBe("");
+    expect(branchChangesetFiles(repo, "HEAD")).toEqual([expectedPath]);
+    expect(git(repo, "rev-parse", "--abbrev-ref", "HEAD")).toBe(expectedBranch);
+
+    const rerun = await runPinMove([
+      fixture.targetCommit,
+      "--kernel",
+      fixture.kernelRepo,
+      "--repository",
+      repo,
+    ]);
+    expectRefused(rerun, "repository_pin_unchanged");
   }, 180_000);
 
   test("does not let an empty changeset already on the branch suppress the Pin move changeset", async () => {
@@ -251,20 +298,22 @@ describe("pin-move --repository changeset", () => {
         1,
         false,
       );
-      const result = await failedAttempt(
-        {
-          repository: repo,
-          startingRef: "main",
-          branch,
-          subject: "chore(kernel): failed Pin move from 0000000 to 1234567",
-          edited: ["package.json"],
-          kernelPackage: "agent-cli-kernel",
-          startingPin: "0".repeat(40),
-          regenerate: false,
-          active: {},
-        },
-        error,
-        false,
+      const result = await withEnvironment(gitEnv, () =>
+        failedAttempt(
+          {
+            repository: repo,
+            startingRef: "main",
+            branch,
+            subject: "chore(kernel): failed Pin move from 0000000 to 1234567",
+            edited: ["package.json"],
+            kernelPackage: "agent-cli-kernel",
+            startingPin: "0".repeat(40),
+            regenerate: false,
+            active: {},
+          },
+          error,
+          false,
+        ),
       );
       expect(result).toBeInstanceOf(RepositoryPinRefusal);
       expect(result instanceof RepositoryPinRefusal ? result.code : "").toBe(

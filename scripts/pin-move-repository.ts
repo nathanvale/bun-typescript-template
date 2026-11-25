@@ -449,6 +449,10 @@ function pinMoveChangesetOptions(
   };
 }
 
+function isTrackedInHead(repository: string, path: string): boolean {
+  return repositoryGit(repository, ["cat-file", "-e", `HEAD:${path}`]).ok;
+}
+
 async function applyRepositoryPinMove(
   repository: string,
   startingRef: string,
@@ -489,6 +493,12 @@ async function applyRepositoryPinMove(
     );
     if (changeset !== undefined) {
       editedPaths.push(changeset.path);
+      if (
+        changeset.createdPath !== undefined &&
+        isTrackedInHead(repository, changeset.createdPath)
+      ) {
+        editedPaths.push(changeset.createdPath);
+      }
     }
     const written = attemptPaths(repository, editedPaths, regenerated);
     const commit = commitPinMoveBranch(
