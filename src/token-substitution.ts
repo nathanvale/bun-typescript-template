@@ -3,12 +3,16 @@ import { join, relative } from "node:path";
 import { CliError } from "./cli-error.ts";
 
 const NAME_TOKEN = "__REPOSITORY_NAME__";
+const PACKAGE_NAME_TOKEN = "__PACKAGE_NAME__";
 const PACKET_TOKEN = "__SOURCE_PACKET__";
 const PIN_TOKEN = "__KERNEL_PIN__";
 const COMMIT_TOKEN = "__KERNEL_COMMIT__";
 
+export const PACKAGE_NAME_ENV = "TEMPLATE_PACKAGE_NAME";
+
 export type Tokens = {
   readonly name: string;
+  readonly packageName?: string;
   readonly sourcePacket: string;
   readonly kernelPin?: string;
   readonly kernelCommit?: string;
@@ -37,6 +41,7 @@ export async function substituteTokens(
     const current = await readFile(path, "utf8");
     const substituted = current
       .replaceAll(NAME_TOKEN, tokens.name)
+      .replaceAll(PACKAGE_NAME_TOKEN, tokens.packageName ?? PACKAGE_NAME_TOKEN)
       .replaceAll(PACKET_TOKEN, tokens.sourcePacket)
       .replaceAll(PIN_TOKEN, tokens.kernelPin ?? PIN_TOKEN)
       .replaceAll(COMMIT_TOKEN, tokens.kernelCommit ?? COMMIT_TOKEN);

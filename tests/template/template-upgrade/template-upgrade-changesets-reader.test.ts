@@ -143,6 +143,7 @@ test("readTemplateUpgradeChangesets handles empty trees, cross-boundary stem ded
     baseCommit: preSwitchover,
     targetCommit: postSwitchover,
     repositoryName: "demo",
+    packageName: "demo",
     sourcePacket: "/abs/packet",
     repositoryPinnedCommit: "a".repeat(40),
     templatePinnedCommit: "a".repeat(40),

@@ -25,6 +25,7 @@ export interface TemplateUpgradeInputs {
   readonly baseCommit: string;
   readonly targetCommit: string;
   readonly repositoryName: string;
+  readonly packageName: string;
   readonly sourcePacket: string;
   readonly repositoryPinnedCommit: string;
   readonly templatePinnedCommit: string;
@@ -106,6 +107,22 @@ function readStampFields(
   };
 }
 
+function readCommittedPackageName(
+  packageFields: ReadonlyMap<string, unknown>,
+): string {
+  const packageName = packageFields.get("name");
+  if (typeof packageName !== "string" || packageName.trim() === "") {
+    throw new CliError(
+      "repository_name_missing",
+      `HEAD:${PACKAGE_FILE} does not have a non-empty string "name"`,
+      `set a non-empty "name" in ${PACKAGE_FILE} and commit it`,
+      2,
+      true,
+    );
+  }
+  return packageName;
+}
+
 function readCommittedRepositoryName(
   stampFile: string,
   stampFields: ReadonlyMap<string, unknown>,
@@ -124,17 +141,7 @@ function readCommittedRepositoryName(
       true,
     );
   }
-  const packageName = packageFields.get("name");
-  if (typeof packageName !== "string" || packageName.trim() === "") {
-    throw new CliError(
-      "repository_name_missing",
-      `HEAD:${PACKAGE_FILE} does not have a non-empty string "name"`,
-      `set a non-empty "name" in ${PACKAGE_FILE} and commit it`,
-      2,
-      true,
-    );
-  }
-  return packageName;
+  return readCommittedPackageName(packageFields);
 }
 
 function readRepositoryPinnedCommit(
@@ -336,6 +343,9 @@ export function resolveTemplateUpgradeInputs(
     repository,
     packageFields,
   );
+  const packageName = readCommittedPackageName(
+    packageFields ?? new Map<string, unknown>(),
+  );
   const templatePinnedCommit = readTemplatePinnedCommit(
     templateRoot,
     targetCommit,
@@ -354,6 +364,7 @@ export function resolveTemplateUpgradeInputs(
     baseCommit,
     targetCommit,
     repositoryName,
+    packageName,
     sourcePacket,
     repositoryPinnedCommit,
     templatePinnedCommit,

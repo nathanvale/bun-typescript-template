@@ -39,7 +39,7 @@ import {
   TEMPLATE_JSON_FILE,
 } from "./recipe.ts";
 import { decodeUtf8Strict } from "./template-upgrade-git.ts";
-import { substituteTokens } from "./token-substitution.ts";
+import { PACKAGE_NAME_ENV, substituteTokens } from "./token-substitution.ts";
 
 const SCHEMA_VERSION = 1;
 const TEMPLATE_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -54,6 +54,7 @@ export interface BootstrapResult {
 }
 
 interface Generation extends BootstrapOptions {
+  readonly packageName?: string;
   readonly kernelPin: string;
   readonly kernelCommit: string;
   readonly lockfile: Uint8Array | undefined;
@@ -357,6 +358,45 @@ async function writeRepositoryContext(
   );
 }
 
+async function readGeneratedPackageName(staging: string): Promise<string> {
+  const packagePath = join(staging, "package.json");
+  const bytes = await readFile(packagePath);
+  const text = decodeUtf8Strict(bytes, "package.json");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new CliError(
+      "repository_name_missing",
+      "generated package.json is not valid JSON",
+      "restore generated-repository/settings/package.json in the template repository",
+      1,
+      false,
+    );
+  }
+  const packageName =
+    typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
+      ? new Map<string, unknown>(Object.entries(parsed)).get("name")
+      : undefined;
+  if (typeof packageName !== "string" || packageName.trim() === "") {
+    throw new CliError(
+      "repository_name_missing",
+      'generated package.json does not have a non-empty string "name"',
+      'set a non-empty "name" in generated-repository/settings/package.json',
+      1,
+      false,
+    );
+  }
+  return packageName;
+}
+
+function readEnvPackageName(
+  env: Readonly<Record<string, string | undefined>>,
+): string | undefined {
+  const raw = env[PACKAGE_NAME_ENV];
+  return typeof raw === "string" && raw.trim() !== "" ? raw : undefined;
+}
+
 async function bootstrap(options: Generation): Promise<BootstrapResult> {
   const destinationState = await validateDestination(options.destination);
   const recipe = KERNEL_RECIPE;
@@ -369,7 +409,21 @@ async function bootstrap(options: Generation): Promise<BootstrapResult> {
   try {
     await copyRecipe(recipe, staging);
     await writeRepositoryContext(staging, options, recipe);
-    const generatedFiles = await substituteTokens(staging, options);
+    await substituteTokens(staging, {
+      name: options.name,
+      sourcePacket: options.sourcePacket,
+      kernelPin: options.kernelPin,
+      kernelCommit: options.kernelCommit,
+    });
+    const packageName =
+      options.packageName ?? (await readGeneratedPackageName(staging));
+    const generatedFiles = await substituteTokens(staging, {
+      name: options.name,
+      packageName,
+      sourcePacket: options.sourcePacket,
+      kernelPin: options.kernelPin,
+      kernelCommit: options.kernelCommit,
+    });
     await linkSkills(staging);
     if (options.lockfile !== undefined)
       await writeFile(join(staging, "bun.lock"), options.lockfile);
@@ -390,6 +444,7 @@ async function bootstrap(options: Generation): Promise<BootstrapResult> {
 export type KernelBootstrap = {
   readonly destination: string;
   readonly name?: string;
+  readonly packageName?: string;
   readonly sourcePacket: string;
   readonly kernel: KernelSeam;
   readonly declarationPath?: string;
@@ -415,7 +470,13 @@ async function lockfileFor(lockfile: KernelBootstrap["lockfile"]) {
 export async function bootstrapWithKernel(
   request: KernelBootstrap,
 ): Promise<BootstrapResult> {
-  const { destination, sourcePacket, declarationPath, kernelFrom } = request;
+  const {
+    destination,
+    packageName,
+    sourcePacket,
+    declarationPath,
+    kernelFrom,
+  } = request;
   const { kernel: seam, lockfile: given } = request;
   const kernel = { repository: seam.repository, commit: seam.commit };
   validateSourcePacket(sourcePacket);
@@ -426,6 +487,7 @@ export async function bootstrapWithKernel(
     destination: resolve(destination),
     json: false,
     name,
+    ...(packageName === undefined ? {} : { packageName }),
     sourcePacket,
     kernelPin:
       kernelFrom === "clone"
@@ -439,9 +501,11 @@ export async function bootstrapWithKernel(
 function bootstrapOnKernel(
   options: BootstrapOptions,
 ): Promise<BootstrapResult> {
+  const packageName = readEnvPackageName(process.env);
   return bootstrapWithKernel({
     destination: options.destination,
     name: options.name,
+    ...(packageName === undefined ? {} : { packageName }),
     sourcePacket: options.sourcePacket,
     kernel: {
       repository: findSiblingKernel(TEMPLATE_ROOT, process.env),

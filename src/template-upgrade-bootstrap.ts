@@ -21,6 +21,7 @@ import {
   OLD_TEMPLATE_JSON_FILE,
   type TemplateUpgradeInputs,
 } from "./template-upgrade-inputs.ts";
+import { PACKAGE_NAME_ENV } from "./token-substitution.ts";
 
 const CLONE_TIMEOUT_MS = 30_000;
 const BOOTSTRAP_TIMEOUT_MS = 30_000;
@@ -158,6 +159,7 @@ interface BootstrapCommitRequest {
   readonly label: "old" | "new";
   readonly commit: string;
   readonly repositoryName: string;
+  readonly packageName: string;
   readonly sourcePacket: string;
   readonly repositoryPinnedCommit: string;
   readonly kernelRepository: string;
@@ -345,6 +347,7 @@ function runBootstrapAtCommit(
     label,
     commit,
     repositoryName,
+    packageName,
     sourcePacket,
     repositoryPinnedCommit,
     kernelRepository,
@@ -366,7 +369,11 @@ function runBootstrapAtCommit(
     ],
     {
       cwd: cloneFolder,
-      env: { ...withoutGitLocation(env), KERNEL_REPOSITORY: kernelRepository },
+      env: {
+        ...withoutGitLocation(env),
+        KERNEL_REPOSITORY: kernelRepository,
+        [PACKAGE_NAME_ENV]: packageName,
+      },
       stdout: "pipe",
       stderr: "pipe",
       timeout: BOOTSTRAP_TIMEOUT_MS,
@@ -464,6 +471,7 @@ export async function withTemplateUpgradeTrees<Result>(
       label: "old",
       commit: inputs.baseCommit,
       repositoryName: inputs.repositoryName,
+      packageName: inputs.packageName,
       sourcePacket: inputs.sourcePacket,
       repositoryPinnedCommit: inputs.repositoryPinnedCommit,
       kernelRepository,
@@ -475,6 +483,7 @@ export async function withTemplateUpgradeTrees<Result>(
       label: "new",
       commit: inputs.targetCommit,
       repositoryName: inputs.repositoryName,
+      packageName: inputs.packageName,
       sourcePacket: inputs.sourcePacket,
       repositoryPinnedCommit: inputs.repositoryPinnedCommit,
       kernelRepository,

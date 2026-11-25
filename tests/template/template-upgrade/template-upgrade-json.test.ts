@@ -203,6 +203,7 @@ test("withTemplateUpgradeTrees refuses when regeneration writes both stamp files
         baseCommit: first.sha,
         targetCommit: second.sha,
         repositoryName: "demo",
+        packageName: "demo",
         sourcePacket: "/abs/packet",
         repositoryPinnedCommit: pinnedCommit,
         templatePinnedCommit: pinnedCommit,
