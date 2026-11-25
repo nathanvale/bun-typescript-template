@@ -5,7 +5,7 @@
     "": {
       "name": "kernel-trial",
       "dependencies": {
-        "agent-cli-kernel": "github:nathanvale/agent-cli-kernel#a0067746b6480812306a2ee601990ce293f95eef",
+        "agent-cli-kernel": "github:nathanvale/agent-cli-kernel#44a7596f4d8c35f05f8b9b4e10c36fa0cd3a3285",
       },
       "devDependencies": {
         "@biomejs/biome": "2.6.7",
@@ -156,7 +156,7 @@
 
     "@types/json-schema": ["@types/json-schema@7.0.15", "", {}, "sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA=="],
 
-    "@types/node": ["@types/node@26.6.6", "", { "dependencies": { "undici-types": "~8.9.0" } }, "sha512-MzQj+8Kx3XI40OmUAE6Qoh58ZMNstNNMwn2nfd3qWsfe7nDNSqJNzes4njhz6AHwrSHOffSLwXU6yb474Q4aog=="],
+    "@types/node": ["@types/node@26.6.7", "", { "dependencies": { "undici-types": "~8.9.0" } }, "sha512-tovuRfrUILu6v46bMG+BgXxMvsqPBx2WO2as8Rpln+JTff1dbexMtAM4KFTejmL0axsnSWViCW7MecUQpLuBRA=="],
 
     "@typescript-eslint/eslint-plugin": ["@typescript-eslint/eslint-plugin@8.73.0", "", { "dependencies": { "@eslint-community/regexpp": "^4.12.2", "@typescript-eslint/scope-manager": "8.73.0", "@typescript-eslint/type-utils": "8.73.0", "@typescript-eslint/utils": "8.73.0", "@typescript-eslint/visitor-keys": "8.73.0", "ignore": "^7.0.5", "natural-compare": "^1.4.0", "ts-api-utils": "^2.5.0" }, "peerDependencies": { "@typescript-eslint/parser": "^8.73.0", "eslint": "^8.57.0 || ^9.0.0 || ^10.0.0", "typescript": ">=4.8.4 <6.1.0" } }, "sha512-UkygMFer53Yzn29MCYFTHf34hGXf5KJhiDWfIm1tXtXRrym1CS6l5H9Y3yCtPWChpC0/f93H88gdj8tN0dd4kw=="],
 
@@ -228,7 +228,7 @@
 
     "acorn-jsx": ["acorn-jsx@5.3.2", "", { "peerDependencies": { "acorn": "^6.0.0 || ^7.0.0 || ^8.0.0" } }, "sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ=="],
 
-    "agent-cli-kernel": ["agent-cli-kernel@github:nathanvale/agent-cli-kernel#a006774", { "dependencies": { "@logtape/logtape": "2.4.2", "@logtape/redaction": "2.4.2" }, "peerDependencies": { "@eslint/js": "10.0.1", "typescript-eslint": "8.73.0" }, "optionalPeers": ["@eslint/js", "typescript-eslint"] }, "nathanvale-agent-cli-kernel-a006774", "sha512-xHd2eIWzs8sA5jxEcE4c+Z4Xb/9TO0QTtEdMEGknUa4lxB7/O6A/+gf+NU4yV+FcNAGPC9+Kpyxt+vUKTIpdgg=="],
+    "agent-cli-kernel": ["agent-cli-kernel@github:nathanvale/agent-cli-kernel#44a7596", { "dependencies": { "@logtape/logtape": "2.4.2", "@logtape/redaction": "2.4.2" }, "peerDependencies": { "@eslint/js": "10.0.1", "typescript-eslint": "8.73.0" }, "optionalPeers": ["@eslint/js", "typescript-eslint"] }, "nathanvale-agent-cli-kernel-44a7596", "sha512-+vz7RSiCQDj4084s5CCo8V+9yVolHv1bHs5ba6B7OsbB3vEZbK+LnBREKV1A0KHBEaGoX4aNhvlA9zjlomNyQA=="],
 
     "ajv": ["ajv@6.15.0", "", { "dependencies": { "fast-deep-equal": "^3.1.1", "fast-json-stable-stringify": "^2.0.0", "json-schema-traverse": "^0.4.1", "uri-js": "^4.2.2" } }, "sha512-fgFx7Hfoq60ytK2c7DhnF8jIvzYgOMxfugjLOSMHjLIPgenqa7S7oaagATUq99mV6IYvN2tRmC0wnTYX6iPbMw=="],
 
@@ -368,7 +368,7 @@
 
     "sisteransi": ["sisteransi@2.0.0", "", {}, "sha512-2WCqLdt12eN6ehLI50S2/ZxoowXU3DD1KVPRyVP0WEsFahrGZZmCdq1K59qjJljMRIDTwx1D9YaRK+hDneBUMg=="],
 
-    "tinyexec": ["tinyexec@1.3.1", "", {}, "sha512-GCvB3aoys96IuDFBMcTB46JOR6mdMtAToqwiW8JlWhsoh1mhHi/xn9ss/Dg7N555GiJyEt2qzoG/NHCwM6h1EA=="],
+    "tinyexec": ["tinyexec@1.4.0", "", {}, "sha512-PV6lIcJQh57aFeJDwx16JNHmgFRh5xguzallrDW1qe8nAghYgr5MKz2K5k7wEyV/ygZhdnIAP8+HZSarHPBCsg=="],
 
     "tinyglobby": ["tinyglobby@0.2.17", "", { "dependencies": { "fdir": "^6.5.0", "picomatch": "^4.0.4" } }, "sha512-wXR/dYpcqKmfWpEdZjiKJOwCNFndD0DMnrW/cYjVGttEkBfVgcLFHoNrlj47mjOVic9yyNu65alsgF4NQyTa2g=="],
 
