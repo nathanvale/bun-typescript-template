@@ -150,15 +150,31 @@ function isLiveRunFolder(path: string): boolean {
 
 const bunNodeFolder = `bun-node-${process.getuid?.()}-${Bun.revision.slice(0, 9)}`;
 
+function isBunOwnFolder(
+  folder: string,
+  name: string,
+  stateFolder: string | undefined,
+): boolean {
+  if (name !== bunNodeFolder || folder === stateFolder) return false;
+  try {
+    return lstatSync(join(folder, name)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
 function leftoversOf(
   folders: readonly string[],
   before: ReadonlyMap<string, Set<string>>,
   runFolder: string,
+  stateFolder: string | undefined,
 ): string[] {
   return folders.flatMap((folder) =>
     [...namesIn(folder)]
       .filter(
-        (name) => name !== bunNodeFolder && !before.get(folder)?.has(name),
+        (name) =>
+          !isBunOwnFolder(folder, name, stateFolder) &&
+          !before.get(folder)?.has(name),
       )
       .map((name) => join(folder, name))
       .filter((path) => path !== runFolder && !isLiveRunFolder(path)),
@@ -278,7 +294,14 @@ export async function runTests(
     );
   problems.push(
     ...leftoverProblems(
-      leftoversOf(options.leftoverFolders, before, runFolder),
+      leftoversOf(
+        options.leftoverFolders,
+        before,
+        runFolder,
+        options.env.STATE_TEST_DIR
+          ? realFolder(options.env.STATE_TEST_DIR)
+          : undefined,
+      ),
       options,
     ),
   );

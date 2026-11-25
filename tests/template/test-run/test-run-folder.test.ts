@@ -233,20 +233,16 @@ test(
 );
 
 test(
-  "a strict test run ignores Bun's own bun-node-<uid>-<build> folder, which Bun always makes in /tmp whatever TMPDIR says, and still names a lookalike",
+  "a strict test run ignores a directory named like Bun's own bun-node-<uid>-<build> folder in a system temp folder, and still names a lookalike directory and a file of that name in STATE_TEST_DIR",
   async () => {
     const temp = folder("test-run-temp-");
     const stateDir = folder("test-run-state-");
-    const own = join(
-      stateDir,
-      `bun-node-${process.getuid?.()}-${Bun.revision.slice(0, 9)}`,
-    );
-    const lookalike = join(
-      stateDir,
-      `bun-node-${process.getuid?.()}-000000000`,
-    );
+    const name = `bun-node-${process.getuid?.()}-${Bun.revision.slice(0, 9)}`;
+    const own = join(temp, name);
+    const lookalike = join(temp, `bun-node-${process.getuid?.()}-000000000`);
+    const ownNameFile = join(stateDir, name);
     const root = specimen({
-      "tests/bun-node.test.ts": `import { test } from "bun:test";\nimport { mkdirSync } from "node:fs";\ntest("makes both", () => { mkdirSync(${JSON.stringify(own)}); mkdirSync(${JSON.stringify(lookalike)}); });\n`,
+      "tests/bun-node.test.ts": `import { test } from "bun:test";\nimport { mkdirSync, writeFileSync } from "node:fs";\ntest("makes three", () => { mkdirSync(${JSON.stringify(own)}); mkdirSync(${JSON.stringify(lookalike)}); writeFileSync(${JSON.stringify(ownNameFile)}, ""); });\n`,
     });
     const run = await spawnBounded([process.execPath, "scripts/test-run.ts"], {
       cwd: root,
@@ -254,6 +250,7 @@ test(
     });
     expect(run.exit).toBe(1);
     expect(run.stderr).toContain(`\n  ${lookalike}\n`);
+    expect(run.stderr).toContain(`\n  ${ownNameFile}\n`);
     expect(run.stderr).not.toContain(`\n  ${own}\n`);
   },
   processWatchdog(1),
