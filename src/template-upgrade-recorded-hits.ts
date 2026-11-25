@@ -23,9 +23,18 @@ import {
   readCommittedBytes,
   readCommittedBytesAt,
   runGitText,
+  toolchainEnvironment,
 } from "./template-upgrade-git.ts";
 import type { PackageDependencyChange } from "./template-upgrade-json-merge.ts";
 import type { TemplateUpgradeRow } from "./template-upgrade-merge.ts";
+import {
+  asRecord,
+  decodeJsonObjectBytes,
+  findRecordedHitsGrowth,
+  parseJsonObjectText,
+  type RecordedHitsFileGrowth,
+  readWorktreeFileBytes,
+} from "./template-upgrade-recorded-hits-growth.ts";
 import {
   createTemplateUpgradeApplyStep,
   skipTemplateUpgradeSteps,
@@ -42,40 +51,15 @@ const RECORDING_DONE_MARK = "template-upgrade-recorded-hits-done";
 const RECORDING_PENDING_DIR = "template-upgrade-recorded-hits-pending";
 const PENDING_STATE_FILE = "state.json";
 const PENDING_FILES_DIR = "files";
+const REFRESHED_IDENTITY_REASON =
+  "refreshed analysis identity; kept existing recorded hits";
 const RECORDED_AFTER_REPAIR_REASON =
   "recorded again after a repair that bun run check passed";
 const RECORDED_HITS_WOULD_GROW_REPAIR =
   "record each hit by hand in a later commit, or change the code so it is not reported, then rerun the upgrade";
-const UTF8_STRICT = new TextDecoder("utf-8", { fatal: true });
-const METADATA_KEYS = new Set([
-  "kind",
-  "identity",
-  "analysis_identity",
-  "schema_version",
-  "version",
-]);
 const FALLOW_SCRIPT_KEYS = ["quality:fallow", RECORDED_HITS_SCRIPT] as const;
 
 type RecordedHitsAction = "none" | "record-new" | "refresh-changed";
-
-function asRecord(
-  value: unknown,
-): Readonly<Record<string, unknown>> | undefined {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return undefined;
-  }
-  return Object.fromEntries(Object.entries(value));
-}
-
-function parseJsonObjectText(
-  text: string,
-): Readonly<Record<string, unknown>> | undefined {
-  try {
-    return asRecord(JSON.parse(text));
-  } catch {
-    return undefined;
-  }
-}
 
 function readPackageScripts(
   text: string | undefined,
@@ -131,28 +115,11 @@ export function recordedHitsRequestFor(
   };
 }
 
-function readWorktreeRegularFileBytes(
-  fullPath: string,
-): Uint8Array | undefined {
-  let stats: ReturnType<typeof lstatSync>;
-  try {
-    stats = lstatSync(fullPath);
-  } catch (error) {
-    const code: unknown = Reflect.get(Object(error), "code");
-    if (code === "ENOENT" || code === "ENOTDIR") return undefined;
-    throw error;
-  }
-  if (!stats.isFile()) return undefined;
-  return readFileSync(fullPath);
-}
-
 function matchesTemplateRecordedHits(
   options: RecordedHitsRequest,
   file: string,
 ): boolean {
-  const worktreeBytes = readWorktreeRegularFileBytes(
-    join(options.worktree, file),
-  );
+  const worktreeBytes = readWorktreeFileBytes(join(options.worktree, file));
   if (worktreeBytes === undefined) return false;
   const templateBytes = readCommittedBytesAt(
     options.templateRoot,
@@ -258,7 +225,7 @@ function captureWorktreeSnapshots(
 ): Map<string, Uint8Array | undefined> {
   const snapshots = new Map<string, Uint8Array | undefined>();
   for (const file of RECORDED_HITS_FILES) {
-    snapshots.set(file, readWorktreeRegularFileBytes(join(worktree, file)));
+    snapshots.set(file, readWorktreeFileBytes(join(worktree, file)));
   }
   return snapshots;
 }
@@ -293,7 +260,7 @@ function fallowScriptsChanged(options: RecordedHitsRequest): boolean {
     "package.json",
     options.env,
   );
-  const afterBytes = readWorktreeRegularFileBytes(
+  const afterBytes = readWorktreeFileBytes(
     join(options.worktree, "package.json"),
   );
   if (beforeBytes === undefined || afterBytes === undefined) return false;
@@ -340,173 +307,95 @@ function recordedHitsAction(options: RecordedHitsRequest): RecordedHitsAction {
     return matchesEmpty ? "record-new" : "none";
   }
   const allPresentInWorktree = RECORDED_HITS_FILES.every(
-    (file) => readWorktreeRegularFileBytes(join(worktree, file)) !== undefined,
+    (file) => readWorktreeFileBytes(join(worktree, file)) !== undefined,
   );
   if (!allPresentInWorktree) return "none";
   return fallowSettingsChanged(options) ? "refresh-changed" : "none";
 }
 
-interface RecordedHitsFileGrowth {
-  readonly file: string;
-  readonly entries: readonly string[];
-}
-
-function decodeJsonObjectBytes(
-  bytes: Uint8Array,
-): Readonly<Record<string, unknown>> | undefined {
-  try {
-    return parseJsonObjectText(UTF8_STRICT.decode(bytes));
-  } catch {
-    return undefined;
-  }
-}
-
-function canonicalizeJson(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(canonicalizeJson);
-  }
-  if (typeof value === "object" && value !== null) {
-    const entries = Object.entries(value).sort((left, right) =>
-      left[0] < right[0] ? -1 : left[0] > right[0] ? 1 : 0,
-    );
-    return Object.fromEntries(
-      entries.map(([key, item]) => [key, canonicalizeJson(item)]),
-    );
-  }
-  return value;
-}
-
-function formatEntryValue(value: unknown): string {
-  return typeof value === "string"
-    ? value
-    : JSON.stringify(canonicalizeJson(value));
-}
-
-function countArrayItems(
-  items: readonly unknown[],
-): Map<string, { readonly count: number; readonly sample: unknown }> {
-  const counts = new Map<
-    string,
-    { readonly count: number; readonly sample: unknown }
-  >();
-  for (const item of items) {
-    const key = JSON.stringify(canonicalizeJson(item));
-    const existing = counts.get(key);
-    counts.set(key, {
-      count: (existing?.count ?? 0) + 1,
-      sample: existing?.sample ?? item,
-    });
-  }
-  return counts;
-}
-
-function arrayGrowthEntries(
-  fieldPath: string,
-  beforeValue: unknown,
-  afterValue: readonly unknown[],
-): string[] {
-  if (beforeValue !== undefined && !Array.isArray(beforeValue)) {
-    return [fieldPath];
-  }
-  const beforeCounts = countArrayItems(beforeValue ?? []);
-  const afterCounts = countArrayItems(afterValue);
-  const grown: string[] = [];
-  for (const [key, { count, sample }] of afterCounts) {
-    const prior = beforeCounts.get(key)?.count ?? 0;
-    if (prior === 0) {
-      grown.push(`${fieldPath}: ${formatEntryValue(sample)}`);
-    } else if (count > prior) {
-      grown.push(
-        `${fieldPath}: ${formatEntryValue(sample)} (${prior} -> ${count})`,
-      );
-    }
-  }
-  return grown;
-}
-
-function objectGrowthEntries(
-  fieldPath: string,
-  beforeValue: unknown,
-  afterValue: Readonly<Record<string, unknown>>,
-): string[] {
-  const beforeRecord = beforeValue === undefined ? {} : asRecord(beforeValue);
-  if (beforeRecord === undefined) return [fieldPath];
-  const grown: string[] = [];
-  for (const [key, entryValue] of Object.entries(afterValue)) {
-    const nestedPath = fieldPath === "" ? key : `${fieldPath}.${key}`;
-    const prior = Object.hasOwn(beforeRecord, key)
-      ? beforeRecord[key]
-      : undefined;
-    grown.push(...propertyGrowthEntries(nestedPath, prior, entryValue));
-  }
-  return grown;
-}
-
-function propertyGrowthEntries(
-  fieldPath: string,
-  beforeValue: unknown,
-  afterValue: unknown,
-): string[] {
-  if (Array.isArray(afterValue)) {
-    return arrayGrowthEntries(fieldPath, beforeValue, afterValue);
-  }
-  const afterRecord = asRecord(afterValue);
-  if (afterRecord !== undefined) {
-    return objectGrowthEntries(fieldPath, beforeValue, afterRecord);
-  }
-  if (beforeValue === undefined) return [fieldPath];
-  if (typeof afterValue === "number" && typeof beforeValue === "number") {
-    return afterValue > beforeValue
-      ? [`${fieldPath} (${beforeValue} -> ${afterValue})`]
-      : [];
-  }
-  return JSON.stringify(canonicalizeJson(beforeValue)) ===
-    JSON.stringify(canonicalizeJson(afterValue))
-    ? []
-    : [fieldPath];
-}
-
-function fileGrowthEntries(
-  beforeBytes: Uint8Array,
-  afterBytes: Uint8Array,
-): string[] {
-  const before = decodeJsonObjectBytes(beforeBytes);
-  const after = decodeJsonObjectBytes(afterBytes);
-  if (before === undefined || after === undefined) {
-    return ["unreadable recorded-hits JSON"];
-  }
-  const grown: string[] = [];
-  for (const [key, afterValue] of Object.entries(after)) {
-    if (METADATA_KEYS.has(key)) continue;
-    const beforeValue = Object.hasOwn(before, key) ? before[key] : undefined;
-    grown.push(...propertyGrowthEntries(key, beforeValue, afterValue));
-  }
-  return grown;
-}
-
-function findRecordedHitsGrowth(
+function snapshotsRefreshedAnalysisIdentity(
   worktree: string,
   snapshots: ReadonlyMap<string, Uint8Array | undefined>,
-): RecordedHitsFileGrowth[] {
-  const growth: RecordedHitsFileGrowth[] = [];
+): boolean {
   for (const [file, beforeBytes] of snapshots) {
-    const afterBytes = readWorktreeRegularFileBytes(join(worktree, file));
-    if (beforeBytes === undefined) {
-      if (afterBytes !== undefined) {
-        growth.push({ file, entries: ["file added"] });
-      }
-      continue;
-    }
-    if (afterBytes === undefined) {
-      growth.push({ file, entries: ["file removed"] });
-      continue;
-    }
-    const entries = fileGrowthEntries(beforeBytes, afterBytes);
-    if (entries.length > 0) {
-      growth.push({ file, entries });
+    if (beforeBytes === undefined) continue;
+    const afterBytes = readWorktreeFileBytes(join(worktree, file));
+    if (afterBytes === undefined) continue;
+    const beforeObj = decodeJsonObjectBytes(beforeBytes);
+    const afterObj = decodeJsonObjectBytes(afterBytes);
+    if (
+      beforeObj !== undefined &&
+      afterObj !== undefined &&
+      Object.hasOwn(afterObj, "analysis_identity") &&
+      JSON.stringify(beforeObj.analysis_identity) !==
+        JSON.stringify(afterObj.analysis_identity)
+    ) {
+      return true;
     }
   }
-  return growth;
+  return false;
+}
+
+function formatRewrittenFiles(
+  worktree: string,
+  files: readonly string[],
+  timeoutMilliseconds: number,
+  env: ProcessEnvMap,
+): void {
+  if (files.length === 0) return;
+  const biomeBin = join(worktree, "node_modules/.bin/biome");
+  if (!existsSync(biomeBin)) return;
+  Bun.spawnSync([biomeBin, "format", "--write", ...files], {
+    cwd: worktree,
+    env: toolchainEnvironment(env),
+    stdout: "pipe",
+    stderr: "pipe",
+    timeout: timeoutMilliseconds,
+    killSignal: "SIGKILL",
+  });
+}
+
+function keepIdentityOnly(
+  worktree: string,
+  snapshots: ReadonlyMap<string, Uint8Array | undefined>,
+  timeoutMilliseconds: number,
+  env: ProcessEnvMap,
+): void {
+  const rewritten: string[] = [];
+  for (const [file, beforeBytes] of snapshots) {
+    const fullPath = join(worktree, file);
+    if (beforeBytes === undefined) {
+      rmSync(fullPath, { force: true });
+      continue;
+    }
+    const afterBytes = readWorktreeFileBytes(fullPath);
+    const beforeObj = decodeJsonObjectBytes(beforeBytes);
+    const afterObj =
+      afterBytes === undefined ? undefined : decodeJsonObjectBytes(afterBytes);
+    if (
+      beforeObj !== undefined &&
+      afterObj !== undefined &&
+      Object.hasOwn(afterObj, "analysis_identity") &&
+      JSON.stringify(beforeObj.analysis_identity) !==
+        JSON.stringify(afterObj.analysis_identity)
+    ) {
+      const updated = Object.fromEntries(
+        Object.entries(beforeObj).map(([key, value]) =>
+          key === "analysis_identity"
+            ? [key, afterObj.analysis_identity]
+            : [key, value],
+        ),
+      );
+      if (!Object.hasOwn(updated, "analysis_identity")) {
+        updated.analysis_identity = afterObj.analysis_identity;
+      }
+      writeFileSync(fullPath, `${JSON.stringify(updated, null, 2)}\n`);
+      rewritten.push(file);
+    } else {
+      writeFileSync(fullPath, beforeBytes);
+    }
+  }
+  formatRewrittenFiles(worktree, rewritten, timeoutMilliseconds, env);
 }
 
 function recordedHitsWouldGrowError(
@@ -662,16 +551,38 @@ export function runRecordedHitsStep(
       ]),
     };
   }
-  const growth = findRecordedHitsGrowth(request.worktree, pending.snapshots);
-  if (growth.length > 0) {
-    restoreSnapshots(request.worktree, pending.snapshots);
-    rmSync(pendingDir, { force: true, recursive: true });
-    throw recordedHitsWouldGrowError(growth);
+  let reason: string | undefined;
+  if (pending.action === "refresh-changed") {
+    const growth = findRecordedHitsGrowth(request.worktree, pending.snapshots);
+    if (growth.length > 0) {
+      if (
+        snapshotsRefreshedAnalysisIdentity(request.worktree, pending.snapshots)
+      ) {
+        keepIdentityOnly(
+          request.worktree,
+          pending.snapshots,
+          timeoutMilliseconds,
+          request.env,
+        );
+        reason = REFRESHED_IDENTITY_REASON;
+      } else {
+        restoreSnapshots(request.worktree, pending.snapshots);
+        rmSync(pendingDir, { force: true, recursive: true });
+        throw recordedHitsWouldGrowError(growth);
+      }
+    }
   }
   markRecordingDone(request);
   rmSync(pendingDir, { force: true, recursive: true });
   return {
     ok: true,
-    steps: [createTemplateUpgradeApplyStep(RECORDED_HITS_STEP, true, "passed")],
+    steps: [
+      createTemplateUpgradeApplyStep(
+        RECORDED_HITS_STEP,
+        true,
+        "passed",
+        reason,
+      ),
+    ],
   };
 }

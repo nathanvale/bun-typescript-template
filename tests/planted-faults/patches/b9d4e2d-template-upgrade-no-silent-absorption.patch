@@ -1,0 +1,16 @@
+diff --git a/src/template-upgrade-recorded-hits.ts b/src/template-upgrade-recorded-hits.ts
+--- a/src/template-upgrade-recorded-hits.ts
++++ b/src/template-upgrade-recorded-hits.ts
+@@ -560,12 +560,6 @@ export function runRecordedHitsStep(
+       if (
+         snapshotsRefreshedAnalysisIdentity(request.worktree, pending.snapshots)
+       ) {
+-        keepIdentityOnly(
+-          request.worktree,
+-          pending.snapshots,
+-          timeoutMilliseconds,
+-          request.env,
+-        );
+         reason = REFRESHED_IDENTITY_REASON;
+       } else {
+         restoreSnapshots(request.worktree, pending.snapshots);

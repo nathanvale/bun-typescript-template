@@ -229,7 +229,6 @@ exit 0
         interruptFlag,
         ledger,
         request,
-        originalDeadCode,
         originalDupes,
         originalHealth,
       };
@@ -254,15 +253,20 @@ exit 0
       expect(readFileSync(dupesPath, "utf8")).toContain('"d1"');
 
       rmSync(scenario.interruptFlag);
-      expect(() => runRecordedHitsStep(scenario.request, 10_000)).toThrow(
-        /recording would grow recorded hits:.*fallow-duplicates-recorded-hits\.json/,
-      );
+      const retry = runRecordedHitsStep(scenario.request, 10_000);
+      expect(retry.ok).toBe(true);
       expect(
-        readFileSync(
-          join(scenario.worktree, "fallow-dead-code-recorded-hits.json"),
-          "utf8",
+        JSON.parse(
+          readFileSync(
+            join(scenario.worktree, "fallow-dead-code-recorded-hits.json"),
+            "utf8",
+          ),
         ),
-      ).toBe(scenario.originalDeadCode);
+      ).toEqual({
+        kind: "dead-code",
+        analysis_identity: { project_config_hash: "new" },
+        boundary_violations: [],
+      });
       expect(readFileSync(dupesPath, "utf8")).toBe(scenario.originalDupes);
       expect(
         readFileSync(
@@ -284,6 +288,10 @@ exit 0
         join(pendingDir, "state.json"),
         '{"action":"refresh-changed"}\n',
       );
+
+      const third = runRecordedHitsStep(scenario.request, 10_000);
+      expect(third).toEqual({ ok: true, steps: [] });
+      expect(existsSync(pendingDir)).toBe(false);
       expect(readFileSync(scenario.ledger, "utf8").trim().split("\n")).toEqual([
         "run quality:fallow:record-hits",
         "run quality:fallow:record-hits",

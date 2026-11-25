@@ -205,6 +205,10 @@ exit 0
     });
 
     rmSync(failCheckFlag);
+    writeFileSync(
+      join(worktree, "src/repair.ts"),
+      "export const repaired = true;\n",
+    );
     const second = await invokeTemplateUpgradeMain(stdout, stderr, args, {
       templateRoot: templateClone,
       env,
