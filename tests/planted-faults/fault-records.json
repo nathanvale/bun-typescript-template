@@ -3089,5 +3089,12 @@
     "testFile": "tests/template/test-run/test-run-folder.test.ts",
     "title": "^when STATE_TEST_DIR is set, testFolder lands inside the run folder under STATE_TEST_DIR and nothing is left after the run$",
     "source": "511a529 fix(test-run): keep test folders inside the test run folder when STATE_TEST_DIR is set"
+  },
+  {
+    "id": "2618ac3-template-upgrade-recorded-hits-growth",
+    "patch": "tests/planted-faults/patches/2618ac3-template-upgrade-recorded-hits-growth.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-growth.test.ts",
+    "title": "^refuses with recorded_hits_would_grow when the recording step adds keys to fallow-health-recorded-hits\\.json, commits nothing, and leaves the file byte-identical to the base$",
+    "source": "2618ac3 fix(template-upgrade): refuse recorded-hits growth during upgrade"
   }
 ]

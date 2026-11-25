@@ -1,0 +1,16 @@
+diff --git a/src/template-upgrade-recorded-hits.ts b/src/template-upgrade-recorded-hits.ts
+--- a/src/template-upgrade-recorded-hits.ts
++++ b/src/template-upgrade-recorded-hits.ts
+@@ -662,12 +662,6 @@ export function runRecordedHitsStep(
+       ]),
+     };
+   }
+-  const growth = findRecordedHitsGrowth(request.worktree, pending.snapshots);
+-  if (growth.length > 0) {
+-    restoreSnapshots(request.worktree, pending.snapshots);
+-    rmSync(pendingDir, { force: true, recursive: true });
+-    throw recordedHitsWouldGrowError(growth);
+-  }
+   markRecordingDone(request);
+   rmSync(pendingDir, { force: true, recursive: true });
+   return {
