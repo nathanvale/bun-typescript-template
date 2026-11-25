@@ -1,0 +1,12 @@
+diff --git a/scripts/test-run.ts b/scripts/test-run.ts
+--- a/scripts/test-run.ts
++++ b/scripts/test-run.ts
+@@ -190,7 +190,7 @@
+       .map((name) => join(folder, name))
+       .filter(
+         (path) =>
+-          path !== runFolder && !isLiveRunFolder(path) && ownedBy(path, owner),
++          path !== runFolder && !isLiveRunFolder(path),
+       ),
+   );
+ }
