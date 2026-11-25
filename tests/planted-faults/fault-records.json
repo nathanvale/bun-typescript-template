@@ -3264,5 +3264,33 @@
     "testFile": "tests/template/test-run/test-run.test.ts",
     "title": "^when bun test has been reparented away from a live unreaped runner pid, the preload removes the run folder on exit$",
     "source": "8e2a407 fix(test-run): treat a reparented runner as gone in the preload guard"
+  },
+  {
+    "id": "f4bac4c-changeset-readme-exit-code",
+    "patch": "tests/planted-faults/patches/f4bac4c-changeset-readme-exit-code.patch",
+    "testFile": "tests/template/changesets/changeset-version.test.ts",
+    "title": "^release step documentation Release step 1 decides nothing to release from pending changesets before running changeset version and reports any non-zero exit as a failure$",
+    "source": "f4bac4c fix(changeset): check pending changesets before version and rename backfill command"
+  },
+  {
+    "id": "f4bac4c-changeset-readme-empty-only",
+    "patch": "tests/planted-faults/patches/f4bac4c-changeset-readme-empty-only.patch",
+    "testFile": "tests/template/changesets/changeset-version.test.ts",
+    "title": "^release step documentation Release step 1 treats empty-only pending changesets as nothing to release so no empty version pull request is cut$",
+    "source": "f4bac4c fix(changeset): check pending changesets before version and rename backfill command"
+  },
+  {
+    "id": "f4bac4c-changeset-readme-backfill",
+    "patch": "tests/planted-faults/patches/f4bac4c-changeset-readme-backfill.patch",
+    "testFile": "tests/template/changesets/changeset-version.test.ts",
+    "title": "^release step documentation Release backfill instructions name agent-gates changelog backfill in both the template README and pull-requests guide$",
+    "source": "f4bac4c fix(changeset): check pending changesets before version and rename backfill command"
+  },
+  {
+    "id": "f4bac4c-pull-requests-backfill",
+    "patch": "tests/planted-faults/patches/f4bac4c-pull-requests-backfill.patch",
+    "testFile": "tests/template/changesets/changeset-version.test.ts",
+    "title": "^release step documentation Release backfill instructions name agent-gates changelog backfill in both the template README and pull-requests guide$",
+    "source": "f4bac4c fix(changeset): check pending changesets before version and rename backfill command"
   }
 ]
