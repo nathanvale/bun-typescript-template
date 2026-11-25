@@ -1,15 +1,13 @@
-import { afterAll, expect, test } from "bun:test";
+import { expect, test } from "bun:test";
 import {
   chmodSync,
   existsSync,
   mkdirSync,
   readFileSync,
-  rmSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
-import { asRecord, own } from "../../support/generated-hosted-check.ts";
+import { ownedFolders } from "../../support/fixture-files.ts";
 import {
   commitIn,
   gitEnv,
@@ -17,42 +15,9 @@ import {
   initRepository,
 } from "../../support/git-fixture.ts";
 import { processWatchdog, spawnBounded } from "../../support/process.ts";
-import { testFolder } from "../../support/test-folder.ts";
+import { readRecordedHitsGrowthStepRun } from "../../support/recorded-health-sizes-fixture.ts";
 
-const SHIPPED_WORKFLOW_PATH = join(
-  ROOT,
-  "generated-repository/hosted-check/ci.yml",
-);
-
-const folders: string[] = [];
-
-afterAll(() => {
-  for (const folder of folders) rmSync(folder, { recursive: true });
-});
-
-function readGrowthStepRun(): string {
-  const parsed = asRecord(
-    Bun.YAML.parse(readFileSync(SHIPPED_WORKFLOW_PATH, "utf8")),
-  );
-  const jobs = parsed === undefined ? undefined : asRecord(own(parsed, "jobs"));
-  const check = jobs === undefined ? undefined : asRecord(own(jobs, "check"));
-  const rawSteps = check === undefined ? undefined : own(check, "steps");
-  if (!Array.isArray(rawSteps))
-    throw new Error("generated-repository/hosted-check/ci.yml has no steps");
-  const growthStep = rawSteps
-    .map(asRecord)
-    .find(
-      (step) =>
-        step !== undefined &&
-        own(step, "name") === "Check Fallow recorded hits did not grow",
-    );
-  const run = growthStep === undefined ? undefined : own(growthStep, "run");
-  if (typeof run !== "string" || run.trim() === "")
-    throw new Error(
-      "generated-repository/hosted-check/ci.yml has no recorded-hits growth step",
-    );
-  return run;
-}
+const folder = ownedFolders();
 
 function createFixture(): {
   readonly repo: string;
@@ -60,8 +25,7 @@ function createFixture(): {
   readonly stubBin: string;
   readonly logFile: string;
 } {
-  const root = testFolder("growth-step-missing-base-");
-  folders.push(root);
+  const root = folder("growth-step-missing-base-");
   const repo = join(root, "repo");
   const stubBin = join(root, "bin");
   const logFile = join(root, "stub-bun.log");
@@ -108,7 +72,7 @@ function runGrowthStep(options: {
     PATH: `${options.stubBin}:${currentPath}`,
     STUB_BUN_LOG: options.logFile,
   };
-  return spawnBounded(["bash", "-e", "-c", readGrowthStepRun()], {
+  return spawnBounded(["bash", "-e", "-c", readRecordedHitsGrowthStepRun()], {
     cwd: options.repo,
     env,
     processGroup: true,
