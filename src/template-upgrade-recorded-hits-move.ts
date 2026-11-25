@@ -34,13 +34,45 @@ function addBindingNames(binding: ts.BindingName, names: Set<string>): void {
   }
 }
 
-function propertyNameText(name: ts.PropertyName): string | undefined {
-  if (ts.isIdentifier(name)) return name.text;
+type PropertyNameResult =
+  | { readonly kind: "name"; readonly text: string }
+  | { readonly kind: "any" }
+  | { readonly kind: "none" };
+
+interface DeclaredSymbols {
+  readonly names: ReadonlySet<string>;
+  readonly definesAnyName: boolean;
+}
+
+interface SymbolCollector {
+  readonly names: Set<string>;
+  definesAnyName: boolean;
+}
+
+function resolvePropertyName(name: ts.PropertyName): PropertyNameResult {
+  if (ts.isIdentifier(name)) return { kind: "name", text: name.text };
   if (ts.isPrivateIdentifier(name)) {
-    return name.text.startsWith("#") ? name.text.slice(1) : name.text;
+    const text = name.text.startsWith("#") ? name.text.slice(1) : name.text;
+    return { kind: "name", text };
   }
-  if (ts.isStringLiteral(name) || ts.isNumericLiteral(name)) return name.text;
-  return undefined;
+  if (
+    ts.isStringLiteral(name) ||
+    ts.isNoSubstitutionTemplateLiteral(name) ||
+    ts.isNumericLiteral(name)
+  ) {
+    return { kind: "name", text: name.text };
+  }
+  if (ts.isComputedPropertyName(name)) {
+    const { expression } = name;
+    if (
+      ts.isStringLiteral(expression) ||
+      ts.isNoSubstitutionTemplateLiteral(expression)
+    ) {
+      return { kind: "name", text: expression.text };
+    }
+    return { kind: "any" };
+  }
+  return { kind: "none" };
 }
 
 function hasDefaultModifier(node: ts.Node): boolean {
@@ -67,27 +99,35 @@ function addFunctionOrClassName(node: ts.Node, names: Set<string>): boolean {
   return true;
 }
 
-function addMemberName(node: ts.Node, names: Set<string>): boolean {
+function memberPropertyName(node: ts.Node): ts.PropertyName | undefined {
   if (
     ts.isMethodDeclaration(node) ||
     ts.isGetAccessorDeclaration(node) ||
     ts.isSetAccessorDeclaration(node) ||
     ts.isPropertyDeclaration(node)
   ) {
-    const memberName = propertyNameText(node.name);
-    if (memberName !== undefined) names.add(memberName);
-    return true;
+    return node.name;
   }
   if (
     ts.isPropertyAssignment(node) &&
     (ts.isFunctionLike(node.initializer) ||
       ts.isClassExpression(node.initializer))
   ) {
-    const memberName = propertyNameText(node.name);
-    if (memberName !== undefined) names.add(memberName);
-    return true;
+    return node.name;
   }
-  return false;
+  return undefined;
+}
+
+function addMemberName(node: ts.Node, collector: SymbolCollector): boolean {
+  const propertyName = memberPropertyName(node);
+  if (propertyName === undefined) return false;
+  const resolved = resolvePropertyName(propertyName);
+  if (resolved.kind === "name") {
+    collector.names.add(resolved.text);
+  } else if (resolved.kind === "any") {
+    collector.definesAnyName = true;
+  }
+  return true;
 }
 
 function addTypeOrExportName(node: ts.Node, names: Set<string>): void {
@@ -116,20 +156,20 @@ function addTypeOrExportName(node: ts.Node, names: Set<string>): void {
   }
 }
 
-function recordDeclaredNode(node: ts.Node, names: Set<string>): void {
-  if (addFunctionOrClassName(node, names)) return;
+function recordDeclaredNode(node: ts.Node, collector: SymbolCollector): void {
+  if (addFunctionOrClassName(node, collector.names)) return;
   if (ts.isVariableDeclaration(node)) {
-    addBindingNames(node.name, names);
+    addBindingNames(node.name, collector.names);
     return;
   }
-  if (addMemberName(node, names)) return;
-  addTypeOrExportName(node, names);
+  if (addMemberName(node, collector)) return;
+  addTypeOrExportName(node, collector.names);
 }
 
 function collectDeclaredSymbols(
   filePath: string,
   text: string,
-): ReadonlySet<string> | undefined {
+): DeclaredSymbols | undefined {
   const sourceFile = ts.createSourceFile(
     filePath,
     text,
@@ -140,13 +180,16 @@ function collectDeclaredSymbols(
   if (!Array.isArray(diagnostics) || diagnostics.length > 0) {
     return undefined;
   }
-  const names = new Set<string>();
+  const collector: SymbolCollector = {
+    names: new Set<string>(),
+    definesAnyName: false,
+  };
   const visit = (node: ts.Node): void => {
-    recordDeclaredNode(node, names);
+    recordDeclaredNode(node, collector);
     ts.forEachChild(node, visit);
   };
   visit(sourceFile);
-  return names;
+  return collector;
 }
 
 function symbolParts(symbol: string): string[] {
@@ -161,8 +204,8 @@ function symbolDefinedInSource(
   const parts = symbolParts(symbol);
   if (parts.length === 0) return false;
   const declared = collectDeclaredSymbols(filePath, text);
-  if (declared === undefined) return true;
-  return parts.every((part) => declared.has(part));
+  if (declared === undefined || declared.definesAnyName) return true;
+  return parts.every((part) => declared.names.has(part));
 }
 
 function resolveWorktreePath(
@@ -280,7 +323,7 @@ function isSoleSymbolDefinition(
       : collectDeclaredSymbols(newFullPath, newText);
   if (
     newDeclared === undefined ||
-    !parts.every((part) => newDeclared.has(part))
+    !parts.every((part) => newDeclared.names.has(part))
   ) {
     return false;
   }

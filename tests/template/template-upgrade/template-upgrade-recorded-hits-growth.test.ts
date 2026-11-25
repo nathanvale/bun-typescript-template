@@ -10,145 +10,28 @@ import {
   cloneTemplateAtHead,
   commitTemplateLintChange,
   createRecordedHitsUpgradeFixture,
-  invokeTemplateUpgradeMain,
   writeScriptedBun,
 } from "../../support/template-upgrade-fixture.ts";
+import {
+  ALL_RECORDED_HITS_FILES,
+  branchName,
+  CALC_FN,
+  commitFallowGateChange,
+  createRecordedHitsGrowthHelpers,
+  expectGrowthRefusal,
+  HEALTH_FILE,
+  healthHitJson,
+  healthJson,
+  type RefusalEnvelope,
+  worktreePath,
+} from "../../support/template-upgrade-recorded-hits-fixture.ts";
 
 const folder = ownedFolders();
 const captureStream = streamWrites();
-const HEALTH_FILE = "fallow-health-recorded-hits.json";
-const CALC_FN =
-  "export function calculate(v: number): number {\n  return v;\n}\n";
-
-interface RefusalEnvelope {
-  readonly status: string;
-  readonly error: {
-    readonly code: string;
-    readonly message: string;
-    readonly repair: string;
-  };
-}
-
-function worktreePath(repo: string, target: string): string {
-  return join(repo, ".worktrees", `template-upgrade-${target.slice(0, 7)}`);
-}
-
-function branchName(base: string, target: string): string {
-  return `template-upgrade/${base.slice(0, 7)}-${target.slice(0, 7)}`;
-}
-
-function healthJson(fields: Readonly<Record<string, unknown>>): string {
-  return `${JSON.stringify(
-    {
-      kind: "health",
-      finding_counts: {},
-      identity_finding_counts: {},
-      runtime_coverage_findings: [],
-      target_keys: [],
-      ...fields,
-    },
-    null,
-    2,
-  )}\n`;
-}
-
-function healthHitJson(path: string): string {
-  return healthJson({
-    finding_counts: { [path]: 1 },
-    identity_finding_counts: { [`${path}\u0000calculate`]: 1 },
-    target_keys: [path],
-  });
-}
-
-function commitFallowGateChange(templateClone: string): string {
-  const rel = "generated-repository/settings/.fallowrc.json";
-  const p = join(templateClone, rel);
-  writeFileSync(p, `${readFileSync(p, "utf8").trimEnd()}\n\n`);
-  git(templateClone, "add", "--", rel);
-  git(
-    templateClone,
-    "commit",
-    "--quiet",
-    "-m",
-    "change fallow settings for recorded-hits test",
-  );
-  return git(templateClone, "rev-parse", "HEAD");
-}
-
-function applyJson(
-  repo: string,
-  target: string,
-  templateRoot: string,
-  env: Readonly<Record<string, string | undefined>>,
-) {
-  return invokeTemplateUpgradeMain(
-    captureStream(process.stdout),
-    captureStream(process.stderr),
-    ["apply", "--repository", repo, "--to", target, "--json"],
-    { templateRoot, env },
-  );
-}
-
-function expectGrowthRefusal(
-  run: { readonly exitCode: number; readonly stderr: string },
-  repo: string,
-  branch: string,
-  worktree: string,
-  baseBytes: Uint8Array,
-  expectedDetails: readonly string[],
-  checkRepair = false,
-): void {
-  expect(run.exitCode).not.toBe(0);
-  const refusal = JSON.parse(run.stderr) as RefusalEnvelope;
-  expect(refusal.status).toBe("refused");
-  expect(refusal.error.code).toBe("recorded_hits_would_grow");
-  expect(refusal.error.message).toContain(HEALTH_FILE);
-  for (const detail of expectedDetails) {
-    expect(refusal.error.message).toContain(detail);
-  }
-  if (checkRepair) {
-    expect(refusal.error.repair).toContain("later commit");
-    expect(refusal.error.repair).toContain("rerun");
-  }
-  expect(git(repo, "branch", "--list", branch)).toBe("");
-  expect(
-    Buffer.compare(readFileSync(join(worktree, HEALTH_FILE)), baseBytes),
-  ).toBe(0);
-}
-
-async function runMoveCase(
-  app: string,
-  oldPath: string,
-  newPath: string,
-  action: string,
-  oldSource = CALC_FN,
-  newSource = CALC_FN,
-  extraFiles: Readonly<Record<string, string>> = {},
-) {
-  const { templateClone, baseCommit } = cloneTemplateAtHead(folder);
-  const repo = await bootstrapGeneratedRepository(
-    folder,
-    templateClone,
-    baseCommit,
-    app,
-  );
-  commitIn(repo, "owner hit", {
-    ...extraFiles,
-    [oldPath]: oldSource,
-    [HEALTH_FILE]: healthHitJson(oldPath),
-  });
-  const baseBytes = readFileSync(join(repo, HEALTH_FILE));
-  const target = commitFallowGateChange(templateClone);
-  const branch = branchName(baseCommit, target);
-  const worktree = worktreePath(repo, target);
-  const { env } = writeScriptedBun(
-    folder,
-    `scripted-bun-${app}-`,
-    `#!/bin/sh\necho "$*" >> __LEDGER__\nif [ "$1 $2" = "run quality:fallow:record-hits" ]; then\n${action}\ncat <<'EOF' > ${newPath}\n${newSource}EOF\ncat <<'EOF' > ${HEALTH_FILE}\n${healthHitJson(newPath)}EOF\nfi\nif [ "$1 $2 $3" = "run --bun changeset" ]; then\nmkdir -p .changeset && printf -- '---\\n---\\n' > .changeset/a.md\nfi\nexit 0\n`,
-  );
-  const run = await applyJson(repo, target, templateClone, env);
-  return { repo, branch, worktree, baseBytes, run };
-}
+const { applyJson, runMoveCase } = createRecordedHitsGrowthHelpers(
+  folder,
+  captureStream,
+);
 
 test(
   "refuses with recorded_hits_would_grow when the recording step adds keys to fallow-health-recorded-hits.json, commits nothing, and leaves the file byte-identical to the base",
@@ -512,6 +395,83 @@ test(
       status: "applied",
       branch: allowed.branch,
     });
+  },
+  processWatchdog(6),
+);
+
+test(
+  "refuses with recorded_hits_would_grow when the old file is deleted and a third tracked file defines the symbol as a computed method, commits nothing, and leaves every recorded-hits file byte-identical to the base",
+  async () => {
+    const { repo, branch, worktree, baseBytes, run } = await runMoveCase(
+      "computed-method-twin-app",
+      "src/old.ts",
+      "src/new.ts",
+      "rm src/old.ts",
+      CALC_FN,
+      "export function calculate(v: number): number {\n  return v + 1;\n}\n",
+      {
+        "src/other.ts":
+          'export class Other { ["calculate"](v: number): number { return v; } }\n',
+      },
+    );
+    expectGrowthRefusal(run, repo, branch, worktree, baseBytes, [
+      "src/new.ts\u0000calculate",
+    ]);
+    for (const file of ALL_RECORDED_HITS_FILES) {
+      expect(
+        Buffer.compare(
+          readFileSync(join(worktree, file)),
+          readFileSync(join(repo, file)),
+        ),
+      ).toBe(0);
+    }
+  },
+  processWatchdog(4),
+);
+
+test(
+  "refuses with recorded_hits_would_grow when a third tracked file defines a non-literal or template-literal computed member",
+  async () => {
+    const templateLiteral = await runMoveCase(
+      "computed-template-literal-app",
+      "src/old.ts",
+      "src/new.ts",
+      "rm src/old.ts",
+      CALC_FN,
+      "export function calculate(v: number): number {\n  return v + 1;\n}\n",
+      {
+        "src/other.ts":
+          "export const other = { [`calculate`]: (v: number): number => v };\n",
+      },
+    );
+    expectGrowthRefusal(
+      templateLiteral.run,
+      templateLiteral.repo,
+      templateLiteral.branch,
+      templateLiteral.worktree,
+      templateLiteral.baseBytes,
+      ["src/new.ts\u0000calculate"],
+    );
+    const nonLiteral = await runMoveCase(
+      "computed-non-literal-app",
+      "src/old.ts",
+      "src/new.ts",
+      "rm src/old.ts",
+      CALC_FN,
+      "export function calculate(v: number): number {\n  return v + 1;\n}\n",
+      {
+        "src/other.ts":
+          "const key = 'other';\nexport class Other { [key](v: number): number { return v; } }\n",
+      },
+    );
+    expectGrowthRefusal(
+      nonLiteral.run,
+      nonLiteral.repo,
+      nonLiteral.branch,
+      nonLiteral.worktree,
+      nonLiteral.baseBytes,
+      ["src/new.ts\u0000calculate"],
+    );
   },
   processWatchdog(6),
 );
