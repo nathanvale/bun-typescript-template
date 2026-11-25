@@ -441,6 +441,9 @@ test(
     try {
       const second = await applyJson(repo, targetCommit, templateClone, env);
       expect(second.exitCode).not.toBe(0);
+      const failure = JSON.parse(second.stderr) as RefusalEnvelope;
+      expect(failure.error.code).toBe("runtime_failure");
+      expect(failure.error.message).toContain(HEALTH_FILE);
       expect(git(repo, "branch", "--list", branch)).toBe("");
       chmodSync(healthPath, 0o644);
       expect(Buffer.compare(readFileSync(healthPath), baseBytes)).toBe(0);

@@ -107,7 +107,11 @@ function addTypeOrExportName(node: ts.Node, names: Set<string>): void {
     names.add("default");
     return;
   }
-  if (ts.isExportSpecifier(node)) {
+  if (
+    ts.isExportSpecifier(node) &&
+    node.propertyName !== undefined &&
+    node.parent.parent.moduleSpecifier === undefined
+  ) {
     names.add(node.name.text);
   }
 }
