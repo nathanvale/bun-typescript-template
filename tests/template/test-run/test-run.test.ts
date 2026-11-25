@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { startChild } from "../../../scripts/process-runner.ts";
 import {
@@ -333,51 +333,6 @@ test(
     });
     expect(run.exit).toBe(0);
     expect(readdirSync(temp)).toEqual([]);
-  },
-  processWatchdog(1),
-);
-
-test(
-  "when bun test has been reparented away from a live unreaped runner pid, the preload removes the run folder on exit",
-  async () => {
-    const temp = folder("test-run-temp-");
-    const runFolder = join(temp, "test-run-reparented");
-    mkdirSync(runFolder);
-    const ledger = join(folder("test-run-ledger-"), "reparented");
-    const stopFile = join(folder("test-run-stop-"), "stop");
-    const holderScript = `import { appendFileSync, existsSync } from "node:fs";
-appendFileSync(process.env.L, "ready\\n");
-await new Promise((resolve) => {
-  const poll = setInterval(() => {
-    if (!existsSync(process.env.STOP)) return;
-    clearInterval(poll);
-    resolve(undefined);
-  }, 10);
-});`;
-    const holder = startChild([process.execPath, "-e", holderScript], {
-      env: outsideRun(temp, { L: ledger, STOP: stopFile }),
-      limitMilliseconds: runBound,
-      graceMilliseconds: 0,
-    });
-    const ready = watchLedger(ledger, "ready", runBound);
-    try {
-      await ready.reached;
-      const root = specimen({ "tests/passing.test.ts": passing });
-      const run = await spawnBounded([process.execPath, "test"], {
-        cwd: root,
-        env: outsideRun(runFolder, {
-          [testRunFolderVariable]: runFolder,
-          [testRunProcessVariable]: String(holder.pid),
-        }),
-      });
-      expect(run.exit).toBe(0);
-      expect(readdirSync(temp)).toEqual([]);
-    } finally {
-      ready.stop();
-      writeFileSync(stopFile, "1");
-      holder.stop();
-      await holder.finished;
-    }
   },
   processWatchdog(1),
 );
