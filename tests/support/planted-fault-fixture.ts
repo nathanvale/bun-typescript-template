@@ -7,7 +7,7 @@ import {
   rmSync,
 } from "node:fs";
 import { join } from "node:path";
-import { testRunFiles, write } from "./fixture-files.ts";
+import { write } from "./fixture-files.ts";
 import {
   commit,
   gitEnv,
@@ -319,7 +319,6 @@ export function createPlantedFaultFixture() {
         "utf8",
       ),
       "src/limit.ts": unguarded,
-      ...testRunFiles(),
     });
     const fix = commit(root, "fix: refuse a NaN limit", {
       "src/limit.ts": guarded,

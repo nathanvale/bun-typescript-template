@@ -12,7 +12,7 @@ import {
   rejection,
   unguarded,
 } from "../../support/planted-fault-in-process-fixture.ts";
-import { testRunFiles, write } from "../../support/fixture-files.ts";
+import { write } from "../../support/fixture-files.ts";
 import { gitOutput, commit, worktrees } from "../../support/git-fixture.ts";
 
 const { isolated, planted } = createPlantedFaultFixture();
@@ -52,10 +52,7 @@ function ambiguous(places: string, count = 2): string {
   return `anchor ambiguous: the removed text of hunk 1, starting "${guardLine}", is at ${count} places: ${places}. Its context lines do not choose one, and a planted fault in the wrong place still fails its test, so it was not applied.`;
 }
 
-function renamed(
-  root: string,
-  extra: Record<string, string | null> = {},
-): void {
+function renamed(root: string, extra: Record<string, string> = {}): void {
   gitOutput(root, "mv", "src/limit.ts", "src/bound.ts");
   commit(root, "rename limit to bound", {
     "tests/limit.test.ts": limitTests.replace(
@@ -160,13 +157,7 @@ describe("replay", () => {
 `,
     );
     const spaced = guarded.replace("  return value;", "\n  return value;");
-    renamed(subject.root, {
-      "src/bound.ts": spaced,
-      "src/copy.ts": spaced,
-      ...Object.fromEntries(
-        Object.keys(testRunFiles()).map((path) => [path, null]),
-      ),
-    });
+    renamed(subject.root, { "src/bound.ts": spaced, "src/copy.ts": spaced });
 
     const run = await replayed(subject);
 
@@ -467,7 +458,7 @@ test("L.refuses dies", () => {
     );
 
     expect(await rejection(run)).toBe(
-      `${process.execPath} scripts/test-run.ts ./tests/limit.test.ts -t ^L\\.refuses  was killed by SIGKILL while replaying ${subject.id}, so it has no verdict.`,
+      `${process.execPath} test ./tests/limit.test.ts -t ^L\\.refuses  was killed by SIGKILL while replaying ${subject.id}, so it has no verdict.`,
     );
   }, 60_000);
 

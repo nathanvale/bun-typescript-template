@@ -3,7 +3,7 @@ import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Fault } from "../../scripts/planted-faults.ts";
 import { repositoryLocation } from "../../scripts/process-runner.ts";
-import { ownedFolders, testRunFiles, write } from "./fixture-files.ts";
+import { ownedFolders, write } from "./fixture-files.ts";
 import { commit, gitEnv, gitOutput, initRepository } from "./git-fixture.ts";
 
 export const recordsPath = "tests/planted-faults/fault-records.json";
@@ -120,7 +120,6 @@ export function createPlantedFaultFixture() {
         options.manifest ?? JSON.stringify({ name: "fixture", private: true }),
       ".gitignore": "node_modules/\n",
       "src/limit.ts": unguarded,
-      ...testRunFiles(),
     });
     const fix = commit(root, "fix: refuse a NaN limit", {
       "src/limit.ts": guarded,

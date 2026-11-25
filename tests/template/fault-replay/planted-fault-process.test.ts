@@ -130,7 +130,7 @@ describe("bun run fault-replay", () => {
         expect(verdicts(run.lines)).toEqual([`TIMEOUT ${id}`]);
         expect(lineOf(run.lines, "TIMEOUT")).toMatch(
           new RegExp(
-            `^TIMEOUT ${id} in [\\d.]+ s\\. \\S+ scripts/test-run\\.ts \\./tests/limit\\.test\\.ts -t \\^L\\\\\\.${id}  did not finish within ${stepSeconds} s, so the planted fault has no verdict\\.$`,
+            `^TIMEOUT ${id} in [\\d.]+ s\\. \\S+ test \\./tests/limit\\.test\\.ts -t \\^L\\\\\\.${id}  did not finish within ${stepSeconds} s, so the planted fault has no verdict\\.$`,
           ),
         );
         expect(run.lines).toContain(
