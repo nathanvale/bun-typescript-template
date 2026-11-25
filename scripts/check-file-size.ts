@@ -53,6 +53,7 @@ const generatedHooks = new Set([
 function excluded(path: string): boolean {
   return (
     basename(path) === "bun.lock" ||
+    path === "CHANGELOG.md" ||
     generatedHooks.has(path) ||
     path.split("/").slice(0, -1).includes("vendor")
   );
