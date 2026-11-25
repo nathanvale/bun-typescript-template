@@ -3131,5 +3131,12 @@
     "testFile": "tests/template/test-run/test-run-process.test.ts",
     "title": "^a strict test run names only new entries owned by the user it runs as",
     "source": "2cbeeb0 fix(test-run): report only leftovers owned by the user the tests run as"
+  },
+  {
+    "id": "7cf59dd-template-upgrade-recorded-hits-move-old-path",
+    "patch": "tests/planted-faults/patches/7cf59dd-template-upgrade-recorded-hits-move-old-path.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-growth.test.ts",
+    "title": "^refuses with recorded_hits_would_grow when an old recorded function is still defined at its old path and a same-named function is added at a new path, commits nothing, and leaves the file byte-identical to the base$",
+    "source": "7cf59dd fix(template-upgrade): verify moved recorded-hits symbols are absent at old paths"
   }
 ]
