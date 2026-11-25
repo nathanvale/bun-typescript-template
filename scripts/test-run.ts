@@ -106,6 +106,7 @@ export type TestRunOptions = {
   readonly strict: boolean;
   readonly report: (line: string) => void;
   readonly limitMilliseconds?: number;
+  readonly leftoverOwner?: number;
 };
 
 function readProcessMark(folder: string): number | undefined {
@@ -148,16 +149,49 @@ function isLiveRunFolder(path: string): boolean {
   }
 }
 
+const bunNodeFolder = `bun-node-${process.getuid?.()}-${Bun.revision.slice(0, 9)}`;
+
+function isBunOwnFolder(
+  folder: string,
+  name: string,
+  stateFolder: string | undefined,
+): boolean {
+  if (name !== bunNodeFolder || folder === stateFolder) return false;
+  try {
+    return lstatSync(join(folder, name)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function ownedBy(path: string, owner: number | undefined): boolean {
+  if (owner === undefined) return true;
+  try {
+    return lstatSync(path).uid === owner;
+  } catch {
+    return true;
+  }
+}
+
 function leftoversOf(
   folders: readonly string[],
   before: ReadonlyMap<string, Set<string>>,
   runFolder: string,
+  stateFolder: string | undefined,
+  owner: number | undefined,
 ): string[] {
   return folders.flatMap((folder) =>
     [...namesIn(folder)]
-      .filter((name) => !before.get(folder)?.has(name))
+      .filter(
+        (name) =>
+          !isBunOwnFolder(folder, name, stateFolder) &&
+          !before.get(folder)?.has(name),
+      )
       .map((name) => join(folder, name))
-      .filter((path) => path !== runFolder && !isLiveRunFolder(path)),
+      .filter(
+        (path) =>
+          path !== runFolder && !isLiveRunFolder(path) && ownedBy(path, owner),
+      ),
   );
 }
 
@@ -274,7 +308,15 @@ export async function runTests(
     );
   problems.push(
     ...leftoverProblems(
-      leftoversOf(options.leftoverFolders, before, runFolder),
+      leftoversOf(
+        options.leftoverFolders,
+        before,
+        runFolder,
+        options.env.STATE_TEST_DIR
+          ? realFolder(options.env.STATE_TEST_DIR)
+          : undefined,
+        options.leftoverOwner ?? process.getuid?.(),
+      ),
       options,
     ),
   );
