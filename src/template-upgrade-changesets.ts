@@ -146,18 +146,16 @@ function actionOf(summary: string): string | null {
   return matched === undefined ? null : matched.slice("Action: ".length).trim();
 }
 
-function parseEntry(
-  repositoryRoot: string,
-  rawFile: string,
-  meta: string,
-  env: ProcessEnvMap,
-): TemplateChangesetEntry {
-  const file = decodeChangesetFilename(rawFile);
-  const path = `${CHANGESET_PREFIX}${file}`;
-  const raw = readChangesetBlob(repositoryRoot, path, meta, env);
-  let parsed: ReturnType<typeof parseChangesetFile>;
+function isBumpLevel(type: string): boolean {
+  return type === "major" || type === "minor" || type === "patch";
+}
+
+function parseChangesetFrontmatter(
+  raw: string,
+  path: string,
+): ReturnType<typeof parseChangesetFile> {
   try {
-    parsed = parseChangesetFile(raw);
+    return parseChangesetFile(raw);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     throw new CliError(
@@ -168,6 +166,29 @@ function parseEntry(
       false,
     );
   }
+}
+
+export function changesetPackageLevel(
+  raw: string,
+  path: string,
+  packageName: string,
+): boolean {
+  const parsed = parseChangesetFrontmatter(raw, path);
+  return parsed.releases.some(
+    (release) => release.name === packageName && isBumpLevel(release.type),
+  );
+}
+
+function parseEntry(
+  repositoryRoot: string,
+  rawFile: string,
+  meta: string,
+  env: ProcessEnvMap,
+): TemplateChangesetEntry {
+  const file = decodeChangesetFilename(rawFile);
+  const path = `${CHANGESET_PREFIX}${file}`;
+  const raw = readChangesetBlob(repositoryRoot, path, meta, env);
+  const parsed = parseChangesetFrontmatter(raw, path);
   return Object.freeze({
     file,
     level: levelOf(parsed.releases),
@@ -308,6 +329,46 @@ export function readRepositoryChangesets(
     baseLegacyStems: new Set<string>(),
     env,
   });
+}
+
+export function repositoryPackageChangeset(
+  repositoryRoot: string,
+  fromCommit: string,
+  toCommit: string,
+  packageName: string,
+  env: ProcessEnvMap = process.env,
+): boolean {
+  const targetChangesets = listTreeAt(
+    repositoryRoot,
+    toCommit,
+    CHANGESET_FOLDER,
+    env,
+  );
+  if (targetChangesets.size === 0) {
+    return false;
+  }
+  const baseChangesets = listTreeAt(
+    repositoryRoot,
+    fromCommit,
+    CHANGESET_FOLDER,
+    env,
+  );
+  for (const [rawPath, meta] of targetChangesets) {
+    if (!rawPath.startsWith(CHANGESET_PREFIX) || baseChangesets.has(rawPath)) {
+      continue;
+    }
+    const rawFile = rawPath.slice(CHANGESET_PREFIX.length);
+    if (!isCandidateChangesetFile(rawFile)) {
+      continue;
+    }
+    const file = decodeChangesetFilename(rawFile);
+    const path = `${CHANGESET_PREFIX}${file}`;
+    const raw = readChangesetBlob(repositoryRoot, path, meta, env);
+    if (changesetPackageLevel(raw, path, packageName)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function summaryWithoutAction(summary: string): string {

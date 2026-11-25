@@ -204,6 +204,64 @@ test(
 );
 
 test(
+  "does not let an empty changeset already on the branch suppress the upgrade changeset",
+  async () => {
+    const { templateClone, baseCommit } = cloneTemplateAtHead(folder);
+    const targetCommit = commitTemplateUpgradeChanges(templateClone);
+    const base7 = baseCommit.slice(0, 7);
+    const target7 = targetCommit.slice(0, 7);
+    const branch = `template-upgrade/${base7}-${target7}`;
+    const expectedPath = `.changeset/template-upgrade-${target7}.md`;
+    const repo = await bootstrapGeneratedRepository(
+      folder,
+      templateClone,
+      baseCommit,
+      "changeset-empty-app",
+    );
+    git(repo, "update-ref", "refs/remotes/origin/main", "HEAD");
+    git(repo, "checkout", "--quiet", "-b", "feat/empty-changeset");
+    commitIn(repo, "add empty changeset", {
+      ".changeset/empty-note.md": "---\n---\n\nNo release bump.\n",
+    });
+
+    const env = templateUpgradeEnv();
+    const stdout = captureStream(process.stdout);
+    const stderr = captureStream(process.stderr);
+
+    const planRun = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      ["plan", "--repository", repo, "--to", targetCommit],
+      { templateRoot: templateClone, env },
+    );
+    expect(planRun.exitCode).toBe(0);
+    expect(planRun.stdout).toContain(
+      `Changeset: ${expectedPath} (patch, Upgraded template ${base7} to ${target7})`,
+    );
+
+    const applyRun = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      applyNoCheckJsonArgs(repo, targetCommit),
+      { templateRoot: templateClone, env },
+    );
+    expect(applyRun.exitCode).toBe(0);
+    expect(JSON.parse(applyRun.stdout)).toMatchObject({
+      status: "applied",
+      branch,
+    });
+    expect(branchChangesetFiles(repo, branch)).toEqual([
+      ".changeset/empty-note.md",
+      expectedPath,
+    ]);
+    const content = gitOutput(repo, "show", `${branch}:${expectedPath}`);
+    expect(content).toContain('"changeset-empty-app": patch');
+    expect(content).toContain(`Upgraded template ${base7} to ${target7}`);
+  },
+  processWatchdog(4),
+);
+
+test(
   "upgrade plan prints the Changeset line when apply would write one and omits it otherwise",
   async () => {
     const { templateClone, baseCommit } = cloneTemplateAtHead(folder);
