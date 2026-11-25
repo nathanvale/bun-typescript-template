@@ -1,0 +1,12 @@
+diff --git a/scripts/test-run.ts b/scripts/test-run.ts
+--- a/scripts/test-run.ts
++++ b/scripts/test-run.ts
+@@ -173,7 +173,7 @@
+     [...namesIn(folder)]
+       .filter(
+         (name) =>
+-          !isBunOwnFolder(folder, name, stateFolder) &&
++          true &&
+           !before.get(folder)?.has(name),
+       )
+       .map((name) => join(folder, name))
