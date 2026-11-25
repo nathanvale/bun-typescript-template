@@ -3110,5 +3110,12 @@
     "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-growth.test.ts",
     "title": "^refuses with recorded_hits_would_grow when the repair rerun recording step adds keys, commits nothing, and leaves the recorded-hits file byte-identical to the base$",
     "source": "5a25cbe fix(template-upgrade): allow re-identification and moved entries when checking recorded-hits growth"
+  },
+  {
+    "id": "5627649-generated-fallow-ignore",
+    "patch": "tests/planted-faults/patches/5627649-generated-fallow-ignore.patch",
+    "testFile": "tests/template/toolchain/generated-fallow-ignore.test.ts",
+    "title": "^the generated Fallow ignore list names only",
+    "source": "5627649 test(toolchain): pin the generated Fallow ignore list to exact starter-kit paths"
   }
 ]
