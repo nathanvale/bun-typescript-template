@@ -104,11 +104,11 @@ test("forges markers", () => {
       const firstResult = await first.finished;
       writeFileSync(ledger, `${readFileSync(ledger, "utf8")}a-off\n`);
       const secondResult = await second.finished;
-      expect([
-        firstResult.exitCode,
-        secondResult.exitCode,
-        ...readdirSync(concurrentTemp),
-      ]).toEqual([0, 0]);
+      expect(firstResult.stderr).toContain(" 1 pass\n");
+      expect(secondResult.stderr).toContain(" 1 pass\n");
+      expect(firstResult.stderr).not.toContain(concurrentTemp);
+      expect(secondResult.stderr).not.toContain(concurrentTemp);
+      expect(readdirSync(concurrentTemp)).toEqual([]);
     } finally {
       watchA.stop();
       writeFileSync(ledger, "b-on\na-off\n");
