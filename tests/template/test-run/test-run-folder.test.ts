@@ -231,3 +231,30 @@ test(
   },
   processWatchdog(1),
 );
+
+test(
+  "a strict test run ignores Bun's own bun-node-<uid>-<build> folder, which Bun always makes in /tmp whatever TMPDIR says, and still names a lookalike",
+  async () => {
+    const temp = folder("test-run-temp-");
+    const stateDir = folder("test-run-state-");
+    const own = join(
+      stateDir,
+      `bun-node-${process.getuid?.()}-${Bun.revision.slice(0, 9)}`,
+    );
+    const lookalike = join(
+      stateDir,
+      `bun-node-${process.getuid?.()}-000000000`,
+    );
+    const root = specimen({
+      "tests/bun-node.test.ts": `import { test } from "bun:test";\nimport { mkdirSync } from "node:fs";\ntest("makes both", () => { mkdirSync(${JSON.stringify(own)}); mkdirSync(${JSON.stringify(lookalike)}); });\n`,
+    });
+    const run = await spawnBounded([process.execPath, "scripts/test-run.ts"], {
+      cwd: root,
+      env: outsideTestRun(temp, { STATE_TEST_DIR: stateDir, CI: "true" }),
+    });
+    expect(run.exit).toBe(1);
+    expect(run.stderr).toContain(`\n  ${lookalike}\n`);
+    expect(run.stderr).not.toContain(`\n  ${own}\n`);
+  },
+  processWatchdog(1),
+);

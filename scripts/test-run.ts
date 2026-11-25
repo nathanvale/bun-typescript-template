@@ -148,6 +148,8 @@ function isLiveRunFolder(path: string): boolean {
   }
 }
 
+const bunNodeFolder = `bun-node-${process.getuid?.()}-${Bun.revision.slice(0, 9)}`;
+
 function leftoversOf(
   folders: readonly string[],
   before: ReadonlyMap<string, Set<string>>,
@@ -155,7 +157,9 @@ function leftoversOf(
 ): string[] {
   return folders.flatMap((folder) =>
     [...namesIn(folder)]
-      .filter((name) => !before.get(folder)?.has(name))
+      .filter(
+        (name) => name !== bunNodeFolder && !before.get(folder)?.has(name),
+      )
       .map((name) => join(folder, name))
       .filter((path) => path !== runFolder && !isLiveRunFolder(path)),
   );
