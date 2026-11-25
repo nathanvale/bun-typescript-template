@@ -1,0 +1,21 @@
+diff --git a/generated-repository/scripts/fallow-health-at-base-settings.ts b/generated-repository/scripts/fallow-health-at-base-settings.ts
+--- a/generated-repository/scripts/fallow-health-at-base-settings.ts
++++ b/generated-repository/scripts/fallow-health-at-base-settings.ts
+@@ -242,16 +242,7 @@ function resolveExtendedRepoPath(
+   const baseDir = posix.dirname(fromFile);
+   const joined = baseDir === "." ? specifier : `${baseDir}/${specifier}`;
+   const normalized = posix.normalize(joined);
+-  if (
+-    normalized === "" ||
+-    normalized === "." ||
+-    normalized === ".." ||
+-    normalized.startsWith("../") ||
+-    normalized.startsWith("/")
+-  )
+-    fail(
+-      `${fromFile} at ${baseSha} extends "${specifier}", which leaves the repository. Repair: extend a regular file inside the repository, then run this check again.`,
+-    );
++  if (normalized.startsWith("../")) return undefined;
+   return normalized;
+ }
+ 

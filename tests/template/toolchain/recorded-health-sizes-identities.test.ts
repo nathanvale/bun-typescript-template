@@ -168,7 +168,7 @@ test(
           'import { expect, test } from "bun:test";\nimport { nest, route } from "../src/router.ts";\nimport { total } from "../src/long.ts";\ntest("uses modules", () => {\n  expect(route(1) + nest(1) + total).toBeGreaterThanOrEqual(0);\n});\n',
       }),
       ROUTE,
-      "src/router.ts",
+      "(renamed to src/router.ts)",
       "function lines 26 to 29",
     );
 
