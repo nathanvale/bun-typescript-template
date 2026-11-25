@@ -103,6 +103,65 @@ describe("generated-repository/changeset/config.json with changeset version", ()
     },
     processWatchdog(1),
   );
+
+  test(
+    "exits 0 and deletes only the empty changeset when only an empty changeset is pending",
+    async () => {
+      const changesetPath = ".changeset/2026-11-26-empty.md";
+      const repo = createGeneratedChangesetFixture({
+        [changesetPath]: "---\n---\n\n",
+      });
+
+      const run = await runChangesetVersion(repo);
+
+      expect(run.exit).toBe(0);
+      expect(git(repo, "status", "--porcelain")).toBe(`D ${changesetPath}`);
+      expect(existsSync(join(repo, changesetPath))).toBe(false);
+      const packageRecord = JSON.parse(
+        readFileSync(join(repo, "package.json"), "utf8"),
+      ) as { version?: string };
+      expect(packageRecord.version).toBe("0.1.0");
+      expect(readFileSync(join(repo, "CHANGELOG.md"), "utf8")).toBe(
+        initialChangelog,
+      );
+    },
+    processWatchdog(1),
+  );
+
+  test(
+    "exits 1 and changes no file when .changeset/config.json is broken",
+    async () => {
+      const repo = createGeneratedChangesetFixture({
+        ".changeset/config.json": "{ not valid json\n",
+      });
+
+      const run = await runChangesetVersion(repo);
+
+      expect(run.exit).toBe(1);
+      expect(run.stdout).toContain("SyntaxError");
+      expect(git(repo, "status", "--porcelain")).toBe("");
+    },
+    processWatchdog(1),
+  );
+
+  test(
+    "exits 1 and changes no file when a pending changeset names a missing package",
+    async () => {
+      const repo = createGeneratedChangesetFixture({
+        ".changeset/2026-11-26-missing.md":
+          '---\n"missing-package": minor\n---\n\nChanged missing package.\n',
+      });
+
+      const run = await runChangesetVersion(repo);
+
+      expect(run.exit).toBe(1);
+      expect(run.stdout).toContain("missing-package");
+      expect(run.stdout).toContain("not in the workspace");
+      expect(git(repo, "status", "--porcelain")).toBe("");
+    },
+    processWatchdog(1),
+  );
+
   test(
     "the documented release steps leave changeset status green on the version branch only once an empty changeset is added",
     async () => {
@@ -137,4 +196,59 @@ describe("generated-repository/changeset/config.json with changeset version", ()
     },
     processWatchdog(1),
   );
+});
+
+function releaseSectionOf(relativePath: string): string {
+  const content = readFileSync(join(ROOT, relativePath), "utf8");
+  const start = content.indexOf("## Release");
+  expect(start).toBeGreaterThan(-1);
+  return content.slice(start);
+}
+
+function releaseStepOneOf(relativePath: string): string {
+  const section = releaseSectionOf(relativePath);
+  const match = /^1\. (.+)$/m.exec(section);
+  expect(match?.[1]).toBeDefined();
+  return match?.[1] ?? "";
+}
+
+describe("release step documentation", () => {
+  const releaseDocs = [
+    "generated-repository/changeset/README.md",
+    "docs/agents/pull-requests.md",
+  ] as const;
+
+  test("Release step 1 decides nothing to release from pending changesets before running changeset version and reports any non-zero exit as a failure", () => {
+    for (const docPath of releaseDocs) {
+      const stepOne = releaseStepOneOf(docPath);
+      expect(stepOne).not.toContain("git status --porcelain");
+      expect(stepOne).not.toMatch(/Exit 1.*means nothing to release/i);
+      const checkIndex = stepOne.indexOf(".changeset/*.md");
+      const versionIndex = stepOne.indexOf("bun run --bun changeset version");
+      expect(checkIndex).toBeGreaterThan(-1);
+      expect(versionIndex).toBeGreaterThan(checkIndex);
+      expect(stepOne).toContain("README.md");
+      expect(stepOne).toMatch(/any non-zero exit is a failure/i);
+      expect(stepOne).toContain('never "nothing to release"');
+    }
+  });
+
+  test("Release step 1 treats empty-only pending changesets as nothing to release so no empty version pull request is cut", () => {
+    for (const docPath of releaseDocs) {
+      const stepOne = releaseStepOneOf(docPath);
+      expect(stepOne).toMatch(/every pending changeset is empty/i);
+      expect(stepOne).toContain("no package in its front matter");
+      expect(stepOne).toContain("empty version pull request");
+    }
+  });
+
+  test("Release backfill instructions name agent-gates changelog backfill in both the template README and pull-requests guide", () => {
+    for (const docPath of releaseDocs) {
+      const section = releaseSectionOf(docPath);
+      expect(section).toContain(
+        "agent-gates changelog backfill --pull-requests",
+      );
+      expect(section).not.toContain("agent-gates changelog earlier");
+    }
+  });
 });
