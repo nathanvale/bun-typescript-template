@@ -14,42 +14,29 @@ import {
   runTests,
   stopProcess,
   type TestRunEnvironment,
-  testRunFolderVariable,
   testRunProcessMark,
   testRunProcessVariable,
 } from "../../../scripts/test-run.ts";
-import {
-  ownedFolders,
-  testRunFiles,
-  write,
-  writeExecutable,
-} from "../../support/fixture-files.ts";
+import { ownedFolders, writeExecutable } from "../../support/fixture-files.ts";
 import {
   processAlive,
   processWatchdog,
   spawnBounded,
   watchLedger,
 } from "../../support/process.ts";
+import {
+  outsideTestRun,
+  testRunSpecimen,
+} from "../../support/test-run-fixture.ts";
 
 const folder = ownedFolders();
 const bound = 20_000;
 const pass = 'import { test } from "bun:test";\ntest("ok", () => {});\n';
 
-const specimen = (tests: Readonly<Record<string, string>>) => {
-  const root = folder("test-run-specimen-");
-  for (const [p, t] of Object.entries({ ...testRunFiles(), ...tests }))
-    write(root, p, t);
-  return root;
-};
+const specimen = (tests: Readonly<Record<string, string>>) =>
+  testRunSpecimen(folder, tests);
 
-const outsideRun = (temp: string, extra: TestRunEnvironment = {}) => ({
-  ...process.env,
-  TMPDIR: temp,
-  CI: undefined,
-  npm_lifecycle_event: undefined,
-  [testRunFolderVariable]: undefined,
-  ...extra,
-});
+const outsideRun = outsideTestRun;
 
 async function reap(pids: readonly number[]): Promise<number[]> {
   const started = Date.now();

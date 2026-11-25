@@ -9,17 +9,17 @@ import {
   stopProcess,
   testRunFolderVariable,
 } from "../../../scripts/test-run.ts";
-import {
-  ownedFolders,
-  testRunFiles,
-  write,
-} from "../../support/fixture-files.ts";
+import { ownedFolders } from "../../support/fixture-files.ts";
 import {
   processAlive,
   processWatchdog,
   spawnBounded,
   watchLedger,
 } from "../../support/process.ts";
+import {
+  outsideTestRun,
+  testRunSpecimen,
+} from "../../support/test-run-fixture.ts";
 
 const folder = ownedFolders();
 const runBound = 20_000;
@@ -74,21 +74,10 @@ test("writes a fixed temp path", () => { mkdirSync(${JSON.stringify(path)}); });
 }
 
 function specimen(tests: Readonly<Record<string, string>>): string {
-  const root = folder("test-run-specimen-");
-  for (const [path, text] of Object.entries({ ...testRunFiles(), ...tests }))
-    write(root, path, text);
-  return root;
+  return testRunSpecimen(folder, tests);
 }
 
-function outsideRun(temp: string): Record<string, string | undefined> {
-  return {
-    ...process.env,
-    TMPDIR: temp,
-    CI: undefined,
-    npm_lifecycle_event: undefined,
-    [testRunFolderVariable]: undefined,
-  };
-}
+const outsideRun = outsideTestRun;
 
 async function runIn(
   root: string,

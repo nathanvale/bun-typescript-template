@@ -1,0 +1,11 @@
+diff --git a/scripts/test-run.ts b/scripts/test-run.ts
+--- a/scripts/test-run.ts
++++ b/scripts/test-run.ts
+@@ -175,7 +175,6 @@ function startBunTest(
+     cwd: options.cwd,
+     env: {
+       ...options.env,
+-      STATE_TEST_DIR: runFolder,
+       TMP: runFolder,
+       TEMP: runFolder,
+       TMPDIR: runFolder,

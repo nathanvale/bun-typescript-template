@@ -3089,5 +3089,12 @@
     "testFile": "tests/template/fault-replay/planted-faults.test.ts",
     "title": "FR\\.z ",
     "source": "068f1cd fix(fault-replay): omit npm_lifecycle_event when replaying bun test"
+  },
+  {
+    "id": "511a529-test-run-folder",
+    "patch": "tests/planted-faults/patches/511a529-test-run-folder.patch",
+    "testFile": "tests/template/test-run/test-run-folder.test.ts",
+    "title": "^when STATE_TEST_DIR is set, testFolder lands inside the run folder under STATE_TEST_DIR and nothing is left after the run$",
+    "source": "511a529 fix(test-run): keep test folders inside the test run folder when STATE_TEST_DIR is set"
   }
 ]
