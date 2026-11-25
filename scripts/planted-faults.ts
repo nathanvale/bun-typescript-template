@@ -204,12 +204,13 @@ async function step(
   cwd: string,
   argv: readonly string[],
   limitMilliseconds: number,
+  without?: readonly string[],
 ) {
   const { exitCode, signalCode, timedOut, output } = await runWithOwnTools(
     argv,
     cwd,
     active,
-    { limitMilliseconds },
+    { limitMilliseconds, without },
   );
   haltIfStopped(id);
   const shown = argv.filter((arg) => !arg.startsWith("--reporter")).join(" ");
@@ -269,10 +270,8 @@ export async function replay(
   const patch = patchText(root, fault);
   const folder = mkdtempSync(join(tmpdir(), "fault-replay-"));
   const dir = join(folder, "tree");
-  const gitInTree = (argv: readonly string[]) =>
-    step(fault.id, dir, ["git", ...argv], limitMilliseconds);
-  const bunInTree = (argv: readonly string[]) =>
-    step(fault.id, dir, [process.execPath, ...argv], limitMilliseconds);
+  const inTree = (argv: readonly string[], without?: readonly string[]) =>
+    step(fault.id, dir, argv, limitMilliseconds, without);
   try {
     const added = await step(
       fault.id,
@@ -281,13 +280,17 @@ export async function replay(
       limitMilliseconds,
     );
     if (!added.passed) throw new Error(added.output.trim());
-    const listed = await gitInTree(["ls-files", "-z"]);
+    const listed = await inTree(["git", "ls-files", "-z"]);
     if (!listed.passed) throw new Error(listed.output.trim());
     const tracked = new Set(listed.output.split("\0").filter((p) => p !== ""));
     const placement = place(fault.patch, patch, sourceIn(dir, tracked));
     if (placement.kind === "refused")
       return { kind: "STALE", output: placement.cause };
-    const installed = await bunInTree(["install", "--frozen-lockfile"]);
+    const installed = await inTree([
+      process.execPath,
+      "install",
+      "--frozen-lockfile",
+    ]);
     if (!installed.passed)
       throw new Error(
         `bun install --frozen-lockfile failed while replaying ${fault.id}:\n${installed.output}`,
@@ -295,7 +298,13 @@ export async function replay(
     const tested = async (name: string) => {
       const report = join(folder, `${name}.xml`);
       const args = ["--reporter=junit", `--reporter-outfile=${report}`];
-      return testRun(await bunInTree([...testArgs(fault), ...args]), report);
+      return testRun(
+        await inTree(
+          [process.execPath, ...testArgs(fault), ...args],
+          ["npm_lifecycle_event"],
+        ),
+        report,
+      );
     };
     const faulted = () => {
       for (const [path, text] of placement.files)
