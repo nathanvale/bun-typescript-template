@@ -1,0 +1,12 @@
+diff --git a/src/token-substitution.ts b/src/token-substitution.ts
+--- a/src/token-substitution.ts
++++ b/src/token-substitution.ts
+@@ -41,7 +41,7 @@ export async function substituteTokens(
+     const current = await readFile(path, "utf8");
+     const substituted = current
+       .replaceAll(NAME_TOKEN, tokens.name)
+-      .replaceAll(PACKAGE_NAME_TOKEN, tokens.packageName ?? PACKAGE_NAME_TOKEN)
++      .replaceAll(PACKAGE_NAME_TOKEN, tokens.name)
+       .replaceAll(PACKET_TOKEN, tokens.sourcePacket)
+       .replaceAll(PIN_TOKEN, tokens.kernelPin ?? PIN_TOKEN)
+       .replaceAll(COMMIT_TOKEN, tokens.kernelCommit ?? COMMIT_TOKEN);
