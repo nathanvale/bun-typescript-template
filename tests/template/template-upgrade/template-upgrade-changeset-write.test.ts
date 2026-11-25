@@ -269,6 +269,19 @@ test(
   processWatchdog(4),
 );
 
+interface RefusalEnvelope {
+  readonly status: string;
+  readonly error: {
+    readonly code: string;
+    readonly message: string;
+    readonly repair: string;
+  };
+}
+
+function parseRefusal(stderr: string): RefusalEnvelope {
+  return JSON.parse(stderr) as RefusalEnvelope;
+}
+
 async function runScriptedChangesetApply(options: {
   readonly templateClone: string;
   readonly baseCommit: string;
@@ -313,9 +326,12 @@ test(
       stdout,
       stderr,
     });
-    expect(failingRun.exitCode).not.toBe(0);
-    expect(failingRun.stderr).toContain("changeset");
-    expect(failingRun.stderr).toContain("repair");
+    expect(failingRun.exitCode).toBe(1);
+    const failingRefusal = parseRefusal(failingRun.stderr);
+    expect(failingRefusal.status).toBe("refused");
+    expect(failingRefusal.error.code).toBe("changeset_add_failed");
+    expect(failingRefusal.error.message).toContain("changeset CLI failed");
+    expect(failingRefusal.error.repair).toContain("changeset add --patch");
 
     const zeroRun = await runScriptedChangesetApply({
       templateClone,
@@ -327,9 +343,12 @@ test(
       stdout,
       stderr,
     });
-    expect(zeroRun.exitCode).not.toBe(0);
-    expect(zeroRun.stderr).toContain("0");
-    expect(zeroRun.stderr).toContain("repair");
+    expect(zeroRun.exitCode).toBe(1);
+    const zeroRefusal = parseRefusal(zeroRun.stderr);
+    expect(zeroRefusal.status).toBe("refused");
+    expect(zeroRefusal.error.code).toBe("changeset_add_unexpected_files");
+    expect(zeroRefusal.error.message).toContain("found 0");
+    expect(zeroRefusal.error.repair).toContain(".changeset");
 
     const twoRun = await runScriptedChangesetApply({
       templateClone,
@@ -342,9 +361,12 @@ test(
       stdout,
       stderr,
     });
-    expect(twoRun.exitCode).not.toBe(0);
-    expect(twoRun.stderr).toContain("2");
-    expect(twoRun.stderr).toContain("repair");
+    expect(twoRun.exitCode).toBe(1);
+    const twoRefusal = parseRefusal(twoRun.stderr);
+    expect(twoRefusal.status).toBe("refused");
+    expect(twoRefusal.error.code).toBe("changeset_add_unexpected_files");
+    expect(twoRefusal.error.message).toContain("found 2");
+    expect(twoRefusal.error.repair).toContain(".changeset");
   },
   processWatchdog(4),
 );

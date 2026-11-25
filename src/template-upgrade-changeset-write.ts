@@ -25,10 +25,10 @@ const CHANGESET_CONFIG_FILE = "config.json";
 const PACKAGE_FILE = "package.json";
 const DEFAULT_BASE_BRANCH = "main";
 const CHANGESET_TIMEOUT_MS = 30_000;
+const CONFLICT_MARKER = /^<<<<<<< ours\b/m;
 
 export interface TemplateUpgradeChangesetPlan {
   readonly path: string;
-  readonly packageName: string;
   readonly level: "patch";
   readonly summary: string;
 }
@@ -50,15 +50,35 @@ function isCandidateChangesetName(name: string): boolean {
   return name.endsWith(".md") && !name.includes("/") && name !== "README.md";
 }
 
-function parseChangesetConfig(text: string): ChangesetConfig {
+function parseChangesetConfig(
+  text: string,
+  worktree: string,
+  allowConflictFallback: boolean,
+): ChangesetConfig {
+  const configPath = `${CHANGESET_PREFIX}${CHANGESET_CONFIG_FILE}`;
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch {
-    return { baseBranch: DEFAULT_BASE_BRANCH, changedFilePatterns: [] };
+    if (allowConflictFallback && CONFLICT_MARKER.test(text)) {
+      return { baseBranch: DEFAULT_BASE_BRANCH, changedFilePatterns: [] };
+    }
+    throw new CliError(
+      "changeset_config_invalid",
+      `${configPath} in ${worktree} is not valid JSON`,
+      `fix ${configPath} so it is a valid JSON object, then rerun`,
+      1,
+      false,
+    );
   }
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-    return { baseBranch: DEFAULT_BASE_BRANCH, changedFilePatterns: [] };
+    throw new CliError(
+      "changeset_config_invalid",
+      `${configPath} in ${worktree} must be a JSON object`,
+      `fix ${configPath} so it is a valid JSON object, then rerun`,
+      1,
+      false,
+    );
   }
   const fields = new Map<string, unknown>(Object.entries(parsed));
   const rawBase = fields.get("baseBranch");
@@ -101,7 +121,7 @@ function matchesChangedFilePatterns(
   return !negative.some((pattern) => new Bun.Glob(pattern).match(path));
 }
 
-function isCoveredChangesetPath(
+function isGatedChangesetPath(
   path: string,
   patterns: readonly string[],
 ): boolean {
@@ -145,7 +165,14 @@ function listHeadChangesetPaths(
     { env },
   );
   if (result.timedOut || result.exitCode !== 0) {
-    return new Set<string>();
+    const detail = new TextDecoder("utf-8").decode(result.stderr).trim();
+    throw new CliError(
+      "changesets_unreadable",
+      `cannot list ${CHANGESET_PREFIX} at HEAD in ${worktree}${detail === "" ? "" : `: ${detail}`}`,
+      `inspect ${formatCommandPath(worktree)} with git ls-tree HEAD -- ${CHANGESET_FOLDER}, then rerun`,
+      1,
+      false,
+    );
   }
   return new Set(parseGitTreeEntries(Buffer.from(result.stdout)).keys());
 }
@@ -233,21 +260,30 @@ async function readWorktreePackageName(worktree: string): Promise<string> {
   return name;
 }
 
-export async function planTemplateUpgradeChangeset(
+async function resolveUpgradeChangesetPlan(
   options: TemplateUpgradeChangesetOptions,
+  allowConflictFallback: boolean,
 ): Promise<TemplateUpgradeChangesetPlan | undefined> {
   const { repository, worktree, baseCommit, targetCommit, env } = options;
+  await assertNotSymlinkPath(
+    join(worktree, CHANGESET_FOLDER),
+    CHANGESET_FOLDER,
+  );
   const configText = await readTextIfFile(
     join(worktree, CHANGESET_FOLDER, CHANGESET_CONFIG_FILE),
   );
   if (configText === undefined) {
     return undefined;
   }
-  const config = parseChangesetConfig(configText);
+  const config = parseChangesetConfig(
+    configText,
+    worktree,
+    allowConflictFallback,
+  );
   const changedPaths = readWorktreePaths(worktree, env);
   if (
     !changedPaths.some((path) =>
-      isCoveredChangesetPath(path, config.changedFilePatterns),
+      isGatedChangesetPath(path, config.changedFilePatterns),
     )
   ) {
     return undefined;
@@ -258,25 +294,30 @@ export async function planTemplateUpgradeChangeset(
   if (hasCommittedChangesetSinceBase(repository, config.baseBranch, env)) {
     return undefined;
   }
-  const packageName = await readWorktreePackageName(worktree);
   const base7 = baseCommit.slice(0, 7);
   const target7 = targetCommit.slice(0, 7);
   return Object.freeze({
     path: `${CHANGESET_PREFIX}template-upgrade-${target7}.md`,
-    packageName,
     level: "patch" as const,
     summary: `Upgraded template ${base7} to ${target7}`,
   });
 }
 
+export async function planTemplateUpgradeChangeset(
+  options: TemplateUpgradeChangesetOptions,
+): Promise<TemplateUpgradeChangesetPlan | undefined> {
+  return await resolveUpgradeChangesetPlan(options, true);
+}
+
 export async function writeTemplateUpgradeChangeset(
   options: TemplateUpgradeChangesetOptions,
 ): Promise<TemplateUpgradeChangesetPlan | undefined> {
-  const plan = await planTemplateUpgradeChangeset(options);
+  const plan = await resolveUpgradeChangesetPlan(options, false);
   if (plan === undefined) {
     return undefined;
   }
   const { worktree, env } = options;
+  const packageName = await readWorktreePackageName(worktree);
   const beforeFiles = new Set(await listWorktreeChangesetFiles(worktree));
   const run = runBunStep({
     worktree,
@@ -286,7 +327,7 @@ export async function writeTemplateUpgradeChangeset(
       "changeset",
       "add",
       "--patch",
-      plan.packageName,
+      packageName,
       "-m",
       plan.summary,
     ],
@@ -298,7 +339,7 @@ export async function writeTemplateUpgradeChangeset(
     throw new CliError(
       "changeset_add_failed",
       `cannot write upgrade changeset ${plan.path} with changeset add${detail}`,
-      `ensure dependencies are installed in ${formatCommandPath(worktree)} or add ${plan.path} with bun run --bun changeset add --patch ${plan.packageName} -m ${JSON.stringify(plan.summary)}, then rerun`,
+      `ensure dependencies are installed in ${formatCommandPath(worktree)} or add ${plan.path} with bun run --bun changeset add --patch ${packageName} -m ${JSON.stringify(plan.summary)}, then rerun`,
       1,
       false,
     );
