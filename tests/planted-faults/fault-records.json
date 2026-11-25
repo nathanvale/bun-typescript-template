@@ -3217,13 +3217,6 @@
     "source": "56b924c fix(pin-move): commit tracked changeset rename source and isolate failedAttempt git env"
   },
   {
-    "id": "c333d11-test-run",
-    "patch": "tests/planted-faults/patches/c333d11-test-run.patch",
-    "testFile": "tests/template/test-run/test-run-mark.test.ts",
-    "title": "^under CI, a forged process marker naming PID 1 or the runner's parent shell is refused, while two real concurrent runs pass$",
-    "source": "c333d11 fix(test-run): require a live runner lock on process markers"
-  },
-  {
     "id": "48caea4-test-folder",
     "patch": "tests/planted-faults/patches/48caea4-test-folder.patch",
     "testFile": "tests/template/test-run/test-run-folder.test.ts",

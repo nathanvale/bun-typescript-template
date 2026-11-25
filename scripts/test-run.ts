@@ -1,4 +1,3 @@
-import { dlopen, FFIType } from "bun:ffi";
 import {
   closeSync,
   constants,
@@ -38,26 +37,6 @@ const liveMarkPattern = new RegExp(
 );
 const markFlags =
   constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
-const flockExclusive = 2;
-const flockNonBlocking = 4;
-const flockUnlock = 8;
-const flockLibrary = dlopen(
-  process.platform === "darwin" ? "libSystem.B.dylib" : "libc.so.6",
-  {
-    flock: { args: [FFIType.i32, FFIType.i32], returns: FFIType.i32 },
-  },
-);
-
-function acquireExclusiveLock(fd: number): boolean {
-  return (
-    flockLibrary.symbols.flock(fd, flockExclusive | flockNonBlocking) === 0
-  );
-}
-
-function releaseLock(fd: number): void {
-  flockLibrary.symbols.flock(fd, flockUnlock);
-}
-
 function writeProcessMark(runFolder: string, pid: number): number {
   const tempMark = join(runFolder, `${testRunProcessMark}.tmp`);
   const fd = openSync(
@@ -69,8 +48,6 @@ function writeProcessMark(runFolder: string, pid: number): number {
     0o600,
   );
   try {
-    if (!acquireExclusiveLock(fd))
-      throw new Error(`Could not lock ${tempMark}.`);
     writeSync(fd, `${testRunProcessVariable}=${pid}\n`);
     renameSync(tempMark, join(runFolder, testRunProcessMark));
     return fd;
@@ -174,10 +151,6 @@ function readProcessMark(folder: string): number | undefined {
     }).decode(buffer.subarray(0, bytes));
     const pid = Number(liveMarkPattern.exec(text)?.[1]);
     if (!Number.isSafeInteger(pid)) return undefined;
-    if (acquireExclusiveLock(fd)) {
-      releaseLock(fd);
-      return undefined;
-    }
     return pid;
   } catch {
     return undefined;

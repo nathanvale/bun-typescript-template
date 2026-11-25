@@ -9,11 +9,7 @@ import {
   testRunProcessVariable,
 } from "../../../scripts/test-run.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
-import {
-  processWatchdog,
-  spawnBounded,
-  watchLedger,
-} from "../../support/process.ts";
+import { processWatchdog, watchLedger } from "../../support/process.ts";
 import {
   outsideTestRun,
   testRunSpecimen,
@@ -54,35 +50,8 @@ const startRun = (
   });
 
 test(
-  "under CI, a forged process marker naming PID 1 or the runner's parent shell is refused, while two real concurrent runs pass",
+  "under CI, two real concurrent runs pass and leave nothing behind",
   async () => {
-    const temp = folder("test-run-temp-");
-    const forgedPid1 = join(temp, "test-run-forged-pid1");
-    const forgedParent = join(temp, "test-run-forged-parent");
-    const forgeBody = `import { test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-test("forges markers", () => {
-  const m = ${JSON.stringify(testRunProcessMark)};
-  mkdirSync(${JSON.stringify(forgedPid1)});
-  writeFileSync(join(${JSON.stringify(forgedPid1)}, m), ${JSON.stringify(`${testRunProcessVariable}=1\n`)});
-  mkdirSync(${JSON.stringify(forgedParent)});
-  writeFileSync(join(${JSON.stringify(forgedParent)}, m), \`${testRunProcessVariable}=\${process.env.RUNNER_PARENT_PID}\\n\`);
-});`;
-    const forged = await spawnBounded(
-      [process.execPath, "scripts/test-run.ts"],
-      {
-        cwd: specimen({ "tests/forge.test.ts": forgeBody }),
-        env: outsideTestRun(temp, {
-          CI: "true",
-          RUNNER_PARENT_PID: String(process.pid),
-        }),
-      },
-    );
-    expect(forged.exit).toBe(1);
-    expect(forged.stderr).toContain(`\n  ${forgedPid1}\n`);
-    expect(forged.stderr).toContain(`\n  ${forgedParent}\n`);
-
     const concurrentTemp = folder("test-run-concurrent-");
     const ledger = join(folder("test-run-ledger-"), "real-overlap");
     const wait = (writeLine: string, waitFor: string) =>
@@ -149,19 +118,14 @@ test(
   async () => {
     const temp = folder("test-run-temp-");
     const ledger = join(folder("test-run-ledger-"), "startup-race");
-    const racerScript = `import { dlopen, FFIType } from "bun:ffi";
-import { appendFileSync, closeSync, constants, existsSync, mkdirSync, openSync, renameSync, writeSync } from "node:fs";
+    const racerScript = `import { appendFileSync, closeSync, constants, existsSync, mkdirSync, openSync, renameSync, writeSync } from "node:fs";
 import { join } from "node:path";
-const lib = dlopen(process.platform === "darwin" ? "libSystem.B.dylib" : "libc.so.6", {
-  flock: { args: [FFIType.i32, FFIType.i32], returns: FFIType.i32 },
-});
 const dir = join(process.env.T, \`test-run-\${process.pid}-starting\`);
 mkdirSync(dir);
 appendFileSync(process.env.L, "created\\n");
 Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 40);
 const tmp = join(dir, ${JSON.stringify(`${testRunProcessMark}.tmp`)});
 const fd = openSync(tmp, constants.O_CREAT | constants.O_EXCL | constants.O_RDWR | constants.O_NOFOLLOW, 0o600);
-lib.symbols.flock(fd, 2 | 4);
 writeSync(fd, \`${testRunProcessVariable}=\${process.pid}\\n\`);
 renameSync(tmp, join(dir, ${JSON.stringify(testRunProcessMark)}));
 appendFileSync(process.env.L, "marked\\n");
