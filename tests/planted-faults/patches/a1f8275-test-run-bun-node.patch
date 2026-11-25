@@ -1,12 +1,12 @@
 diff --git a/scripts/test-run.ts b/scripts/test-run.ts
 --- a/scripts/test-run.ts
 +++ b/scripts/test-run.ts
-@@ -158,7 +158,7 @@
-   return folders.flatMap((folder) =>
+@@ -173,7 +173,7 @@
      [...namesIn(folder)]
        .filter(
--        (name) => name !== bunNodeFolder && !before.get(folder)?.has(name),
-+        (name) => !before.get(folder)?.has(name),
+         (name) =>
+-          !isBunOwnFolder(folder, name, stateFolder) &&
++          true &&
+           !before.get(folder)?.has(name),
        )
        .map((name) => join(folder, name))
-       .filter((path) => path !== runFolder && !isLiveRunFolder(path)),

@@ -3101,7 +3101,7 @@
     "id": "a1f8275-test-run-bun-node",
     "patch": "tests/planted-faults/patches/a1f8275-test-run-bun-node.patch",
     "testFile": "tests/template/test-run/test-run-folder.test.ts",
-    "title": "^a strict test run ignores Bun's own bun-node-<uid>-<build> folder",
+    "title": "^a strict test run ignores a directory named like Bun's own bun-node",
     "source": "a1f8275 fix(test-run): ignore Bun's own bun-node folder in the leftover check"
   }
 ]
