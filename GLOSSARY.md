@@ -194,6 +194,24 @@ unproved and never as a pass.
 The template's test area for the names check and its glossary records, held in
 `tests/template/names-check/` and run with `bun run test:area names-check`.
 
+### Test runs
+
+**Test run**:
+The launcher `bun run test` starts, `scripts/test-run.ts`. It runs `bun test`
+in its own process group with `TMPDIR` pointed at a test run folder, stops
+`bun test`'s process group when the run ends, removes the folder, and names any
+entry the tests left in the system temp folder (a failure under `CI=true`, a
+warning elsewhere). The template and every generated repository run their tests
+through it.
+
+**Test run folder**:
+The one temporary folder that a test run's tests and all their child processes
+see as the system temp folder. The test run makes it and removes it; the
+preload `tests/support/test-run-folder.ts` removes the folder and stops
+`bun test`'s process group if the test run itself is killed, refuses `bun test`
+started outside one by a package script under `CI=true`, and warns about any
+other plain `bun test`.
+
 ### Shared tool words
 
 **Toolchain pin**:

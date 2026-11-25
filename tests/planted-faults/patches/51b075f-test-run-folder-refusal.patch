@@ -1,0 +1,12 @@
+diff --git a/tests/support/test-run-folder.ts b/tests/support/test-run-folder.ts
+--- a/tests/support/test-run-folder.ts
++++ b/tests/support/test-run-folder.ts
+@@ -36,7 +36,7 @@
+ const temp = real(process.env.TMPDIR);
+ const testRunProcess = Number(process.env[testRunProcessVariable]);
+ const inPackageScriptUnderCi =
+-  process.env.CI === "true" && process.env.npm_lifecycle_event !== undefined;
++  process.env.CI === "true" && process.env.npm_lifecycle_event === "never";
+ if (
+   Number.isInteger(testRunProcess) &&
+   testRunProcess > 0 &&

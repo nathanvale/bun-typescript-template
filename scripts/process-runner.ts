@@ -161,9 +161,25 @@ export async function runWithOwnTools(
   tracker: { stop?: () => void },
   {
     limitMilliseconds,
-  }: { readonly limitMilliseconds?: number | undefined } = {},
+    without = [],
+  }: {
+    readonly limitMilliseconds?: number | undefined;
+    readonly without?: readonly string[] | undefined;
+  } = {},
 ) {
-  const child = startChild(argv, { cwd, limitMilliseconds });
+  const child = startChild(argv, {
+    cwd,
+    ...(without.length === 0
+      ? {}
+      : {
+          env: Object.fromEntries(
+            Object.entries(ownTools(process.env)).filter(
+              ([name]) => !without.includes(name),
+            ),
+          ),
+        }),
+    limitMilliseconds,
+  });
   tracker.stop = child.stop;
   try {
     const { stdout, stderr, exitCode, signalCode, timedOut } =

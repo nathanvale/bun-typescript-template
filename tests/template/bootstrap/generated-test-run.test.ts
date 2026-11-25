@@ -1,0 +1,106 @@
+import { expect, test } from "bun:test";
+import { readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import {
+  bootstrapCliFixture,
+  invokeIn,
+  requireSuccess,
+  ROOT,
+  runCommand,
+  runIn,
+} from "../../support/bootstrap-cli-fixture.ts";
+import { gitEnv, inherited } from "../../support/git-fixture.ts";
+import { processWatchdog } from "../../support/process.ts";
+import {
+  testRunFolderVariable,
+  testRunProcessVariable,
+} from "../../../scripts/test-run.ts";
+
+const temporaryRoot = bootstrapCliFixture();
+
+async function generated(): Promise<string> {
+  const destination = join(temporaryRoot(), "test-run-bootstrap");
+  requireSuccess(
+    await invokeIn(ROOT, { ...inherited(), ...gitEnv }, [
+      "--destination",
+      destination,
+      "--source-packet",
+      "https://example.test/spec",
+      "--json",
+    ]),
+    "bootstrap test run specimen",
+  );
+  requireSuccess(
+    await runIn(destination, ["install", "--frozen-lockfile"], {}),
+    "install test run specimen",
+  );
+  return destination;
+}
+
+function checkOutsideTestRun(destination: string, ci?: "true") {
+  return runCommand(destination, [process.execPath, "run", "check"], {
+    ...process.env,
+    TMPDIR: temporaryRoot(),
+    CI: ci,
+    npm_lifecycle_event: undefined,
+    [testRunFolderVariable]: undefined,
+    [testRunProcessVariable]: undefined,
+  });
+}
+
+async function edited(
+  path: string,
+  edit: (text: string) => string,
+  run: () => Promise<void>,
+): Promise<void> {
+  const original = await readFile(path, "utf8");
+  const changed = edit(original);
+  if (changed === original)
+    throw new Error(`The edit changed nothing in ${path}.`);
+  await writeFile(path, changed);
+  try {
+    await run();
+  } finally {
+    await writeFile(path, original);
+  }
+}
+
+test(
+  "a generated repository runs its tests through the test run, and bun run check fails when the test script drops it under CI or bunfig.toml drops it",
+  async () => {
+    const destination = await generated();
+    const passed = await runIn(destination, ["run", "test"], {});
+    expect(passed.exitCode).toBe(0);
+    expect(passed.stderr).not.toContain("Tests left");
+
+    await edited(
+      join(destination, "package.json"),
+      (text) =>
+        text.replace('"test": "bun scripts/test-run.ts"', '"test": "bun test"'),
+      async () => {
+        const check = await checkOutsideTestRun(destination, "true");
+        expect(check.exitCode).not.toBe(0);
+        expect(check.stderr).toContain(
+          "\nerror: bun test started without scripts/test-run.ts in a package script under CI",
+        );
+      },
+    );
+
+    await edited(
+      join(destination, "bunfig.toml"),
+      (text) =>
+        text.replace(
+          '[test]\npreload = ["./tests/support/test-run-folder.ts"]\n',
+          "",
+        ),
+      async () => {
+        const check = await checkOutsideTestRun(destination);
+        expect(check.exitCode).not.toBe(0);
+        expect(check.stderr).toContain(
+          "bun test did not load tests/support/test-run-folder.ts",
+        );
+      },
+    );
+  },
+  processWatchdog(12),
+);

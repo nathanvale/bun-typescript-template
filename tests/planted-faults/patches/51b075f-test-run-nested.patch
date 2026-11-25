@@ -1,0 +1,11 @@
+diff --git a/scripts/test-run.ts b/scripts/test-run.ts
+--- a/scripts/test-run.ts
++++ b/scripts/test-run.ts
+@@ -167,7 +167,6 @@
+   env: TestRunEnvironment,
+   bun: string = process.execPath,
+ ): string[] {
+-  if (env[testRunFolderVariable] !== undefined) return [];
+   const folders = [env.TMPDIR || tmpdir(), bareTemp(bun)]
+     .filter((folder) => folder !== "" && existsSync(folder))
+     .map(realFolder);

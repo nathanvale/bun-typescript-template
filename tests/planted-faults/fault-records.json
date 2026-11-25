@@ -2748,6 +2748,90 @@
     "source": "73a640d fix(recorded-lists): stop on a base list git cannot read, and prove the walk reads compact config"
   },
   {
+    "id": "51b075f-test-run-temp",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-temp.patch",
+    "testFile": "tests/template/test-run/test-run.test.ts",
+    "title": "^the test run keeps what every spawn route writes inside its run folder, and removes it$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-mark",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-mark.patch",
+    "testFile": "tests/template/test-run/test-run.test.ts",
+    "title": "^a test run whose bunfig\\.toml drops the preload fails naming the repair$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-strict",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-strict.patch",
+    "testFile": "tests/template/test-run/test-run.test.ts",
+    "title": "^a strict test run fails and names an entry a test writes at a fixed path in the system temp folder$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-nested",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-nested.patch",
+    "testFile": "tests/template/test-run/test-run.test.ts",
+    "title": "^leftoverFolders names none inside another test run, so a nested run leaves the system temp folder to the outer one$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-inside",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-inside.patch",
+    "testFile": "tests/template/test-run/test-run.test.ts",
+    "title": "^insideFolder admits the folder and what it holds, and refuses a sibling with the same prefix$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-folder-refusal",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-folder-refusal.patch",
+    "testFile": "tests/template/test-run/test-run.test.ts",
+    "title": "^under CI, a test script that runs plain bun test is refused by the preload, so bun run check fails$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-folder-orphan",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-folder-orphan.patch",
+    "testFile": "tests/template/test-run/test-run.test.ts",
+    "title": "^when the test run itself is killed, its bun test and their children stop within a second and its run folder is removed$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-limit",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-limit.patch",
+    "testFile": "tests/template/test-run/test-run-process.test.ts",
+    "title": "^limitMilliseconds stops a hanging test run and its process group before the test finishes$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-signal",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-signal.patch",
+    "testFile": "tests/template/test-run/test-run-process.test.ts",
+    "title": "^when bun test traps SIGTERM, the test run escalates to SIGKILL after the grace window$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-temp-read",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-temp-read.patch",
+    "testFile": "tests/template/test-run/test-run-process.test.ts",
+    "title": "^leftoverFolders refuses a failing bare temp subprocess instead of reading it as empty$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-folder-read",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-folder-read.patch",
+    "testFile": "tests/template/test-run/test-run-process.test.ts",
+    "title": "^an unreadable leftover folder is reported instead of read as empty$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
+    "id": "51b075f-test-run-folder-mark",
+    "patch": "tests/planted-faults/patches/51b075f-test-run-folder-mark.patch",
+    "testFile": "tests/template/test-run/test-run-process.test.ts",
+    "title": "^a strict test run fails and names leaked test-run-\\* files, folders, stale marks and links to live run folders$",
+    "source": "51b075f feat(test-run): run every test in one test run folder"
+  },
+  {
     "id": "6ce33a5-generated-lint-kernel-syntax",
     "patch": "tests/planted-faults/patches/6ce33a5-generated-lint-kernel-syntax.patch",
     "testFile": "tests/template/toolchain/generated-kernel-lint.test.ts",
@@ -2991,5 +3075,12 @@
     "testFile": "tests/template/toolchain/recorded-health-sizes-base-settings.test.ts",
     "title": "^fails closed with exit 2 when fallow suppressions reports malformed JSON, an invalid path, or an unrecognised marker line$",
     "source": "fd8b2dc fix(recorded-health-sizes): fail closed on invalid reported suppression paths and test refusals"
+  },
+  {
+    "id": "planted-faults-ci-lifecycle-event",
+    "patch": "tests/planted-faults/patches/planted-faults-ci-lifecycle-event.patch",
+    "testFile": "tests/template/fault-replay/planted-faults.test.ts",
+    "title": "FR\\.z ",
+    "source": "068f1cd fix(fault-replay): omit npm_lifecycle_event when replaying bun test"
   }
 ]

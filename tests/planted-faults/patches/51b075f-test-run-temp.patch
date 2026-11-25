@@ -1,0 +1,15 @@
+diff --git a/scripts/test-run.ts b/scripts/test-run.ts
+index f59ed36..fbace6c 100644
+--- a/scripts/test-run.ts
++++ b/scripts/test-run.ts
+@@ -155,8 +155,8 @@ function startBunTest(
+     cwd: options.cwd,
+     env: {
+       ...options.env,
+-      TMPDIR: runFolder,
+-      [testRunFolderVariable]: runFolder,
++      TMPDIR: join(runFolder, ".."),
++      [testRunFolderVariable]: join(runFolder, ".."),
+       [testRunProcessVariable]: String(process.pid),
+     },
+     stdio: ["inherit", "inherit", "inherit"],

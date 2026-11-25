@@ -13,7 +13,11 @@ import {
   timeout,
   verdicts,
 } from "../../support/planted-fault-fixture.ts";
-import { write } from "../../support/fixture-files.ts";
+import {
+  testRunFolderVariable,
+  testRunProcessVariable,
+} from "../../../scripts/test-run.ts";
+import { testRunFiles, write } from "../../support/fixture-files.ts";
 import { gitOutput, commit } from "../../support/git-fixture.ts";
 
 const { faultReplay, folder, repositoryWithFault } =
@@ -326,6 +330,28 @@ describe("bun run fault-replay", () => {
       );
       expect(verdicts(run.lines)).toEqual([]);
       expect(run.exit).toBe(2);
+      expectNoLeftovers(root, run.temporary);
+    },
+    timeout,
+  );
+
+  test(
+    "FR.z replay under CI with the test-run preload gives a KILLED verdict instead of refusing bun test",
+    async () => {
+      const { root, id } = await repositoryWithFault({});
+      commit(root, "add test-run preload", testRunFiles());
+      const run = await faultReplay(root, [id], {
+        env: {
+          CI: "true",
+          npm_lifecycle_event: "fault-replay",
+          [testRunFolderVariable]: undefined,
+          [testRunProcessVariable]: undefined,
+        },
+      });
+      expect(verdicts(run.lines)).toEqual([`KILLED ${id}`]);
+      expect(run.stdout).not.toContain("started without scripts/test-run.ts");
+      expect(run.stderr).not.toContain("started without scripts/test-run.ts");
+      expect(run.exit).toBe(0);
       expectNoLeftovers(root, run.temporary);
     },
     timeout,

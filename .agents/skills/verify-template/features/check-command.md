@@ -39,7 +39,7 @@ check's exit code:
 `<plant>; bun run check; status=$?; git checkout -- <file>; exit $status`.
 
 - **Green.** Record `check-green`: `bun run check`. Exit 0; stderr lists the
-  five steps from `$ eslint . --max-warnings 0` to `$ bun test`; stdout ends
+  five steps from `$ eslint . --max-warnings 0` to `$ bun scripts/test-run.ts`; stdout ends
   with Fallow's JSON, `"verdict":"pass"`.
 - **Red, lint.** Record `check-red-lint`. Plant: append the line
   `// Loop over the names.` to `src/commands.ts`. Exit 1; stdout holds
@@ -72,7 +72,7 @@ check's exit code:
 
 - The check stops at the first failing step, so plant one mistake per run. A
   second mistake hides behind the first.
-- Bootstrap copies the generated repository's own tests, so `bun test` runs
+- Bootstrap copies the generated repository's own tests, so `bun run test` runs
   13 tests across 3 files.
 - Fallow needs a real Node.js on `PATH`; see [Bootstrap](bootstrap.md#gotchas).
 - No fault record patches a step of the generated repository's `check`
