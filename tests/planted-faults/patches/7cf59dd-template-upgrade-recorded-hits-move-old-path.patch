@@ -1,17 +1,17 @@
 diff --git a/src/template-upgrade-recorded-hits-growth.ts b/src/template-upgrade-recorded-hits-growth.ts
 --- a/src/template-upgrade-recorded-hits-growth.ts
 +++ b/src/template-upgrade-recorded-hits-growth.ts
-@@ -214,13 +214,6 @@ function findMatchingRemovedIdentity(
+@@ -162,13 +162,6 @@ function findMatchingRemovedIdentity(
    if (candidates === undefined) return undefined;
    for (const oldKey of candidates) {
      if (consumed.has(oldKey)) continue;
 -    const oldParts = splitIdentityKey(oldKey);
 -    if (
 -      oldParts === undefined ||
--      !oldPathAllowsMove(worktree, oldParts.path, oldParts.symbol)
+-      !isSymbolMove(scanner, oldParts.path, newPath, oldParts.symbol)
 -    ) {
 -      continue;
 -    }
      if (
-       propertyGrowthEntries(worktree, "", beforeRecord[oldKey], afterValue)
+       propertyGrowthEntries(scanner, "", beforeRecord[oldKey], afterValue)
          .length === 0

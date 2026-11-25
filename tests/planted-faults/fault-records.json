@@ -3145,5 +3145,12 @@
     "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-growth.test.ts",
     "title": "^refuses with recorded_hits_would_grow when an old recorded function is still defined at its old path and a same-named function is added at a new path, commits nothing, and leaves the file byte-identical to the base$",
     "source": "7cf59dd fix(template-upgrade): verify moved recorded-hits symbols are absent at old paths"
+  },
+  {
+    "id": "e02977b-template-upgrade-recorded-hits-move-missing-old-path",
+    "patch": "tests/planted-faults/patches/e02977b-template-upgrade-recorded-hits-move-missing-old-path.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-growth.test.ts",
+    "title": "^refuses with recorded_hits_would_grow when an old recorded file is renamed keeping its function and a same-named function is added at a new path, commits nothing, and leaves the file byte-identical to the base$",
+    "source": "e02977b fix(template-upgrade): require moved recorded-hits symbols to be uniquely defined at new paths"
   }
 ]
