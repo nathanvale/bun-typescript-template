@@ -3119,6 +3119,13 @@
     "source": "5627649 test(toolchain): pin the generated Fallow ignore list to exact starter-kit paths"
   },
   {
+    "id": "469b32b-template-upgrade-apply",
+    "patch": "tests/planted-faults/patches/469b32b-template-upgrade-apply.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-changeset-write.test.ts",
+    "title": "^writes a patch changeset on covered upgrade changes so check:changesets passes$",
+    "source": "469b32b feat(upgrade): write repository changeset in upgrade apply and show it in plan"
+  },
+  {
     "id": "a1f8275-test-run-bun-node",
     "patch": "tests/planted-faults/patches/a1f8275-test-run-bun-node.patch",
     "testFile": "tests/template/test-run/test-run-folder.test.ts",

@@ -319,6 +319,11 @@ export async function bootstrapGeneratedRepository(
   );
   git(destination, "add", "--", ...files);
   git(destination, "commit", "--quiet", "-m", "initial bootstrap");
+  const modules = join(destination, "node_modules");
+  mkdirSync(modules, { recursive: true });
+  for (const entry of readdirSync(join(ROOT, "node_modules"))) {
+    symlinkSync(join(ROOT, "node_modules", entry), join(modules, entry));
+  }
   return destination;
 }
 
