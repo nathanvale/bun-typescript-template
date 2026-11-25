@@ -3152,5 +3152,19 @@
     "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-growth.test.ts",
     "title": "^refuses with recorded_hits_would_grow when an old recorded file is renamed keeping its function and a same-named function is added at a new path, commits nothing, and leaves the file byte-identical to the base$",
     "source": "e02977b fix(template-upgrade): require moved recorded-hits symbols to be uniquely defined at new paths"
+  },
+  {
+    "id": "39923ff-template-upgrade-recorded-hits-growth-throw-restore",
+    "patch": "tests/planted-faults/patches/39923ff-template-upgrade-recorded-hits-growth-throw-restore.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-growth.test.ts",
+    "title": "^restores recorded-hits files byte-identical to the base when the growth check throws a read error after repair recording$",
+    "source": "39923ff fix(template-upgrade): restore recorded-hits snapshots when the growth check throws"
+  },
+  {
+    "id": "590d66e-template-upgrade-recorded-hits-move-ast",
+    "patch": "tests/planted-faults/patches/590d66e-template-upgrade-recorded-hits-move-ast.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-growth.test.ts",
+    "title": "^refuses with recorded_hits_would_grow when the old file is deleted and a third tracked file defines the symbol as a later declarator, commits nothing, and leaves the file byte-identical to the base$",
+    "source": "590d66e fix(template-upgrade): read moved recorded-hits symbol declarations from the syntax tree"
   }
 ]

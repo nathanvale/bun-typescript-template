@@ -1,0 +1,30 @@
+diff --git a/src/template-upgrade-recorded-hits-move.ts b/src/template-upgrade-recorded-hits-move.ts
+--- a/src/template-upgrade-recorded-hits-move.ts
++++ b/src/template-upgrade-recorded-hits-move.ts
+@@ -126,21 +126,11 @@ function collectDeclaredSymbols(
+   filePath: string,
+   text: string,
+ ): ReadonlySet<string> | undefined {
+-  const sourceFile = ts.createSourceFile(
+-    filePath,
+-    text,
+-    ts.ScriptTarget.Latest,
+-    true,
+-  );
+-  const diagnostics: unknown = Reflect.get(sourceFile, "parseDiagnostics");
+-  if (!Array.isArray(diagnostics) || diagnostics.length > 0) {
+-    return undefined;
+-  }
+   const names = new Set<string>();
+-  const visit = (node: ts.Node): void => {
+-    recordDeclaredNode(node, names);
+-    ts.forEachChild(node, visit);
+-  };
+-  visit(sourceFile);
++  const declarationPattern =
++    /(?:^|[;{}])\s*(?:export\s+(?:default\s+)?)?(?:declare\s+)?(?:abstract\s+|const\s+|async\s+)?(?:function\s*\*?|class|interface|type|enum|namespace|const|let|var)\s+([$\w]+)/gm;
++  for (const match of text.matchAll(declarationPattern)) {
++    if (match[1] !== undefined) names.add(match[1]);
++  }
+   return names;
+ }

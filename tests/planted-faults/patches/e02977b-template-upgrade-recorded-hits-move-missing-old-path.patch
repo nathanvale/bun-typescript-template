@@ -1,12 +1,12 @@
 diff --git a/src/template-upgrade-recorded-hits-move.ts b/src/template-upgrade-recorded-hits-move.ts
 --- a/src/template-upgrade-recorded-hits-move.ts
 +++ b/src/template-upgrade-recorded-hits-move.ts
-@@ -179,7 +179,7 @@ export function isSymbolMove(
+@@ -303,7 +303,7 @@ export function isSymbolMove(
    const oldRead = readSourceFileText(oldFullPath);
    if (oldRead.kind === "unreadable") return false;
    if (oldRead.kind === "missing") {
 -    return isSoleSymbolDefinition(sourceReader, newPath, symbol);
 +    return true;
    }
-   if (symbolDefinedInSource(oldRead.text, symbol)) return false;
+   if (symbolDefinedInSource(oldFullPath, oldRead.text, symbol)) return false;
    return isSoleSymbolDefinition(sourceReader, newPath, symbol);

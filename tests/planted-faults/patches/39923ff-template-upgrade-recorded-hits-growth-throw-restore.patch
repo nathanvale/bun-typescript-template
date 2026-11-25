@@ -1,0 +1,18 @@
+diff --git a/src/template-upgrade-recorded-hits.ts b/src/template-upgrade-recorded-hits.ts
+--- a/src/template-upgrade-recorded-hits.ts
++++ b/src/template-upgrade-recorded-hits.ts
+@@ -453,13 +453,5 @@ function findRecordedHitsGrowthOrRestore(
+   snapshots: ReadonlyMap<string, Uint8Array | undefined>,
+   pendingDir?: string,
+ ): RecordedHitsFileGrowth[] {
+-  try {
+-    return findRecordedHitsGrowth(worktree, snapshots);
+-  } catch (error) {
+-    restoreSnapshots(worktree, snapshots);
+-    if (pendingDir !== undefined) {
+-      rmSync(pendingDir, { force: true, recursive: true });
+-    }
+-    throw error;
+-  }
++  return findRecordedHitsGrowth(worktree, snapshots);
+ }
