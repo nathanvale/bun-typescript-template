@@ -3103,5 +3103,12 @@
     "testFile": "tests/template/test-run/test-run-folder.test.ts",
     "title": "^a strict test run ignores a directory named like Bun's own bun-node",
     "source": "a1f8275 fix(test-run): ignore Bun's own bun-node folder in the leftover check"
+  },
+  {
+    "id": "2cbeeb0-test-run-leftover-owner",
+    "patch": "tests/planted-faults/patches/2cbeeb0-test-run-leftover-owner.patch",
+    "testFile": "tests/template/test-run/test-run-process.test.ts",
+    "title": "^a strict test run names only new entries owned by the user it runs as",
+    "source": "2cbeeb0 fix(test-run): report only leftovers owned by the user the tests run as"
   }
 ]
