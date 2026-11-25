@@ -32,8 +32,8 @@ test("the shared tool words in GLOSSARY.md are the template's recorded export, b
   expect(sharedSection(read("GLOSSARY.md"))).toBe(read(sharedExportFile));
 });
 
-test("the shared tool words are 36 entries that stay template-owned", () => {
-  expect(sharedEntries(read("GLOSSARY.md"))).toHaveLength(36);
+test("the shared tool words are 37 entries that stay template-owned", () => {
+  expect(sharedEntries(read("GLOSSARY.md"))).toHaveLength(37);
 });
 
 test("GLOSSARY.md defines no entry that glossary-ownership.json lists as the kernel's", () => {

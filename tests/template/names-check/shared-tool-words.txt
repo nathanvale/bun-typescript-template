@@ -149,6 +149,10 @@ version level (`major`, `minor`, `patch`, or empty), its summary, and for a
 `major` change the `Action: ` line telling the reader what to do.
 _Avoid_: change note, release note; changelog (for a changeset)
 
+**Changelog**:
+The repository-root `CHANGELOG.md` file updated by `changeset version` with a
+section per version above an optional `## Earlier changes` backfill section.
+
 **Gated path**:
 A repository path whose changes require a changeset on a pull request.
 _Avoid_: shipped path

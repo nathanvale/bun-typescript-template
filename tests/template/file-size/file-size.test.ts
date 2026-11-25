@@ -492,3 +492,22 @@ test(
   },
   processWatchdog(5),
 );
+
+test(
+  "the scan skips the root CHANGELOG.md because a tool writes it, it only grows, and agents look up its sections rather than reading it whole, and still checks a nested CHANGELOG.md",
+  async () => {
+    const tree = await fixtureRepository();
+    await seed(tree, {
+      "CHANGELOG.md": overLimit,
+      "docs/CHANGELOG.md": overLimit,
+    });
+
+    const result = checkInProcess(tree);
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain(
+      'check:file-size: "docs/CHANGELOG.md": 5001 tokens exceeds the 5000-token limit. Repair: shorten or split the file.\n',
+    );
+    expect(result.stderr).not.toContain('"CHANGELOG.md"');
+  },
+  processWatchdog(8),
+);
