@@ -106,6 +106,7 @@ export type TestRunOptions = {
   readonly strict: boolean;
   readonly report: (line: string) => void;
   readonly limitMilliseconds?: number;
+  readonly leftoverOwner?: number;
 };
 
 function readProcessMark(folder: string): number | undefined {
@@ -163,11 +164,21 @@ function isBunOwnFolder(
   }
 }
 
+function ownedBy(path: string, owner: number | undefined): boolean {
+  if (owner === undefined) return true;
+  try {
+    return lstatSync(path).uid === owner;
+  } catch {
+    return true;
+  }
+}
+
 function leftoversOf(
   folders: readonly string[],
   before: ReadonlyMap<string, Set<string>>,
   runFolder: string,
   stateFolder: string | undefined,
+  owner: number | undefined,
 ): string[] {
   return folders.flatMap((folder) =>
     [...namesIn(folder)]
@@ -177,7 +188,10 @@ function leftoversOf(
           !before.get(folder)?.has(name),
       )
       .map((name) => join(folder, name))
-      .filter((path) => path !== runFolder && !isLiveRunFolder(path)),
+      .filter(
+        (path) =>
+          path !== runFolder && !isLiveRunFolder(path) && ownedBy(path, owner),
+      ),
   );
 }
 
@@ -301,6 +315,7 @@ export async function runTests(
         options.env.STATE_TEST_DIR
           ? realFolder(options.env.STATE_TEST_DIR)
           : undefined,
+        options.leftoverOwner ?? process.getuid?.(),
       ),
       options,
     ),
