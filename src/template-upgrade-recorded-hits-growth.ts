@@ -109,9 +109,11 @@ function splitIdentityKey(
 ): { readonly path: string; readonly symbol: string } | undefined {
   const separator = key.indexOf("\u0000");
   if (separator <= 0 || separator === key.length - 1) return undefined;
+  const symbol = key.slice(separator + 1);
+  if (symbol === "<file>") return undefined;
   return {
     path: key.slice(0, separator),
-    symbol: key.slice(separator + 1),
+    symbol,
   };
 }
 
@@ -305,6 +307,26 @@ function objectWithoutPathKey(value: unknown): string | undefined {
   return JSON.stringify(canonicalizeJson(Object.fromEntries(rest)));
 }
 
+function deadCodeStringWithoutPathKey(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const firstColon = value.indexOf(":");
+  const lastColon = value.lastIndexOf(":");
+  if (firstColon <= 0 || lastColon <= firstColon + 1) return undefined;
+  const kind = value.slice(0, firstColon);
+  const path = value.slice(firstColon + 1, lastColon);
+  const symbol = value.slice(lastColon + 1);
+  if (symbol === "" || (!path.includes("/") && !path.includes("."))) {
+    return undefined;
+  }
+  return `string:${kind}\u0000${symbol}`;
+}
+
+function itemWithoutPathKey(value: unknown): string | undefined {
+  const stringKey = deadCodeStringWithoutPathKey(value);
+  if (stringKey !== undefined) return stringKey;
+  return objectWithoutPathKey(value);
+}
+
 function consumeOneCandidate(
   keys: readonly string[] | undefined,
   removedCounts: Map<string, number>,
@@ -326,13 +348,16 @@ function takeMovedArrayCounterpart(
   removedByNonPath: ReadonlyMap<string, readonly string[]>,
   movedPaths: ReadonlyMap<string, ReadonlySet<string>>,
 ): boolean {
-  if (typeof sample === "string") {
-    return consumeOneCandidate(
+  if (
+    typeof sample === "string" &&
+    consumeOneCandidate(
       movedStringCounterpartKeys(sample, movedPaths),
       removedCounts,
-    );
+    )
+  ) {
+    return true;
   }
-  const nonPathKey = objectWithoutPathKey(sample);
+  const nonPathKey = itemWithoutPathKey(sample);
   return nonPathKey === undefined
     ? false
     : consumeOneCandidate(removedByNonPath.get(nonPathKey), removedCounts);
@@ -357,7 +382,7 @@ function collectRemovedArrayEntries(
     const afterCount = afterCounts.get(key)?.count ?? 0;
     if (count <= afterCount) continue;
     removedCounts.set(key, count - afterCount);
-    const nonPathKey = objectWithoutPathKey(sample);
+    const nonPathKey = itemWithoutPathKey(sample);
     if (nonPathKey !== undefined)
       pushMapList(removedByNonPath, nonPathKey, key);
   }
@@ -480,17 +505,21 @@ function fileGrowthEntries(
     return ["unreadable recorded-hits JSON"];
   }
   const movedPaths = new Map<string, Set<string>>();
+  const beforeIdentities = Object.hasOwn(before, "identity_finding_counts")
+    ? before.identity_finding_counts
+    : undefined;
   const grown: string[] = Object.hasOwn(after, "identity_finding_counts")
     ? identityFindingCountsGrowth(
-        before.identity_finding_counts,
+        beforeIdentities,
         after.identity_finding_counts,
         movedPaths,
       )
     : [];
   for (const [key, afterValue] of Object.entries(after)) {
     if (METADATA_KEYS.has(key) || key === "identity_finding_counts") continue;
+    const beforeValue = Object.hasOwn(before, key) ? before[key] : undefined;
     grown.push(
-      ...fieldGrowthForTopLevelKey(key, before[key], afterValue, movedPaths),
+      ...fieldGrowthForTopLevelKey(key, beforeValue, afterValue, movedPaths),
     );
   }
   return grown;

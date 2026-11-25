@@ -3103,5 +3103,12 @@
     "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-growth.test.ts",
     "title": "^refuses with recorded_hits_would_grow when the recording step adds keys to fallow-health-recorded-hits\\.json, commits nothing, and leaves the file byte-identical to the base$",
     "source": "2618ac3 fix(template-upgrade): refuse recorded-hits growth during upgrade"
+  },
+  {
+    "id": "5a25cbe-template-upgrade-recorded-hits-repair-growth",
+    "patch": "tests/planted-faults/patches/5a25cbe-template-upgrade-recorded-hits-repair-growth.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-growth.test.ts",
+    "title": "^refuses with recorded_hits_would_grow when the repair rerun recording step adds keys, commits nothing, and leaves the recorded-hits file byte-identical to the base$",
+    "source": "5a25cbe fix(template-upgrade): allow re-identification and moved entries when checking recorded-hits growth"
   }
 ]

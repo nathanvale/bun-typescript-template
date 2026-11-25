@@ -1,0 +1,15 @@
+diff --git a/src/template-upgrade-recorded-hits.ts b/src/template-upgrade-recorded-hits.ts
+--- a/src/template-upgrade-recorded-hits.ts
++++ b/src/template-upgrade-recorded-hits.ts
+@@ -493,11 +493,6 @@ export function runRecordedHitsRepairStep(
+       ],
+     };
+   }
+-  const growth = findRecordedHitsGrowth(request.worktree, snapshots);
+-  if (growth.length > 0) {
+-    restoreSnapshots(request.worktree, snapshots);
+-    throw recordedHitsWouldGrowError(growth);
+-  }
+   return {
+     ok: true,
+     steps: [
