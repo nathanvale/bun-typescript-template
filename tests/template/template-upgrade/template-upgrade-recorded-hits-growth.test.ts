@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { chmodSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { RECORDED_HITS_FILES } from "../../../src/recipe.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import { commitIn, git } from "../../support/git-fixture.ts";
 import { processWatchdog } from "../../support/process.ts";
@@ -13,7 +14,6 @@ import {
   writeScriptedBun,
 } from "../../support/template-upgrade-fixture.ts";
 import {
-  ALL_RECORDED_HITS_FILES,
   branchName,
   CALC_FN,
   commitFallowGateChange,
@@ -417,7 +417,7 @@ test(
     expectGrowthRefusal(run, repo, branch, worktree, baseBytes, [
       "src/new.ts\u0000calculate",
     ]);
-    for (const file of ALL_RECORDED_HITS_FILES) {
+    for (const file of RECORDED_HITS_FILES) {
       expect(
         Buffer.compare(
           readFileSync(join(worktree, file)),

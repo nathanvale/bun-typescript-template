@@ -12,11 +12,6 @@ import {
 } from "./template-upgrade-fixture.ts";
 
 export const HEALTH_FILE = "fallow-health-recorded-hits.json";
-export const ALL_RECORDED_HITS_FILES = [
-  "fallow-dead-code-recorded-hits.json",
-  "fallow-duplicates-recorded-hits.json",
-  "fallow-health-recorded-hits.json",
-] as const;
 export const CALC_FN =
   "export function calculate(v: number): number {\n  return v;\n}\n";
 

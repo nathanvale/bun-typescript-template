@@ -291,7 +291,7 @@ function readSourceFileText(fullPath: string): FileReadResult {
 
 function parseFallowIgnorePatterns(
   text: string,
-): ReadonlySet<string> | undefined {
+): readonly Bun.Glob[] | undefined {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
@@ -301,24 +301,27 @@ function parseFallowIgnorePatterns(
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
     return undefined;
   }
-  if (!Object.hasOwn(parsed, "ignorePatterns")) return new Set<string>();
+  if (!Object.hasOwn(parsed, "ignorePatterns")) return [];
   const patterns: unknown = Reflect.get(parsed, "ignorePatterns");
   if (
     !Array.isArray(patterns) ||
-    !patterns.every((entry): entry is string => typeof entry === "string")
+    !patterns.every(
+      (entry): entry is string =>
+        typeof entry === "string" && !entry.startsWith("!"),
+    )
   ) {
     return undefined;
   }
-  return new Set(patterns);
+  return patterns.map((pattern) => new Bun.Glob(pattern));
 }
 
 function loadFallowIgnoredPaths(
   worktree: string,
-): ReadonlySet<string> | undefined {
+): readonly Bun.Glob[] | undefined {
   const configPath = resolveWorktreePath(worktree, ".fallowrc.json");
   if (configPath === undefined) return undefined;
   const read = readSourceFileText(configPath);
-  if (read.kind === "missing") return new Set<string>();
+  if (read.kind === "missing") return [];
   if (read.kind === "unreadable") return undefined;
   return parseFallowIgnorePatterns(read.text);
 }
@@ -342,9 +345,9 @@ function listWorktreePaths(worktree: string): string[] | undefined {
 function loadTrackedSourceFiles(
   worktree: string,
 ): ReadonlyMap<string, string> | undefined {
-  const ignoredPaths = loadFallowIgnoredPaths(worktree);
+  const ignoredPatterns = loadFallowIgnoredPaths(worktree);
   const paths = listWorktreePaths(worktree);
-  if (ignoredPaths === undefined || paths === undefined) return undefined;
+  if (ignoredPatterns === undefined || paths === undefined) return undefined;
   const seen = new Set<string>();
   const sources = new Map<string, string>();
   for (const relativePath of paths) {
@@ -352,7 +355,7 @@ function loadTrackedSourceFiles(
       relativePath === "" ||
       seen.has(relativePath) ||
       !SOURCE_FILE_PATTERN.test(relativePath) ||
-      ignoredPaths.has(relativePath)
+      ignoredPatterns.some((pattern) => pattern.match(relativePath))
     ) {
       continue;
     }
