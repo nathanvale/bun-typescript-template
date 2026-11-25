@@ -1,7 +1,7 @@
 diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
 --- a/scripts/pin-move-repository.ts
 +++ b/scripts/pin-move-repository.ts
-@@ -484,12 +484,6 @@ async function applyRepositoryPinMove(
+@@ -488,18 +488,6 @@ async function applyRepositoryPinMove(
        active,
        attempt.regenerate,
      );
@@ -10,6 +10,12 @@ diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
 -    );
 -    if (changeset !== undefined) {
 -      editedPaths.push(changeset.path);
+-      if (
+-        changeset.createdPath !== undefined &&
+-        isTrackedInHead(repository, changeset.createdPath)
+-      ) {
+-        editedPaths.push(changeset.createdPath);
+-      }
 -    }
      const written = attemptPaths(repository, editedPaths, regenerated);
      const commit = commitPinMoveBranch(

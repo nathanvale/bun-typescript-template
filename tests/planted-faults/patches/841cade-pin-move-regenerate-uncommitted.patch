@@ -1,9 +1,9 @@
 diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
 --- a/scripts/pin-move-repository.ts
 +++ b/scripts/pin-move-repository.ts
-@@ -490,7 +490,7 @@
-     if (changeset !== undefined) {
-       editedPaths.push(changeset.path);
+@@ -500,7 +500,7 @@ async function applyRepositoryPinMove(
+         editedPaths.push(changeset.createdPath);
+       }
      }
 -    const written = attemptPaths(repository, editedPaths, regenerated);
 +    const written = attemptPaths(repository, editedPaths);
