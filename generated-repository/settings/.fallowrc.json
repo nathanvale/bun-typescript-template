@@ -6,7 +6,9 @@
     "config/anti-slop-type-rules.mjs",
     "config/payload-rules.mjs",
     "config/platform-rules.mjs",
-    "config/template-rules.mjs"
+    "config/template-rules.mjs",
+    "scripts/check-recorded-health-sizes.ts",
+    "scripts/fallow-health-at-base-settings.ts"
   ],
   "entry": ["tests/cli.test.ts"],
   "typeAware": {

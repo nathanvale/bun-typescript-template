@@ -8,6 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+import { CliError } from "./cli-error.ts";
 import {
   PIN_SETTINGS,
   RECORDED_HITS_FILES,
@@ -26,6 +27,14 @@ import {
 } from "./template-upgrade-git.ts";
 import type { PackageDependencyChange } from "./template-upgrade-json-merge.ts";
 import type { TemplateUpgradeRow } from "./template-upgrade-merge.ts";
+import {
+  asRecord,
+  decodeJsonObjectBytes,
+  findRecordedHitsGrowth,
+  parseJsonObjectText,
+  type RecordedHitsFileGrowth,
+  readWorktreeFileBytes,
+} from "./template-upgrade-recorded-hits-growth.ts";
 import {
   createTemplateUpgradeApplyStep,
   skipTemplateUpgradeSteps,
@@ -46,49 +55,20 @@ const REFRESHED_IDENTITY_REASON =
   "refreshed analysis identity; kept existing recorded hits";
 const RECORDED_AFTER_REPAIR_REASON =
   "recorded again after a repair that bun run check passed";
-const METADATA_KEYS = new Set([
-  "kind",
-  "identity",
-  "analysis_identity",
-  "schema_version",
-  "version",
-]);
+const RECORDED_HITS_WOULD_GROW_REPAIR =
+  "record each hit by hand in a later commit, or change the code so it is not reported, then rerun the upgrade";
 const FALLOW_SCRIPT_KEYS = ["quality:fallow", RECORDED_HITS_SCRIPT] as const;
 
 type RecordedHitsAction = "none" | "record-new" | "refresh-changed";
-
-function parseJsonObjectText(
-  text: string,
-): Readonly<Record<string, unknown>> | undefined {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    return undefined;
-  }
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-    return undefined;
-  }
-  return Object.fromEntries(Object.entries(parsed));
-}
 
 function readPackageScripts(
   text: string | undefined,
 ): Readonly<Record<string, unknown>> | undefined {
   if (text === undefined) return undefined;
   const manifest = parseJsonObjectText(text);
-  if (manifest === undefined || !Object.hasOwn(manifest, "scripts")) {
-    return undefined;
-  }
-  const scripts = manifest.scripts;
-  if (
-    typeof scripts !== "object" ||
-    scripts === null ||
-    Array.isArray(scripts)
-  ) {
-    return undefined;
-  }
-  return Object.fromEntries(Object.entries(scripts));
+  return manifest === undefined || !Object.hasOwn(manifest, "scripts")
+    ? undefined
+    : asRecord(manifest.scripts);
 }
 
 function definesRecordedHitsScript(worktree: string): boolean {
@@ -135,28 +115,11 @@ export function recordedHitsRequestFor(
   };
 }
 
-function readWorktreeRegularFileBytes(
-  fullPath: string,
-): Uint8Array | undefined {
-  let stats: ReturnType<typeof lstatSync>;
-  try {
-    stats = lstatSync(fullPath);
-  } catch (error) {
-    const code: unknown = Reflect.get(Object(error), "code");
-    if (code === "ENOENT" || code === "ENOTDIR") return undefined;
-    throw error;
-  }
-  if (!stats.isFile()) return undefined;
-  return readFileSync(fullPath);
-}
-
 function matchesTemplateRecordedHits(
   options: RecordedHitsRequest,
   file: string,
 ): boolean {
-  const worktreeBytes = readWorktreeRegularFileBytes(
-    join(options.worktree, file),
-  );
+  const worktreeBytes = readWorktreeFileBytes(join(options.worktree, file));
   if (worktreeBytes === undefined) return false;
   const templateBytes = readCommittedBytesAt(
     options.templateRoot,
@@ -240,13 +203,7 @@ function readPendingSnapshots(
   const parsed = parseJsonObjectText(readFileSync(statePath, "utf8"));
   const action =
     parsed === undefined ? undefined : parsePendingAction(parsed.action);
-  const filesMap =
-    parsed === undefined ||
-    typeof parsed.files !== "object" ||
-    parsed.files === null ||
-    Array.isArray(parsed.files)
-      ? undefined
-      : Object.fromEntries(Object.entries(parsed.files));
+  const filesMap = parsed === undefined ? undefined : asRecord(parsed.files);
   if (action === undefined || filesMap === undefined) {
     return undefined;
   }
@@ -268,7 +225,7 @@ function captureWorktreeSnapshots(
 ): Map<string, Uint8Array | undefined> {
   const snapshots = new Map<string, Uint8Array | undefined>();
   for (const file of RECORDED_HITS_FILES) {
-    snapshots.set(file, readWorktreeRegularFileBytes(join(worktree, file)));
+    snapshots.set(file, readWorktreeFileBytes(join(worktree, file)));
   }
   return snapshots;
 }
@@ -303,7 +260,7 @@ function fallowScriptsChanged(options: RecordedHitsRequest): boolean {
     "package.json",
     options.env,
   );
-  const afterBytes = readWorktreeRegularFileBytes(
+  const afterBytes = readWorktreeFileBytes(
     join(options.worktree, "package.json"),
   );
   if (beforeBytes === undefined || afterBytes === undefined) return false;
@@ -350,71 +307,33 @@ function recordedHitsAction(options: RecordedHitsRequest): RecordedHitsAction {
     return matchesEmpty ? "record-new" : "none";
   }
   const allPresentInWorktree = RECORDED_HITS_FILES.every(
-    (file) => readWorktreeRegularFileBytes(join(worktree, file)) !== undefined,
+    (file) => readWorktreeFileBytes(join(worktree, file)) !== undefined,
   );
   if (!allPresentInWorktree) return "none";
   return fallowSettingsChanged(options) ? "refresh-changed" : "none";
 }
 
-function arrayAddedEntries(
-  beforeValue: unknown,
-  afterValue: readonly unknown[],
+function snapshotsRefreshedAnalysisIdentity(
+  worktree: string,
+  snapshots: ReadonlyMap<string, Uint8Array | undefined>,
 ): boolean {
-  const beforeItems = Array.isArray(beforeValue) ? beforeValue : [];
-  const beforeSet = new Set(beforeItems.map((item) => JSON.stringify(item)));
-  return afterValue.some((item) => !beforeSet.has(JSON.stringify(item)));
-}
-
-function countMapGrew(
-  beforeValue: unknown,
-  afterValue: Readonly<Record<string, unknown>>,
-): boolean {
-  const beforeRecord: Readonly<Record<string, unknown>> =
-    typeof beforeValue === "object" &&
-    beforeValue !== null &&
-    !Array.isArray(beforeValue)
-      ? Object.fromEntries(Object.entries(beforeValue))
-      : {};
-  for (const [key, value] of Object.entries(afterValue)) {
-    if (typeof value !== "number") return true;
-    const prior: unknown = Object.hasOwn(beforeRecord, key)
-      ? beforeRecord[key]
-      : 0;
-    const priorNumber = typeof prior === "number" ? prior : 0;
-    if (value > priorNumber) return true;
+  for (const [file, beforeBytes] of snapshots) {
+    if (beforeBytes === undefined) continue;
+    const afterBytes = readWorktreeFileBytes(join(worktree, file));
+    if (afterBytes === undefined) continue;
+    const beforeObj = decodeJsonObjectBytes(beforeBytes);
+    const afterObj = decodeJsonObjectBytes(afterBytes);
+    if (
+      beforeObj !== undefined &&
+      afterObj !== undefined &&
+      Object.hasOwn(afterObj, "analysis_identity") &&
+      JSON.stringify(beforeObj.analysis_identity) !==
+        JSON.stringify(afterObj.analysis_identity)
+    ) {
+      return true;
+    }
   }
   return false;
-}
-
-function propertyAddedFindings(
-  beforeValue: unknown,
-  afterValue: unknown,
-): boolean {
-  if (Array.isArray(afterValue)) {
-    return arrayAddedEntries(beforeValue, afterValue);
-  }
-  if (typeof afterValue === "object" && afterValue !== null) {
-    return countMapGrew(
-      beforeValue,
-      Object.fromEntries(Object.entries(afterValue)),
-    );
-  }
-  return JSON.stringify(beforeValue) !== JSON.stringify(afterValue);
-}
-
-function fileAddedFindings(
-  beforeBytes: Uint8Array,
-  afterBytes: Uint8Array,
-): boolean {
-  const utf8 = new TextDecoder("utf-8");
-  const before = parseJsonObjectText(utf8.decode(beforeBytes));
-  const after = parseJsonObjectText(utf8.decode(afterBytes));
-  if (before === undefined || after === undefined) return true;
-  return Object.entries(after).some(([key, afterValue]) => {
-    if (METADATA_KEYS.has(key)) return false;
-    const beforeValue = Object.hasOwn(before, key) ? before[key] : undefined;
-    return propertyAddedFindings(beforeValue, afterValue);
-  });
 }
 
 function formatRewrittenFiles(
@@ -442,7 +361,6 @@ function keepIdentityOnly(
   timeoutMilliseconds: number,
   env: ProcessEnvMap,
 ): void {
-  const utf8 = new TextDecoder("utf-8");
   const rewritten: string[] = [];
   for (const [file, beforeBytes] of snapshots) {
     const fullPath = join(worktree, file);
@@ -450,12 +368,10 @@ function keepIdentityOnly(
       rmSync(fullPath, { force: true });
       continue;
     }
-    const afterBytes = readWorktreeRegularFileBytes(fullPath);
-    const beforeObj = parseJsonObjectText(utf8.decode(beforeBytes));
+    const afterBytes = readWorktreeFileBytes(fullPath);
+    const beforeObj = decodeJsonObjectBytes(beforeBytes);
     const afterObj =
-      afterBytes === undefined
-        ? undefined
-        : parseJsonObjectText(utf8.decode(afterBytes));
+      afterBytes === undefined ? undefined : decodeJsonObjectBytes(afterBytes);
     if (
       beforeObj !== undefined &&
       afterObj !== undefined &&
@@ -480,6 +396,21 @@ function keepIdentityOnly(
     }
   }
   formatRewrittenFiles(worktree, rewritten, timeoutMilliseconds, env);
+}
+
+function recordedHitsWouldGrowError(
+  growth: readonly RecordedHitsFileGrowth[],
+): CliError {
+  const detail = growth
+    .map((item) => `${item.file} (${item.entries.join(", ")})`)
+    .join("; ");
+  return new CliError(
+    "recorded_hits_would_grow",
+    `recording would grow recorded hits: ${detail}`,
+    RECORDED_HITS_WOULD_GROW_REPAIR,
+    4,
+    false,
+  );
 }
 
 export function noCheckTemplateUpgradeSteps(
@@ -515,19 +446,6 @@ function restoreSnapshots(
       writeFileSync(fullPath, beforeBytes);
     }
   }
-}
-
-function snapshotsAddedNewFindings(
-  worktree: string,
-  snapshots: ReadonlyMap<string, Uint8Array | undefined>,
-): boolean {
-  return [...snapshots.entries()].some(([file, beforeBytes]) => {
-    const afterBytes = readWorktreeRegularFileBytes(join(worktree, file));
-    if (beforeBytes === undefined) return afterBytes !== undefined;
-    return (
-      afterBytes === undefined || fileAddedFindings(beforeBytes, afterBytes)
-    );
-  });
 }
 
 function preparePendingRecording(
@@ -574,6 +492,11 @@ export function runRecordedHitsRepairStep(
         createTemplateUpgradeApplyStep(RECORDED_HITS_STEP, true, "failed"),
       ],
     };
+  }
+  const growth = findRecordedHitsGrowth(request.worktree, snapshots);
+  if (growth.length > 0) {
+    restoreSnapshots(request.worktree, snapshots);
+    throw recordedHitsWouldGrowError(growth);
   }
   return {
     ok: true,
@@ -629,17 +552,25 @@ export function runRecordedHitsStep(
     };
   }
   let reason: string | undefined;
-  if (
-    pending.action === "refresh-changed" &&
-    snapshotsAddedNewFindings(request.worktree, pending.snapshots)
-  ) {
-    keepIdentityOnly(
-      request.worktree,
-      pending.snapshots,
-      timeoutMilliseconds,
-      request.env,
-    );
-    reason = REFRESHED_IDENTITY_REASON;
+  if (pending.action === "refresh-changed") {
+    const growth = findRecordedHitsGrowth(request.worktree, pending.snapshots);
+    if (growth.length > 0) {
+      if (
+        snapshotsRefreshedAnalysisIdentity(request.worktree, pending.snapshots)
+      ) {
+        keepIdentityOnly(
+          request.worktree,
+          pending.snapshots,
+          timeoutMilliseconds,
+          request.env,
+        );
+        reason = REFRESHED_IDENTITY_REASON;
+      } else {
+        restoreSnapshots(request.worktree, pending.snapshots);
+        rmSync(pendingDir, { force: true, recursive: true });
+        throw recordedHitsWouldGrowError(growth);
+      }
+    }
   }
   markRecordingDone(request);
   rmSync(pendingDir, { force: true, recursive: true });

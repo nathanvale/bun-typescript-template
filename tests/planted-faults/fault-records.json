@@ -3098,6 +3098,27 @@
     "source": "511a529 fix(test-run): keep test folders inside the test run folder when STATE_TEST_DIR is set"
   },
   {
+    "id": "2618ac3-template-upgrade-recorded-hits-growth",
+    "patch": "tests/planted-faults/patches/2618ac3-template-upgrade-recorded-hits-growth.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-growth.test.ts",
+    "title": "^refuses with recorded_hits_would_grow when the recording step adds keys to fallow-health-recorded-hits\\.json, commits nothing, and leaves the file byte-identical to the base$",
+    "source": "2618ac3 fix(template-upgrade): refuse recorded-hits growth during upgrade"
+  },
+  {
+    "id": "5a25cbe-template-upgrade-recorded-hits-repair-growth",
+    "patch": "tests/planted-faults/patches/5a25cbe-template-upgrade-recorded-hits-repair-growth.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-growth.test.ts",
+    "title": "^refuses with recorded_hits_would_grow when the repair rerun recording step adds keys, commits nothing, and leaves the recorded-hits file byte-identical to the base$",
+    "source": "5a25cbe fix(template-upgrade): allow re-identification and moved entries when checking recorded-hits growth"
+  },
+  {
+    "id": "5627649-generated-fallow-ignore",
+    "patch": "tests/planted-faults/patches/5627649-generated-fallow-ignore.patch",
+    "testFile": "tests/template/toolchain/generated-fallow-ignore.test.ts",
+    "title": "^the generated Fallow ignore list names only",
+    "source": "5627649 test(toolchain): pin the generated Fallow ignore list to exact starter-kit paths"
+  },
+  {
     "id": "469b32b-template-upgrade-apply",
     "patch": "tests/planted-faults/patches/469b32b-template-upgrade-apply.patch",
     "testFile": "tests/template/template-upgrade/template-upgrade-changeset-write.test.ts",
@@ -3117,5 +3138,19 @@
     "testFile": "tests/template/test-run/test-run-process.test.ts",
     "title": "^a strict test run names only new entries owned by the user it runs as",
     "source": "2cbeeb0 fix(test-run): report only leftovers owned by the user the tests run as"
+  },
+  {
+    "id": "7cf59dd-template-upgrade-recorded-hits-move-old-path",
+    "patch": "tests/planted-faults/patches/7cf59dd-template-upgrade-recorded-hits-move-old-path.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-growth.test.ts",
+    "title": "^refuses with recorded_hits_would_grow when an old recorded function is still defined at its old path and a same-named function is added at a new path, commits nothing, and leaves the file byte-identical to the base$",
+    "source": "7cf59dd fix(template-upgrade): verify moved recorded-hits symbols are absent at old paths"
+  },
+  {
+    "id": "e02977b-template-upgrade-recorded-hits-move-missing-old-path",
+    "patch": "tests/planted-faults/patches/e02977b-template-upgrade-recorded-hits-move-missing-old-path.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-growth.test.ts",
+    "title": "^refuses with recorded_hits_would_grow when an old recorded file is renamed keeping its function and a same-named function is added at a new path, commits nothing, and leaves the file byte-identical to the base$",
+    "source": "e02977b fix(template-upgrade): require moved recorded-hits symbols to be uniquely defined at new paths"
   }
 ]
