@@ -322,3 +322,41 @@ test("l", async () => {
   },
   processWatchdog(1),
 );
+
+test(
+  "a strict test run names only new entries owned by the user it runs as, so a folder another user's process makes mid-run (a runner's system service) is not a test leftover",
+  async () => {
+    const own = process.getuid?.() ?? 0;
+    const body = `import { test } from "bun:test";
+import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+test("l", () => {
+  const t = process.env.T;
+  writeFileSync(join(t, "planted-file"), "x");
+  mkdirSync(join(t, "planted-dir"));
+  symlinkSync(t, join(t, "planted-link"));
+});`;
+    const run = async (owner: number) => {
+      const temp = folder("test-run-temp-");
+      const lines: string[] = [];
+      const result = await runTests([], {
+        cwd: specimen({ "tests/l.test.ts": body }),
+        env: outsideRun(temp, { T: temp }),
+        leftoverFolders: [temp],
+        strict: true,
+        report: (l) => lines.push(l),
+        limitMilliseconds: bound,
+        leftoverOwner: owner,
+      });
+      return { result, text: lines.join("\n"), temp };
+    };
+    const theirs = await run(own + 1);
+    expect(theirs.result.exitCode).toBe(0);
+    expect(theirs.text).not.toContain("Tests left");
+    const mine = await run(own);
+    expect(mine.result.exitCode).toBe(1);
+    for (const name of ["planted-file", "planted-dir", "planted-link"])
+      expect(mine.text).toContain(`\n  ${join(mine.temp, name)}`);
+  },
+  processWatchdog(1),
+);
