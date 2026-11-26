@@ -3403,20 +3403,20 @@
     "patch": "tests/planted-faults/patches/cli-doctor-check-failed.patch",
     "testFile": "tests/template/doctor/doctor-cli.test.ts",
     "title": "^cli front door and doctor route doctor refuses a checkout that fails a check with DOMAIN_DOCTOR_CHECK_FAILED, results in the envelope, and a diagnostics event$",
-    "source": "feat(cli): route doctor through src/cli.ts front door"
+    "source": "1535d65 feat(cli): the front door runs doctor through the kernel, with diagnostics; doctor moves to src/doctor.ts"
   },
   {
     "id": "doctor-installed-kernel-pin",
     "patch": "tests/planted-faults/patches/doctor-installed-kernel-pin.patch",
     "testFile": "tests/template/doctor/doctor-cli.test.ts",
     "title": "^cli front door and doctor route toolchain result fails when node_modules/agent-cli-kernel is not at the Pin commit$",
-    "source": "feat(cli): check installed agent-cli-kernel commit in doctor"
+    "source": "1535d65 feat(cli): the front door runs doctor through the kernel, with diagnostics; doctor moves to src/doctor.ts"
   },
   {
     "id": "pin-verification-places",
     "patch": "tests/planted-faults/patches/pin-verification-places.patch",
     "testFile": "tests/template/pin-move/pin-verification-command.test.ts",
     "title": "^the pin verification command refuses with pin_places_disagree without a kernel repository when package\\.json disagrees with kernel-pin\\.json$",
-    "source": "feat(pin): verify two-place Pin agreement in pin-verification"
+    "source": "92db576 feat(pin): pin verification refuses when package.json or bun.lock pins another kernel commit than kernel-pin.json"
   }
 ]
