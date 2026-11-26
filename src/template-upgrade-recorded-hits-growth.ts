@@ -19,6 +19,7 @@ const METADATA_KEYS = new Set([
   "schema_version",
   "version",
 ]);
+const CLONE_LABEL_KEYS = new Set(["clone_groups", "clone_fingerprints"]);
 
 export interface RecordedHitsFileGrowth {
   readonly file: string;
@@ -616,6 +617,18 @@ function isHealthPair(
   return before.kind === "health" && after.kind === "health";
 }
 
+function measuresNormalizedClones(
+  before: Readonly<Record<string, unknown>>,
+  after: Readonly<Record<string, unknown>>,
+): boolean {
+  return (
+    before.kind === "dupes" &&
+    after.kind === "dupes" &&
+    Array.isArray(before.normalized_clone_fingerprints) &&
+    Array.isArray(after.normalized_clone_fingerprints)
+  );
+}
+
 function fileGrowthEntries(
   scanner: WorktreeSourceReader,
   beforeBytes: Uint8Array,
@@ -627,6 +640,7 @@ function fileGrowthEntries(
     return ["unreadable recorded-hits JSON"];
   }
   const isHealth = isHealthPair(before, after);
+  const skipsCloneLabels = measuresNormalizedClones(before, after);
   const movedPaths = new Map<string, Set<string>>();
   const beforeIdentities = Object.hasOwn(before, "identity_finding_counts")
     ? before.identity_finding_counts
@@ -641,6 +655,7 @@ function fileGrowthEntries(
     : [];
   for (const [key, afterValue] of Object.entries(after)) {
     if (METADATA_KEYS.has(key) || key === "identity_finding_counts") continue;
+    if (skipsCloneLabels && CLONE_LABEL_KEYS.has(key)) continue;
     const beforeValue = Object.hasOwn(before, key) ? before[key] : undefined;
     grown.push(
       ...fieldGrowthForTopLevelKey(

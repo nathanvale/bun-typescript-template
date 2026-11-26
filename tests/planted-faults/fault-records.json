@@ -3320,5 +3320,12 @@
     "testFile": "tests/template/changesets/changeset-version.test.ts",
     "title": "^release step documentation Release backfill instructions name agent-gates changelog backfill in both the template README and pull-requests guide$",
     "source": "f4bac4c fix(changeset): check pending changesets before version and rename backfill command"
+  },
+  {
+    "id": "3012333-template-upgrade-recorded-hits-growth",
+    "patch": "tests/planted-faults/patches/3012333-template-upgrade-recorded-hits-growth.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-clone.test.ts",
+    "title": "a duplicates file whose clone moved files, keeping its normalized fingerprint, does not grow",
+    "source": "3012333 fix(template-upgrade): measure recorded clone growth by normalized fingerprint"
   }
 ]
