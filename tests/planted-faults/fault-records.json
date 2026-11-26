@@ -3390,5 +3390,12 @@
     "testFile": "tests/template/toolchain/build-bundles.test.ts",
     "title": "^build-bundles refusals refuses any argument but a lone --check with the usage line, and writes nothing$",
     "source": "51b549b test(bundles): cover the bundle builder's six untested refusals"
+  },
+  {
+    "id": "3012333-template-upgrade-recorded-hits-growth",
+    "patch": "tests/planted-faults/patches/3012333-template-upgrade-recorded-hits-growth.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-clone.test.ts",
+    "title": "a duplicates file whose clone moved files, keeping its normalized fingerprint, does not grow",
+    "source": "3012333 fix(template-upgrade): measure recorded clone growth by normalized fingerprint"
   }
 ]
