@@ -5,6 +5,7 @@ import {
   mkdirSync,
   mkdtempSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -13,10 +14,12 @@ import { testRunFiles } from "../../support/fixture-files.ts";
 
 const repository = join(import.meta.dir, "../../..");
 const scripts = [
-  "scripts/doctor.ts",
+  "src/cli.ts",
+  "src/causes.ts",
+  "src/doctor.ts",
+  "src/toolchain-resolution.ts",
   "scripts/test-area.ts",
   "scripts/repository.ts",
-  "src/toolchain-resolution.ts",
 ];
 const projects: string[] = [];
 
@@ -31,9 +34,22 @@ function write(root: string, path: string, content: string): void {
 
 type PackageManifest = { readonly packageManager?: string };
 
+function linkKernel(root: string): void {
+  mkdirSync(join(root, "node_modules"), { recursive: true });
+  symlinkSync(
+    join(repository, "node_modules/agent-cli-kernel"),
+    join(root, "node_modules/agent-cli-kernel"),
+  );
+  symlinkSync(
+    join(repository, "node_modules/@logtape"),
+    join(root, "node_modules/@logtape"),
+  );
+}
+
 function project(
   manifest: PackageManifest,
   files: Record<string, string> = {},
+  withKernel = true,
 ) {
   const root = mkdtempSync(join(tmpdir(), "doctor-"));
   projects.push(root);
@@ -47,6 +63,7 @@ function project(
     ...files,
   }))
     write(root, path, content);
+  if (withKernel) linkKernel(root);
   return root;
 }
 
@@ -113,9 +130,16 @@ function withToolchain(
 }
 
 function run(root: string, script: string, args: string[] = [], cwd = root) {
+  const stateHome = join(root, ".xdg-state");
+  mkdirSync(stateHome, { recursive: true });
   const result = Bun.spawnSync(
     [process.execPath, join(root, script), ...args],
-    { cwd, stdout: "pipe", stderr: "pipe" },
+    {
+      cwd,
+      env: { ...process.env, XDG_STATE_HOME: stateHome, NO_COLOR: "1" },
+      stdout: "pipe",
+      stderr: "pipe",
+    },
   );
   return {
     exitCode: result.exitCode,
@@ -125,12 +149,17 @@ function run(root: string, script: string, args: string[] = [], cwd = root) {
   };
 }
 
-const doctor = "scripts/doctor.ts";
+const doctor = "src/cli.ts";
+const doctorArgs = ["doctor"];
 const testArea = "scripts/test-area.ts";
 
 describe("doctor", () => {
   function bunRepair(pin: string) {
-    const result = run(project({ packageManager: `bun@${pin}` }), doctor);
+    const result = run(
+      project({ packageManager: `bun@${pin}` }),
+      doctor,
+      doctorArgs,
+    );
     const line = result.lines.find((entry) => entry.startsWith("FAIL bun: "));
     return {
       exitCode: result.exitCode,
@@ -147,7 +176,7 @@ describe("doctor", () => {
     (_order, pin) => {
       const { exitCode, line } = bunRepair(pin);
 
-      expect(exitCode).toBe(1);
+      expect(exitCode).toBe(3);
       expect(line).toBe(
         `FAIL bun: found Bun ${Bun.version}, pinned ${pin}. Repair: run each command as mise exec bun@${pin} -- <command>. If mise reports bun@${pin} missing, run mise install bun@${pin} first. In a hosted check, set bun-version: ${pin} on setup-bun.`,
       );
@@ -182,6 +211,7 @@ describe("doctor", () => {
     const result = run(
       project({ packageManager: `bun@${Bun.version}+sha512.abc` }),
       doctor,
+      doctorArgs,
     );
 
     expect(result.lines).toContain(
@@ -193,9 +223,9 @@ describe("doctor", () => {
     ["missing", {}],
     ["malformed", { packageManager: "npm@10.0.0" }],
   ])("a %s pin fails with a repair", (_kind, manifest) => {
-    const result = run(project(manifest), doctor);
+    const result = run(project(manifest), doctor, doctorArgs);
 
-    expect(result.exitCode).toBe(1);
+    expect(result.exitCode).toBe(3);
     expect(result.lines).toContain(
       'FAIL bun: package.json has no toolchain pin. Repair: add "packageManager": "bun@<version>" to package.json.',
     );
@@ -203,13 +233,14 @@ describe("doctor", () => {
 
   test("the pinned Bun without node_modules fails with the install repair", () => {
     const result = run(
-      project({ packageManager: `bun@${Bun.version}` }),
+      project({ packageManager: `bun@${Bun.version}` }, {}, false),
       doctor,
+      doctorArgs,
     );
 
     expect(result.exitCode).toBe(1);
-    expect(result.lines).toContain(
-      "FAIL toolchain: node_modules is missing. Repair: bun install --frozen-lockfile.",
+    expect(result.stderr.trimEnd()).toContain(
+      "Repair: bun install --frozen-lockfile.",
     );
   });
 
@@ -220,20 +251,23 @@ describe("doctor", () => {
         { "node_modules/.keep": "" },
       ),
       doctor,
+      doctorArgs,
     );
 
-    expect(result.exitCode).toBe(1);
-    expect(result.stdout.trimEnd().split("\n")).toHaveLength(4);
-    const toolchainLine = result.lines.find((line) =>
+    expect(result.exitCode).toBe(3);
+    const toolchainLines = result.lines.filter((line) =>
       line.startsWith("FAIL toolchain: "),
     );
-    expect(toolchainLine).toEndWith(" Repair: bun install --frozen-lockfile.");
+    expect(toolchainLines).toHaveLength(1);
+    expect(toolchainLines[0]).toEndWith(
+      " Repair: bun install --frozen-lockfile.",
+    );
   });
 
   test("a drifted lint backend fails the toolchain check", () => {
-    const result = run(withToolchain("6.0.3"), doctor);
+    const result = run(withToolchain("6.0.3"), doctor, doctorArgs);
 
-    expect(result.exitCode).toBe(1);
+    expect(result.exitCode).toBe(3);
     expect(result.lines).toContain(
       "FAIL toolchain: The installed lint, compiler and semantic backends do not match the accepted toolchain. Repair: bun install --frozen-lockfile.",
     );
@@ -241,7 +275,7 @@ describe("doctor", () => {
 
   test("the accepted toolchain passes from any working directory", () => {
     const root = withToolchain("6.0.2");
-    const result = run(root, doctor, [], join(root, "scripts"));
+    const result = run(root, doctor, doctorArgs, join(root, "scripts"));
 
     expect(result.exitCode).toBe(0);
     expect(result.lines).toContain(
@@ -278,6 +312,7 @@ describe("doctor", () => {
     const result = run(
       withToolchain("6.0.2", {}, fallowDoctor(report)),
       doctor,
+      doctorArgs,
     );
 
     expect(result.exitCode).toBe(0);
@@ -301,9 +336,10 @@ describe("doctor", () => {
     const result = run(
       withToolchain("6.0.2", {}, fallowDoctor(report, 2)),
       doctor,
+      doctorArgs,
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.exitCode).toBe(3);
     expect(result.lines).toContain(
       "FAIL fallow: config: The config file .fallowrc.json could not be parsed. Repair: run node_modules/.bin/fallow doctor for the details.",
     );
@@ -313,9 +349,10 @@ describe("doctor", () => {
     const result = run(
       withToolchain("6.0.2", {}, fallowDoctor("error: unknown command", 2)),
       doctor,
+      doctorArgs,
     );
 
-    expect(result.exitCode).toBe(1);
+    expect(result.exitCode).toBe(3);
     expect(result.lines).toContain(
       "FAIL fallow: fallow doctor exited 2 without a readiness report. Repair: bun install --frozen-lockfile, then run node_modules/.bin/fallow doctor to read its error.",
     );
@@ -325,23 +362,24 @@ describe("doctor", () => {
     const result = run(
       project({ packageManager: `bun@${Bun.version}` }),
       doctor,
+      doctorArgs,
     );
 
-    expect(result.exitCode).toBe(1);
-    expect(result.stdout).toEndWith("\nDone when bun run doctor passes.\n");
+    expect(result.exitCode).toBe(3);
+    expect(result.lines).toContain("Done when bun run doctor passes.");
   });
 
   test("a run with no FAIL line does not say when a repair is done", () => {
-    const result = run(withToolchain("6.0.2"), doctor);
+    const result = run(withToolchain("6.0.2"), doctor, doctorArgs);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).not.toContain("Done when");
   });
 
   test("an installed toolchain without fallow fails with the install repair", () => {
-    const result = run(withToolchain("6.0.2", {}, null), doctor);
+    const result = run(withToolchain("6.0.2", {}, null), doctor, doctorArgs);
 
-    expect(result.exitCode).toBe(1);
+    expect(result.exitCode).toBe(3);
     expect(result.lines).toContain(
       "FAIL fallow: node_modules/.bin/fallow is missing. Repair: bun install --frozen-lockfile.",
     );

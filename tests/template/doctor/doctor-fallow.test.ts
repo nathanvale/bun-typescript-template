@@ -1,11 +1,15 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { chmodSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { cliCauses } from "../../../src/causes.ts";
+import { jsonOutput } from "../../../src/cli.ts";
 import {
+  doctor,
   fallowCheck,
   fallowReadiness,
   fallowReport,
-} from "../../../scripts/doctor.ts";
+  formatDoctorReport,
+} from "../../../src/doctor.ts";
 import { testFolder } from "../../support/test-folder.ts";
 
 const folders: string[] = [];
@@ -302,4 +306,45 @@ describe("fallowReadiness", () => {
       });
     },
   );
+});
+
+describe("doctor report and causes", () => {
+  test("doctor returns results without writing to stdout and formatDoctorReport renders each line", async () => {
+    const folder = testFolder("doctor-missing-modules-");
+    folders.push(folder);
+    writeFileSync(
+      join(folder, "package.json"),
+      JSON.stringify({ packageManager: `bun@${Bun.version}` }),
+    );
+    const report = await doctor(folder);
+    expect(report.ready).toBe(false);
+    expect(report.results).toContainEqual({
+      status: "FAIL",
+      check: "toolchain",
+      detail: `node_modules is missing. Repair: ${install}.`,
+    });
+    const text = formatDoctorReport(report);
+    expect(text).toContain(
+      `FAIL toolchain: node_modules is missing. Repair: ${install}.\n`,
+    );
+    expect(text).toEndWith("Done when bun run doctor passes.\n");
+  });
+
+  test("cliCauses declares DOMAIN_DOCTOR_CHECK_FAILED as a data-carrying domain refusal", () => {
+    expect(cliCauses.DOMAIN_DOCTOR_CHECK_FAILED).toEqual({
+      outcome: "refused",
+      transactionState: "unchanged",
+      failureClass: "domain",
+      exitCode: 3,
+      retryable: false,
+      guidance: "next",
+      carriesData: true,
+    });
+  });
+
+  test("jsonOutput recognises --json before -- only", () => {
+    expect(jsonOutput(["doctor"])).toBe(false);
+    expect(jsonOutput(["doctor", "--json"])).toBe(true);
+    expect(jsonOutput(["doctor", "--", "--json"])).toBe(false);
+  });
 });

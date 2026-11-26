@@ -1,15 +1,23 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { availableParallelism, loadavg } from "node:os";
 import { join } from "node:path";
-import { resolveToolchain } from "../src/toolchain-resolution.ts";
+import { resolveToolchain } from "./toolchain-resolution.ts";
 
-export type Finding = {
-  status: "ok" | "FAIL" | "WARN";
-  check: string;
-  detail: string;
+export type CheckResult = {
+  readonly status: "ok" | "FAIL" | "WARN";
+  readonly check: string;
+  readonly detail: string;
+};
+
+export type DoctorReport = {
+  readonly ready: boolean;
+  readonly results: readonly CheckResult[];
 };
 
 const install = "bun install --frozen-lockfile";
+const kernelPinFile = "kernel-pin.json";
+const installedKernelFolder = "node_modules/agent-cli-kernel";
+const fullCommit = /^[0-9a-f]{40}$/;
 
 async function pinnedBun(root: string): Promise<string | undefined> {
   try {
@@ -22,7 +30,7 @@ async function pinnedBun(root: string): Promise<string | undefined> {
   }
 }
 
-async function bunVersion(root: string): Promise<Finding> {
+async function bunVersion(root: string): Promise<CheckResult> {
   const pinned = await pinnedBun(root);
   if (pinned === undefined)
     return {
@@ -44,7 +52,44 @@ async function bunVersion(root: string): Promise<Finding> {
   };
 }
 
-function toolchain(root: string): Finding {
+function pinnedKernelCommit(root: string): string | undefined {
+  const path = join(root, kernelPinFile);
+  if (!existsSync(path)) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    throw new Error(`${kernelPinFile} is not readable JSON.`);
+  }
+  const commit: unknown =
+    typeof parsed === "object" && parsed !== null
+      ? Object.getOwnPropertyDescriptor(parsed, "commit")?.value
+      : undefined;
+  if (typeof commit !== "string" || !fullCommit.test(commit))
+    throw new Error(`${kernelPinFile} has no valid full commit.`);
+  return commit;
+}
+
+function installedKernelProblem(root: string): string | undefined {
+  const pinnedCommit = pinnedKernelCommit(root);
+  if (pinnedCommit === undefined) return undefined;
+  const kernelDirectory = join(root, installedKernelFolder);
+  if (!existsSync(kernelDirectory))
+    return `${installedKernelFolder} is missing.`;
+  const tagFile = join(kernelDirectory, ".bun-tag");
+  const tag = existsSync(tagFile)
+    ? readFileSync(tagFile, "utf8").trim()
+    : undefined;
+  const installedCommit = /([0-9a-f]{7,40})$/.exec(tag ?? "")?.[1];
+  if (
+    installedCommit === undefined ||
+    !pinnedCommit.startsWith(installedCommit)
+  )
+    return `${installedKernelFolder} is at ${tag ?? "no tag"}, and ${kernelPinFile} pins ${pinnedCommit}.`;
+  return undefined;
+}
+
+function toolchain(root: string): CheckResult {
   if (!existsSync(join(root, "node_modules")))
     return {
       status: "FAIL",
@@ -53,6 +98,13 @@ function toolchain(root: string): Finding {
     };
   try {
     resolveToolchain(root);
+    const kernelProblem = installedKernelProblem(root);
+    if (kernelProblem !== undefined)
+      return {
+        status: "FAIL",
+        check: "toolchain",
+        detail: `${kernelProblem} Repair: ${install}.`,
+      };
     return {
       status: "ok",
       check: "toolchain",
@@ -114,7 +166,7 @@ export function fallowReport(output: string): FallowReport | undefined {
   return { status, checks: checks.filter((check) => check !== undefined) };
 }
 
-export function fallowReadiness(root: string): Finding {
+export function fallowReadiness(root: string): CheckResult {
   const fallow = join(root, "node_modules/.bin/fallow");
   if (!existsSync(fallow))
     return {
@@ -155,7 +207,7 @@ export function fallowReadiness(root: string): Finding {
   };
 }
 
-function hostLoad(): Finding {
+function hostLoad(): CheckResult {
   const load = loadavg()[0] ?? 0;
   const cores = availableParallelism();
   const summary = `one-minute load ${load.toFixed(1)} on ${cores} cores`;
@@ -168,20 +220,24 @@ function hostLoad(): Finding {
   return { status: "ok", check: "load", detail: `${summary}.` };
 }
 
-export async function doctor(root: string): Promise<boolean> {
+export async function doctor(root: string): Promise<DoctorReport> {
   const installed = toolchain(root);
-  const findings = [
+  const results = [
     await bunVersion(root),
     installed,
     ...(installed.status === "ok" ? [fallowReadiness(root)] : []),
     hostLoad(),
   ];
-  for (const { status, check, detail } of findings)
-    process.stdout.write(`${status} ${check}: ${detail}\n`);
-  const passed = findings.every((finding) => finding.status !== "FAIL");
-  if (!passed) process.stdout.write("Done when bun run doctor passes.\n");
-  return passed;
+  return {
+    ready: results.every((result) => result.status !== "FAIL"),
+    results,
+  };
 }
 
-if (import.meta.main)
-  process.exitCode = (await doctor(join(import.meta.dir, ".."))) ? 0 : 1;
+export function formatDoctorReport(report: DoctorReport): string {
+  const lines = report.results.map(
+    ({ status, check, detail }) => `${status} ${check}: ${detail}\n`,
+  );
+  if (!report.ready) lines.push("Done when bun run doctor passes.\n");
+  return lines.join("");
+}

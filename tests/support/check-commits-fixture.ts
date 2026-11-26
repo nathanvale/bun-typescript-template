@@ -14,7 +14,9 @@ export const repository = join(import.meta.dir, "../..");
 const sources = [
   "scripts/check-commits.ts",
   "scripts/process-runner.ts",
-  "scripts/doctor.ts",
+  "src/cli.ts",
+  "src/causes.ts",
+  "src/doctor.ts",
   "scripts/repository.ts",
   "src/toolchain-resolution.ts",
   "repository.json",

@@ -10,8 +10,18 @@
       "approved": "Super Coordinator, item 33, 26 November 2026 11:45"
     },
     {
+      "word": "cause",
+      "reason": "The kernel's word for why a command refused or failed, as in its cause codes and the CLI's cause table.",
+      "approved": "Super Coordinator, 27 November 2026 06:50"
+    },
+    {
       "word": "pattern",
       "reason": "A glob or matching pattern, approved by Nathan for the template CLI."
+    },
+    {
+      "word": "readiness",
+      "reason": "Whether a tool is set up to run, as in `fallowReadiness`, moved unchanged from `scripts/doctor.ts`.",
+      "approved": "Super Coordinator, 27 November 2026 06:50"
     },
     {
       "word": "recover",

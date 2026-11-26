@@ -8,7 +8,7 @@ import {
 import { constants, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { runWithOwnTools } from "./process-runner.ts";
-import { doctor } from "./doctor.ts";
+import { doctor, formatDoctorReport } from "../src/doctor.ts";
 import { readRepository } from "./repository.ts";
 
 const steps = [
@@ -191,7 +191,9 @@ export async function main(argv: readonly string[], run: Run): Promise<number> {
     process.stderr.write("Usage: bun run check:commits <base> [head]\n");
     return 2;
   }
-  if (!(await doctor(run.root))) {
+  const readiness = await doctor(run.root);
+  process.stdout.write(formatDoctorReport(readiness));
+  if (!readiness.ready) {
     print("Refused: repair the doctor's FAIL lines, then rerun.");
     return 1;
   }

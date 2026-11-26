@@ -167,7 +167,7 @@ function diagnosticsRecords(stateHome: string): unknown[] {
 
 describe("cli front door and doctor route", () => {
   test(
-    "doctor on this checkout exits 0 and --json emits one kernel envelope with findings and diagnostics",
+    "doctor on this checkout exits 0 and --json emits one kernel envelope with results and diagnostics",
     async () => {
       const stateHome = folder("doctor-state-");
       const result = await runCli(repository, ["doctor", "--json"], stateHome);
@@ -183,7 +183,7 @@ describe("cli front door and doctor route", () => {
           readonly exitCode: number;
           readonly data: {
             readonly ready: boolean;
-            readonly findings: readonly {
+            readonly results: readonly {
               readonly status: string;
               readonly check: string;
               readonly detail: string;
@@ -203,7 +203,7 @@ describe("cli front door and doctor route", () => {
       expect(envelope.result.effectClass).toBe("inspect");
       expect(envelope.result.exitCode).toBe(0);
       expect(envelope.result.data.ready).toBe(true);
-      expect(envelope.result.data.findings.map((f) => f.check)).toEqual([
+      expect(envelope.result.data.results.map((f) => f.check)).toEqual([
         "bun",
         "toolchain",
         "fallow",
@@ -216,7 +216,7 @@ describe("cli front door and doctor route", () => {
   );
 
   test(
-    "doctor without --json prints one line per finding on this checkout",
+    "doctor without --json prints one line per result on this checkout",
     async () => {
       const stateHome = folder("doctor-state-");
       const result = await runCli(repository, ["doctor"], stateHome);
@@ -236,7 +236,7 @@ describe("cli front door and doctor route", () => {
   );
 
   test(
-    "doctor refuses a checkout that fails a check with DOMAIN_DOCTOR_CHECK_FAILED, findings in the envelope, and a diagnostics event",
+    "doctor refuses a checkout that fails a check with DOMAIN_DOCTOR_CHECK_FAILED, results in the envelope, and a diagnostics event",
     async () => {
       const root = copyCliCheckout({
         packageManager: "bun@0.0.1",
@@ -255,7 +255,7 @@ describe("cli front door and doctor route", () => {
           readonly exitCode: number;
           readonly data: {
             readonly ready: boolean;
-            readonly findings: readonly {
+            readonly results: readonly {
               readonly status: string;
               readonly check: string;
               readonly detail: string;
@@ -270,8 +270,8 @@ describe("cli front door and doctor route", () => {
       expect(envelope.result.outcome).toBe("refused");
       expect(envelope.result.exitCode).toBe(3);
       expect(envelope.result.data.ready).toBe(false);
-      const bunFinding = envelope.result.data.findings.find(
-        (finding) => finding.check === "bun",
+      const bunFinding = envelope.result.data.results.find(
+        (result) => result.check === "bun",
       );
       expect(bunFinding?.status).toBe("FAIL");
       expect(bunFinding?.detail).toContain("mise exec bun@0.0.1");
@@ -339,7 +339,7 @@ describe("cli front door and doctor route", () => {
   );
 
   test(
-    "toolchain finding fails when node_modules/agent-cli-kernel is not at the Pin commit",
+    "toolchain result fails when node_modules/agent-cli-kernel is not at the Pin commit",
     async () => {
       const root = copyCliCheckout({
         kernelTag: "nathanvale-agent-cli-kernel-0000000",
@@ -354,7 +354,7 @@ describe("cli front door and doctor route", () => {
           readonly causeCode: string;
           readonly data: {
             readonly ready: boolean;
-            readonly findings: readonly {
+            readonly results: readonly {
               readonly status: string;
               readonly check: string;
               readonly detail: string;
@@ -363,8 +363,8 @@ describe("cli front door and doctor route", () => {
         };
       };
       expect(envelope.result.causeCode).toBe("DOMAIN_DOCTOR_CHECK_FAILED");
-      const toolchain = envelope.result.data.findings.find(
-        (finding) => finding.check === "toolchain",
+      const toolchain = envelope.result.data.results.find(
+        (result) => result.check === "toolchain",
       );
       expect(toolchain?.status).toBe("FAIL");
       expect(toolchain?.detail).toContain("agent-cli-kernel");
