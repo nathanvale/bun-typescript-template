@@ -372,7 +372,7 @@ test(
     commitIn(repo, "grow route and add a settings file", {
       ...growRoute,
       ".fallowrc.json": `${JSON.stringify({
-        health: { maxCyclomatic: 100 },
+        health: { maxCyclomatic: 100, ignore: ["src/commands.ts"] },
         rules: { "complexity-crap": "off" },
       })}\n`,
     });

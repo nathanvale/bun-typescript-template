@@ -1,0 +1,14 @@
+diff --git a/generated-repository/scripts/check-recorded-health-sizes.ts b/generated-repository/scripts/check-recorded-health-sizes.ts
+--- a/generated-repository/scripts/check-recorded-health-sizes.ts
++++ b/generated-repository/scripts/check-recorded-health-sizes.ts
+@@ -345,9 +345,7 @@ function healthRefusalFor(identity: string, data: HealthData) {
+   const baseList = data.baseMetrics.get(identity) ?? [];
+   const headList = data.headMetrics.get(headIdentity);
+   if (headList === undefined || headList.length === 0) {
+-    const replaced = findReplacedFunctionGrowth(identity, name, baseList, data);
+-    if (replaced === undefined) return undefined;
+-    return `${HEALTH_FILE}: ${path} function ${name} was replaced by a larger function ${name} in ${replaced.otherPath} from ${data.options.base} to ${data.options.head}: ${replaced.grown.join(", ")}. Repair: shrink ${name} in ${replaced.otherPath}, or make a reviewed change that gives its entry in ${HEALTH_FILE} a new "approved" field naming the ticket or pull request and its reason.`;
++    return undefined;
+   }
+   const grown = grownMetricsFor(name, baseList, headList);
+   if (

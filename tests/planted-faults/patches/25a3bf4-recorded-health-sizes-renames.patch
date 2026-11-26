@@ -1,0 +1,12 @@
+diff --git a/generated-repository/scripts/check-recorded-health-sizes.ts b/generated-repository/scripts/check-recorded-health-sizes.ts
+--- a/generated-repository/scripts/check-recorded-health-sizes.ts
++++ b/generated-repository/scripts/check-recorded-health-sizes.ts
+@@ -340,7 +340,7 @@ function findReplacedFunctionGrowth(
+ 
+ function healthRefusalFor(identity: string, data: HealthData) {
+   const [path, name] = splitIdentity(identity);
+-  const headPath = data.renames.get(path) ?? path;
++  const headPath = path;
+   const headIdentity = `${headPath}\0${name}`;
+   const baseList = data.baseMetrics.get(identity) ?? [];
+   const headList = data.headMetrics.get(headIdentity);

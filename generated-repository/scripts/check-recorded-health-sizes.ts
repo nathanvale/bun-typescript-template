@@ -26,6 +26,7 @@ type HealthData = {
   readonly headHealth: CountTable | undefined;
   readonly baseMetrics: ReadonlyMap<string, FindingMetric[]>;
   readonly headMetrics: ReadonlyMap<string, FindingMetric[]>;
+  readonly renames: ReadonlyMap<string, string>;
 };
 
 const HEALTH_FILE = "fallow-health-recorded-hits.json";
@@ -159,26 +160,49 @@ function findingStr(own: ReadonlyMap<string, unknown>, k: string, rev: string) {
   return typeof v === "string" && v !== "" ? v : badFallowField(rev, k);
 }
 
+function pushMetric(
+  byIdentity: Map<string, FindingMetric[]>,
+  key: string,
+  metric: FindingMetric,
+) {
+  const list = byIdentity.get(key);
+  if (list === undefined) byIdentity.set(key, [metric]);
+  else list.push(metric);
+}
+
 function parseFallowFindings(stdout: string, rev: string) {
   const where = `fallow health output at ${rev}`;
-  const findings = asOwnMap(
+  const root = asOwnMap(
     parseJson(stdout, where),
     where,
     '{ "findings": [...] }',
-  ).get("findings");
+  );
+  const findings = root.get("findings");
   if (!Array.isArray(findings)) badFallowField(rev, "findings");
   const byIdentity = new Map<string, FindingMetric[]>();
   for (const item of findings) {
     const own = asOwnMap(item, where, "a finding");
     const key = `${findingStr(own, "path", rev)}\0${findingStr(own, "name", rev)}`;
-    const metric = {
+    pushMetric(byIdentity, key, {
       lineCount: findingNum(own, "line_count", rev),
       cyclomatic: findingNum(own, "cyclomatic", rev),
       cognitive: findingNum(own, "cognitive", rev),
-    };
-    const list = byIdentity.get(key);
-    if (list === undefined) byIdentity.set(key, [metric]);
-    else list.push(metric);
+    });
+  }
+  const overrides = root.get("threshold_overrides");
+  if (overrides !== undefined) {
+    if (!Array.isArray(overrides)) badFallowField(rev, "threshold_overrides");
+    for (const item of overrides) {
+      const own = asOwnMap(item, where, "a threshold override");
+      if (own.get("status") !== "active") continue;
+      const key = `${findingStr(own, "path", rev)}\0${findingStr(own, "function", rev)}`;
+      const metrics = asOwnMap(own.get("metrics"), where, "override metrics");
+      pushMetric(byIdentity, key, {
+        lineCount: findingNum(metrics, "line_count", rev),
+        cyclomatic: findingNum(metrics, "cyclomatic", rev),
+        cognitive: findingNum(metrics, "cognitive", rev),
+      });
+    }
   }
   return byIdentity;
 }
@@ -232,28 +256,115 @@ function grownMetricsFor(
   });
 }
 
-function healthRefusalFor(identity: string, data: HealthData) {
-  const headList = data.headMetrics.get(identity);
-  if (headList === undefined || headList.length === 0) return undefined;
+function readRenames(
+  root: string,
+  baseSha: string,
+  headSha: string,
+): ReadonlyMap<string, string> {
+  const res = runGit(root, [
+    "diff",
+    "--find-renames",
+    "--diff-filter=R",
+    "--name-status",
+    "--no-ext-diff",
+    "--no-textconv",
+    "--no-relative",
+    "-z",
+    baseSha,
+    headSha,
+    "--",
+  ]);
+  if (res.exitCode !== 0)
+    fail(
+      `git diff --find-renames failed: ${res.stderr.trim() || `exit ${res.exitCode}`}. Repair: fetch ${baseSha} and ${headSha} with full history, then run this check again.`,
+    );
+  const fields = res.stdout.split("\0");
+  if (fields.at(-1) === "") fields.pop();
+  const renames = new Map<string, string>();
+  for (let i = 0; i + 2 < fields.length; i += 3) {
+    const status = fields[i];
+    const oldPath = fields[i + 1];
+    const newPath = fields[i + 2];
+    if (status?.startsWith("R") && oldPath && newPath)
+      renames.set(oldPath, newPath);
+  }
+  return renames;
+}
+
+function splitIdentity(identity: string): readonly [string, string] {
   const sep = identity.indexOf("\0");
-  const path = sep === -1 ? identity : identity.slice(0, sep);
-  const name = sep === -1 ? "" : identity.slice(sep + 1);
-  const grown = grownMetricsFor(
-    name,
-    data.baseMetrics.get(identity) ?? [],
-    headList,
+  return sep === -1
+    ? [identity, ""]
+    : [identity.slice(0, sep), identity.slice(sep + 1)];
+}
+
+function hasAnyHealthApproval(
+  baseKinds: ReadonlyMap<string, CountEntry> | undefined,
+  headHealth: CountTable | undefined,
+  identities: readonly string[],
+): boolean {
+  return identities.some((id) =>
+    hasNewHealthApproval(baseKinds, headHealth?.get(id)),
   );
+}
+
+function findReplacedFunctionGrowth(
+  identity: string,
+  name: string,
+  baseList: readonly FindingMetric[],
+  data: HealthData,
+):
+  | { readonly otherPath: string; readonly grown: readonly string[] }
+  | undefined {
+  if (name === "<file>" || name === "") return undefined;
+  const suffix = `\0${name}`;
+  for (const otherIdentity of [...data.headMetrics.keys()].toSorted(
+    byCodeUnit,
+  )) {
+    if (!otherIdentity.endsWith(suffix)) continue;
+    const otherHeadList = data.headMetrics.get(otherIdentity) ?? [];
+    const otherBaseCount = data.baseMetrics.get(otherIdentity)?.length ?? 0;
+    if (otherHeadList.length <= otherBaseCount) continue;
+    const grown = grownMetricsFor(name, baseList, otherHeadList);
+    if (grown.length === 0) continue;
+    if (
+      hasAnyHealthApproval(data.baseHealth.get(identity), data.headHealth, [
+        otherIdentity,
+        identity,
+      ])
+    )
+      continue;
+    const [otherPath] = splitIdentity(otherIdentity);
+    return { otherPath, grown };
+  }
+  return undefined;
+}
+
+function healthRefusalFor(identity: string, data: HealthData) {
+  const [path, name] = splitIdentity(identity);
+  const headPath = data.renames.get(path) ?? path;
+  const headIdentity = `${headPath}\0${name}`;
+  const baseList = data.baseMetrics.get(identity) ?? [];
+  const headList = data.headMetrics.get(headIdentity);
+  if (headList === undefined || headList.length === 0) {
+    const replaced = findReplacedFunctionGrowth(identity, name, baseList, data);
+    if (replaced === undefined) return undefined;
+    return `${HEALTH_FILE}: ${path} function ${name} was replaced by a larger function ${name} in ${replaced.otherPath} from ${data.options.base} to ${data.options.head}: ${replaced.grown.join(", ")}. Repair: shrink ${name} in ${replaced.otherPath}, or make a reviewed change that gives its entry in ${HEALTH_FILE} a new "approved" field naming the ticket or pull request and its reason.`;
+  }
+  const grown = grownMetricsFor(name, baseList, headList);
   if (
     grown.length === 0 ||
-    hasNewHealthApproval(
+    hasAnyHealthApproval(
       data.baseHealth.get(identity),
-      data.headHealth?.get(identity),
+      data.headHealth,
+      headIdentity === identity ? [identity] : [headIdentity, identity],
     )
   )
     return undefined;
   const finding = name === "<file>" ? "(<file>)" : `function ${name}`;
-  const target = name === "<file>" ? path : `${name} in ${path}`;
-  return `${HEALTH_FILE}: ${path} ${finding} grew from ${data.options.base} to ${data.options.head}: ${grown.join(", ")}. Repair: shrink ${target}, or make a reviewed change that gives its entry in ${HEALTH_FILE} a new "approved" field naming the ticket or pull request and its reason.`;
+  const renamedNote = headPath === path ? "" : ` (renamed to ${headPath})`;
+  const target = name === "<file>" ? headPath : `${name} in ${headPath}`;
+  return `${HEALTH_FILE}: ${path} ${finding}${renamedNote} grew from ${data.options.base} to ${data.options.head}: ${grown.join(", ")}. Repair: shrink ${target}, or make a reviewed change that gives its entry in ${HEALTH_FILE} a new "approved" field naming the ticket or pull request and its reason.`;
 }
 
 function readPair(
@@ -291,6 +402,7 @@ function compareHealthSizes(
     headHealth,
     baseMetrics: parseFallowFindings(output.base, baseSha),
     headMetrics: parseFallowFindings(output.head, headSha),
+    renames: readRenames(options.root, baseSha, headSha),
   };
   return identities.flatMap((id) => {
     const refusal = healthRefusalFor(id, data);
