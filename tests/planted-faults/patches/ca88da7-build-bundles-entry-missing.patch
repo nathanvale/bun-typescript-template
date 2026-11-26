@@ -1,0 +1,12 @@
+diff --git a/generated-repository/scripts/build-bundles.ts b/generated-repository/scripts/build-bundles.ts
+index decefb9..2c3590c 100644
+--- a/generated-repository/scripts/build-bundles.ts
++++ b/generated-repository/scripts/build-bundles.ts
+@@ -148,7 +148,6 @@ async function buildBundles(root: string, check: boolean): Promise<string> {
+   const bundles = readBundles(manifest);
+   if (bundles.length === 0) return "No bundles are listed in package.json.";
+   const banner = `// bundle: ${KERNEL}@${kernelCommit(root, manifest)} bun@${Bun.version}`;
+-  requireEntries(root, bundles);
+   const changed: string[] = [];
+   for (const bundle of bundles) {
+     const rendered = await render(root, bundle, banner);

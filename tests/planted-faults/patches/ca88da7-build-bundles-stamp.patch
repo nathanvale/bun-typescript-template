@@ -1,0 +1,12 @@
+diff --git a/generated-repository/scripts/build-bundles.ts b/generated-repository/scripts/build-bundles.ts
+index decefb9..82a8266 100644
+--- a/generated-repository/scripts/build-bundles.ts
++++ b/generated-repository/scripts/build-bundles.ts
+@@ -121,7 +121,6 @@ async function render(
+     format: "esm",
+     minify: true,
+     sourcemap: "none",
+-    banner,
+     throw: false,
+   });
+   const [output] = built.outputs;

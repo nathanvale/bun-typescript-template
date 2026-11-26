@@ -1,0 +1,4 @@
+// @bun
+// bundle: agent-cli-kernel@7a3c430369a7adf3c91b28fe9bcde3aad342298e bun@1.4.4
+import{isAbsolute as a,join as u,normalize as c}from"path";var g={config:"XDG_CONFIG_HOME",data:"XDG_DATA_HOME",state:"XDG_STATE_HOME",cache:"XDG_CACHE_HOME",runtime:"XDG_RUNTIME_DIR"},f={config:[".config"],data:[".local","share"],state:[".local","state"],cache:[".cache"]};function d(e,n){if(!Object.hasOwn(e,n))return;let t=e[n];if(typeof t!=="string"||t.length===0||!a(t))return;return c(t)}function i(e,n,t){let r=d(e,g[n]);if(r!==void 0)return r;if(n==="runtime"||t?.homeFallback===!1)return;let o=d(e,"HOME");if(o===void 0)return;return u(o,...f[n])}function s(e){return`Hello, ${e}.`}process.stdout.write(`${s("bundle")} ${i(process.env,"state")??"none"}
+`);

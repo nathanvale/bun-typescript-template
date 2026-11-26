@@ -1,0 +1,13 @@
+diff --git a/generated-repository/scripts/build-bundles.ts b/generated-repository/scripts/build-bundles.ts
+index decefb9..718a674 100644
+--- a/generated-repository/scripts/build-bundles.ts
++++ b/generated-repository/scripts/build-bundles.ts
+@@ -153,7 +153,7 @@ async function buildBundles(root: string, check: boolean): Promise<string> {
+   for (const bundle of bundles) {
+     const rendered = await render(root, bundle, banner);
+     const current = readOutput(root, bundle.output);
+-    if (current?.equals(rendered) === true) continue;
++    if (current !== undefined) continue;
+     changed.push(
+       current === undefined ? `${bundle.output} (missing)` : bundle.output,
+     );

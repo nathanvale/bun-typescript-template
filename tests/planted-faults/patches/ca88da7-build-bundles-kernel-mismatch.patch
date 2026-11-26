@@ -1,0 +1,13 @@
+diff --git a/generated-repository/scripts/build-bundles.ts b/generated-repository/scripts/build-bundles.ts
+index decefb9..e255ce0 100644
+--- a/generated-repository/scripts/build-bundles.ts
++++ b/generated-repository/scripts/build-bundles.ts
+@@ -85,7 +85,7 @@ function kernelCommit(root: string, manifest: unknown): string {
+     typeof resolved === "string"
+       ? /#([0-9a-f]{7,40})$/.exec(resolved)?.[1]
+       : undefined;
+-  if (commit === undefined || !pinned.startsWith(commit))
++  if (commit === undefined)
+     throw new Refusal(
+       "bundle_kernel_mismatch",
+       `package.json pins ${KERNEL} at ${pinned}, and bun.lock resolves ${commit ?? `no ${KERNEL} commit`}.`,

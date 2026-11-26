@@ -1,0 +1,13 @@
+diff --git a/generated-repository/scripts/build-bundles.ts b/generated-repository/scripts/build-bundles.ts
+index 1c4edfa..08d24b4 100644
+--- a/generated-repository/scripts/build-bundles.ts
++++ b/generated-repository/scripts/build-bundles.ts
+@@ -175,7 +175,7 @@ async function buildBundles(root: string, check: boolean): Promise<string> {
+ 
+ async function main(args: readonly string[], root: string): Promise<number> {
+   const check = args.length === 1 && args[0] === "--check";
+-  if (args.length > 0 && !check) {
++  if (args.length > 1 && !check) {
+     process.stderr.write(USAGE);
+     return 2;
+   }

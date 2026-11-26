@@ -1,0 +1,6 @@
+import { xdgBaseFolder } from "agent-cli-kernel/xdg-base";
+import { greeting } from "./greeting.ts";
+
+process.stdout.write(
+  `${greeting("bundle")} ${xdgBaseFolder(process.env, "state") ?? "none"}\n`,
+);

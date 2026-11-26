@@ -3322,6 +3322,76 @@
     "source": "f4bac4c fix(changeset): check pending changesets before version and rename backfill command"
   },
   {
+    "id": "ca88da7-build-bundles-stamp",
+    "patch": "tests/planted-faults/patches/ca88da7-build-bundles-stamp.patch",
+    "testFile": "tests/template/toolchain/build-bundles.test.ts",
+    "title": "^build:bundles writes a bundle whose line 2 is the kernel commit and Bun version stamp, and a second run changes nothing$",
+    "source": "ca88da7 feat(bundles): ship one stamped bundle builder to generated repositories"
+  },
+  {
+    "id": "ca88da7-build-bundles-kernel-mismatch",
+    "patch": "tests/planted-faults/patches/ca88da7-build-bundles-kernel-mismatch.patch",
+    "testFile": "tests/template/toolchain/build-bundles.test.ts",
+    "title": "^build-bundles refusals refuses bundle_kernel_mismatch when package.json pins another commit than bun.lock resolves$",
+    "source": "ca88da7 feat(bundles): ship one stamped bundle builder to generated repositories"
+  },
+  {
+    "id": "ca88da7-build-bundles-compare",
+    "patch": "tests/planted-faults/patches/ca88da7-build-bundles-compare.patch",
+    "testFile": "tests/template/toolchain/build-bundles.test.ts",
+    "title": "^check:bundles passes on fresh bundles and refuses bundle_stale naming the path after a one-byte edit$",
+    "source": "ca88da7 feat(bundles): ship one stamped bundle builder to generated repositories"
+  },
+  {
+    "id": "ca88da7-build-bundles-entry-missing",
+    "patch": "tests/planted-faults/patches/ca88da7-build-bundles-entry-missing.patch",
+    "testFile": "tests/template/toolchain/build-bundles.test.ts",
+    "title": "^build-bundles refusals refuses bundle_entry_missing for a listed entry that does not exist$",
+    "source": "ca88da7 feat(bundles): ship one stamped bundle builder to generated repositories"
+  },
+  {
+    "id": "51b549b-build-bundles-plain-path",
+    "patch": "tests/planted-faults/patches/51b549b-build-bundles-plain-path.patch",
+    "testFile": "tests/template/toolchain/build-bundles.test.ts",
+    "title": "^build-bundles refusals refuses every bundles list that is not plain relative \\.mjs outputs to \\.ts entries, and writes nothing$",
+    "source": "51b549b test(bundles): cover the bundle builder's six untested refusals"
+  },
+  {
+    "id": "51b549b-build-bundles-unreadable-json",
+    "patch": "tests/planted-faults/patches/51b549b-build-bundles-unreadable-json.patch",
+    "testFile": "tests/template/toolchain/build-bundles.test.ts",
+    "title": "^build-bundles refusals refuses a package\\.json that is not valid JSON or cannot be read$",
+    "source": "51b549b test(bundles): cover the bundle builder's six untested refusals"
+  },
+  {
+    "id": "51b549b-build-bundles-full-commit",
+    "patch": "tests/planted-faults/patches/51b549b-build-bundles-full-commit.patch",
+    "testFile": "tests/template/toolchain/build-bundles.test.ts",
+    "title": "^build-bundles refusals refuses bundle_kernel_mismatch when package\\.json pins agent-cli-kernel to anything but a full commit$",
+    "source": "51b549b test(bundles): cover the bundle builder's six untested refusals"
+  },
+  {
+    "id": "51b549b-build-bundles-one-output",
+    "patch": "tests/planted-faults/patches/51b549b-build-bundles-one-output.patch",
+    "testFile": "tests/template/toolchain/build-bundles.test.ts",
+    "title": "^build-bundles refusals refuses an entry that Bun\\.build cannot bundle into exactly one file$",
+    "source": "51b549b test(bundles): cover the bundle builder's six untested refusals"
+  },
+  {
+    "id": "51b549b-build-bundles-regular-file",
+    "patch": "tests/planted-faults/patches/51b549b-build-bundles-regular-file.patch",
+    "testFile": "tests/template/toolchain/build-bundles.test.ts",
+    "title": "^build-bundles refusals refuses an output path that is a folder or a link, and leaves the link's target unchanged$",
+    "source": "51b549b test(bundles): cover the bundle builder's six untested refusals"
+  },
+  {
+    "id": "51b549b-build-bundles-usage",
+    "patch": "tests/planted-faults/patches/51b549b-build-bundles-usage.patch",
+    "testFile": "tests/template/toolchain/build-bundles.test.ts",
+    "title": "^build-bundles refusals refuses any argument but a lone --check with the usage line, and writes nothing$",
+    "source": "51b549b test(bundles): cover the bundle builder's six untested refusals"
+  },
+  {
     "id": "3012333-template-upgrade-recorded-hits-growth",
     "patch": "tests/planted-faults/patches/3012333-template-upgrade-recorded-hits-growth.patch",
     "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-clone.test.ts",

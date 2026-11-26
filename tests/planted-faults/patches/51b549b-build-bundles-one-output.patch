@@ -1,0 +1,13 @@
+diff --git a/generated-repository/scripts/build-bundles.ts b/generated-repository/scripts/build-bundles.ts
+index 1c4edfa..5d15a92 100644
+--- a/generated-repository/scripts/build-bundles.ts
++++ b/generated-repository/scripts/build-bundles.ts
+@@ -126,7 +126,7 @@ async function render(
+     throw: false,
+   });
+   const [output] = built.outputs;
+-  if (!built.success || built.outputs.length !== 1 || output === undefined)
++  if (output === undefined)
+     throw new Error(
+       `Bun.build cannot bundle ${entry} into one file: ${built.logs.map((log) => log.message).join("; ") || `${built.outputs.length} outputs`}. Repair: fix ${entry}, then run bun run build:bundles.`,
+     );

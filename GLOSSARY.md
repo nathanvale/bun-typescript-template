@@ -128,6 +128,13 @@ command, and commits what it changed with the Pin change. Running it again
 changes nothing. A repository without the script has no regenerate step.
 _Avoid_: build step, codegen (for the regenerate step)
 
+**Bundle**:
+A committed, minified, single-file build of one entry, stamped with the kernel
+commit and Bun version. A generated repository lists its bundles in the
+`bundles` object of its `package.json`, from output path to entry file;
+`bun run build:bundles` writes them and `bun run check:bundles` refuses one
+that differs from a fresh build.
+
 **Kernel trial**:
 Making one repository from a candidate kernel commit, with every add-on
 selected, and running that repository's check command.

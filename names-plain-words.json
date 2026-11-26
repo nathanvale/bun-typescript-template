@@ -5,6 +5,11 @@
       "reason": "The verb for applying a change, approved by Nathan for the template CLI."
     },
     {
+      "word": "build",
+      "reason": "The verb for writing a bundle from its entry, as in scripts/build-bundles.ts and the build:bundles script the Super Coordinator named on 26 November 2026 11:45.",
+      "approved": "Super Coordinator, item 33, 26 November 2026 11:45"
+    },
+    {
       "word": "pattern",
       "reason": "A glob or matching pattern, approved by Nathan for the template CLI."
     },

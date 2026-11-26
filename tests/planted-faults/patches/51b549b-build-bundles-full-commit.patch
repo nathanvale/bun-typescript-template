@@ -1,0 +1,13 @@
+diff --git a/generated-repository/scripts/build-bundles.ts b/generated-repository/scripts/build-bundles.ts
+index 1c4edfa..6e88b61 100644
+--- a/generated-repository/scripts/build-bundles.ts
++++ b/generated-repository/scripts/build-bundles.ts
+@@ -68,7 +68,7 @@ function readBundles(manifest: unknown): Bundle[] {
+ function kernelCommit(root: string, manifest: unknown): string {
+   const spec = field(field(manifest, "dependencies"), KERNEL);
+   const pinned =
+-    typeof spec === "string" ? /#([0-9a-f]{40})$/.exec(spec)?.[1] : undefined;
++    typeof spec === "string" ? /#([0-9a-f]{7,40})$/.exec(spec)?.[1] : undefined;
+   if (pinned === undefined)
+     throw new Refusal(
+       "bundle_kernel_mismatch",

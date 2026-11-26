@@ -1,0 +1,15 @@
+diff --git a/generated-repository/scripts/build-bundles.ts b/generated-repository/scripts/build-bundles.ts
+index 1c4edfa..35cc011 100644
+--- a/generated-repository/scripts/build-bundles.ts
++++ b/generated-repository/scripts/build-bundles.ts
+@@ -137,10 +137,6 @@ function readOutput(root: string, output: string): Buffer | undefined {
+   const path = join(root, output);
+   const found = lstatSync(path, { throwIfNoEntry: false });
+   if (found === undefined) return undefined;
+-  if (!found.isFile())
+-    throw new Error(
+-      `${output} is not a regular file. Repair: remove it, then run bun run build:bundles.`,
+-    );
+   return readFileSync(path);
+ }
+ 
