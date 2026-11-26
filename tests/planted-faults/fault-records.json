@@ -3278,5 +3278,33 @@
     "testFile": "tests/template/changesets/changeset-version.test.ts",
     "title": "^release step documentation Release backfill instructions name agent-gates changelog backfill in both the template README and pull-requests guide$",
     "source": "f4bac4c fix(changeset): check pending changesets before version and rename backfill command"
+  },
+  {
+    "id": "ca88da7-build-bundles-stamp",
+    "patch": "tests/planted-faults/patches/ca88da7-build-bundles-stamp.patch",
+    "testFile": "tests/template/toolchain/build-bundles.test.ts",
+    "title": "^build:bundles writes a bundle whose line 2 is the kernel commit and Bun version stamp, and a second run changes nothing$",
+    "source": "ca88da7 feat(bundles): ship one stamped bundle builder to generated repositories"
+  },
+  {
+    "id": "ca88da7-build-bundles-kernel-mismatch",
+    "patch": "tests/planted-faults/patches/ca88da7-build-bundles-kernel-mismatch.patch",
+    "testFile": "tests/template/toolchain/build-bundles.test.ts",
+    "title": "^build-bundles refusals refuses bundle_kernel_mismatch when package.json pins another commit than bun.lock resolves$",
+    "source": "ca88da7 feat(bundles): ship one stamped bundle builder to generated repositories"
+  },
+  {
+    "id": "ca88da7-build-bundles-compare",
+    "patch": "tests/planted-faults/patches/ca88da7-build-bundles-compare.patch",
+    "testFile": "tests/template/toolchain/build-bundles.test.ts",
+    "title": "^check:bundles passes on fresh bundles and refuses bundle_stale naming the path after a one-byte edit$",
+    "source": "ca88da7 feat(bundles): ship one stamped bundle builder to generated repositories"
+  },
+  {
+    "id": "ca88da7-build-bundles-entry-missing",
+    "patch": "tests/planted-faults/patches/ca88da7-build-bundles-entry-missing.patch",
+    "testFile": "tests/template/toolchain/build-bundles.test.ts",
+    "title": "^build-bundles refusals refuses bundle_entry_missing for a listed entry that does not exist$",
+    "source": "ca88da7 feat(bundles): ship one stamped bundle builder to generated repositories"
   }
 ]
