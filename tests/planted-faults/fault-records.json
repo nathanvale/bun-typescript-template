@@ -3432,5 +3432,26 @@
     "testFile": "tests/template/doctor/doctor-cli.test.ts",
     "title": "^cli front door and doctor route toolchain result fails with readKernelPin's repair when kernel-pin\\.json is missing$",
     "source": "360af6c fix(cli): report import failures and an unreadable Pin as themselves, not as a missing kernel"
+  },
+  {
+    "id": "github-templates-recipe-copy",
+    "patch": "tests/planted-faults/patches/github-templates-recipe-copy.patch",
+    "testFile": "tests/template/bootstrap/recipe.test.ts",
+    "title": "^the recipe Bootstrap writes the pull request template byte-identical to the pr skill block and the issue template$",
+    "source": "b51d414 feat(bootstrap): the starter kit and every generated repository carry the pr skill's pull request template and an issue template"
+  },
+  {
+    "id": "github-templates-pull-request",
+    "patch": "tests/planted-faults/patches/github-templates-pull-request.patch",
+    "testFile": "tests/template/bootstrap/recipe.test.ts",
+    "title": "^the recipe the starter kit pull request template and issue template match the generated source and pr skill block$",
+    "source": "b51d414 feat(bootstrap): the starter kit and every generated repository carry the pr skill's pull request template and an issue template"
+  },
+  {
+    "id": "github-templates-issue-template",
+    "patch": "tests/planted-faults/patches/github-templates-issue-template.patch",
+    "testFile": "tests/template/bootstrap/recipe.test.ts",
+    "title": "^the recipe the starter kit pull request template and issue template match the generated source and pr skill block$",
+    "source": "b51d414 feat(bootstrap): the starter kit and every generated repository carry the pr skill's pull request template and an issue template"
   }
 ]

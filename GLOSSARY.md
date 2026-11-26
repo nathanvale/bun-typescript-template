@@ -56,6 +56,12 @@ Its type in the template is `RecipeCopy`.
 A repository created by Bootstrap.
 _Avoid_: project, host (unqualified), app (for a generated repository)
 
+**Pull request template**:
+The `.github/pull_request_template.md` file shipped in the template and copied into every generated repository by Bootstrap, matching the `pr` skill's template block.
+
+**Issue template**:
+The `.github/ISSUE_TEMPLATE/issue.md` file shipped in the template and copied into every generated repository by Bootstrap, structured for human readers with a collapsible `+++ Agent notes` section for builders.
+
 **CLI inventory**:
 The check that a repository has exactly one application CLI, found across its
 source, manifests, scripts and documented invocations.
