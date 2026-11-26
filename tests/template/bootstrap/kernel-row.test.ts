@@ -244,7 +244,7 @@ describe("the kernel row", () => {
       recordedHits,
     }).toEqual({
       check:
-        "bun run lint && bun run format:check && bun run typecheck && bun run test && bun run --silent quality:fallow",
+        "bun run check:bundles && bun run lint && bun run format:check && bun run typecheck && bun run test && bun run --silent quality:fallow",
       qualityFallow:
         "node_modules/.bin/fallow --format json --quiet --type-aware --type-aware-require complete --fail-on-issues --baseline-mode identity --baseline fallow-dead-code-recorded-hits.json --dupes-baseline fallow-duplicates-recorded-hits.json --health-baseline fallow-health-recorded-hits.json",
       recordHits:
