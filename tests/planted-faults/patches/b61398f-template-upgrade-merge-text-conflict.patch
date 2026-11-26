@@ -1,14 +1,13 @@
-diff --git a/src/template-upgrade-merge.ts b/src/template-upgrade-merge.ts
-index 65a104a..20dfd9f 100644
---- a/src/template-upgrade-merge.ts
-+++ b/src/template-upgrade-merge.ts
-@@ -357,6 +357,9 @@ async function mergeJsonFile(options: {
+diff --git a/src/template-upgrade-json-merge.ts b/src/template-upgrade-json-merge.ts
+--- a/src/template-upgrade-json-merge.ts
++++ b/src/template-upgrade-json-merge.ts
+@@ -430,6 +430,9 @@ export async function mergeJsonUpgradeFile(options: {
+     return { outcome: "conflict", keyConflicts: json.conflicts };
    }
-   if (json === undefined) {
-     const textResult = gitMergeFile(oursPath, oldPath, newPath, env);
-+    if (textResult === "conflict") {
-+      return "conflict";
-+    }
-     if (!mergeDuplicatesMember(await readFile(oursPath, "utf8"))) {
-       return textResult === "clean" ? "merge" : "conflict";
-     }
+   const textResult = gitMergeFile(oursPath, oldPath, newPath, env);
++  if (textResult === "conflict") {
++    return { outcome: "conflict" };
++  }
+   if (!mergeDuplicatesMember(await readFile(oursPath, "utf8"))) {
+     return { outcome: textResult === "clean" ? "merge" : "conflict" };
+   }

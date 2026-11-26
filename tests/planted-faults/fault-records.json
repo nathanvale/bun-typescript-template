@@ -2254,14 +2254,14 @@
     "id": "23e59a0-template-upgrade-merge",
     "patch": "tests/planted-faults/patches/23e59a0-template-upgrade-merge.patch",
     "testFile": "tests/template/template-upgrade/template-upgrade-json-conflicts.test.ts",
-    "title": "^a JSON key conflict whose text merges cleanly is written as one marked conflict, ours above new, that does not parse$",
+    "title": "^a JSON key conflict whose text merges cleanly is written with member-level markers, ours above new, that do not parse$",
     "source": "23e59a0 fix(template-upgrade): mark a JSON key conflict whose text merges cleanly"
   },
   {
     "id": "d557802-template-upgrade-merge-key-conflict",
     "patch": "tests/planted-faults/patches/d557802-template-upgrade-merge-key-conflict.patch",
     "testFile": "tests/template/template-upgrade/template-upgrade-json-conflicts.test.ts",
-    "title": "^a JSON key conflict beside a text conflict is written as one marked conflict, so no member repeats outside the markers$",
+    "title": "^a JSON key conflict beside a text conflict is written with member-level markers, so no member repeats outside the markers$",
     "source": "d557802 fix(template-upgrade): mark the whole JSON file for any key conflict or repeated member"
   },
   {
@@ -3418,5 +3418,40 @@
     "testFile": "tests/template/bootstrap/recipe.test.ts",
     "title": "^the recipe the starter kit pull request template and issue template match the generated source and pr skill block$",
     "source": "b51d414 feat(bootstrap): the starter kit and every generated repository carry the pr skill's pull request template and an issue template"
+  },
+  {
+    "id": "upgrade-conflicts-dependency-diff",
+    "patch": "tests/planted-faults/patches/upgrade-conflicts-dependency-diff.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-conflict-report.test.ts",
+    "title": "package.json key conflicts report no false dependency removals",
+    "source": "f1351af fix(template-upgrade): conflicts arrive key by key and named, dependency changes come from the key merge, and AGENTS.md drops the template stamp"
+  },
+  {
+    "id": "upgrade-conflicts-json-key-markers",
+    "patch": "tests/planted-faults/patches/upgrade-conflicts-json-key-markers.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-conflict-report.test.ts",
+    "title": "package.json key conflicts report no false dependency removals",
+    "source": "f1351af fix(template-upgrade): conflicts arrive key by key and named, dependency changes come from the key merge, and AGENTS.md drops the template stamp"
+  },
+  {
+    "id": "upgrade-conflicts-agents-stamp",
+    "patch": "tests/planted-faults/patches/upgrade-conflicts-agents-stamp.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-conflict-report.test.ts",
+    "title": "upgrading AGENTS.md with owner text on the line after Template source removes the stamp cleanly without conflict",
+    "source": "f1351af fix(template-upgrade): conflicts arrive key by key and named, dependency changes come from the key merge, and AGENTS.md drops the template stamp"
+  },
+  {
+    "id": "upgrade-conflicts-bootstrap-stamp",
+    "patch": "tests/planted-faults/patches/upgrade-conflicts-bootstrap-stamp.patch",
+    "testFile": "tests/template/bootstrap/kernel-row.test.ts",
+    "title": "writes its own Template provenance values, which name no kernel commit",
+    "source": "f1351af fix(template-upgrade): conflicts arrive key by key and named, dependency changes come from the key merge, and AGENTS.md drops the template stamp"
+  },
+  {
+    "id": "upgrade-conflicts-unparseable-package",
+    "patch": "tests/planted-faults/patches/upgrade-conflicts-unparseable-package.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-json-merge.test.ts",
+    "title": "readPackageChanges reports unavailable instead of removals when package.json cannot be parsed",
+    "source": "f1351af fix(template-upgrade): conflicts arrive key by key and named, dependency changes come from the key merge, and AGENTS.md drops the template stamp"
   }
 ]

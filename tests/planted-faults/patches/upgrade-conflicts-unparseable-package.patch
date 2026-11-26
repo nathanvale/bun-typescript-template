@@ -1,0 +1,22 @@
+diff --git a/src/template-upgrade-json-merge.ts b/src/template-upgrade-json-merge.ts
+--- a/src/template-upgrade-json-merge.ts
++++ b/src/template-upgrade-json-merge.ts
+@@ -408,13 +408,11 @@ export function readPackageChanges(
+     });
+   }
+   const after = parsePackageJsonObject(afterText);
+-  if (!after.ok) {
+-    return Object.freeze({
+-      changes: Object.freeze([]),
+-      unavailableReason: "merged package.json could not be parsed as JSON",
+-    });
+-  }
+   const changes = DEPENDENCY_SECTIONS.flatMap((section) =>
+-    diffDependencySection(before.value, after.value, section),
++    diffDependencySection(
++      before.value,
++      after.ok ? after.value : undefined,
++      section,
++    ),
+   );
+   return Object.freeze({ changes: Object.freeze(changes) });
