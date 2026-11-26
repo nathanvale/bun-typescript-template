@@ -147,6 +147,7 @@ test("readTemplateUpgradeChangesets handles empty trees, cross-boundary stem ded
     sourcePacket: "/abs/packet",
     repositoryPinnedCommit: "a".repeat(40),
     templatePinnedCommit: "a".repeat(40),
+    checkLimitSeconds: 900,
     templateHeadNotice:
       "Warning: template checkout HEAD is 1 commit behind origin/main. Repair: run git pull in the template, or pass --to origin/main.",
   };

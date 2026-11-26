@@ -91,6 +91,11 @@ repository's own edits. `bun run upgrade plan` previews the per-file merge;
 `bun run upgrade apply` writes the merged result onto a branch without touching
 the repository's working tree. It does not move a pin on its own.
 
+**Template upgrade check limit**:
+The longest a Template upgrade waits for a generated repository's own check
+command and follow-up check steps, set by `templateUpgrade.checkTimeoutSeconds`
+in `HEAD:package.json` (default: 900 seconds).
+
 ### The kernel split
 
 **Kernel split**:
