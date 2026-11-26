@@ -16,8 +16,14 @@ const repository = join(import.meta.dir, "../../..");
 const scripts = [
   "src/cli.ts",
   "src/causes.ts",
+  "src/cli-error.ts",
   "src/doctor.ts",
+  "src/git-identities.ts",
+  "src/kernel-pin.ts",
+  "src/kernel-reader.ts",
+  "src/template-upgrade-git.ts",
   "src/toolchain-resolution.ts",
+  "kernel-pin.json",
   "scripts/test-area.ts",
   "scripts/repository.ts",
 ];

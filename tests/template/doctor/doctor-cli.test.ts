@@ -6,6 +6,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  rmSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -22,7 +23,12 @@ const folder = ownedFolders();
 const cliSources = [
   "src/cli.ts",
   "src/causes.ts",
+  "src/cli-error.ts",
   "src/doctor.ts",
+  "src/git-identities.ts",
+  "src/kernel-pin.ts",
+  "src/kernel-reader.ts",
+  "src/template-upgrade-git.ts",
   "src/toolchain-resolution.ts",
   "kernel-pin.json",
 ];
@@ -371,6 +377,120 @@ describe("cli front door and doctor route", () => {
       expect(toolchain?.detail).toContain(
         "Repair: bun install --frozen-lockfile.",
       );
+    },
+    processWatchdog(1),
+  );
+
+  test(
+    "import failure inside src/causes.ts surfaces its own error instead of reporting the kernel missing",
+    async () => {
+      const root = copyCliCheckout({ linkNodeModules: true });
+      const causesPath = join(root, "src/causes.ts");
+      writeFileSync(
+        causesPath,
+        `${readFileSync(causesPath, "utf8")}\nthrow new Error("planted failure inside causes");\n`,
+      );
+      const stateHome = folder("doctor-state-");
+      const result = await runCli(root, ["doctor"], stateHome);
+
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stderr).toContain("planted failure inside causes");
+      expect(result.stderr).not.toContain("is missing");
+    },
+    processWatchdog(1),
+  );
+
+  test(
+    "missing node_modules/agent-cli-kernel with other node_modules present prints one missing-kernel line and exits 1",
+    async () => {
+      const root = copyCliCheckout({ omitKernel: true });
+      const stateHome = folder("doctor-state-");
+      const result = await runCli(root, ["doctor"], stateHome);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stdout).toBe("");
+      const stderrLines = result.stderr.trimEnd().split("\n");
+      expect(stderrLines).toHaveLength(1);
+      expect(stderrLines[0]).toContain(
+        "node_modules/agent-cli-kernel is missing",
+      );
+      expect(stderrLines[0]).toContain("bun install --frozen-lockfile");
+    },
+    processWatchdog(1),
+  );
+
+  test(
+    "toolchain result fails with readKernelPin's repair when kernel-pin.json is missing",
+    async () => {
+      const root = copyCliCheckout({ linkNodeModules: true });
+      rmSync(join(root, "kernel-pin.json"));
+      const stateHome = folder("doctor-state-");
+      const result = await runCli(root, ["doctor", "--json"], stateHome);
+
+      expect(result.exitCode).toBe(3);
+      expect(result.stderr).toBe("");
+      const envelope = JSON.parse(result.stdout) as {
+        readonly result: {
+          readonly causeCode: string;
+          readonly data: {
+            readonly ready: boolean;
+            readonly results: readonly {
+              readonly status: string;
+              readonly check: string;
+              readonly detail: string;
+            }[];
+          };
+        };
+      };
+      expect(envelope.result.causeCode).toBe("DOMAIN_DOCTOR_CHECK_FAILED");
+      expect(envelope.result.data.ready).toBe(false);
+      const toolchain = envelope.result.data.results.find(
+        (entry) => entry.check === "toolchain",
+      );
+      expect(toolchain?.status).toBe("FAIL");
+      expect(toolchain?.detail).toContain("kernel-pin.json: is missing");
+      expect(toolchain?.detail).toContain(
+        "restore it from the last commit that changed it",
+      );
+      expect(toolchain?.detail).not.toContain("bun install --frozen-lockfile");
+    },
+    processWatchdog(1),
+  );
+
+  test(
+    "toolchain result fails with readKernelPin's repair when kernel-pin.json is corrupt",
+    async () => {
+      const root = copyCliCheckout({ linkNodeModules: true });
+      write(root, "kernel-pin.json", "{not valid json");
+      const stateHome = folder("doctor-state-");
+      const result = await runCli(root, ["doctor", "--json"], stateHome);
+
+      expect(result.exitCode).toBe(3);
+      expect(result.stderr).toBe("");
+      const envelope = JSON.parse(result.stdout) as {
+        readonly result: {
+          readonly causeCode: string;
+          readonly data: {
+            readonly ready: boolean;
+            readonly results: readonly {
+              readonly status: string;
+              readonly check: string;
+              readonly detail: string;
+            }[];
+          };
+        };
+      };
+      expect(envelope.result.causeCode).toBe("DOMAIN_DOCTOR_CHECK_FAILED");
+      expect(envelope.result.data.ready).toBe(false);
+      const toolchain = envelope.result.data.results.find(
+        (entry) => entry.check === "toolchain",
+      );
+      expect(toolchain?.status).toBe("FAIL");
+      expect(toolchain?.detail).toContain("kernel-pin.json: is not JSON.");
+      expect(toolchain?.detail).toContain(
+        "restore it from the last commit that changed it",
+      );
+      expect(toolchain?.detail).not.toContain("bun install --frozen-lockfile");
     },
     processWatchdog(1),
   );
