@@ -54,8 +54,8 @@ gates belong to its standards, not to the glossary.
   shrinks. The `test` job runs it through `bun run test`, in three shards.
 - It reads a list that fallow leaves out as empty only when the report's
   summary counts none of that kind.
-- Fault `aaedd58-doctor` adds to `src/doctor.ts` an exported `doneLine`
-  that only the spawned doctor calls; the test refuses it.
+- Fault `aaedd58-doctor` adds an export to `src/cli.ts` that only the
+  spawned doctor calls; the test refuses it.
 - Review only: a test that imports a function but never calls it, or calls
   it without asserting what it does; a function the file does not export,
   which counts as reached once a test imports its file; a gap hidden by a

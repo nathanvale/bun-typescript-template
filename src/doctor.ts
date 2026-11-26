@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { availableParallelism, loadavg } from "node:os";
 import { join } from "node:path";
+import { type KernelPin, kernelPinFile, readKernelPin } from "./kernel-pin.ts";
 import { resolveToolchain } from "./toolchain-resolution.ts";
 
 export type CheckResult = {
@@ -15,9 +16,7 @@ export type DoctorReport = {
 };
 
 const install = "bun install --frozen-lockfile";
-const kernelPinFile = "kernel-pin.json";
 const installedKernelFolder = "node_modules/agent-cli-kernel";
-const fullCommit = /^[0-9a-f]{40}$/;
 
 async function pinnedBun(root: string): Promise<string | undefined> {
   try {
@@ -52,40 +51,23 @@ async function bunVersion(root: string): Promise<CheckResult> {
   };
 }
 
-function pinnedKernelCommit(root: string): string | undefined {
-  const path = join(root, kernelPinFile);
-  if (!existsSync(path)) return undefined;
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(readFileSync(path, "utf8"));
-  } catch {
-    throw new Error(`${kernelPinFile} is not readable JSON.`);
-  }
-  const commit: unknown =
-    typeof parsed === "object" && parsed !== null
-      ? Object.getOwnPropertyDescriptor(parsed, "commit")?.value
-      : undefined;
-  if (typeof commit !== "string" || !fullCommit.test(commit))
-    throw new Error(`${kernelPinFile} has no valid full commit.`);
-  return commit;
-}
-
 function installedKernelProblem(root: string): string | undefined {
-  const pinnedCommit = pinnedKernelCommit(root);
-  if (pinnedCommit === undefined) return undefined;
+  let pin: KernelPin;
+  try {
+    pin = readKernelPin(root);
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
   const kernelDirectory = join(root, installedKernelFolder);
   if (!existsSync(kernelDirectory))
-    return `${installedKernelFolder} is missing.`;
+    return `${installedKernelFolder} is missing. Repair: ${install}.`;
   const tagFile = join(kernelDirectory, ".bun-tag");
   const tag = existsSync(tagFile)
     ? readFileSync(tagFile, "utf8").trim()
     : undefined;
   const installedCommit = /([0-9a-f]{7,40})$/.exec(tag ?? "")?.[1];
-  if (
-    installedCommit === undefined ||
-    !pinnedCommit.startsWith(installedCommit)
-  )
-    return `${installedKernelFolder} is at ${tag ?? "no tag"}, and ${kernelPinFile} pins ${pinnedCommit}.`;
+  if (installedCommit === undefined || !pin.commit.startsWith(installedCommit))
+    return `${installedKernelFolder} is at ${tag ?? "no tag"}, and ${kernelPinFile} pins ${pin.commit}. Repair: ${install}.`;
   return undefined;
 }
 
@@ -98,19 +80,6 @@ function toolchain(root: string): CheckResult {
     };
   try {
     resolveToolchain(root);
-    const kernelProblem = installedKernelProblem(root);
-    if (kernelProblem !== undefined)
-      return {
-        status: "FAIL",
-        check: "toolchain",
-        detail: `${kernelProblem} Repair: ${install}.`,
-      };
-    return {
-      status: "ok",
-      check: "toolchain",
-      detail:
-        "node_modules resolves the accepted lint, compiler and semantic backends.",
-    };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const reason = message.split("\n")[0]?.replace(/\.?$/, ".");
@@ -120,6 +89,19 @@ function toolchain(root: string): CheckResult {
       detail: `${reason} Repair: ${install}.`,
     };
   }
+  const kernelProblem = installedKernelProblem(root);
+  if (kernelProblem !== undefined)
+    return {
+      status: "FAIL",
+      check: "toolchain",
+      detail: kernelProblem,
+    };
+  return {
+    status: "ok",
+    check: "toolchain",
+    detail:
+      "node_modules resolves the accepted lint, compiler and semantic backends.",
+  };
 }
 
 export type FallowCheck = {

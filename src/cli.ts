@@ -34,16 +34,12 @@ export function jsonOutput(argv: readonly string[]): boolean {
 async function loadKernel() {
   if (!existsSync(join(root, "node_modules", "agent-cli-kernel")))
     return undefined;
-  try {
-    const [kernel, diagnostics, causes] = await Promise.all([
-      import("agent-cli-kernel"),
-      import("agent-cli-kernel/addons/diagnostics"),
-      import("./causes.ts"),
-    ]);
-    return { kernel, diagnostics, causes };
-  } catch {
-    return undefined;
-  }
+  const [kernel, diagnostics, causes] = await Promise.all([
+    import("agent-cli-kernel"),
+    import("agent-cli-kernel/addons/diagnostics"),
+    import("./causes.ts"),
+  ]);
+  return { kernel, diagnostics, causes };
 }
 
 async function runFrontDoor(argv: readonly string[]): Promise<void> {
