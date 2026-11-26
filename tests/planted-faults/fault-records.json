@@ -2856,7 +2856,7 @@
     "id": "6ce33a5-anti-slop-chained-levels",
     "patch": "tests/planted-faults/patches/6ce33a5-anti-slop-chained-levels.patch",
     "testFile": "tests/template/lint/anti-slop-rules.test.ts",
-    "title": "^anti-slop/no-chained-type-assertions refuses the anti-slop 13909c9 shape in scripts/doctor\\.ts and admits its clean form$",
+    "title": "^anti-slop/no-chained-type-assertions refuses the anti-slop 13909c9 shape in src/doctor\\.ts and admits its clean form$",
     "source": "6ce33a5 fix(generated-lint): keep every kernel lint rule in a generated repository"
   },
   {
@@ -3397,5 +3397,26 @@
     "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-clone.test.ts",
     "title": "a duplicates file whose clone moved files, keeping its normalized fingerprint, does not grow",
     "source": "3012333 fix(template-upgrade): measure recorded clone growth by normalized fingerprint"
+  },
+  {
+    "id": "cli-doctor-check-failed",
+    "patch": "tests/planted-faults/patches/cli-doctor-check-failed.patch",
+    "testFile": "tests/template/doctor/doctor-cli.test.ts",
+    "title": "^cli front door and doctor route doctor refuses a checkout that fails a check with DOMAIN_DOCTOR_CHECK_FAILED, results in the envelope, and a diagnostics event$",
+    "source": "feat(cli): route doctor through src/cli.ts front door"
+  },
+  {
+    "id": "doctor-installed-kernel-pin",
+    "patch": "tests/planted-faults/patches/doctor-installed-kernel-pin.patch",
+    "testFile": "tests/template/doctor/doctor-cli.test.ts",
+    "title": "^cli front door and doctor route toolchain result fails when node_modules/agent-cli-kernel is not at the Pin commit$",
+    "source": "feat(cli): check installed agent-cli-kernel commit in doctor"
+  },
+  {
+    "id": "pin-verification-places",
+    "patch": "tests/planted-faults/patches/pin-verification-places.patch",
+    "testFile": "tests/template/pin-move/pin-verification-command.test.ts",
+    "title": "^the pin verification command refuses with pin_places_disagree without a kernel repository when package\\.json disagrees with kernel-pin\\.json$",
+    "source": "feat(pin): verify two-place Pin agreement in pin-verification"
   }
 ]

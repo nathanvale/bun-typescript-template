@@ -1,0 +1,18 @@
+diff --git a/src/doctor.ts b/src/doctor.ts
+index 1111111..2222222 100644
+--- a/src/doctor.ts
++++ b/src/doctor.ts
+@@ -98,13 +98,6 @@ function toolchain(root: string): CheckResult {
+     };
+   try {
+     resolveToolchain(root);
+-    const kernelProblem = installedKernelProblem(root);
+-    if (kernelProblem !== undefined)
+-      return {
+-        status: "FAIL",
+-        check: "toolchain",
+-        detail: `${kernelProblem} Repair: ${install}.`,
+-      };
+     return {
+       status: "ok",
+       check: "toolchain",

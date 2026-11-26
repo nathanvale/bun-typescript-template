@@ -1,19 +1,16 @@
-diff --git a/scripts/doctor.ts b/scripts/doctor.ts
-index ae1dafc..1682203 100644
---- a/scripts/doctor.ts
-+++ b/scripts/doctor.ts
-@@ -179,9 +179,13 @@ export async function doctor(root: string): Promise<boolean> {
-   for (const { status, check, detail } of findings)
-     process.stdout.write(`${status} ${check}: ${detail}\n`);
-   const passed = findings.every((finding) => finding.status !== "FAIL");
--  if (!passed) process.stdout.write("Done when bun run doctor passes.\n");
-+  process.stdout.write(doneLine(passed));
-   return passed;
+diff --git a/src/doctor.ts b/src/doctor.ts
+index 1111111..2222222 100644
+--- a/src/doctor.ts
++++ b/src/doctor.ts
+@@ -220,6 +220,10 @@ export function formatDoctorReport(report: DoctorReport): string {
+   const lines = report.results.map(
+     ({ status, check, detail }) => `${status} ${check}: ${detail}\n`,
+   );
+-  if (!report.ready) lines.push("Done when bun run doctor passes.\n");
++  lines.push(doneLine(report.ready));
+   return lines.join("");
  }
- 
-+export function doneLine(passed: boolean): string {
-+  return passed ? "" : "Done when bun run doctor passes.\n";
-+}
 +
- if (import.meta.main)
-   process.exitCode = (await doctor(join(import.meta.dir, ".."))) ? 0 : 1;
++export function doneLine(ready: boolean): string {
++  return ready ? "" : "Done when bun run doctor passes.\n";
++}
