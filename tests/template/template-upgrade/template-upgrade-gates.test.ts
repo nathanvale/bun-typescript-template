@@ -4,13 +4,13 @@ import { join } from "node:path";
 import { RECORDED_HITS_FILES } from "../../../src/recipe.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import { commitIn, git, gitEnv, inherited } from "../../support/git-fixture.ts";
+import { linkTemplatePackagesAndKernel } from "../../support/kernel-sibling.ts";
 import { processWatchdog, spawnBounded } from "../../support/process.ts";
 import { streamWrites } from "../../support/stream-writes.ts";
 import {
   bootstrapGeneratedRepository,
   cloneTemplateAtHead,
   invokeTemplateUpgradeMain,
-  linkTemplateNodeModules,
   prepareFastInstallBun,
   templateUpgradeCalls,
 } from "../../support/template-upgrade-fixture.ts";
@@ -53,7 +53,7 @@ async function createPreGateRepository(options: {
   }
   commitIn(repo, "add pre-upgrade repository code", filesToCommit);
 
-  linkTemplateNodeModules(repo);
+  linkTemplatePackagesAndKernel(repo);
   try {
     const format = await spawnBounded([process.execPath, "run", "format"], {
       cwd: repo,
