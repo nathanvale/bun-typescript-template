@@ -7,7 +7,11 @@ import {
   type TrialPassed,
   trialMilliseconds,
 } from "../../scripts/kernel-trial.ts";
-import { kernelPinFile, readKernelPin } from "../../src/kernel-pin.ts";
+import {
+  generatedPin,
+  kernelPinFile,
+  readKernelPin,
+} from "../../src/kernel-pin.ts";
 import type { KernelSeam } from "../../src/kernel-reader.ts";
 import { ROOT } from "./bootstrap-cli-fixture.ts";
 import { gitEnv } from "./git-fixture.ts";
@@ -82,9 +86,19 @@ export function pinnedTemplate(
   carryOutIdentity: string,
 ): string {
   const pin = readKernelPin(ROOT);
+  const spec = generatedPin(pin, commit);
+  const shortCommit = commit.slice(0, 7);
   writeFileSync(
     join(folder, kernelPinFile),
     `${JSON.stringify({ ...pin, commit, carryOutIdentity }, null, 2)}\n`,
+  );
+  writeFileSync(
+    join(folder, "package.json"),
+    `${JSON.stringify({ dependencies: { "agent-cli-kernel": spec } }, null, 2)}\n`,
+  );
+  writeFileSync(
+    join(folder, "bun.lock"),
+    `{\n  "workspaces": {\n    "": {\n      "dependencies": {\n        "agent-cli-kernel": "${spec}",\n      },\n    },\n  },\n  "packages": {\n    "agent-cli-kernel": ["agent-cli-kernel@${spec.slice(0, -40)}${shortCommit}", {}, "nathanvale-agent-cli-kernel-${shortCommit}", "sha512-fixture"],\n  },\n}\n`,
   );
   return folder;
 }
