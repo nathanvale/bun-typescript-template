@@ -5,6 +5,7 @@ import { join, relative, resolve } from "node:path";
 import {
   CHANGESET_FOLDER,
   copiesOf,
+  GITHUB_FOLDER,
   HOSTED_CHECK_FOLDER,
   KERNEL_LOCKFILE,
   KERNEL_RECIPE,
@@ -16,11 +17,43 @@ import { ownedFolders } from "../../support/fixture-files.ts";
 import { siblingKernel } from "../../support/kernel-sibling.ts";
 import { EXPECTED_RULE_FILES } from "../../support/lint-rule-files.ts";
 import { processWatchdog, spawnBounded } from "../../support/process.ts";
+import {
+  bootstrapRow,
+  kernelRowFixture,
+} from "../../support/recipe-fixture.ts";
 import { testFolder } from "../../support/test-folder.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 const bootstrapBound = 20_000;
 const bootstrapTestTimeout = 30_000;
+const PULL_REQUEST_TEMPLATE_PATH = ".github/pull_request_template.md";
+const ISSUE_TEMPLATE_PATH = ".github/ISSUE_TEMPLATE/issue.md";
+const GENERATED_PULL_REQUEST_TEMPLATE_PATH =
+  "generated-repository/github-templates/pull_request_template.md";
+const GENERATED_ISSUE_TEMPLATE_PATH =
+  "generated-repository/github-templates/ISSUE_TEMPLATE/issue.md";
+const EXPECTED_PULL_REQUEST_TEMPLATE = [
+  "## Summary",
+  "",
+  "<diagram, diff-sketch, or tree>",
+  "",
+  "## Evidence",
+  "",
+  "- **Before:** <screenshot/output/failing test run>",
+  "  **After:** <screenshot/output/passing test run>",
+  "",
+  "## Merge Danger",
+  "",
+  "**Door:** <one-way or two-way>",
+  "",
+  "<optional: description>",
+  "",
+  "**Blast Radius:** <one-word description>",
+  "",
+  "<optional: potential ramifications of merge>",
+  "",
+].join("\n");
+const bootstrapFixture = kernelRowFixture();
 
 async function filesUnder(root: string, prefix = ""): Promise<string[]> {
   const files: string[] = [];
@@ -122,6 +155,68 @@ describe("the recipe", () => {
         .filter((file) => file.startsWith(`${HOSTED_CHECK_FOLDER}/`))
         .toSorted(),
     ).toEqual([`${HOSTED_CHECK_FOLDER}/ci.yml`]);
+  });
+
+  test("it copies the pull request template and issue template into .github", async () => {
+    const githubTemplates = (await copiedFiles(KERNEL_RECIPE))
+      .filter(
+        (file) =>
+          file.startsWith(`${GITHUB_FOLDER}/`) &&
+          !file.startsWith(`${HOSTED_CHECK_FOLDER}/`),
+      )
+      .toSorted();
+    expect(githubTemplates).toEqual([
+      ISSUE_TEMPLATE_PATH,
+      PULL_REQUEST_TEMPLATE_PATH,
+    ]);
+  });
+
+  test("the starter kit pull request template and issue template match the generated source and pr skill block", async () => {
+    const starterPullRequest = await readFile(
+      join(ROOT, PULL_REQUEST_TEMPLATE_PATH),
+      "utf8",
+    );
+    const generatedPullRequest = await readFile(
+      join(ROOT, GENERATED_PULL_REQUEST_TEMPLATE_PATH),
+      "utf8",
+    );
+    expect(starterPullRequest).toBe(EXPECTED_PULL_REQUEST_TEMPLATE);
+    expect(generatedPullRequest).toBe(EXPECTED_PULL_REQUEST_TEMPLATE);
+
+    const starterIssue = await readFile(
+      join(ROOT, ISSUE_TEMPLATE_PATH),
+      "utf8",
+    );
+    const generatedIssue = await readFile(
+      join(ROOT, GENERATED_ISSUE_TEMPLATE_PATH),
+      "utf8",
+    );
+    expect(starterIssue).toBe(generatedIssue);
+    expect(starterIssue).toMatch(/^---\nname: .+\nabout: .+\n---\n/);
+    expect(starterIssue).toContain("## What and why\n");
+    expect(starterIssue).toContain("## What done looks like\n");
+    expect(starterIssue).toContain("## Not in scope\n");
+    expect(starterIssue).toContain("+++ Agent notes\n");
+    expect(starterIssue).toMatch(/\n\+\+\+\n$/);
+  });
+
+  test("Bootstrap writes the pull request template byte-identical to the pr skill block and the issue template", async () => {
+    const { destination, request } = bootstrapFixture();
+    await bootstrapRow(request);
+    const pullRequestTemplate = await readFile(
+      join(destination, PULL_REQUEST_TEMPLATE_PATH),
+      "utf8",
+    );
+    const issueTemplate = await readFile(
+      join(destination, ISSUE_TEMPLATE_PATH),
+      "utf8",
+    );
+    const generatedIssue = await readFile(
+      join(ROOT, GENERATED_ISSUE_TEMPLATE_PATH),
+      "utf8",
+    );
+    expect(pullRequestTemplate).toBe(EXPECTED_PULL_REQUEST_TEMPLATE);
+    expect(issueTemplate).toBe(generatedIssue);
   });
 
   test("it copies the Changesets config and README into .changeset and the gated-paths script into scripts", async () => {

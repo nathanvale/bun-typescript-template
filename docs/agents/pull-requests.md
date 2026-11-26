@@ -16,6 +16,7 @@
   [.changeset/README.md](../../.changeset/README.md).
 - Open the pull request ready for review, never as a draft.
 - Write its body with the `pr` skill.
+- The pull request template (`.github/pull_request_template.md`, copied from `generated-repository/github-templates/pull_request_template.md`) is the `pr` skill's template block at mattpocock-skills 1.3.2; when the skill changes, update the file to match.
 - Drive the open pull request with the Babysit playbook in pstack's
   `poteto-mode` skill.
 - Bring the branch up to date by merging `main` into it. Never rebase or
