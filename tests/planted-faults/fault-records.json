@@ -3453,5 +3453,26 @@
     "testFile": "tests/template/bootstrap/recipe.test.ts",
     "title": "^the recipe the starter kit pull request template and issue template match the generated source and pr skill block$",
     "source": "b51d414 feat(bootstrap): the starter kit and every generated repository carry the pr skill's pull request template and an issue template"
+  },
+  {
+    "id": "9ad81458-template-upgrade-inputs",
+    "patch": "tests/planted-faults/patches/9ad81458-template-upgrade-inputs.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-check-command.test.ts",
+    "title": "refuses non-positive-integer templateUpgrade.checkTimeoutSeconds before any work",
+    "source": "9ad81458 feat(upgrade): read and validate templateUpgrade.checkTimeoutSeconds"
+  },
+  {
+    "id": "9ad81458-template-upgrade-inputs-default",
+    "patch": "tests/planted-faults/patches/9ad81458-template-upgrade-inputs-default.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-check-command.test.ts",
+    "title": "defaults templateUpgrade.checkTimeoutSeconds to 900 seconds when absent and reads a positive integer",
+    "source": "9ad81458 feat(upgrade): read and validate templateUpgrade.checkTimeoutSeconds"
+  },
+  {
+    "id": "181f1d39-template-upgrade-gate-check",
+    "patch": "tests/planted-faults/patches/181f1d39-template-upgrade-gate-check.patch",
+    "testFile": "tests/template/template-upgrade/template-upgrade-check-command.test.ts",
+    "title": "applies templateUpgrade.checkTimeoutSeconds to bun run check, names the key on timeout, and succeeds when raised",
+    "source": "181f1d39 feat(upgrade): bound check steps by templateUpgrade.checkTimeoutSeconds"
   }
 ]
