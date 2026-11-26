@@ -1,0 +1,12 @@
+diff --git a/generated-repository/scripts/build-bundles.ts b/generated-repository/scripts/build-bundles.ts
+index 1c4edfa..24e7e0a 100644
+--- a/generated-repository/scripts/build-bundles.ts
++++ b/generated-repository/scripts/build-bundles.ts
+@@ -28,6 +28,7 @@ function readJson(root: string, file: string): unknown {
+   try {
+     return Bun.JSONC.parse(readFileSync(join(root, file), "utf8"));
+   } catch (error) {
++    if (file === "package.json") return undefined;
+     throw new Error(
+       `${file} cannot be read as JSON: ${error instanceof Error ? error.message : String(error)}. Repair: restore ${file}, then run this script again.`,
+       { cause: error },

@@ -1,0 +1,17 @@
+diff --git a/generated-repository/scripts/build-bundles.ts b/generated-repository/scripts/build-bundles.ts
+index 1c4edfa..4a532f5 100644
+--- a/generated-repository/scripts/build-bundles.ts
++++ b/generated-repository/scripts/build-bundles.ts
+@@ -38,11 +38,7 @@ function readJson(root: string, file: string): unknown {
+ function plainPath(path: string, extension: string): boolean {
+   return (
+     path.endsWith(extension) &&
+-    !path.startsWith("/") &&
+-    !/[\\\0]/.test(path) &&
+-    path
+-      .split("/")
+-      .every((part) => part !== "" && part !== "." && part !== "..")
++    path !== ""
+   );
+ }
+ 
