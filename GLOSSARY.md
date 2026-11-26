@@ -66,6 +66,10 @@ The `.github/ISSUE_TEMPLATE/issue.md` file shipped in the template and copied in
 The check that a repository has exactly one application CLI, found across its
 source, manifests, scripts and documented invocations.
 
+**Front door**:
+`src/cli.ts`, the one command line that every starter-kit tool runs through.
+It is built on `agent-cli-kernel`.
+
 **Pointer skill**:
 A short skill that Bootstrap writes into a generated repository at
 `.agents/skills/<name>/SKILL.md`, and links from `.claude/skills/`, for one

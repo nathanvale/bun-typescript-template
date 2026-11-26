@@ -2856,7 +2856,7 @@
     "id": "6ce33a5-anti-slop-chained-levels",
     "patch": "tests/planted-faults/patches/6ce33a5-anti-slop-chained-levels.patch",
     "testFile": "tests/template/lint/anti-slop-rules.test.ts",
-    "title": "^anti-slop/no-chained-type-assertions refuses the anti-slop 13909c9 shape in scripts/doctor\\.ts and admits its clean form$",
+    "title": "^anti-slop/no-chained-type-assertions refuses the anti-slop 13909c9 shape in src/doctor\\.ts and admits its clean form$",
     "source": "6ce33a5 fix(generated-lint): keep every kernel lint rule in a generated repository"
   },
   {
@@ -3397,6 +3397,41 @@
     "testFile": "tests/template/template-upgrade/template-upgrade-recorded-hits-clone.test.ts",
     "title": "a duplicates file whose clone moved files, keeping its normalized fingerprint, does not grow",
     "source": "3012333 fix(template-upgrade): measure recorded clone growth by normalized fingerprint"
+  },
+  {
+    "id": "cli-doctor-check-failed",
+    "patch": "tests/planted-faults/patches/cli-doctor-check-failed.patch",
+    "testFile": "tests/template/doctor/doctor-cli.test.ts",
+    "title": "^cli front door and doctor route doctor refuses a checkout that fails a check with DOMAIN_DOCTOR_CHECK_FAILED, results in the envelope, and a diagnostics event$",
+    "source": "1535d65 feat(cli): the front door runs doctor through the kernel, with diagnostics; doctor moves to src/doctor.ts"
+  },
+  {
+    "id": "doctor-installed-kernel-pin",
+    "patch": "tests/planted-faults/patches/doctor-installed-kernel-pin.patch",
+    "testFile": "tests/template/doctor/doctor-cli.test.ts",
+    "title": "^cli front door and doctor route toolchain result fails when node_modules/agent-cli-kernel is not at the Pin commit$",
+    "source": "1535d65 feat(cli): the front door runs doctor through the kernel, with diagnostics; doctor moves to src/doctor.ts"
+  },
+  {
+    "id": "pin-verification-places",
+    "patch": "tests/planted-faults/patches/pin-verification-places.patch",
+    "testFile": "tests/template/pin-move/pin-verification-command.test.ts",
+    "title": "^the pin verification command refuses with pin_places_disagree without a kernel repository when package\\.json disagrees with kernel-pin\\.json$",
+    "source": "92db576 feat(pin): pin verification refuses when package.json or bun.lock pins another kernel commit than kernel-pin.json"
+  },
+  {
+    "id": "cli-load-kernel-catch",
+    "patch": "tests/planted-faults/patches/cli-load-kernel-catch.patch",
+    "testFile": "tests/template/doctor/doctor-cli.test.ts",
+    "title": "^cli front door and doctor route import failure inside src/causes\\.ts surfaces its own error instead of reporting the kernel missing$",
+    "source": "360af6c fix(cli): report import failures and an unreadable Pin as themselves, not as a missing kernel"
+  },
+  {
+    "id": "doctor-missing-kernel-pin",
+    "patch": "tests/planted-faults/patches/doctor-missing-kernel-pin.patch",
+    "testFile": "tests/template/doctor/doctor-cli.test.ts",
+    "title": "^cli front door and doctor route toolchain result fails with readKernelPin's repair when kernel-pin\\.json is missing$",
+    "source": "360af6c fix(cli): report import failures and an unreadable Pin as themselves, not as a missing kernel"
   },
   {
     "id": "github-templates-recipe-copy",

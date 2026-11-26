@@ -1,0 +1,12 @@
+diff --git a/src/doctor.ts b/src/doctor.ts
+index 1111111..2222222 100644
+--- a/src/doctor.ts
++++ b/src/doctor.ts
+@@ -55,6 +55,7 @@ async function bunVersion(root: string): Promise<CheckResult> {
+ }
+ 
+ function installedKernelProblem(root: string): string | undefined {
++  if (!existsSync(join(root, kernelPinFile))) return undefined;
+   let pin: KernelPin;
+   try {
+     pin = readKernelPin(root);

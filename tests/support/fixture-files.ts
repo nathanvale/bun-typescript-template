@@ -7,6 +7,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
+import { kernelPinFile } from "../../src/kernel-pin.ts";
 import { testFolder } from "./test-folder.ts";
 
 export function write(root: string, path: string, content: string): void {
@@ -38,6 +39,26 @@ export function ownedFolders(): (prefix: string) => string {
 }
 
 const templateRoot = join(import.meta.dir, "../..");
+
+export const doctorSources: readonly string[] = [
+  "src/cli-error.ts",
+  "src/doctor.ts",
+  "src/git-identities.ts",
+  "src/kernel-pin.ts",
+  "src/kernel-reader.ts",
+  "src/template-upgrade-git.ts",
+  "src/toolchain-resolution.ts",
+  kernelPinFile,
+];
+
+export function doctorKernelFiles(): Record<string, string> {
+  return Object.fromEntries(
+    [kernelPinFile, "node_modules/agent-cli-kernel/.bun-tag"].map((path) => [
+      path,
+      readFileSync(join(templateRoot, path), "utf8"),
+    ]),
+  );
+}
 
 export function testRunFiles(): Record<string, string> {
   return Object.fromEntries(

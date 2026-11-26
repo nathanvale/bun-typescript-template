@@ -7,7 +7,7 @@ const antiSlopCases = [
     rule: "anti-slop/no-chained-type-assertions",
     witness: "anti-slop 13909c9",
     message: "This assertion chain discards type evidence.",
-    filePath: "scripts/doctor.ts",
+    filePath: "src/doctor.ts",
     failing: [
       "declare const input: string;",
       "export const parenthesized = (input as unknown) as number;",
@@ -25,7 +25,7 @@ const antiSlopCases = [
     rule: "anti-slop/no-widen-then-assert",
     witness: "anti-slop 13909c9",
     message: "discards type evidence and later recreates it with an assertion.",
-    filePath: "scripts/doctor.ts",
+    filePath: "src/doctor.ts",
     failing: [
       'const source = { id: "second" };',
       "const widened: unknown = source;",
@@ -41,7 +41,7 @@ const antiSlopCases = [
     rule: "anti-slop/no-widen-then-assert",
     witness: "r4608976401",
     message: "discards type evidence and later recreates it with an assertion.",
-    filePath: "scripts/doctor.ts",
+    filePath: "src/doctor.ts",
     failing: [
       'const source = { id: "second" };',
       "const widened: unknown = source;",
@@ -58,7 +58,7 @@ const antiSlopCases = [
     rule: "anti-slop/no-unknown-type-aliases",
     witness: "r4608976364",
     message: "hides `unknown`.",
-    filePath: "scripts/doctor.ts",
+    filePath: "src/doctor.ts",
     failing: [
       "export type Payload = (unknown);",
       "export type Loose = (string | (unknown));",
@@ -70,7 +70,7 @@ const antiSlopCases = [
     rule: "anti-slop/no-unknown-type-aliases",
     witness: "r4609019138",
     message: "hides `unknown`.",
-    filePath: "scripts/doctor.ts",
+    filePath: "src/doctor.ts",
     failing: [
       "type Identity<T> = T;",
       "export type Payload = Identity<Identity<unknown>>;",
@@ -85,7 +85,7 @@ const antiSlopCases = [
     rule: "anti-slop/no-unknown-type-aliases",
     witness: "r4609659195",
     message: "hides `unknown`.",
-    filePath: "scripts/doctor.ts",
+    filePath: "src/doctor.ts",
     failing: [
       "type T = unknown;",
       "type Fixed = T;",
@@ -108,7 +108,7 @@ const antiSlopCases = [
     rule: "anti-slop/no-unknown-type-aliases",
     witness: "r4609659195 parameter chain",
     message: "hides `unknown`.",
-    filePath: "scripts/doctor.ts",
+    filePath: "src/doctor.ts",
     failing: [
       "type Inner<U> = U;",
       "type Outer<T> = Inner<T>;",
@@ -131,7 +131,7 @@ const antiSlopCases = [
     rule: "anti-slop/no-unknown-type-aliases",
     witness: "anti-slop 13909c9",
     message: "hides `unknown`.",
-    filePath: "scripts/doctor.ts",
+    filePath: "src/doctor.ts",
     failing: [
       "type Identity<T> = T;",
       "export type Payload = Identity<unknown>;",
@@ -184,7 +184,7 @@ const antiSlopCases = [
     rule: "anti-slop/no-reduce-accumulator-copy",
     witness: "anti-slop 13909c9",
     message: "Do not copy the reducer accumulator on every iteration;",
-    filePath: "scripts/doctor.ts",
+    filePath: "src/doctor.ts",
     failing: [
       "export const byId = (items: { id: string }[]) =>",
       "  items.reduce((all, item) => Object.assign({}, all, { [item.id]: item }), {});",
@@ -204,7 +204,7 @@ const antiSlopCases = [
     rule: "anti-slop/no-reduce-accumulator-copy",
     witness: "r4609902960",
     message: "Do not copy the reducer accumulator on every iteration;",
-    filePath: "scripts/doctor.ts",
+    filePath: "src/doctor.ts",
     failing: [
       "export const joined = (items: number[][]) =>",
       "  items.reduce<number[]>((all, item) => all.concat(item), []);",
@@ -226,7 +226,7 @@ const antiSlopCases = [
     rule: "anti-slop/no-reduce-accumulator-copy",
     witness: "r4609902960 sibling keys",
     message: "Do not copy the reducer accumulator on every iteration;",
-    filePath: "scripts/doctor.ts",
+    filePath: "src/doctor.ts",
     failing: [
       "export const byId = (items: { id: string }[]) =>",
       "  items.reduce((all, item) => Object[`assign`]({}, all, { [item.id]: item }), {});",
@@ -248,7 +248,7 @@ const antiSlopCases = [
     witness: "oxc 1.93.0",
     message:
       "Using spreads within accumulators leads to `O(n^2)` time complexity.",
-    filePath: "scripts/doctor.ts",
+    filePath: "src/doctor.ts",
     failing: [
       "export const keyed = (names: string[]) =>",
       "  names.reduce((all, name) => ({ ...all, [name]: name }), {});",
@@ -273,7 +273,7 @@ const antiSlopCases = [
     witness: "r4608976426",
     message:
       "Using spreads within accumulators leads to `O(n^2)` time complexity.",
-    filePath: "scripts/doctor.ts",
+    filePath: "src/doctor.ts",
     failing: [
       "export const listed = (names: string[]) =>",
       "  names.reduce<string[]>((all, name, index) => [...all, `${index}:${name}`], []);",
@@ -294,7 +294,7 @@ const antiSlopCases = [
     witness: "r4609659202",
     message:
       "Using spreads within accumulators leads to `O(n^2)` time complexity.",
-    filePath: "scripts/doctor.ts",
+    filePath: "src/doctor.ts",
     failing: [
       "export const marked = (names: string[]) =>",
       '  names.reduce<string[]>((all) => [...all, "x"], []);',
@@ -317,7 +317,7 @@ const antiSlopCases = [
     witness: "r4609659202 initial value",
     message:
       "Using spreads within accumulators leads to `O(n^2)` time complexity.",
-    filePath: "scripts/doctor.ts",
+    filePath: "src/doctor.ts",
     failing: [
       "declare const owned: <T>(callback: T) => T;",
       "export const rows = (items: number[][]) =>",
@@ -337,7 +337,7 @@ const antiSlopCases = [
     witness: "r4609659207",
     message:
       "Using spreads within accumulators leads to `O(n^2)` time complexity.",
-    filePath: "scripts/doctor.ts",
+    filePath: "src/doctor.ts",
     failing: [
       "export const fed = (items: string[]) =>",
       '  items.reduce((args, item) => [...args, item], ["fixed"]);',
@@ -369,7 +369,7 @@ const antiSlopCases = [
     witness: "r4609019144",
     message:
       "Using spreads within accumulators leads to `O(n^2)` time complexity.",
-    filePath: "scripts/doctor.ts",
+    filePath: "src/doctor.ts",
     failing: [
       "export const rows = (items: number[][]) =>",
       "  items.reduce<number[][]>((all, row) => [...all, row.map((cell, index) => cell + index)], []);",
@@ -389,7 +389,7 @@ const antiSlopCases = [
     witness: "r4609019149",
     message:
       "Using spreads within accumulators leads to `O(n^2)` time complexity.",
-    filePath: "scripts/doctor.ts",
+    filePath: "src/doctor.ts",
     failing: [
       "export function counted() {",
       "  let seen: number[] = [];",

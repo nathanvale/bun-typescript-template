@@ -1,19 +1,21 @@
-diff --git a/scripts/doctor.ts b/scripts/doctor.ts
-index ae1dafc..1682203 100644
---- a/scripts/doctor.ts
-+++ b/scripts/doctor.ts
-@@ -179,9 +179,13 @@ export async function doctor(root: string): Promise<boolean> {
-   for (const { status, check, detail } of findings)
-     process.stdout.write(`${status} ${check}: ${detail}\n`);
-   const passed = findings.every((finding) => finding.status !== "FAIL");
--  if (!passed) process.stdout.write("Done when bun run doctor passes.\n");
-+  process.stdout.write(doneLine(passed));
-   return passed;
+diff --git a/src/cli.ts b/src/cli.ts
+index 1111111..2222222 100644
+--- a/src/cli.ts
++++ b/src/cli.ts
+@@ -42,11 +42,15 @@ async function loadKernel() {
+   return { kernel, diagnostics, causes };
  }
  
-+export function doneLine(passed: boolean): string {
-+  return passed ? "" : "Done when bun run doctor passes.\n";
++export function missingKernelLine(): string {
++  return `${cliName}: node_modules/agent-cli-kernel is missing. Repair: ${installRepair}.\n`;
 +}
 +
- if (import.meta.main)
-   process.exitCode = (await doctor(join(import.meta.dir, ".."))) ? 0 : 1;
+ async function runFrontDoor(argv: readonly string[]): Promise<void> {
+   const loaded = await loadKernel();
+   if (loaded === undefined) {
+     process.stderr.write(
+-      `${cliName}: node_modules/agent-cli-kernel is missing. Repair: ${installRepair}.\n`,
++      missingKernelLine(),
+     );
+     process.exit(1);
+   }

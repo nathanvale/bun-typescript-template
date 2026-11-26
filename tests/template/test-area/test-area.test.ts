@@ -9,7 +9,10 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { testArea } from "../../../scripts/test-area.ts";
-import { testRunFiles } from "../../support/fixture-files.ts";
+import {
+  doctorKernelFiles,
+  testRunFiles,
+} from "../../support/fixture-files.ts";
 import { testFolder } from "../../support/test-folder.ts";
 
 const folders: string[] = [];
@@ -95,6 +98,7 @@ function rootWith(
   folders.push(root);
   const written = {
     ...toolchain,
+    ...doctorKernelFiles(),
     ...testRunFiles(),
     ...(pin === null ? {} : { "package.json": packageManifest(pin) }),
     ...files,

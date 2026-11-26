@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { antiSlopGate as gate } from "../../support/lint-gate-cases.ts";
 import { messages } from "../../support/template-lint.ts";
 
-const filePath = "scripts/doctor.ts";
+const filePath = "src/doctor.ts";
 
 const gateRules = new Set<string | null>([
   null,
