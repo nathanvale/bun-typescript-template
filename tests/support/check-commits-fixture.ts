@@ -1,6 +1,6 @@
 import { copyFileSync, mkdirSync, symlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { ownedFolders } from "./fixture-files.ts";
+import { doctorSources, ownedFolders } from "./fixture-files.ts";
 import {
   commitIn,
   git,
@@ -16,9 +16,8 @@ const sources = [
   "scripts/process-runner.ts",
   "src/cli.ts",
   "src/causes.ts",
-  "src/doctor.ts",
+  ...doctorSources,
   "scripts/repository.ts",
-  "src/toolchain-resolution.ts",
   "repository.json",
 ];
 const { scripts: production } = (await Bun.file(
