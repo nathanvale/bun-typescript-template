@@ -208,7 +208,12 @@ test("merges JSON keys and clean text edits, and marks conflicting JSON and text
 
   const rows = await mergeTemplateUpgradeTrees(oldDir, newDir, oursDir);
   expect(rows).toEqual([
-    { path: "biome.json", ownerLabel: "shared", outcome: "conflict" },
+    {
+      path: "biome.json",
+      ownerLabel: "shared",
+      outcome: "conflict",
+      keyConflicts: [{ path: "$.indentWidth", base: 2, ours: 8, next: 4 }],
+    },
     { path: "conflict.txt", ownerLabel: "template", outcome: "conflict" },
     { path: "notes.txt", ownerLabel: "template", outcome: "merge" },
     { path: "package.json", ownerLabel: "shared", outcome: "merge" },

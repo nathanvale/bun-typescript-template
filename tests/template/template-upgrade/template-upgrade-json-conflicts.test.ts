@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { gitMergeFile } from "../../../src/template-upgrade-git.ts";
+import type { JsonKeyConflict } from "../../../src/template-upgrade-json-merge.ts";
 import { mergeTemplateUpgradeTrees } from "../../../src/template-upgrade-merge.ts";
 import { ownedFolders, write } from "../../support/fixture-files.ts";
 import { commitIn, gitResult } from "../../support/git-fixture.ts";
@@ -41,11 +42,62 @@ function markedJsonShape(ours: string, next: string, old = OLD_JSON) {
   };
 }
 
-const cleanTextShape = markedJsonShape(OURS_BOUNDARIES, NEW_BOUNDARIES);
-const textConflictShape = markedJsonShape(
-  OURS_BOUNDARIES.replace(X5_LINE, '  "x5": "OURS",\n'),
-  NEW_BOUNDARIES.replace(X5_LINE, '  "x5": "NEW",\n'),
+const CLEAN_TEXT_MARKED = [
+  "{",
+  '  "entry": [',
+  '    "a"',
+  "  ],",
+  '  "boundaries": {',
+  "<<<<<<< ours",
+  '    "zones": [',
+  '      "mine"',
+  "    ]",
+  "=======",
+  '    "zones": [',
+  '      "template"',
+  "    ]",
+  ">>>>>>> new",
+  "  },",
+  '  "x1": 1,',
+  '  "x2": 2,',
+  '  "x3": 3,',
+  '  "x4": 4,',
+  '  "x5": 5,',
+  '  "rules": {',
+  '    "r": "error"',
+  "  }",
+  "}",
+  "",
+].join("\n");
+
+const TEXT_CONFLICT_MARKED = CLEAN_TEXT_MARKED.replace(
+  '  "x5": 5,\n',
+  '<<<<<<< ours\n  "x5": "OURS",\n=======\n  "x5": "NEW",\n>>>>>>> new\n',
 );
+
+const BOUNDARIES_CONFLICT: JsonKeyConflict = {
+  path: "$.boundaries.zones",
+  ours: ["mine"],
+  next: ["template"],
+};
+
+const cleanTextShape = {
+  old: OLD_JSON,
+  ours: OURS_BOUNDARIES,
+  next: NEW_BOUNDARIES,
+  marked: CLEAN_TEXT_MARKED,
+  keyConflicts: [BOUNDARIES_CONFLICT],
+};
+const textConflictShape = {
+  old: OLD_JSON,
+  ours: OURS_BOUNDARIES.replace(X5_LINE, '  "x5": "OURS",\n'),
+  next: NEW_BOUNDARIES.replace(X5_LINE, '  "x5": "NEW",\n'),
+  marked: TEXT_CONFLICT_MARKED,
+  keyConflicts: [
+    BOUNDARIES_CONFLICT,
+    { path: "$.x5", base: 5, ours: "OURS", next: "NEW" },
+  ],
+};
 const commentedShape = markedJsonShape(
   OURS_BOUNDARIES.replace(ENTRY_LINE, '  "entry": ["a"], // owner note\n'),
   NEW_BOUNDARIES,
@@ -117,12 +169,38 @@ async function expectWholeFileMarked(
   }).toThrow("JSON Parse error");
 }
 
-test("a JSON key conflict whose text merges cleanly is written as one marked conflict, ours above new, that does not parse", async () => {
-  await expectWholeFileMarked(cleanTextShape);
+async function expectKeyMarked(shape: typeof cleanTextShape): Promise<void> {
+  const oldDir = folder("json-key-old-");
+  const newDir = folder("json-key-new-");
+  const oursDir = folder("json-key-ours-");
+  write(oldDir, ".fallowrc.json", shape.old);
+  write(newDir, ".fallowrc.json", shape.next);
+  write(oursDir, ".fallowrc.json", shape.ours);
+
+  const rows = await mergeTemplateUpgradeTrees(oldDir, newDir, oursDir);
+  expect(rows).toEqual([
+    {
+      path: ".fallowrc.json",
+      ownerLabel: "shared",
+      outcome: "conflict",
+      keyConflicts: shape.keyConflicts,
+    },
+  ]);
+  const written = readFileSync(join(oursDir, ".fallowrc.json"), "utf8");
+  expect(written).toBe(shape.marked);
+  expect(written.startsWith("<<<<<<< ours\n")).toBe(false);
+  expect(written.match(/"boundaries"/g)?.length).toBe(1);
+  expect(() => {
+    JSON.parse(written);
+  }).toThrow("JSON Parse error");
+}
+
+test("a JSON key conflict whose text merges cleanly is written with member-level markers, ours above new, that do not parse", async () => {
+  await expectKeyMarked(cleanTextShape);
 });
 
-test("a JSON key conflict beside a text conflict is written as one marked conflict, so no member repeats outside the markers", async () => {
-  await expectWholeFileMarked(textConflictShape);
+test("a JSON key conflict beside a text conflict is written with member-level markers, so no member repeats outside the markers", async () => {
+  await expectKeyMarked(textConflictShape);
 });
 
 test("a JSON file that does not parse and whose clean text merge repeats a member is written as one marked conflict", async () => {
