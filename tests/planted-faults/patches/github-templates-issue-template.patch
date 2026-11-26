@@ -1,0 +1,11 @@
+diff --git a/.github/ISSUE_TEMPLATE/issue.md b/.github/ISSUE_TEMPLATE/issue.md
+--- a/.github/ISSUE_TEMPLATE/issue.md
++++ b/.github/ISSUE_TEMPLATE/issue.md
+@@ -15,7 +15,6 @@ about: Describe the work for both human readers and the builder
+ 
+ - <Explicit exclusion>
+ 
+-+++ Agent notes
+ 
+ - <Goal, smallest change, acceptance checks, and implementation notes for the builder>
+ 

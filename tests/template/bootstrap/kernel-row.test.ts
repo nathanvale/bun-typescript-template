@@ -41,6 +41,8 @@ const ownFiles = [
   ".claude/skills/agent-cli-kernel",
   ".claude/skills/verify-cli",
   ".fallowrc.json",
+  ".github/ISSUE_TEMPLATE/issue.md",
+  ".github/pull_request_template.md",
   ".github/workflows/ci.yml",
   ".gitignore",
   ".template.json",

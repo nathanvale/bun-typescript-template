@@ -1,4 +1,5 @@
 export const SKILL_FOLDER = ".agents/skills";
+export const GITHUB_FOLDER = ".github";
 export const HOSTED_CHECK_FOLDER = ".github/workflows";
 export const CHANGESET_FOLDER = ".changeset";
 
@@ -12,6 +13,7 @@ export interface RecipeCopy {
     | "tests/support"
     | "config"
     | typeof SKILL_FOLDER
+    | typeof GITHUB_FOLDER
     | typeof HOSTED_CHECK_FOLDER
     | typeof CHANGESET_FOLDER;
   readonly only?: readonly string[];
@@ -42,6 +44,7 @@ export const KERNEL_RECIPE: Recipe = {
   copies: [
     { from: "generated-repository/application", into: "." },
     { from: "generated-repository/changeset", into: CHANGESET_FOLDER },
+    { from: "generated-repository/github-templates", into: GITHUB_FOLDER },
     { from: "generated-repository/hosted-check", into: HOSTED_CHECK_FOLDER },
     { from: "generated-repository/scripts", into: "scripts" },
     {
