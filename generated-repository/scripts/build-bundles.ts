@@ -30,6 +30,7 @@ function readJson(root: string, file: string): unknown {
   } catch (error) {
     throw new Error(
       `${file} cannot be read as JSON: ${error instanceof Error ? error.message : String(error)}. Repair: restore ${file}, then run this script again.`,
+      { cause: error },
     );
   }
 }
