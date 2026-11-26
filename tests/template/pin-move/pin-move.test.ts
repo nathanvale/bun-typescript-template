@@ -284,6 +284,8 @@ describe("the pin move", () => {
     async () => {
       const copy = templateCopy(folder("pin-move-"));
       pinnedTemplate(copy, trialBase, carryOutIdentity);
+      git(copy, "commit", "--quiet", "--all", "--allow-empty", "-m", "pin it");
+      const before = git(copy, "rev-parse", "HEAD");
       const reader = join(copy, "src/kernel-reader.ts");
       const held = readFileSync(reader, "utf8");
       writeFileSync(
@@ -294,7 +296,6 @@ describe("the pin move", () => {
         ),
       );
       git(copy, "commit", "--quiet", "--all", "-m", "the renamed path");
-      const before = git(copy, "rev-parse", "HEAD^");
       const script = `const { kernelTrial } = await import(${JSON.stringify(join(copy, "scripts/kernel-trial.ts"))});
 const { movePin } = await import(${JSON.stringify(join(copy, "scripts/pin-move.ts"))});
 const trial = await kernelTrial({ kernel: { repository: ${JSON.stringify(renaming)}, commit: ${JSON.stringify(renamed.commit)} }, folder: ${JSON.stringify(join(copy, "..", "trial"))}, kernelFrom: "clone" });

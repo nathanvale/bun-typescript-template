@@ -47,12 +47,15 @@ export type PinMove = {
 };
 
 export type PinRefusalCode =
+  | "pin_places_disagree"
   | "kernel_commit_unreachable"
   | "kernel_commit_before_carry_out"
   | "kernel_history_unreadable"
   | "kernel_branch_unreadable";
 
 const repairs: { readonly [Code in PinRefusalCode]: string } = {
+  pin_places_disagree:
+    "Edit package.json's agent-cli-kernel dependency to match kernel-pin.json's commit and run bun install (bun run pin-move writes both places once updated).",
   kernel_commit_unreachable:
     "Give a commit that branch reaches on the pin's remote. Push the commit there first if it is only local.",
   kernel_commit_before_carry_out:

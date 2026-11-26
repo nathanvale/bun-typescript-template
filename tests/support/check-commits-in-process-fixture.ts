@@ -1,7 +1,14 @@
 import { spyOn } from "bun:test";
-import { existsSync, readFileSync, realpathSync, symlinkSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  readFileSync,
+  realpathSync,
+  symlinkSync,
+} from "node:fs";
 import { join } from "node:path";
 import type { Active, Run } from "../../scripts/check-commits.ts";
+import { kernelPinFile } from "../../src/kernel-pin.ts";
 import { ownedFolders } from "./fixture-files.ts";
 import { commitIn, git, initRepository } from "./git-fixture.ts";
 
@@ -71,6 +78,7 @@ export function createCommitCheckFixture() {
   } = {}) {
     const root = join(folder("check-commits-process-repo-"), "repo");
     initRepository(root);
+    copyFileSync(join(repository, kernelPinFile), join(root, kernelPinFile));
     symlinkSync(join(repository, "node_modules"), join(root, "node_modules"));
     const commit = (
       subject: string,

@@ -74,7 +74,7 @@ const fixes = [
   },
   {
     rule: "no-locale-compare",
-    filePath: "scripts/doctor.ts",
+    filePath: "scripts/test-area.ts",
     failing:
       "export const sorted = (names: string[]) => names.sort((a, b) => a.localeCompare(b));",
     fixed: ([fix]: string[]) =>
@@ -82,7 +82,7 @@ const fixes = [
   },
   {
     rule: "no-in-operator",
-    filePath: "scripts/doctor.ts",
+    filePath: "scripts/test-area.ts",
     failing:
       'export const code = (error: Error): unknown => ("code" in error ? error.code : undefined);',
     fixed: ([fix]: string[]) =>
@@ -150,7 +150,7 @@ const refused = [
   {
     rule: "no-locale-compare",
     witness: "b456208",
-    filePath: "scripts/doctor.ts",
+    filePath: "scripts/test-area.ts",
     code: [
       "export const keys = (value: Record<string, unknown>) =>",
       "  Object.entries(value).sort(([left], [right]) => left.localeCompare(right));",
@@ -329,7 +329,7 @@ const cases = [
   {
     rule: "no-in-operator",
     witness: "r4580077776",
-    filePath: "scripts/doctor.ts",
+    filePath: "scripts/test-area.ts",
     failing: [
       "export const declared = (fields: Readonly<Record<string, unknown>>, value: object) =>",
       "  Object.keys(value).every((key) => key in fields);",

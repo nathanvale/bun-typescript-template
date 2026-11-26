@@ -1,0 +1,13 @@
+diff --git a/src/cli.ts b/src/cli.ts
+index 1111111..2222222 100644
+--- a/src/cli.ts
++++ b/src/cli.ts
+@@ -134,7 +134,7 @@ async function runFrontDoor(argv: readonly string[]): Promise<void> {
+       return context.result(
+         {
+           commandIdentity: doctorIdentity,
+-          causeCode: "DOMAIN_DOCTOR_CHECK_FAILED",
++          causeCode: "SUCCESS_UNCHANGED",
+         },
+         {
+           message: summary,

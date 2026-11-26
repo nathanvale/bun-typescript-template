@@ -26,6 +26,8 @@ const copied = [
   "scripts/test-run.ts",
   "tests/support/test-folder.ts",
   "tests/support/test-run-folder.ts",
+  "package.json",
+  "bun.lock",
   kernelPinFile,
 ];
 

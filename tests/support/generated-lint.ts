@@ -1,17 +1,9 @@
 import { afterAll } from "bun:test";
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  symlinkSync,
-} from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { ESLint } from "eslint";
-import { readKernelPin } from "../../src/kernel-pin.ts";
-import { invoke, requireSuccess, ROOT } from "./bootstrap-cli-fixture.ts";
-import { kernelCheckout } from "./kernel-sibling.ts";
+import { invoke, requireSuccess } from "./bootstrap-cli-fixture.ts";
+import { linkTemplatePackagesAndKernel } from "./kernel-sibling.ts";
 import { EXPECTED_RULE_FILES } from "./lint-rule-files.ts";
 import { testFolder } from "./test-folder.ts";
 
@@ -136,14 +128,6 @@ export function generatedLint(root: string) {
   };
 }
 
-function installTemplatePackagesAndKernel(destination: string): void {
-  const modules = join(destination, "node_modules");
-  mkdirSync(modules);
-  for (const name of readdirSync(join(ROOT, "node_modules")))
-    symlinkSync(join(ROOT, "node_modules", name), join(modules, name));
-  kernelCheckout(join(modules, readKernelPin(ROOT).repository));
-}
-
 async function bootstrapped(folder: string): Promise<string> {
   const destination = join(folder, "repository");
   requireSuccess(
@@ -156,7 +140,7 @@ async function bootstrapped(folder: string): Promise<string> {
     ),
     "bootstrap",
   );
-  installTemplatePackagesAndKernel(destination);
+  linkTemplatePackagesAndKernel(destination);
   return destination;
 }
 

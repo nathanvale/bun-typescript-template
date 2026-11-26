@@ -21,6 +21,7 @@
     "tests/template/process-runner/spawn-bounded.test.ts": 977,
     "tests/template/fault-replay/planted-fault-replay-all-in-process.test.ts": 840,
     "tests/template/doctor/doctor.test.ts": 772,
+    "tests/template/doctor/doctor-cli.test.ts": 500,
     "tests/template/fault-replay/planted-fault-records-in-process.test.ts": 718,
     "tests/template/names-check/check-names.test.ts": 623,
     "tests/template/standards/standards.test.ts": 598,

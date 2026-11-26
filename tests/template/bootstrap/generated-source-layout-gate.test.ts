@@ -1,9 +1,7 @@
 import { expect, test } from "bun:test";
-import { mkdirSync, readdirSync, symlinkSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ESLint } from "eslint";
-import { readKernelPin } from "../../../src/kernel-pin.ts";
 import {
   bootstrapCliFixture,
   invokeIn,
@@ -13,7 +11,7 @@ import {
   runIn,
 } from "../../support/bootstrap-cli-fixture.ts";
 import { gitEnv, inherited } from "../../support/git-fixture.ts";
-import { kernelCheckout } from "../../support/kernel-sibling.ts";
+import { linkTemplatePackagesAndKernel } from "../../support/kernel-sibling.ts";
 import { processWatchdog } from "../../support/process.ts";
 
 const temporaryRoot = bootstrapCliFixture();
@@ -44,15 +42,6 @@ function bootstrapIsolated(destination: string) {
     "https://example.test/spec",
     "--json",
   ]);
-}
-
-function linkTemplatePackagesAndKernel(destination: string): void {
-  const modules = join(destination, "node_modules");
-  mkdirSync(modules);
-  for (const name of readdirSync(join(ROOT, "node_modules"))) {
-    symlinkSync(join(ROOT, "node_modules", name), join(modules, name));
-  }
-  kernelCheckout(join(modules, readKernelPin(ROOT).repository));
 }
 
 function parseFallowReport(stdout: string, stderr: string): FallowReport {

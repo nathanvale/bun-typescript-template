@@ -9,7 +9,7 @@
     "upgrade-gate": "bun run scripts/template-upgrade-gate.ts",
     "check": "bun run check:file-size && bun run lint && bun run format:check && bun run typecheck && bun run test && bun run --silent quality:fallow",
     "quality:fallow": "node_modules/.bin/fallow audit --baseline-mode identity --format json --quiet",
-    "doctor": "bun run scripts/doctor.ts",
+    "doctor": "bun src/cli.ts doctor",
     "check:changesets": "bun run --bun changeset status --since origin/main && bun scripts/check-gated-paths.ts",
     "check:commits": "bun run scripts/check-commits.ts",
     "check:file-size": "bun --no-install scripts/check-file-size.ts",
@@ -30,7 +30,8 @@
     "admit:cli": "bun run src/cli-inventory.ts"
   },
   "dependencies": {
-    "@changesets/parse": "1.0.0"
+    "@changesets/parse": "1.0.0",
+    "agent-cli-kernel": "github:nathanvale/agent-cli-kernel#64e0faa68197d701c36444dc10335408684e6514"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.7",

@@ -1,6 +1,6 @@
 import { type Dirent, existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { doctor } from "./doctor.ts";
+import { doctor, formatDoctorReport } from "../src/doctor.ts";
 import { readRepository, type TestArea } from "./repository.ts";
 
 function isTest(name: string): boolean {
@@ -117,7 +117,9 @@ export async function testArea(
     );
     return 2;
   }
-  if (!(await doctor(root))) return 1;
+  const readiness = await doctor(root);
+  process.stdout.write(formatDoctorReport(readiness));
+  if (!readiness.ready) return 1;
   const run = Bun.spawn(
     [process.execPath, "scripts/test-run.ts", ...paths, ...options],
     {

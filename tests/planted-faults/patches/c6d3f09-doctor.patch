@@ -1,8 +1,8 @@
-diff --git a/scripts/doctor.ts b/scripts/doctor.ts
-index 73d8fc4..65ccb3e 100644
---- a/scripts/doctor.ts
-+++ b/scripts/doctor.ts
-@@ -149,7 +149,7 @@ function fallowReadiness(root: string): Finding {
+diff --git a/src/doctor.ts b/src/doctor.ts
+index 1111111..2222222 100644
+--- a/src/doctor.ts
++++ b/src/doctor.ts
+@@ -188,7 +188,7 @@ export function fallowReadiness(root: string): Finding {
      ? ` Repair: run ${flagged.repair} from the repository root.`
      : " Repair: run node_modules/.bin/fallow doctor for the details.";
    return {

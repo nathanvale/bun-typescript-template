@@ -3,7 +3,6 @@ import {
   copyFileSync,
   lstatSync,
   mkdirSync,
-  readdirSync,
   readFileSync,
   readlinkSync,
   renameSync,
@@ -18,7 +17,11 @@ import { RECORDED_HITS_FILES } from "../../src/recipe.ts";
 import { main } from "../../src/template-upgrade.ts";
 import { ROOT } from "./bootstrap-cli-fixture.ts";
 import { git, gitEnv, gitOutput, initRepository } from "./git-fixture.ts";
-import { kernelCheckout, siblingKernel } from "./kernel-sibling.ts";
+import {
+  kernelCheckout,
+  linkTemplatePackagesAndKernel,
+  siblingKernel,
+} from "./kernel-sibling.ts";
 import { spawnBounded } from "./process.ts";
 
 export function templateUpgradeEnv() {
@@ -319,11 +322,7 @@ export async function bootstrapGeneratedRepository(
   );
   git(destination, "add", "--", ...files);
   git(destination, "commit", "--quiet", "-m", "initial bootstrap");
-  const modules = join(destination, "node_modules");
-  mkdirSync(modules, { recursive: true });
-  for (const entry of readdirSync(join(ROOT, "node_modules"))) {
-    symlinkSync(join(ROOT, "node_modules", entry), join(modules, entry));
-  }
+  linkTemplatePackagesAndKernel(destination);
   return destination;
 }
 
@@ -347,18 +346,6 @@ export function writeScriptedBun(
       PATH: `${binFolder}${delimiter}${process.env.PATH ?? ""}`,
     },
   };
-}
-
-export function linkTemplateNodeModules(destination: string): void {
-  const modules = join(destination, "node_modules");
-  rmSync(modules, { force: true, recursive: true });
-  mkdirSync(modules, { recursive: true });
-  for (const name of readdirSync(join(ROOT, "node_modules"))) {
-    symlinkSync(join(ROOT, "node_modules", name), join(modules, name));
-  }
-  const kernelPackage = readKernelPin(ROOT).repository;
-  rmSync(join(modules, kernelPackage), { force: true, recursive: true });
-  kernelCheckout(join(modules, kernelPackage));
 }
 
 const TEMPLATE_UPGRADE_CALLS = new Set([
@@ -393,9 +380,9 @@ if [ "$1" = "install" ]; then
   for entry in ${JSON.stringify(templateModules)}/* ${JSON.stringify(templateModules)}/.bin; do
     [ -e "$entry" ] || continue
     name=$(basename "$entry")
+    if [ "$name" = ${JSON.stringify(kernelPackage)} ]; then continue; fi
     ln -s "$entry" "node_modules/$name"
   done
-  rm -rf "node_modules/${kernelPackage}"
   cp -R ${JSON.stringify(kernelDir)} "node_modules/${kernelPackage}"
   exit 0
 fi

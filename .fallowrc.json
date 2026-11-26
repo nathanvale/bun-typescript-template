@@ -65,7 +65,7 @@
   },
   "supportEntry": ["scripts/check-file-size.ts"],
   "entry": [
-    "scripts/doctor.ts",
+    "src/cli.ts",
     "scripts/check-gated-paths.ts",
     "scripts/check-commits.ts",
     "scripts/check-names.ts",

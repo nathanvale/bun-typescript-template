@@ -8,6 +8,7 @@ import {
   argumentsOf,
   main,
   verifyKernelPin,
+  verifyPinPlaces,
 } from "../../../scripts/pin-verification.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
@@ -282,4 +283,59 @@ describe("the pin verification command", () => {
     },
     processWatchdog(1),
   );
+
+  test(
+    "refuses with pin_places_disagree without a kernel repository when package.json disagrees with kernel-pin.json",
+    async () => {
+      const otherCommit = "1111111111111111111111111111111111111111";
+      const root = pinnedAt(pin.commit);
+      writeFileSync(
+        join(root, "package.json"),
+        JSON.stringify({
+          dependencies: {
+            "agent-cli-kernel": `github:nathanvale/agent-cli-kernel#${otherCommit}`,
+          },
+        }),
+      );
+      const missingKernel = join(folder("no-kernel-"), "absent");
+      const result = await refusalOf(root, missingKernel);
+      expect(typeof result).toBe("object");
+      if (typeof result !== "string") {
+        expect(result.code).toBe("pin_places_disagree");
+        expect(result.message).toContain(pin.commit);
+        expect(result.message).toContain(otherCommit);
+        expect(result.message).toContain("package.json");
+        expect(result.message).toContain("bun install");
+      }
+    },
+    processWatchdog(1),
+  );
+
+  test(
+    "refuses with pin_places_disagree without a kernel repository when bun.lock resolved entry disagrees with kernel-pin.json",
+    async () => {
+      const otherCommit = "2222222222222222222222222222222222222222";
+      const root = pinnedAt(pin.commit);
+      writeFileSync(
+        join(root, "bun.lock"),
+        `{\n  "workspaces": { "": { "dependencies": { "agent-cli-kernel": "github:nathanvale/agent-cli-kernel#${pin.commit}" } } },\n  "packages": { "agent-cli-kernel": ["agent-cli-kernel@github:nathanvale/agent-cli-kernel#${otherCommit.slice(0, 7)}", {}, "nathanvale-agent-cli-kernel-${otherCommit.slice(0, 7)}", "sha512-x"] }\n}\n`,
+      );
+      const missingKernel = join(folder("no-kernel-"), "absent");
+      const result = await refusalOf(root, missingKernel);
+      expect(typeof result).toBe("object");
+      if (typeof result !== "string") {
+        expect(result.code).toBe("pin_places_disagree");
+        expect(result.message).toContain(pin.commit);
+        expect(result.message).toContain(otherCommit.slice(0, 7));
+        expect(result.message).toContain("bun.lock");
+        expect(result.message).toContain("bun install");
+      }
+    },
+    processWatchdog(1),
+  );
+
+  test("verifyPinPlaces passes when kernel-pin.json, package.json and bun.lock agree", () => {
+    expect(() => verifyPinPlaces(ROOT, pin)).not.toThrow();
+    expect(() => verifyPinPlaces(pinnedAt(pin.commit), pin)).not.toThrow();
+  });
 });

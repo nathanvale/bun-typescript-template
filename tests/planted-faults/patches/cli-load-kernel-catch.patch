@@ -1,0 +1,27 @@
+diff --git a/src/cli.ts b/src/cli.ts
+index 1111111..2222222 100644
+--- a/src/cli.ts
++++ b/src/cli.ts
+@@ -34,12 +34,16 @@ export function jsonOutput(argv: readonly string[]): boolean {
+ async function loadKernel() {
+   if (!existsSync(join(root, "node_modules", "agent-cli-kernel")))
+     return undefined;
+-  const [kernel, diagnostics, causes] = await Promise.all([
+-    import("agent-cli-kernel"),
+-    import("agent-cli-kernel/addons/diagnostics"),
+-    import("./causes.ts"),
+-  ]);
+-  return { kernel, diagnostics, causes };
++  try {
++    const [kernel, diagnostics, causes] = await Promise.all([
++      import("agent-cli-kernel"),
++      import("agent-cli-kernel/addons/diagnostics"),
++      import("./causes.ts"),
++    ]);
++    return { kernel, diagnostics, causes };
++  } catch {
++    return undefined;
++  }
+ }
+ 
+ async function runFrontDoor(argv: readonly string[]): Promise<void> {

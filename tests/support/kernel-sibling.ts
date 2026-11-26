@@ -1,4 +1,10 @@
-import { existsSync, mkdirSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import { CliError } from "../../src/cli-error.ts";
 import { readKernelPin, siblingKernelPath } from "../../src/kernel-pin.ts";
@@ -65,6 +71,21 @@ export function kernelCheckout(folder: string, commit = pinnedCommit): void {
     folder,
   );
   git(folder, "checkout", "--quiet", "--detach", commit);
+}
+
+export function linkTemplatePackagesAndKernel(
+  destination: string,
+  commit = pinnedCommit,
+): void {
+  const kernelPackage = readKernelPin(templateRoot).repository;
+  const modules = join(destination, "node_modules");
+  rmSync(modules, { force: true, recursive: true });
+  mkdirSync(modules, { recursive: true });
+  for (const name of readdirSync(join(templateRoot, "node_modules"))) {
+    if (name === kernelPackage) continue;
+    symlinkSync(join(templateRoot, "node_modules", name), join(modules, name));
+  }
+  kernelCheckout(join(modules, kernelPackage), commit);
 }
 
 export type TopLevelEdit = {
