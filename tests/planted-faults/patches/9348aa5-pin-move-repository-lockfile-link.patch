@@ -1,7 +1,7 @@
-diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
+diff --git a/src/pin-move-repository.ts b/src/pin-move-repository.ts
 index 3a330b3..375d4ec 100644
---- a/scripts/pin-move-repository.ts
-+++ b/scripts/pin-move-repository.ts
+--- a/src/pin-move-repository.ts
++++ b/src/pin-move-repository.ts
 @@ -318,8 +318,6 @@ function planRepositoryEdits(
    pin: KernelPin,
    current: RepositoryPinRecord,

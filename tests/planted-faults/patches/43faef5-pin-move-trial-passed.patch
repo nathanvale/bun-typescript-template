@@ -1,7 +1,7 @@
-diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
+diff --git a/src/pin-move.ts b/src/pin-move.ts
 index ad9eb56..7225e90 100644
---- a/scripts/pin-move.ts
-+++ b/scripts/pin-move.ts
+--- a/src/pin-move.ts
++++ b/src/pin-move.ts
 @@ -175,7 +175,7 @@ export function verifyPin(
  // carry-out identity is copied from the pin as it was. It commits nothing,
  // and run twice with the same trial it writes nothing the second time.

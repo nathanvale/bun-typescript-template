@@ -1,6 +1,6 @@
-diff --git a/scripts/pin-move-branch.ts b/scripts/pin-move-branch.ts
---- a/scripts/pin-move-branch.ts
-+++ b/scripts/pin-move-branch.ts
+diff --git a/src/pin-move-branch.ts b/src/pin-move-branch.ts
+--- a/src/pin-move-branch.ts
++++ b/src/pin-move-branch.ts
 @@ -343,7 +343,7 @@ async function keptAttemptRefusal(
    return new RepositoryPinRefusal(
      code,

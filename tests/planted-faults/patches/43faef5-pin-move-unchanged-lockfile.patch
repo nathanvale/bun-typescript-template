@@ -1,7 +1,7 @@
-diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
+diff --git a/src/pin-move.ts b/src/pin-move.ts
 index 6f7049a..5e260d5 100644
---- a/scripts/pin-move.ts
-+++ b/scripts/pin-move.ts
+--- a/src/pin-move.ts
++++ b/src/pin-move.ts
 @@ -136,7 +136,7 @@ export function movePin(trial: TrialPassed, template: string): PinMove {
    const lockfile = join(template, KERNEL_LOCKFILE);
    if (

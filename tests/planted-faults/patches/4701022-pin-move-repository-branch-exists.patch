@@ -1,7 +1,7 @@
-diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
+diff --git a/src/pin-move-repository.ts b/src/pin-move-repository.ts
 index 322de3f..9f38aa1 100644
---- a/scripts/pin-move-repository.ts
-+++ b/scripts/pin-move-repository.ts
+--- a/src/pin-move-repository.ts
++++ b/src/pin-move-repository.ts
 @@ -405,22 +405,9 @@ async function runCheckSteps(
  
  function createPinMoveBranch(repository: string, kernelCommit: string): string {

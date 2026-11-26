@@ -1369,13 +1369,6 @@
     "source": "a639dc0 fix(pin-move): settle the Sol standards and spec reviews of T3"
   },
   {
-    "id": "a639dc0-pin-move-arguments",
-    "patch": "tests/planted-faults/patches/a639dc0-pin-move-arguments.patch",
-    "testFile": "tests/template/pin-move/pin-move-command.test.ts",
-    "title": "reads as",
-    "source": "a639dc0 fix(pin-move): settle the Sol standards and spec reviews of T3"
-  },
-  {
     "id": "a639dc0-pin-move-report-bytes",
     "patch": "tests/planted-faults/patches/a639dc0-pin-move-report-bytes.patch",
     "testFile": "tests/template/pin-move/pin-move-report.test.ts",
@@ -1586,24 +1579,10 @@
     "source": "d3a35b6 fix(pin-move): refuse a kernel path inside another repository before fetching"
   },
   {
-    "id": "2c064b8-pin-verification-exit",
-    "patch": "tests/planted-faults/patches/2c064b8-pin-verification-exit.patch",
-    "testFile": "tests/template/pin-move/pin-verification-command.test.ts",
-    "title": "in process, the command exits 1 on a refusal and prints its code, 0 on a pass, and 2 with its usage on arguments it cannot read$",
-    "source": "2c064b8 feat(pin-verification): verify the template's kernel pin as a command"
-  },
-  {
     "id": "2c064b8-pin-verification-remote",
     "patch": "tests/planted-faults/patches/2c064b8-pin-verification-remote.patch",
     "testFile": "tests/template/pin-move/pin-verification-command.test.ts",
     "title": "fails on a pin that names a commit the pin's branch on its remote cannot reach$",
-    "source": "2c064b8 feat(pin-verification): verify the template's kernel pin as a command"
-  },
-  {
-    "id": "2c064b8-pin-verification-arguments",
-    "patch": "tests/planted-faults/patches/2c064b8-pin-verification-arguments.patch",
-    "testFile": "tests/template/pin-move/pin-verification-command.test.ts",
-    "title": "with an argument it cannot read prints its usage and exits 2$",
     "source": "2c064b8 feat(pin-verification): verify the template's kernel pin as a command"
   },
   {
@@ -2562,7 +2541,7 @@
     "id": "fd303d9-pin-move-status-renames",
     "patch": "tests/planted-faults/patches/fd303d9-pin-move-status-renames.patch",
     "testFile": "tests/template/pin-move/pin-move-regenerate.test.ts",
-    "title": "in process: parseStatusChanges keeps both paths of a rename record and marks staged-only deletions$",
+    "title": "in process: parseGitChanges keeps both paths of a rename record and marks staged-only deletions$",
     "source": "fd303d9 fix(pin-move): handle git renames, literal pathspecs, recovery timeouts, and commit-failure repairs"
   },
   {
@@ -3453,5 +3432,33 @@
     "testFile": "tests/template/bootstrap/recipe.test.ts",
     "title": "^the recipe the starter kit pull request template and issue template match the generated source and pr skill block$",
     "source": "b51d414 feat(bootstrap): the starter kit and every generated repository carry the pr skill's pull request template and an issue template"
+  },
+  {
+    "id": "pin-move-template-package-write",
+    "patch": "tests/planted-faults/patches/pin-move-template-package-write.patch",
+    "testFile": "tests/template/pin-move/pin-move.test.ts",
+    "title": "^to a commit whose one dependency changed, writes the new lockfile and the new pin",
+    "source": "8bd141b feat(cli): move pin verify, pin plan, and pin move behind the front door"
+  },
+  {
+    "id": "pin-move-template-lockfile-write",
+    "patch": "tests/planted-faults/patches/pin-move-template-lockfile-write.patch",
+    "testFile": "tests/template/pin-move/pin-move.test.ts",
+    "title": "^to a commit whose one dependency changed, writes the new lockfile and the new pin",
+    "source": "8bd141b feat(cli): move pin verify, pin plan, and pin move behind the front door"
+  },
+  {
+    "id": "pin-verify-route-places-disagree",
+    "patch": "tests/planted-faults/patches/pin-verify-route-places-disagree.patch",
+    "testFile": "tests/template/pin-move/pin-cli.test.ts",
+    "title": "^pin verify refuses DOMAIN_PIN_PLACES_DISAGREE in an envelope when package\\.json disagrees with kernel-pin\\.json$",
+    "source": "8bd141b feat(cli): move pin verify, pin plan, and pin move behind the front door"
+  },
+  {
+    "id": "pin-plan-route-discover",
+    "patch": "tests/planted-faults/patches/pin-plan-route-discover.patch",
+    "testFile": "tests/template/pin-move/pin-cli.test.ts",
+    "title": "^--discover-all lists pin verify, pin plan, and pin move with their identities and effect classes, and each answers --help$",
+    "source": "8bd141b feat(cli): move pin verify, pin plan, and pin move behind the front door"
   }
 ]

@@ -1,6 +1,6 @@
-diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
---- a/scripts/pin-move-repository.ts
-+++ b/scripts/pin-move-repository.ts
+diff --git a/src/pin-move-repository.ts b/src/pin-move-repository.ts
+--- a/src/pin-move-repository.ts
++++ b/src/pin-move-repository.ts
 @@ -98,8 +98,6 @@ function requireGitWorkTreeRoot(
    if (!inside.ok || inside.stdout.trim() !== "true")
      throw invalid("it is not a git working tree.");

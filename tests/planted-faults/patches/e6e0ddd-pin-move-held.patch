@@ -1,8 +1,8 @@
-diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
+diff --git a/src/pin-move.ts b/src/pin-move.ts
 index 8c4849b..3985d55 100644
---- a/scripts/pin-move.ts
-+++ b/scripts/pin-move.ts
-@@ -184,7 +184,6 @@ export function branchCommitHeldBy(
+--- a/src/pin-move.ts
++++ b/src/pin-move.ts
+@@ -184,7 +184,6 @@ export function pinBranchCommitHeld(
    repository: string,
  ): string {
    const branchCommit = pinBranchCommit(pin);

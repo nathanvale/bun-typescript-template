@@ -1,7 +1,7 @@
-diff --git a/scripts/pin-move-branch.ts b/scripts/pin-move-branch.ts
+diff --git a/src/pin-move-branch.ts b/src/pin-move-branch.ts
 index 785d9cb..586f1ec 100644
---- a/scripts/pin-move-branch.ts
-+++ b/scripts/pin-move-branch.ts
+--- a/src/pin-move-branch.ts
++++ b/src/pin-move-branch.ts
 @@ -146,13 +146,6 @@ async function restoreInstalledKernel(
  ): Promise<string | undefined> {
    const { repository, startingRef, startingPin, kernelPackage } = attempt;

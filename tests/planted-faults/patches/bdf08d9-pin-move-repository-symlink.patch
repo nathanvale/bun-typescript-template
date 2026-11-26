@@ -1,6 +1,6 @@
-diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
---- a/scripts/pin-move-repository.ts
-+++ b/scripts/pin-move-repository.ts
+diff --git a/src/pin-move-repository.ts b/src/pin-move-repository.ts
+--- a/src/pin-move-repository.ts
++++ b/src/pin-move-repository.ts
 @@ -161,12 +161,7 @@ function requirePlainEntry(
      current = join(current, segment);
      const stats = lstatSync(current);
