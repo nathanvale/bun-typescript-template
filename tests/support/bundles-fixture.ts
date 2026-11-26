@@ -27,18 +27,43 @@ const shippedLock = readFileSync(
 );
 const kernelFiles = ["package.json", "kernel/src/shared/xdg-base.ts"];
 
-const entrySource = `import { xdgBaseFolder } from "agent-cli-kernel/xdg-base";
-import { greeting } from "./greeting.ts";
-
-process.stdout.write(\`\${greeting("bundle")} \${xdgBaseFolder(process.env, "state") ?? "none"}\\n\`);
-`;
-const greetingSource = `export function greeting(name: string): string {
-  return \`Hello, \${name}.\`;
-}
-`;
+const fixtureFolder = join(ROOT, "tests/fixtures/bundle");
+export const fixtureKernelCommit = "7a3c430369a7adf3c91b28fe9bcde3aad342298e";
+export const fixtureBundle = readFileSync(join(fixtureFolder, "bundle.txt"));
+const fixtureSources = {
+  [bundleEntry]: readFileSync(join(fixtureFolder, "entry.ts.txt"), "utf8"),
+  "tools/greeting/src/greeting.ts": readFileSync(
+    join(fixtureFolder, "module.ts.txt"),
+    "utf8",
+  ),
+};
 
 function kernelSpec(commit: string): string {
   return `github:nathanvale/agent-cli-kernel#${commit}`;
+}
+
+export function lockResolving(commit: string): string {
+  const short = commit.slice(0, 7);
+  return `${JSON.stringify(
+    {
+      lockfileVersion: 1,
+      workspaces: {
+        "": {
+          name: "bundles-fixture",
+          dependencies: { "agent-cli-kernel": kernelSpec(commit) },
+        },
+      },
+      packages: {
+        "agent-cli-kernel": [
+          `agent-cli-kernel@github:nathanvale/agent-cli-kernel#${short}`,
+          {},
+          `nathanvale-agent-cli-kernel-${short}`,
+        ],
+      },
+    },
+    null,
+    2,
+  )}\n`;
 }
 
 export type BundleRepository = {
@@ -46,7 +71,6 @@ export type BundleRepository = {
   readonly kernelAt?: string;
   readonly pins?: string;
   readonly lock?: string;
-  readonly files?: Readonly<Record<string, string>>;
 };
 
 export function bundleRepository(
@@ -93,11 +117,8 @@ export function bundleRepository(
       `node_modules/agent-cli-kernel/${path}`,
       gitOutput(siblingKernel(), "show", `${kernelAt}:${path}`),
     );
-  const files = options.files ?? {
-    [bundleEntry]: entrySource,
-    "tools/greeting/src/greeting.ts": greetingSource,
-  };
-  for (const [path, text] of Object.entries(files)) write(root, path, text);
+  for (const [path, text] of Object.entries(fixtureSources))
+    write(root, path, text);
   return root;
 }
 
