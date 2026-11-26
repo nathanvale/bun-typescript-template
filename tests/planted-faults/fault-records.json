@@ -3418,5 +3418,19 @@
     "testFile": "tests/template/pin-move/pin-verification-command.test.ts",
     "title": "^the pin verification command refuses with pin_places_disagree without a kernel repository when package\\.json disagrees with kernel-pin\\.json$",
     "source": "92db576 feat(pin): pin verification refuses when package.json or bun.lock pins another kernel commit than kernel-pin.json"
+  },
+  {
+    "id": "cli-load-kernel-catch",
+    "patch": "tests/planted-faults/patches/cli-load-kernel-catch.patch",
+    "testFile": "tests/template/doctor/doctor-cli.test.ts",
+    "title": "^cli front door and doctor route import failure inside src/causes\\.ts surfaces its own error instead of reporting the kernel missing$",
+    "source": "360af6c fix(cli): report import failures and an unreadable Pin as themselves, not as a missing kernel"
+  },
+  {
+    "id": "doctor-missing-kernel-pin",
+    "patch": "tests/planted-faults/patches/doctor-missing-kernel-pin.patch",
+    "testFile": "tests/template/doctor/doctor-cli.test.ts",
+    "title": "^cli front door and doctor route toolchain result fails with readKernelPin's repair when kernel-pin\\.json is missing$",
+    "source": "360af6c fix(cli): report import failures and an unreadable Pin as themselves, not as a missing kernel"
   }
 ]

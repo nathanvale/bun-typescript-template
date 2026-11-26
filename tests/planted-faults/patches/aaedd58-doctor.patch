@@ -2,8 +2,8 @@ diff --git a/src/cli.ts b/src/cli.ts
 index 1111111..2222222 100644
 --- a/src/cli.ts
 +++ b/src/cli.ts
-@@ -46,11 +46,15 @@ async function loadKernel() {
-   }
+@@ -42,11 +42,15 @@ async function loadKernel() {
+   return { kernel, diagnostics, causes };
  }
  
 +export function missingKernelLine(): string {
