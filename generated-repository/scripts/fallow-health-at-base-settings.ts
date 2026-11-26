@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, dirname, join, resolve, sep } from "node:path";
+import { basename, dirname, join, posix, resolve, sep } from "node:path";
 
 type MeasureOptions = { readonly root: string; readonly fallow: string };
 type GitResult = {
@@ -25,9 +25,11 @@ const GIT_LOC_VARS = new Set(
   ),
 );
 const FALLOW_HEALTH_ARGS =
-  "health --complexity --no-type-aware --report-only --format json --quiet --no-cache".split(
+  "health --complexity --no-type-aware --report-only --format json --quiet --no-cache --max-cyclomatic 0 --max-cognitive 0 --max-file-lines 1".split(
     " ",
   );
+const MAX_EXTENDS_DEPTH = 16;
+const UTF8 = new TextDecoder("utf-8", { fatal: true });
 const FALLOW_SUPPRESSIONS_ARGS =
   "suppressions --no-type-aware --format json --quiet --no-cache".split(" ");
 // Platform: Fallow loads the first of these settings files that a folder holds.
@@ -181,6 +183,159 @@ function checkoutTree(
   return tree;
 }
 
+function parseSettingsExtends(
+  bytes: Uint8Array,
+  relPath: string,
+  baseSha: string,
+): readonly string[] {
+  let text: string;
+  try {
+    text = UTF8.decode(bytes);
+  } catch (error) {
+    fail(
+      `${relPath} at ${baseSha} is not valid UTF-8: ${error instanceof Error ? error.message : String(error)}. Repair: commit ${relPath} as UTF-8 in the base revision, then run this check again.`,
+    );
+  }
+  let parsed: unknown;
+  try {
+    if (relPath.endsWith(".toml")) parsed = Bun.TOML.parse(text);
+    else if (relPath.endsWith(".jsonc")) parsed = Bun.JSONC.parse(text);
+    else parsed = JSON.parse(text) as unknown;
+  } catch (error) {
+    fail(
+      `${relPath} at ${baseSha} is not valid settings syntax: ${error instanceof Error ? error.message : String(error)}. Repair: fix ${relPath} in the base revision, then run this check again.`,
+    );
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
+    return [];
+  const raw = new Map<string, unknown>(Object.entries(parsed)).get("extends");
+  if (raw === undefined || raw === null) return [];
+  if (typeof raw === "string") return [raw];
+  if (Array.isArray(raw) && raw.every((item) => typeof item === "string"))
+    return raw;
+  fail(
+    `${relPath} at ${baseSha} has an invalid "extends" field. Repair: set "extends" to a path string or array of path strings, then run this check again.`,
+  );
+}
+
+function resolveExtendedRepoPath(
+  fromFile: string,
+  specifier: string,
+  baseSha: string,
+): string | undefined {
+  if (
+    specifier.startsWith("npm:") ||
+    specifier.startsWith("https://") ||
+    specifier.startsWith("http://")
+  )
+    return undefined;
+  if (
+    specifier === "" ||
+    specifier.includes("\0") ||
+    specifier.includes("\\") ||
+    specifier.startsWith("/") ||
+    /^[A-Za-z]:/.test(specifier)
+  )
+    fail(
+      `${fromFile} at ${baseSha} extends "${specifier}", which leaves the repository. Repair: extend a regular file inside the repository, then run this check again.`,
+    );
+  const baseDir = posix.dirname(fromFile);
+  const joined = baseDir === "." ? specifier : `${baseDir}/${specifier}`;
+  const normalized = posix.normalize(joined);
+  if (
+    normalized === "" ||
+    normalized === "." ||
+    normalized === ".." ||
+    normalized.startsWith("../") ||
+    normalized.startsWith("/")
+  )
+    fail(
+      `${fromFile} at ${baseSha} extends "${specifier}", which leaves the repository. Repair: extend a regular file inside the repository, then run this check again.`,
+    );
+  return normalized;
+}
+
+function readBaseTreeEntry(
+  root: string,
+  baseSha: string,
+  repoPath: string,
+): { readonly mode: string; readonly oid: string } | undefined {
+  const listed = mustGit(
+    root,
+    ["ls-tree", "-z", baseSha, "--", repoPath],
+    {},
+    `fetch ${baseSha} with full history`,
+  );
+  for (const line of listed.split("\0")) {
+    const tab = line.indexOf("\t");
+    if (tab === -1 || line.slice(tab + 1) !== repoPath) continue;
+    const [mode = "", , oid = ""] = line.slice(0, tab).split(" ");
+    return { mode, oid };
+  }
+  return undefined;
+}
+
+function readRegularBaseBlob(
+  root: string,
+  baseSha: string,
+  repoPath: string,
+  entry: { readonly mode: string; readonly oid: string },
+): Uint8Array {
+  if (!REGULAR_MODES.has(entry.mode)) {
+    const kind =
+      entry.mode === "120000"
+        ? "a symbolic link"
+        : `not a regular file (git mode ${entry.mode})`;
+    fail(
+      `${repoPath} at ${baseSha} is ${kind}, so the recorded health sizes check refuses to read it. Repair: commit ${repoPath} as a regular file in the base revision, then run this check again.`,
+    );
+  }
+  return mustGitBytes(
+    root,
+    ["cat-file", "blob", entry.oid],
+    {},
+    `run git fsck or fetch ${baseSha} with full history`,
+  );
+}
+
+function copyExtendedSettings(
+  root: string,
+  baseSha: string,
+  settingsDir: string,
+  fromFile: string,
+  bytes: Uint8Array,
+  visited: Set<string>,
+  depth: number,
+): void {
+  if (depth > MAX_EXTENDS_DEPTH)
+    fail(
+      `${fromFile} at ${baseSha} exceeds the maximum extends depth (${MAX_EXTENDS_DEPTH}). Repair: shorten the extends chain in the base revision, then run this check again.`,
+    );
+  for (const specifier of parseSettingsExtends(bytes, fromFile, baseSha)) {
+    const targetRel = resolveExtendedRepoPath(fromFile, specifier, baseSha);
+    if (targetRel === undefined || visited.has(targetRel)) continue;
+    visited.add(targetRel);
+    const entry = readBaseTreeEntry(root, baseSha, targetRel);
+    if (entry === undefined)
+      fail(
+        `${fromFile} at ${baseSha} extends "${specifier}" (${targetRel}), which does not exist at ${baseSha}. Repair: commit ${targetRel} in the base revision, then run this check again.`,
+      );
+    const targetBytes = readRegularBaseBlob(root, baseSha, targetRel, entry);
+    const dest = join(settingsDir, targetRel);
+    mkdirSync(dirname(dest), { recursive: true });
+    writeFileSync(dest, targetBytes);
+    copyExtendedSettings(
+      root,
+      baseSha,
+      settingsDir,
+      targetRel,
+      targetBytes,
+      visited,
+      depth + 1,
+    );
+  }
+}
+
 function baseSettingsFile(
   root: string,
   baseSha: string,
@@ -205,23 +360,20 @@ function baseSettingsFile(
   for (const name of SETTINGS_FILES) {
     const entry = entries.get(name);
     if (entry === undefined) continue;
-    if (!REGULAR_MODES.has(entry.mode)) {
-      const kind =
-        entry.mode === "120000"
-          ? "a symbolic link"
-          : `not a regular file (git mode ${entry.mode})`;
-      fail(
-        `${name} at ${baseSha} is ${kind}, so the recorded health sizes check refuses to read it. Repair: commit ${name} as a regular file in the base revision, then run this check again.`,
-      );
-    }
-    const bytes = mustGitBytes(
-      root,
-      ["cat-file", "blob", entry.oid],
-      {},
-      `run git fsck or fetch ${baseSha} with full history`,
-    );
-    const path = join(tempDir, name);
+    const bytes = readRegularBaseBlob(root, baseSha, name, entry);
+    const settingsDir = join(tempDir, "settings");
+    mkdirSync(settingsDir, { recursive: true });
+    const path = join(settingsDir, name);
     writeFileSync(path, bytes);
+    copyExtendedSettings(
+      root,
+      baseSha,
+      settingsDir,
+      name,
+      bytes,
+      new Set([name]),
+      0,
+    );
     return path;
   }
   const empty = join(tempDir, ".fallowrc.json");

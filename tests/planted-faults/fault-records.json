@@ -3017,7 +3017,7 @@
     "id": "recorded-health-sizes-base-settings",
     "patch": "tests/planted-faults/patches/recorded-health-sizes-base-settings.patch",
     "testFile": "tests/template/toolchain/recorded-health-sizes.test.ts",
-    "title": "^refuses recorded file line growth when the same diff raises maxFileLines, through the hosted step$",
+    "title": "^refuses recorded growth that a same-diff change to Fallow settings, an ignore file or an inline marker would hide, and passes the controls$",
     "source": "2c57c68 fix(recorded-health-sizes): measure both revisions under the base's Fallow settings"
   },
   {
@@ -3215,6 +3215,41 @@
     "testFile": "tests/template/pin-move/pin-move-changeset.test.ts",
     "title": "^pin-move --repository changeset commits both sides of the changeset rename when \\.changeset/config\\.json sets \"commit\": true$",
     "source": "56b924c fix(pin-move): commit tracked changeset rename source and isolate failedAttempt git env"
+  },
+  {
+    "id": "25a3bf4-recorded-health-sizes-minimum-thresholds",
+    "patch": "tests/planted-faults/patches/25a3bf4-recorded-health-sizes-minimum-thresholds.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes-identities.test.ts",
+    "title": "^refuses growth in a recorded function or file below base thresholds even when the same diff raises maxCyclomatic or maxFileLines, and passes no growth, approval, and true deletion$",
+    "source": "25a3bf4 fix(recorded-health-sizes): measure every recorded identity across thresholds, renames, and base extends"
+  },
+  {
+    "id": "25a3bf4-recorded-health-sizes-renames",
+    "patch": "tests/planted-faults/patches/25a3bf4-recorded-health-sizes-renames.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes-identities.test.ts",
+    "title": "^refuses growth in a recorded function when its file is renamed in the same change, and refuses a deleted recorded function replaced by a larger same-named function in another file$",
+    "source": "25a3bf4 fix(recorded-health-sizes): measure every recorded identity across thresholds, renames, and base extends"
+  },
+  {
+    "id": "25a3bf4-recorded-health-sizes-base-extends",
+    "patch": "tests/planted-faults/patches/25a3bf4-recorded-health-sizes-base-extends.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes-base-settings.test.ts",
+    "title": "^copies relative extends files from the base revision when measuring base and head, and refuses an extends path that leaves the repository$",
+    "source": "25a3bf4 fix(recorded-health-sizes): measure every recorded identity across thresholds, renames, and base extends"
+  },
+  {
+    "id": "25a3bf4-recorded-health-sizes-replaced-function",
+    "patch": "tests/planted-faults/patches/25a3bf4-recorded-health-sizes-replaced-function.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes-identities.test.ts",
+    "title": "^refuses growth in a recorded function when its file is renamed in the same change, and refuses a deleted recorded function replaced by a larger same-named function in another file$",
+    "source": "25a3bf4 fix(recorded-health-sizes): measure every recorded identity across thresholds, renames, and base extends"
+  },
+  {
+    "id": "25a3bf4-recorded-health-sizes-base-extends-escape",
+    "patch": "tests/planted-faults/patches/25a3bf4-recorded-health-sizes-base-extends-escape.patch",
+    "testFile": "tests/template/toolchain/recorded-health-sizes-base-settings.test.ts",
+    "title": "^copies relative extends files from the base revision when measuring base and head, and refuses an extends path that leaves the repository$",
+    "source": "25a3bf4 fix(recorded-health-sizes): measure every recorded identity across thresholds, renames, and base extends"
   },
   {
     "id": "f4bac4c-changeset-readme-exit-code",

@@ -1,20 +1,11 @@
 diff --git a/generated-repository/scripts/fallow-health-at-base-settings.ts b/generated-repository/scripts/fallow-health-at-base-settings.ts
 --- a/generated-repository/scripts/fallow-health-at-base-settings.ts
 +++ b/generated-repository/scripts/fallow-health-at-base-settings.ts
-@@ -201,14 +201,7 @@ function baseSettingsFile(
+@@ -360,6 +360,7 @@ function baseSettingsFile(
    for (const name of SETTINGS_FILES) {
      const entry = entries.get(name);
      if (entry === undefined) continue;
--    if (!REGULAR_MODES.has(entry.mode)) {
--      const kind =
--        entry.mode === "120000"
--          ? "a symbolic link"
--          : `not a regular file (git mode ${entry.mode})`;
--      fail(
--        `${name} at ${baseSha} is ${kind}, so the recorded health sizes check refuses to read it. Repair: commit ${name} as a regular file in the base revision, then run this check again.`,
--      );
--    }
 +    if (entry.mode === "120000") return join(tempDir, "base", name);
-     const bytes = mustGitBytes(
-       root,
-       ["cat-file", "blob", entry.oid],
+     const bytes = readRegularBaseBlob(root, baseSha, name, entry);
+     const settingsDir = join(tempDir, "settings");
+     mkdirSync(settingsDir, { recursive: true });

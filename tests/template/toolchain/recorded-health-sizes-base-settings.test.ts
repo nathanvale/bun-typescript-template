@@ -238,3 +238,55 @@ test(
   },
   processWatchdog(6),
 );
+
+test(
+  "copies relative extends files from the base revision when measuring base and head, and refuses an extends path that leaves the repository",
+  async () => {
+    const { repo } = await createFixture();
+    const shippedSettings = readFileSync(
+      join(SHIPPED_SETTINGS_DIR, ".fallowrc.json"),
+      "utf8",
+    );
+    const { sha: baseSha } = commitIn(
+      repo,
+      "use relative extends in base settings",
+      {
+        "config/fallow-shared.json": shippedSettings,
+        "config/fallow-base.json": `${JSON.stringify({ extends: "./fallow-shared.json" }, null, 2)}\n`,
+        ".fallowrc.json": `${JSON.stringify({ extends: "./config/fallow-base.json" }, null, 2)}\n`,
+      },
+    );
+
+    const unchanged = await runScriptDirect(repo, ["--base", baseSha]);
+    expect(unchanged).toMatchObject({ exit: 0, stderr: "" });
+
+    commitIn(repo, "grow long file with extended base settings", growLong);
+    const grown = await runScriptDirect(repo, ["--base", baseSha]);
+    expect(grown.exit).toBe(1);
+    expect(grown.stderr).toContain("src/long.ts (<file>)");
+    expect(grown.stderr).toContain("file lines 510 to 520");
+    expect(grown.stderr).toContain("Repair:");
+
+    for (const escaping of ["../head/escape.json", "/outside/fallow.json"]) {
+      git(repo, "checkout", "--quiet", "--detach", baseSha);
+      const { sha: badBaseSha } = commitIn(
+        repo,
+        `use escaping extends ${escaping}`,
+        {
+          ".fallowrc.json": `${JSON.stringify({ extends: escaping }, null, 2)}\n`,
+        },
+      );
+      commitIn(repo, "head change", {
+        ...growLong,
+        "escape.json": withHealth({ maxFileLines: 1000 }),
+      });
+
+      const refused = await runScriptDirect(repo, ["--base", badBaseSha]);
+      expect(refused.exit).toBe(2);
+      expect(refused.stderr).toContain(escaping);
+      expect(refused.stderr).toContain("leaves the repository");
+      expect(refused.stderr).toContain("Repair:");
+    }
+  },
+  processWatchdog(8),
+);

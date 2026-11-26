@@ -1,0 +1,19 @@
+diff --git a/generated-repository/scripts/fallow-health-at-base-settings.ts b/generated-repository/scripts/fallow-health-at-base-settings.ts
+--- a/generated-repository/scripts/fallow-health-at-base-settings.ts
++++ b/generated-repository/scripts/fallow-health-at-base-settings.ts
+@@ -365,15 +365,6 @@ function baseSettingsFile(
+     mkdirSync(settingsDir, { recursive: true });
+     const path = join(settingsDir, name);
+     writeFileSync(path, bytes);
+-    copyExtendedSettings(
+-      root,
+-      baseSha,
+-      settingsDir,
+-      name,
+-      bytes,
+-      new Set([name]),
+-      0,
+-    );
+     return path;
+   }
+   const empty = join(tempDir, ".fallowrc.json");
