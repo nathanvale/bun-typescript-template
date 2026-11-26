@@ -1,13 +1,12 @@
 diff --git a/scripts/kernel-trial.ts b/scripts/kernel-trial.ts
-index 402ac26..5ed4cba 100644
 --- a/scripts/kernel-trial.ts
 +++ b/scripts/kernel-trial.ts
-@@ -111,7 +111,7 @@ export async function trialStep(
-     active.stop = undefined;
-   });
-   const stoppedBy = stopOf(active);
--  if (stoppedBy !== undefined)
-+  if (stoppedBy === "never")
-     throw new TrialRefusal(
-       `The kernel trial's ${name} in ${folder} was stopped by ${stoppedBy}.`,
-     );
+@@ -183,7 +183,7 @@
+       active.stop = undefined;
+     });
+     const stoppedBy = stopOf(active);
+-    if (stoppedBy !== undefined)
++    if (stoppedBy === "never")
+       throw new TrialRefusal(
+         `The kernel trial's ${name} in ${folder} was stopped by ${stoppedBy}.`,
+         "trial_stopped",

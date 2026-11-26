@@ -1,6 +1,8 @@
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { startChild } from "./process-runner.ts";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, delimiter, dirname, join } from "node:path";
+import { startChild, withoutRepositoryLocation } from "./process-runner.ts";
+import { testRunFolderVariable } from "./test-run.ts";
 import { bootstrapWithKernel } from "../src/bootstrap.ts";
 import {
   type KernelSeam,
@@ -125,6 +127,28 @@ function stopOf(active: TrialActive): string | undefined {
   return active.stoppedBy;
 }
 
+function stepEnv(
+  runTemp: string,
+): Readonly<Record<string, string | undefined>> {
+  const base = withoutRepositoryLocation(process.env);
+  return {
+    ...base,
+    PATH: (base.PATH ?? "")
+      .split(delimiter)
+      .filter(
+        (entry) =>
+          basename(entry) !== ".bin" ||
+          basename(dirname(entry)) !== "node_modules",
+      )
+      .join(delimiter),
+    STATE_TEST_DIR: runTemp,
+    TMP: runTemp,
+    TEMP: runTemp,
+    TMPDIR: runTemp,
+    [testRunFolderVariable]: runTemp,
+  };
+}
+
 export async function trialStep(
   folder: string,
   name: string,
@@ -137,24 +161,41 @@ export async function trialStep(
       `The kernel trial was stopped by ${active.stoppedBy} before its ${name} in ${folder}.`,
       "trial_stopped",
     );
-  const child = startChild([process.execPath, ...args], {
-    cwd: folder,
-    limitMilliseconds,
-  });
-  active.stop = child.stop;
-  const run = await child.finished.finally(() => {
-    active.stop = undefined;
-  });
-  const stoppedBy = stopOf(active);
-  if (stoppedBy !== undefined)
-    throw new TrialRefusal(
-      `The kernel trial's ${name} in ${folder} was stopped by ${stoppedBy}.`,
-      "trial_stopped",
-    );
-  if (run.timedOut || run.exitCode !== 0)
-    throw new TrialRefusal(
-      `The kernel trial's ${name} in ${folder} ${run.timedOut ? `did not finish within ${limitMilliseconds} ms` : `exited ${run.exitCode}`}. ${shownOutput(run.stdout + run.stderr)}\n`,
-    );
+  const existingRunFolder = process.env[testRunFolderVariable];
+  const ownedTemp =
+    existingRunFolder && existingRunFolder !== ""
+      ? undefined
+      : mkdtempSync(
+          join(
+            process.env.STATE_TEST_DIR || process.env.TMPDIR || tmpdir(),
+            "kernel-trial-run-",
+          ),
+        );
+  const runTemp = ownedTemp ?? existingRunFolder ?? tmpdir();
+  try {
+    const child = startChild([process.execPath, ...args], {
+      cwd: folder,
+      env: stepEnv(runTemp),
+      limitMilliseconds,
+    });
+    active.stop = child.stop;
+    const run = await child.finished.finally(() => {
+      active.stop = undefined;
+    });
+    const stoppedBy = stopOf(active);
+    if (stoppedBy !== undefined)
+      throw new TrialRefusal(
+        `The kernel trial's ${name} in ${folder} was stopped by ${stoppedBy}.`,
+        "trial_stopped",
+      );
+    if (run.timedOut || run.exitCode !== 0)
+      throw new TrialRefusal(
+        `The kernel trial's ${name} in ${folder} ${run.timedOut ? `did not finish within ${limitMilliseconds} ms` : `exited ${run.exitCode}`}. ${shownOutput(run.stdout + run.stderr)}\n`,
+      );
+  } finally {
+    if (ownedTemp !== undefined)
+      rmSync(ownedTemp, { recursive: true, force: true });
+  }
 }
 
 export async function kernelTrial(trial: KernelTrial): Promise<TrialPassed> {

@@ -1,7 +1,7 @@
 {
   "repository": "agent-cli-kernel",
   "remote": "https://github.com/nathanvale/agent-cli-kernel.git",
-  "commit": "7a3c430369a7adf3c91b28fe9bcde3aad342298e",
+  "commit": "64e0faa68197d701c36444dc10335408684e6514",
   "branch": "main",
   "carryOutIdentity": "4be9a3772839195ef0ceb152fbeea4901001a2ff"
 }

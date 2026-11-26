@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { readdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { startChild } from "../../../scripts/process-runner.ts";
 import {
@@ -8,6 +8,7 @@ import {
   runTests,
   stopProcess,
   testRunFolderVariable,
+  testRunProcessVariable,
 } from "../../../scripts/test-run.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import {
@@ -313,3 +314,25 @@ test(
 test("this run's own temp folder is a test run folder", () => {
   expect(process.env[testRunFolderVariable]).toBeString();
 });
+
+test(
+  "when the runner is already gone and bun test exits before the watchdog interval, the preload removes the run folder on exit",
+  async () => {
+    const temp = folder("test-run-temp-");
+    const runFolder = join(temp, "test-run-fast-exit");
+    mkdirSync(runFolder);
+    const dead = startChild(["true"], { limitMilliseconds: runBound });
+    await dead.finished;
+    const root = specimen({ "tests/passing.test.ts": passing });
+    const run = await spawnBounded([process.execPath, "test"], {
+      cwd: root,
+      env: outsideRun(runFolder, {
+        [testRunFolderVariable]: runFolder,
+        [testRunProcessVariable]: String(dead.pid),
+      }),
+    });
+    expect(run.exit).toBe(0);
+    expect(readdirSync(temp)).toEqual([]);
+  },
+  processWatchdog(1),
+);

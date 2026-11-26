@@ -3217,6 +3217,48 @@
     "source": "56b924c fix(pin-move): commit tracked changeset rename source and isolate failedAttempt git env"
   },
   {
+    "id": "48caea4-test-folder",
+    "patch": "tests/planted-faults/patches/48caea4-test-folder.patch",
+    "testFile": "tests/template/test-run/test-run-folder.test.ts",
+    "title": "^changing STATE_TEST_DIR mid-run does not let testFolder escape the test run folder$",
+    "source": "48caea4 fix(test-run): anchor testFolder to TEST_RUN_FOLDER inside a test run"
+  },
+  {
+    "id": "012fb5c-test-run",
+    "patch": "tests/planted-faults/patches/012fb5c-test-run.patch",
+    "testFile": "tests/template/test-run/test-run-mark.test.ts",
+    "title": "^when Bun\\.spawn fails to start bun test, runTests removes its run folder and marker$",
+    "source": "012fb5c fix(test-run): remove the run folder when startup throws after mkdtempSync"
+  },
+  {
+    "id": "a7d4ce8-test-run",
+    "patch": "tests/planted-faults/patches/a7d4ce8-test-run.patch",
+    "testFile": "tests/template/test-run/test-run-mark.test.ts",
+    "title": "^a strict run does not report a concurrent run folder seen before its process marker appears$",
+    "source": "a7d4ce8 fix(test-run): tolerate the startup window before a live run folder writes its marker"
+  },
+  {
+    "id": "a78af3f-test-run-folder",
+    "patch": "tests/planted-faults/patches/a78af3f-test-run-folder.patch",
+    "testFile": "tests/template/test-run/test-run.test.ts",
+    "title": "^when the runner is already gone and bun test exits before the watchdog interval, the preload removes the run folder on exit$",
+    "source": "a78af3f fix(test-run): remove the run folder in afterAll when the runner is gone"
+  },
+  {
+    "id": "94a37ec-kernel-trial",
+    "patch": "tests/planted-faults/patches/94a37ec-kernel-trial.patch",
+    "testFile": "tests/template/test-run/test-run-folder.test.ts",
+    "title": "^a nested kernel-trial test run under CI ignores an unrelated entry created in the outer temp folder$",
+    "source": "94a37ec fix(test-run): isolate nested kernel-trial test runs from outer temp folders"
+  },
+  {
+    "id": "dbc85cf-test-run",
+    "patch": "tests/planted-faults/patches/dbc85cf-test-run.patch",
+    "testFile": "tests/template/test-run/test-run-mark.test.ts",
+    "title": "^a strict run does not report a markerless test-run-<pid>-x folder while that pid lives past 250 ms, and reports it once the pid exits$",
+    "source": "dbc85cf fix(test-run): treat a markerless run folder as live while its pid lives"
+  },
+  {
     "id": "25a3bf4-recorded-health-sizes-minimum-thresholds",
     "patch": "tests/planted-faults/patches/25a3bf4-recorded-health-sizes-minimum-thresholds.patch",
     "testFile": "tests/template/toolchain/recorded-health-sizes-identities.test.ts",
