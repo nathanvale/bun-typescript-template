@@ -59,6 +59,7 @@ const ownFiles = [
   "fallow-duplicates-recorded-hits.json",
   "fallow-health-recorded-hits.json",
   "package.json",
+  "scripts/build-bundles.ts",
   "scripts/check-gated-paths.ts",
   "scripts/check-recorded-health-sizes.ts",
   "scripts/fallow-health-at-base-settings.ts",

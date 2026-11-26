@@ -137,6 +137,7 @@ describe("the recipe", () => {
     expect(
       files.filter((file) => file.startsWith("scripts/")).toSorted(),
     ).toEqual([
+      "scripts/build-bundles.ts",
       "scripts/check-gated-paths.ts",
       "scripts/check-recorded-health-sizes.ts",
       "scripts/fallow-health-at-base-settings.ts",
