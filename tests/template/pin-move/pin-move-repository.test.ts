@@ -261,7 +261,7 @@ describe("pin-move --repository", () => {
       `The failed attempt is kept on branch ${kept} for inspection; main is checked out again and was not changed.`,
     );
     expect(run.stderr).toContain(
-      "Repair: Fix the failure check command reports, then run pin-move again.",
+      "Repair: Fix the failure check command reports, then run bun run pin:move again.",
     );
     expect(run.stderr).not.toContain("branch -D");
     expect(git(repo, "rev-parse", "--abbrev-ref", "HEAD")).toBe("main");
@@ -309,7 +309,7 @@ describe("pin-move --repository", () => {
     );
     expect(run.stderr).not.toContain("was not changed");
     expect(run.stderr).toContain(
-      `Repair: Run bun install --frozen-lockfile in ${realpathSync(repo)} before running pin-move again.`,
+      `Repair: Run bun install --frozen-lockfile in ${realpathSync(repo)} before running bun run pin:move again.`,
     );
     expect(run.stderr).not.toContain("branch -D");
     expect(git(repo, "rev-parse", "--abbrev-ref", "HEAD")).toBe("main");

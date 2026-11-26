@@ -3,7 +3,7 @@
 ## Before work
 
 - Run the doctor with `bun run doctor` and apply any repair it names.
-- For the installed kernel, the Pin or `pin-move`, use
+- For the installed kernel, the Pin or `pin:move`, use
   [kernel-work](.agents/skills/kernel-work/SKILL.md). Kernel source lives in
   the `agent-cli-kernel` repository.
 - Use the [repo gardener](.agents/skills/repo-gardener/SKILL.md) skill for

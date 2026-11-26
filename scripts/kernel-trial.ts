@@ -70,6 +70,24 @@ export type TrialActive = {
   stoppedBy?: string;
 };
 
+const stopSignals = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
+
+export async function withStopSignals<Result>(
+  active: TrialActive,
+  work: () => Promise<Result>,
+): Promise<Result> {
+  const stop = (signal: string) => {
+    active.stoppedBy ??= signal;
+    active.stop?.();
+  };
+  for (const signal of stopSignals) process.on(signal, stop);
+  try {
+    return await work();
+  } finally {
+    for (const signal of stopSignals) process.off(signal, stop);
+  }
+}
+
 export type KernelTrial = {
   readonly kernel: KernelSeam;
   readonly folder: string;

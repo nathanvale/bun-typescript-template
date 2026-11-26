@@ -1,45 +1,29 @@
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
-import { CliError } from "../src/cli-error.ts";
-import {
-  type KernelPin,
-  kernelPinFile,
-  readKernelPin,
-  siblingKernelPath,
-  writeKernelPin,
-} from "../src/kernel-pin.ts";
-import {
-  git,
-  KernelRefusal,
-  type KernelSeam,
-  openCommit,
-  repositoryAt,
-} from "../src/kernel-reader.ts";
-import {
-  kernelTrial,
   qualifiedBy,
-  type TrialActive,
   type TrialPassed,
-  TrialRefusal,
-} from "./kernel-trial.ts";
+  withStopSignals,
+} from "../scripts/kernel-trial.ts";
+export { withStopSignals };
 import {
   type PinMoveReport,
   pinMoveReport,
-  pinMoveReportText,
-} from "./pin-move-report.ts";
-import { RepositoryPinRefusal } from "./pin-move-branch.ts";
-import { moveRepositoryPin } from "./pin-move-repository.ts";
-import { KERNEL_LOCKFILE } from "../src/recipe.ts";
-
-const templateRoot = resolve(import.meta.dir, "..");
+} from "../scripts/pin-move-report.ts";
+import {
+  generatedPin,
+  type KernelPin,
+  kernelPinFile,
+  readKernelPin,
+  writeKernelPin,
+} from "./kernel-pin.ts";
+import {
+  git,
+  type KernelSeam,
+  openCommit,
+  repositoryAt,
+} from "./kernel-reader.ts";
+import { KERNEL_LOCKFILE } from "./recipe.ts";
 
 export type PinMove = {
   readonly report: PinMoveReport;
@@ -55,7 +39,7 @@ export type PinRefusalCode =
 
 const repairs: { readonly [Code in PinRefusalCode]: string } = {
   pin_places_disagree:
-    "Edit package.json's agent-cli-kernel dependency to match kernel-pin.json's commit and run bun install (bun run pin-move writes both places once updated).",
+    "Edit package.json's agent-cli-kernel dependency to match kernel-pin.json's commit and run bun install (bun run pin:move writes both places once updated).",
   kernel_commit_unreachable:
     "Give a commit that branch reaches on the pin's remote. Push the commit there first if it is only local.",
   kernel_commit_before_carry_out:
@@ -167,7 +151,7 @@ export function fetchBranchCommit(
   return held();
 }
 
-export function branchCommitHeldBy(
+export function pinBranchCommitHeld(
   pin: Pick<KernelPin, "remote" | "branch">,
   repository: string,
 ): string {
@@ -215,6 +199,70 @@ export function verifyPin(
   return repository;
 }
 
+function ownValue(target: unknown, key: string): unknown {
+  return typeof target === "object" && target !== null
+    ? Object.getOwnPropertyDescriptor(target, key)?.value
+    : undefined;
+}
+
+function writeTemplateLockfile(
+  template: string,
+  pin: KernelPin,
+  commit: string,
+  trialLockfile: Uint8Array,
+): boolean {
+  const lockPath = join(template, "bun.lock");
+  if (!existsSync(lockPath)) return false;
+  const before = readFileSync(lockPath, "utf8");
+  const spec = generatedPin(pin, commit);
+  const shortCommit = commit.slice(0, 7);
+  let next = before.replace(
+    /"agent-cli-kernel": "[^"\n]*#[0-9a-f]{40}"/,
+    () => `"agent-cli-kernel": "${spec}"`,
+  );
+  const trialText = new TextDecoder().decode(trialLockfile);
+  const resolvedFromTrial =
+    /^([ \t]*"agent-cli-kernel": \["agent-cli-kernel@github:[^\n]+)$/m.exec(
+      trialText,
+    )?.[1];
+  if (resolvedFromTrial !== undefined) {
+    next = next.replace(
+      /^[ \t]*"agent-cli-kernel": \["agent-cli-kernel@[^\n]+$/m,
+      () => resolvedFromTrial,
+    );
+  } else {
+    next = next.replace(
+      /(^[ \t]*"agent-cli-kernel": \["agent-cli-kernel@[^"\n]*#)[0-9a-f]{7,40}(".*?")([^"\n]*?-)[0-9a-f]{7,40}(")/m,
+      (_, head: string, mid: string, folderPrefix: string, tail: string) =>
+        `${head}${shortCommit}${mid}${folderPrefix}${shortCommit}${tail}`,
+    );
+  }
+  if (next === before) return false;
+  writeFileSync(lockPath, next);
+  return true;
+}
+
+function writeTemplatePackagePin(
+  template: string,
+  pin: KernelPin,
+  commit: string,
+): boolean {
+  const manifestPath = join(template, "package.json");
+  if (!existsSync(manifestPath)) return false;
+  const before = readFileSync(manifestPath, "utf8");
+  const parsed: unknown = JSON.parse(before);
+  const deps = ownValue(parsed, "dependencies");
+  if (typeof deps !== "object" || deps === null || Array.isArray(deps))
+    return false;
+  const spec = generatedPin(pin, commit);
+  if (ownValue(deps, pin.repository) === spec) return false;
+  Reflect.set(deps, pin.repository, spec);
+  const next = `${JSON.stringify(parsed, null, 2)}\n`;
+  if (next === before) return false;
+  writeFileSync(manifestPath, next);
+  return true;
+}
+
 export function movePin(
   trial: TrialPassed,
   template: string,
@@ -235,178 +283,18 @@ export function movePin(
     writeFileSync(lockfile, qualified.lockfile);
     written.push(KERNEL_LOCKFILE);
   }
+  if (
+    writeTemplateLockfile(
+      template,
+      pin,
+      qualified.kernel.commit,
+      qualified.lockfile,
+    )
+  )
+    written.push("bun.lock");
+  if (writeTemplatePackagePin(template, pin, qualified.kernel.commit))
+    written.push("package.json");
   if (writeKernelPin(template, { ...pin, commit: qualified.kernel.commit }))
     written.push(kernelPinFile);
   return { report, written };
 }
-
-const usage =
-  "Usage: bun run pin-move <full kernel commit> [--kernel <path to the kernel repository>] [--repository <path to a generated repository>] [--plan]\n";
-
-function readFlagValue(
-  rest: readonly string[],
-  index: number,
-  current: string | undefined,
-): string | undefined {
-  const value = rest[index + 1];
-  if (current !== undefined || value === undefined || value.startsWith("--"))
-    return undefined;
-  return value;
-}
-
-type ParsedFlags = {
-  path?: string;
-  repository?: string;
-  plan: boolean;
-};
-
-function applyFlag(
-  rest: readonly string[],
-  index: number,
-  parsed: ParsedFlags,
-): number | undefined {
-  const flag = rest[index];
-  if (flag === "--plan") {
-    if (parsed.plan) return undefined;
-    parsed.plan = true;
-    return index + 1;
-  }
-  const key =
-    flag === "--kernel"
-      ? "path"
-      : flag === "--repository"
-        ? "repository"
-        : undefined;
-  if (key === undefined) return undefined;
-  const value = readFlagValue(rest, index, parsed[key]);
-  if (value === undefined) return undefined;
-  parsed[key] = value;
-  return index + 2;
-}
-
-export function argumentsOf(argv: readonly string[]):
-  | {
-      readonly commit: string;
-      readonly path?: string;
-      readonly repository?: string;
-      readonly plan?: boolean;
-    }
-  | undefined {
-  const [commit, ...rest] = argv;
-  if (commit === undefined || commit.startsWith("-")) return undefined;
-  const parsed: ParsedFlags = { plan: false };
-  for (let index = 0; index < rest.length; ) {
-    const next = applyFlag(rest, index, parsed);
-    if (next === undefined) return undefined;
-    index = next;
-  }
-  if (parsed.plan && parsed.repository === undefined) return undefined;
-  return {
-    commit,
-    ...(parsed.path === undefined ? {} : { path: parsed.path }),
-    ...(parsed.repository === undefined
-      ? {}
-      : { repository: parsed.repository }),
-    ...(parsed.plan ? { plan: true } : {}),
-  };
-}
-
-function refusalExit(error: unknown): number {
-  if (error instanceof CliError) {
-    process.stderr.write(
-      `${error.code}: ${error.message}\nRepair: ${error.repair}\n`,
-    );
-    return error.exitCode;
-  }
-  if (
-    !(error instanceof PinRefusal) &&
-    !(error instanceof KernelRefusal) &&
-    !(error instanceof TrialRefusal) &&
-    !(error instanceof RepositoryPinRefusal)
-  )
-    throw error;
-  process.stderr.write(`${error.code}: ${error.message}\n`);
-  return 1;
-}
-
-const stopSignals = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
-
-export async function withStopSignals<Result>(
-  active: TrialActive,
-  work: () => Promise<Result>,
-): Promise<Result> {
-  const stop = (signal: string) => {
-    active.stoppedBy ??= signal;
-    active.stop?.();
-  };
-  for (const signal of stopSignals) process.on(signal, stop);
-  try {
-    return await work();
-  } finally {
-    for (const signal of stopSignals) process.off(signal, stop);
-  }
-}
-
-// Interface: the pin move command. The kernel repository defaults to the
-// sibling beside the template. It reads the pin's branch from the pin's
-// remote, fetches that commit into the clone if the clone lacks it, and
-// verifies the commit before the trial, so a refused commit costs
-// no install, and keeps the trial's folder only for the
-// run. SIGINT, SIGTERM or SIGHUP stops the trial's running step with its
-// process group; the command then writes nothing, removes the trial's
-// folder and exits 1.
-export async function main(argv: readonly string[]): Promise<number> {
-  const given = argumentsOf(argv);
-  if (given === undefined) {
-    process.stderr.write(usage);
-    return 2;
-  }
-  const pin = readKernelPin(templateRoot);
-  const kernel = {
-    repository: given.path ?? siblingKernelPath(templateRoot, pin),
-    commit: given.commit,
-  };
-  if (given.repository !== undefined) {
-    const active: TrialActive = {};
-    try {
-      return await withStopSignals(active, () =>
-        moveRepositoryPin(
-          kernel,
-          pin,
-          resolve(given.repository ?? ""),
-          given.plan === true,
-          active,
-          (seam, currentPin) =>
-            verifyPin(
-              seam,
-              currentPin,
-              branchCommitHeldBy(currentPin, seam.repository),
-            ),
-        ),
-      );
-    } catch (error) {
-      return refusalExit(error);
-    }
-  }
-  const folder = mkdtempSync(join(tmpdir(), "kernel-trial-"));
-  const active: TrialActive = {};
-  try {
-    return await withStopSignals(active, async () => {
-      const branchCommit = branchCommitHeldBy(pin, kernel.repository);
-      verifyPin(kernel, pin, branchCommit);
-      const { report, written } = movePin(
-        await kernelTrial({ kernel, folder, active }),
-        templateRoot,
-        branchCommit,
-      );
-      process.stdout.write(pinMoveReportText(report, written));
-      return 0;
-    });
-  } catch (error) {
-    return refusalExit(error);
-  } finally {
-    rmSync(folder, { recursive: true, force: true });
-  }
-}
-
-if (import.meta.main) process.exitCode = await main(process.argv.slice(2));

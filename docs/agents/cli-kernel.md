@@ -55,7 +55,7 @@ These sources define the command contract the CLI kernel implements.
 
 ## Pin verification
 
-- For a red `pin-verification` job, run `bun run pin-verification` with the
+- For a red `pin-verification` job, run `bun run pin:verify` with the
   kernel repository beside the template. Its refusal names its code and its
   repair.
 

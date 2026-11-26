@@ -102,7 +102,7 @@ describe("the hosted check", () => {
     ["ci.yml", "fault-replay", "bun run fault-replay"],
     ["ci.yml", "upgrade-gate", "bun run upgrade-gate"],
     ["macos-nightly.yml", "check", "bun run check"],
-    ["pin-verification.yml", "pin-verification", "bun run pin-verification"],
+    ["pin-verification.yml", "pin-verification", "bun run pin:verify"],
   ])(
     "%s job %s places the kernel repository beside the template after its checkout and before its tests",
     (workflow, job, runs) => {

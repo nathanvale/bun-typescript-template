@@ -4,12 +4,12 @@ import { join } from "node:path";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
 import { KernelRefusal, readKernel } from "../../../src/kernel-reader.ts";
 import {
-  branchCommitHeldBy,
+  pinBranchCommitHeld,
   fetchBranchCommit,
   PinRefusal,
   pinBranchCommit,
   verifyPin,
-} from "../../../scripts/pin-move.ts";
+} from "../../../src/pin-move.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import {
@@ -244,7 +244,7 @@ describe("pin verification", () => {
       mkdirSync(bin);
       gitReadingRemoteAs(bin, pin.remote, remote);
       const branchCommit = await withToolsFirst(bin, () =>
-        branchCommitHeldBy(pin, repository),
+        pinBranchCommitHeld(pin, repository),
       );
       expect([branchCommit, holds(repository, moved)]).toEqual([moved, true]);
     },

@@ -9,10 +9,10 @@ import {
 import { join } from "node:path";
 import {
   failedAttempt,
-  parseStatusChanges,
+  parseGitChanges,
   RepositoryPinRefusal,
   repositoryGit,
-} from "../../../scripts/pin-move-branch.ts";
+} from "../../../src/pin-move-branch.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { commitIn, git, gitOutput } from "../../support/git-fixture.ts";
 import { trialBase } from "../../support/kernel-sibling.ts";
@@ -159,7 +159,7 @@ describe("pin-move --repository with a regenerate step", () => {
       `The failed attempt is kept on branch ${kept} for inspection; main is checked out again and was not changed.`,
     );
     expect(failed.stderr).toContain(
-      "Repair: Fix the failure regenerate reports, then run pin-move again.",
+      "Repair: Fix the failure regenerate reports, then run bun run pin:move again.",
     );
     expect(failed.stderr).not.toContain("branch -D");
     expect(failed.stderr).not.toContain("stash");
@@ -260,8 +260,8 @@ describe("pin-move --repository with a regenerate step", () => {
     expect(cleanStatus(repo)).toBe("");
   }, 240_000);
 
-  test("in process: parseStatusChanges keeps both paths of a rename record and marks staged-only deletions", () => {
-    const parsed = parseStatusChanges(
+  test("in process: parseGitChanges keeps both paths of a rename record and marks staged-only deletions", () => {
+    const parsed = parseGitChanges(
       "R  new.txt\0old.txt\0D  del.txt\0 D unstaged.txt\0?? :literal.txt\0",
     );
     expect(parsed.all).toEqual([
@@ -291,7 +291,7 @@ describe("pin-move --repository with a regenerate step", () => {
       const original = new RepositoryPinRefusal(
         "repository_check_failed",
         "regenerate failed.",
-        "Fix the failure regenerate reports, then run pin-move again.",
+        "Fix the failure regenerate reports, then run bun run pin:move again.",
       );
       const result = await failedAttempt(
         {
@@ -322,10 +322,10 @@ describe("pin-move --repository with a regenerate step", () => {
         "repository_check_failed",
       );
       expect(result.message).toContain(
-        "Repair: Fix the failure regenerate reports, then run pin-move again.",
+        "Repair: Fix the failure regenerate reports, then run bun run pin:move again.",
       );
       expect(result.message).toContain(
-        `pin-move could not rename branch ${branch} to ${branch}-failed-`,
+        `pin move could not rename branch ${branch} to ${branch}-failed-`,
       );
       expect(result.message).toContain(
         `Rename it with git branch -m ${branch}`,
@@ -337,12 +337,12 @@ describe("pin-move --repository with a regenerate step", () => {
     }
   });
 
-  test("no pin-move repair line tells the operator to force-delete a branch or to stash", () => {
+  test("no pin move repair line tells the operator to force-delete a branch or to stash", () => {
     const sources = [
-      "scripts/pin-move.ts",
-      "scripts/pin-move-branch.ts",
+      "src/pin-move.ts",
+      "src/pin-move-branch.ts",
       "scripts/pin-move-report.ts",
-      "scripts/pin-move-repository.ts",
+      "src/pin-move-repository.ts",
     ].map((file) => ({
       file,
       forbidden:

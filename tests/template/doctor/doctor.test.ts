@@ -2,6 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import {
   chmodSync,
   copyFileSync,
+  cpSync,
   mkdirSync,
   mkdtempSync,
   rmSync,
@@ -13,20 +14,6 @@ import { dirname, join } from "node:path";
 import { testRunFiles } from "../../support/fixture-files.ts";
 
 const repository = join(import.meta.dir, "../../..");
-const scripts = [
-  "src/cli.ts",
-  "src/causes.ts",
-  "src/cli-error.ts",
-  "src/doctor.ts",
-  "src/git-identities.ts",
-  "src/kernel-pin.ts",
-  "src/kernel-reader.ts",
-  "src/template-upgrade-git.ts",
-  "src/toolchain-resolution.ts",
-  "kernel-pin.json",
-  "scripts/test-area.ts",
-  "scripts/repository.ts",
-];
 const projects: string[] = [];
 
 afterAll(() => {
@@ -50,6 +37,10 @@ function linkKernel(root: string): void {
     join(repository, "node_modules/@logtape"),
     join(root, "node_modules/@logtape"),
   );
+  symlinkSync(
+    join(repository, "node_modules/@changesets"),
+    join(root, "node_modules/@changesets"),
+  );
 }
 
 function project(
@@ -59,10 +50,14 @@ function project(
 ) {
   const root = mkdtempSync(join(tmpdir(), "doctor-"));
   projects.push(root);
-  for (const path of scripts) {
-    mkdirSync(dirname(join(root, path)), { recursive: true });
-    copyFileSync(join(repository, path), join(root, path));
-  }
+  cpSync(join(repository, "src"), join(root, "src"), { recursive: true });
+  cpSync(join(repository, "scripts"), join(root, "scripts"), {
+    recursive: true,
+  });
+  copyFileSync(
+    join(repository, "kernel-pin.json"),
+    join(root, "kernel-pin.json"),
+  );
   write(root, "package.json", JSON.stringify(manifest));
   for (const [path, content] of Object.entries({
     ...testRunFiles(),

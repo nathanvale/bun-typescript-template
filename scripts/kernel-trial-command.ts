@@ -3,13 +3,33 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { readKernelPin, siblingKernelPath } from "../src/kernel-pin.ts";
 import { KernelRefusal } from "../src/kernel-reader.ts";
-import { kernelTrial, type TrialActive, TrialRefusal } from "./kernel-trial.ts";
-import { argumentsOf, withStopSignals } from "./pin-move.ts";
+import {
+  kernelTrial,
+  type TrialActive,
+  TrialRefusal,
+  withStopSignals,
+} from "./kernel-trial.ts";
 
 const templateRoot = resolve(import.meta.dir, "..");
 
 const usage =
   "Usage: bun run kernel-trial <full kernel commit> [--kernel <path to the kernel repository>]\n";
+
+function trialArgumentsOf(
+  argv: readonly string[],
+): { readonly commit: string; readonly path?: string } | undefined {
+  const [commit, flag, path, ...rest] = argv;
+  if (commit === undefined || commit.startsWith("-")) return undefined;
+  if (flag === undefined) return { commit };
+  if (
+    flag === "--kernel" &&
+    path !== undefined &&
+    !path.startsWith("--") &&
+    rest.length === 0
+  )
+    return { commit, path };
+  return undefined;
+}
 
 // Interface: the kernel trial command, for any kernel commit, whether or not
 // a pin could name it: the kernel repository's hosted check runs it on the
@@ -24,7 +44,7 @@ export async function main(
   argv: readonly string[],
   root = templateRoot,
 ): Promise<number> {
-  const given = argumentsOf(argv);
+  const given = trialArgumentsOf(argv);
   if (given === undefined) {
     process.stderr.write(usage);
     return 2;

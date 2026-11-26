@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   chmodSync,
   copyFileSync,
+  cpSync,
   existsSync,
   mkdirSync,
   readdirSync,
@@ -20,19 +21,6 @@ const repository = join(import.meta.dir, "../../..");
 const pin = readKernelPin(repository);
 const folder = ownedFolders();
 
-const cliSources = [
-  "src/cli.ts",
-  "src/causes.ts",
-  "src/cli-error.ts",
-  "src/doctor.ts",
-  "src/git-identities.ts",
-  "src/kernel-pin.ts",
-  "src/kernel-reader.ts",
-  "src/template-upgrade-git.ts",
-  "src/toolchain-resolution.ts",
-  "kernel-pin.json",
-];
-
 function write(root: string, path: string, content: string): void {
   mkdirSync(dirname(join(root, path)), { recursive: true });
   writeFileSync(join(root, path), content);
@@ -47,10 +35,14 @@ function copyCliCheckout(
   } = {},
 ): string {
   const root = folder("doctor-cli-");
-  for (const path of cliSources) {
-    mkdirSync(dirname(join(root, path)), { recursive: true });
-    copyFileSync(join(repository, path), join(root, path));
-  }
+  cpSync(join(repository, "src"), join(root, "src"), { recursive: true });
+  cpSync(join(repository, "scripts"), join(root, "scripts"), {
+    recursive: true,
+  });
+  copyFileSync(
+    join(repository, "kernel-pin.json"),
+    join(root, "kernel-pin.json"),
+  );
   const manifest = {
     name: "bun-typescript-template",
     private: true,
@@ -127,6 +119,10 @@ function copyCliCheckout(
       symlinkSync(
         join(repository, "node_modules/@logtape"),
         join(root, "node_modules/@logtape"),
+      );
+      symlinkSync(
+        join(repository, "node_modules/@changesets"),
+        join(root, "node_modules/@changesets"),
       );
     }
   }
