@@ -1,0 +1,23 @@
+diff --git a/tests/support/test-run-folder.ts b/tests/support/test-run-folder.ts
+index fc078c3..5fae965 100644
+--- a/tests/support/test-run-folder.ts
++++ b/tests/support/test-run-folder.ts
+@@ -1,4 +1,3 @@
+-import { afterAll } from "bun:test";
+ import { realpathSync, rmSync, writeFileSync } from "node:fs";
+ import { join } from "node:path";
+ import {
+@@ -38,11 +37,9 @@ function guard(runFolder: string, testRunProcess: number): void {
+   writeFileSync(join(runFolder, teardownMark), "");
+   const removeRunFolder = () =>
+     tryIgnore(() => rmSync(runFolder, { recursive: true, force: true }));
+-  const removeIfRunnerGone = () => {
++  process.on("exit", () => {
+     if (runnerGone(testRunProcess)) removeRunFolder();
+-  };
+-  afterAll(removeIfRunnerGone);
+-  process.on("exit", removeIfRunnerGone);
++  });
+   setInterval(() => {
+     if (!runnerGone(testRunProcess)) return;
+     removeRunFolder();

@@ -1,3 +1,4 @@
+import { afterAll } from "bun:test";
 import { realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -24,15 +25,28 @@ function tryIgnore(step: () => void): void {
   }
 }
 
+function runnerGone(testRunProcess: number): boolean {
+  try {
+    process.kill(testRunProcess, 0);
+    return false;
+  } catch (error) {
+    return Reflect.get(Object(error), "code") !== "EPERM";
+  }
+}
+
 function guard(runFolder: string, testRunProcess: number): void {
   writeFileSync(join(runFolder, teardownMark), "");
+  const removeRunFolder = () =>
+    tryIgnore(() => rmSync(runFolder, { recursive: true, force: true }));
+  const removeIfRunnerGone = () => {
+    if (runnerGone(testRunProcess)) removeRunFolder();
+  };
+  afterAll(removeIfRunnerGone);
+  process.on("exit", removeIfRunnerGone);
   setInterval(() => {
-    try {
-      process.kill(testRunProcess, 0);
-    } catch {
-      tryIgnore(() => rmSync(runFolder, { recursive: true, force: true }));
-      stopProcess(0, false, "SIGKILL");
-    }
+    if (!runnerGone(testRunProcess)) return;
+    removeRunFolder();
+    stopProcess(0, false, "SIGKILL");
   }, 500).unref();
 }
 

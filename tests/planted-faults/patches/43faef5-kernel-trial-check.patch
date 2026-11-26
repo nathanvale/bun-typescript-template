@@ -1,13 +1,12 @@
 diff --git a/scripts/kernel-trial.ts b/scripts/kernel-trial.ts
-index c5952b4..f5a0f41 100644
 --- a/scripts/kernel-trial.ts
 +++ b/scripts/kernel-trial.ts
-@@ -53,7 +53,7 @@ async function step(
-     cwd: folder,
-     limitMilliseconds,
-   }).finished;
--  if (run.timedOut || run.exitCode !== 0)
-+  if (run.timedOut || run.exitCode === 127)
-     throw new TrialRefusal(
-       `The kernel trial's ${name} in ${folder} ${run.timedOut ? `did not finish within ${limitMilliseconds} ms` : `exited ${run.exitCode}`}. Its last lines:\n${lastLines(run.stdout + run.stderr)}\n`,
-     );
+@@ -188,7 +188,7 @@
+         `The kernel trial's ${name} in ${folder} was stopped by ${stoppedBy}.`,
+         "trial_stopped",
+       );
+-    if (run.timedOut || run.exitCode !== 0)
++    if (run.timedOut || run.exitCode === 127)
+       throw new TrialRefusal(
+         `The kernel trial's ${name} in ${folder} ${run.timedOut ? `did not finish within ${limitMilliseconds} ms` : `exited ${run.exitCode}`}. ${shownOutput(run.stdout + run.stderr)}\n`,
+       );

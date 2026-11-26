@@ -1,0 +1,26 @@
+diff --git a/scripts/test-run.ts b/scripts/test-run.ts
+--- a/scripts/test-run.ts
++++ b/scripts/test-run.ts
+@@ -370,19 +370,17 @@
+     mkdtempSync(join(parent, `${runFolderPrefix}${process.pid}-`)),
+   );
+   const problems: string[] = [];
+-  let markFd: number | undefined;
+-  let child: ReturnType<typeof startBunTest> | undefined;
++  const markFd = writeProcessMark(runFolder, process.pid);
++  const child = startBunTest(args, options, runFolder);
+   let code: number;
+   let marked: boolean;
+   try {
+-    markFd = writeProcessMark(runFolder, process.pid);
+-    child = startBunTest(args, options, runFolder);
+     code = await finished(child, options);
+   } finally {
+-    if (child !== undefined) stopProcess(child.pid, true);
++    stopProcess(child.pid, true);
+     marked = existsSync(join(runFolder, teardownMark));
+-    if (markFd !== undefined) closeSync(markFd);
++    closeSync(markFd);
+     rmSync(runFolder, { recursive: true, force: true });
+   }
+   if (code === 0 && !marked)

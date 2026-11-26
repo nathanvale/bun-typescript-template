@@ -1,0 +1,13 @@
+diff --git a/scripts/test-run.ts b/scripts/test-run.ts
+--- a/scripts/test-run.ts
++++ b/scripts/test-run.ts
+@@ -190,8 +190,8 @@
+ function isLiveRunFolder(path: string): boolean {
+   const kind = entryKind(path);
+   if (kind !== "directory") return kind === "missing";
+   const pid = readProcessMark(path);
+   if (pid !== undefined) return processAlive(pid);
+   if (hasMarkEntry(path)) return false;
+-  return isStartingRunFolder(path);
++  return false;
+ }

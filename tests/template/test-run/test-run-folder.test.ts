@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { trialStep } from "../../../scripts/kernel-trial.ts";
 import { startChild } from "../../../scripts/process-runner.ts";
 import {
   insideFolder,
@@ -252,6 +253,76 @@ test(
     expect(run.stderr).toContain(`\n  ${lookalike}\n`);
     expect(run.stderr).toContain(`\n  ${ownNameFile}\n`);
     expect(run.stderr).not.toContain(`\n  ${own}\n`);
+  },
+  processWatchdog(1),
+);
+
+test(
+  "changing STATE_TEST_DIR mid-run does not let testFolder escape the test run folder",
+  async () => {
+    const temp = folder("test-run-temp-");
+    const outside = folder("test-run-outside-");
+    const recordFile = join(folder("test-run-record-"), "escaped.txt");
+    const root = specimen({
+      "tests/escape.test.ts": `import { test } from "bun:test";
+import { writeFileSync } from "node:fs";
+import { testFolder } from "./support/test-folder.ts";
+test("mutates STATE_TEST_DIR", () => {
+  process.env.STATE_TEST_DIR = ${JSON.stringify(outside)};
+  const created = testFolder("escaped-");
+  writeFileSync(
+    process.env.RECORD_FILE,
+    [created, process.env.TEST_RUN_FOLDER ?? ""].join("\\n"),
+  );
+});`,
+    });
+    const run = await spawnBounded([process.execPath, "scripts/test-run.ts"], {
+      cwd: root,
+      env: outsideTestRun(temp, { CI: "true", RECORD_FILE: recordFile }),
+    });
+    expect(run.exit).toBe(0);
+    const [created = "", runFolder = ""] = readFileSync(
+      recordFile,
+      "utf8",
+    ).split("\n");
+    expect(insideFolder(created, runFolder)).toBe(true);
+    expect(readdirSync(outside)).toEqual([]);
+    expect(readdirSync(temp)).toEqual([]);
+  },
+  processWatchdog(1),
+);
+
+test(
+  "a nested kernel-trial test run under CI ignores an unrelated entry created in the outer temp folder",
+  async () => {
+    const outerTemp = folder("test-run-outer-");
+    const unrelated = join(outerTemp, "names-in-process-unrelated");
+    const root = specimen({
+      "tests/nested.test.ts": `import { test } from "bun:test";
+import { mkdirSync } from "node:fs";
+test("simulates concurrent same-user outer temp entry", () => {
+  mkdirSync(${JSON.stringify(unrelated)});
+});`,
+    });
+    const saved = {
+      CI: process.env.CI,
+      TMPDIR: process.env.TMPDIR,
+      STATE_TEST_DIR: process.env.STATE_TEST_DIR,
+      [testRunFolderVariable]: process.env[testRunFolderVariable],
+    };
+    process.env.CI = "true";
+    process.env.TMPDIR = outerTemp;
+    process.env.STATE_TEST_DIR = outerTemp;
+    delete process.env[testRunFolderVariable];
+    try {
+      await trialStep(root, "test run", ["scripts/test-run.ts"], runBound);
+    } finally {
+      for (const [key, value] of Object.entries(saved)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+    expect(readdirSync(outerTemp)).toEqual(["names-in-process-unrelated"]);
   },
   processWatchdog(1),
 );
