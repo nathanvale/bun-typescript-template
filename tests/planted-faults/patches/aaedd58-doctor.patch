@@ -1,16 +1,21 @@
-diff --git a/src/doctor.ts b/src/doctor.ts
+diff --git a/src/cli.ts b/src/cli.ts
 index 1111111..2222222 100644
---- a/src/doctor.ts
-+++ b/src/doctor.ts
-@@ -220,6 +220,10 @@ export function formatDoctorReport(report: DoctorReport): string {
-   const lines = report.results.map(
-     ({ status, check, detail }) => `${status} ${check}: ${detail}\n`,
-   );
--  if (!report.ready) lines.push("Done when bun run doctor passes.\n");
-+  lines.push(doneLine(report.ready));
-   return lines.join("");
+--- a/src/cli.ts
++++ b/src/cli.ts
+@@ -46,11 +46,15 @@ async function loadKernel() {
+   }
  }
-+
-+export function doneLine(ready: boolean): string {
-+  return ready ? "" : "Done when bun run doctor passes.\n";
+ 
++export function missingKernelLine(): string {
++  return `${cliName}: node_modules/agent-cli-kernel is missing. Repair: ${installRepair}.\n`;
 +}
++
+ async function runFrontDoor(argv: readonly string[]): Promise<void> {
+   const loaded = await loadKernel();
+   if (loaded === undefined) {
+     process.stderr.write(
+-      `${cliName}: node_modules/agent-cli-kernel is missing. Repair: ${installRepair}.\n`,
++      missingKernelLine(),
+     );
+     process.exit(1);
+   }
