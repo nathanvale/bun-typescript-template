@@ -467,7 +467,7 @@ describe("pin refusal classification across phases", () => {
     expect(git(repo, "rev-parse", "--abbrev-ref", "HEAD")).toBe("main");
   }, 180_000);
 
-  test("SIGTERM during repository pin move restores the starting branch kernel and does not strand the next pin move as unresolved", async () => {
+  test("SIGTERM during repository pin move restores the starting branch without reinstalling packages and does not strand the next pin move as unresolved", async () => {
     const repo = folder("pin-refusals-sigterm-repo-");
     initRepository(repo);
     const barrier = folder("pin-refusals-sigterm-barrier-");

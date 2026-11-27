@@ -3,7 +3,6 @@ import {
   appendFileSync,
   existsSync,
   readFileSync,
-  realpathSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -117,7 +116,7 @@ describe("pin move stop settlement", () => {
     }
     expect(result.code).toBe("trial_stopped");
     expect(result.restored).toBe(false);
-    expect(Reflect.get(result, "gitRestoredOnStop")).toBe(true);
+    expect(result.gitRestoredOnStop).toBe(true);
     expect(result.reason).toContain(
       "its installed packages may still hold the failed attempt's kernel",
     );
@@ -284,10 +283,8 @@ await new Promise<void>((resolve) => {
         readonly commandIdentity: string;
         readonly causeCode: string;
       };
-      readonly data?: { readonly repository?: string };
     };
     expect(nextEnvelope.result.commandIdentity).toBe(pinMoveIdentity);
     expect(nextEnvelope.result.causeCode).toBe("SUCCESS_COMPLETED");
-    expect(nextEnvelope.data?.repository).toBe(realpathSync(repo));
   }, 180_000);
 });

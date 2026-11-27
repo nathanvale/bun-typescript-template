@@ -28,6 +28,7 @@ export class RepositoryPinRefusal extends Error {
     readonly reason: string,
     readonly repair: string,
     readonly restored = false,
+    readonly gitRestoredOnStop = false,
   ) {
     super(`${reason} Repair: ${repair}`);
   }
@@ -356,15 +357,22 @@ async function keptAttemptRefusal(
       `${shownReason} The failed attempt is committed on branch ${kept}, but git checkout ${startingRef} failed: git says "${back.said}". Branch ${kept} is still checked out; ${startingRef} was not changed.`,
       `Run git checkout ${startingRef} in ${repository}, then run bun run pin:move again.${unrenamed}${reinstall}`,
     );
-  const unrestored = installRan
-    ? await restoreInstalledKernel(attempt)
-    : undefined;
-  if (unrestored !== undefined)
+  const stoppedBy = attempt.active.stoppedBy;
+  const unrestored = !installRan
+    ? undefined
+    : stoppedBy !== undefined
+      ? `${stoppedBy} stopped the run before bun install --frozen-lockfile could restore ${startingRef}'s packages.`
+      : await restoreInstalledKernel(attempt);
+  if (unrestored !== undefined) {
+    const left = leftOver(repository, runGit);
     return new RepositoryPinRefusal(
       code,
       `${shownReason} The failed attempt is kept on branch ${kept} for inspection and ${startingRef} is checked out again, but its installed packages may still hold the failed attempt's kernel: ${boundedDetail(unrestored, 400)}`,
-      `Run bun install --frozen-lockfile in ${repository} before running bun run pin:move again.${unrenamed}${leftOver(repository, runGit)}`,
+      `Run bun install --frozen-lockfile in ${repository} before running bun run pin:move again.${unrenamed}${left}`,
+      false,
+      stoppedBy !== undefined && unrenamed === "" && left === "",
     );
+  }
   const left = leftOver(repository, runGit);
   return new RepositoryPinRefusal(
     code,

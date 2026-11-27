@@ -197,6 +197,18 @@ const inspectPinState = {
   ],
 } as const;
 
+const inspectUnresolvedPinState = {
+  owner: "operator",
+  reason:
+    "An earlier pin move never finished; the repository stays blocked for pin move until a qualified close exists.",
+  inspect: [
+    {
+      kind: "instruction",
+      text: "Check git status, any pin-move/<commit> branches, and bun run pin:verify by hand.",
+    },
+  ],
+} as const;
+
 function refusalFields<const Identity extends string>(
   identity: Identity,
   causeCode: PinRefusalCause,
@@ -402,8 +414,8 @@ export function moveStateRows() {
       causeCode: "DOMAIN_PIN_MOVE_UNRESOLVED",
       trigger: "An earlier pin move on this target never finished.",
       repairAction:
-        "Run bun run pin:verify and inspect git status before trying again.",
-      guidance: { handoff: inspectPinState },
+        "Check git status, any pin-move/<commit> branches, and bun run pin:verify by hand. This repository stays blocked for pin move until a qualified close exists.",
+      guidance: { handoff: inspectUnresolvedPinState },
       independentObservable: `${pinMoveIdentity}:unresolved`,
     }),
     station(cliCauses, {

@@ -222,7 +222,7 @@ async function executeRepositoryMove(
                     capturedError = failure;
                     if (
                       error instanceof RepositoryPinRefusal &&
-                      error.restored &&
+                      (error.restored || error.gitRestoredOnStop) &&
                       classifyMoveRefusal(error, "restored") !== undefined
                     ) {
                       completedFailure = error;
