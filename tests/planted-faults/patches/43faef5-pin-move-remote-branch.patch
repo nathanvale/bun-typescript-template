@@ -1,13 +1,13 @@
-diff --git a/src/pin-commands.ts b/src/pin-commands.ts
+diff --git a/src/pin-move-command.ts b/src/pin-move-command.ts
 index 1111111..2222222 100644
---- a/src/pin-commands.ts
-+++ b/src/pin-commands.ts
-@@ -948,7 +948,7 @@ export function pinMoveCommand(
-           const { branchCommit, trial } = await withStopSignals(
-             active,
-             async () => {
--              const branchCommit = pinBranchCommitHeld(pin, kernel.repository);
-+              const branchCommit = kernel.commit;
-               verifyPin(kernel, pin, branchCommit);
-               const trial = await kernelTrial({ kernel, folder, active });
-               return { branchCommit, trial };
+--- a/src/pin-move-command.ts
++++ b/src/pin-move-command.ts
+@@ -194,7 +194,7 @@ async function executeTemplateMove(
+   const folder = mkdtempSync(join(tmpdir(), "kernel-trial-"));
+   try {
+     const { branchCommit, trial } = await withStopSignals(active, async () => {
+-      const branchCommit = pinBranchCommitHeld(pin, kernel.repository);
++      const branchCommit = kernel.commit;
+       verifyPin(kernel, pin, branchCommit);
+       const trial = await kernelTrial({ kernel, folder, active });
+       return { branchCommit, trial };
