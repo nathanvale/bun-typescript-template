@@ -262,7 +262,7 @@ describe("pin refusal classification across phases", () => {
     }
   });
 
-  test("every PinRefusal, KernelRefusal, TrialRefusal, RepositoryPinRefusal, and shared-helper CliError code after writes with start restored yields a declared failed completed DOMAIN_PIN_* cause", () => {
+  test("every PinRefusal and RepositoryPinRefusal code after writes with start restored yields a declared failed completed DOMAIN_PIN_* cause, along with KernelRefusal, TrialRefusal, and shared-helper CliError codes", () => {
     const restoredCases = [
       ...pinRefusalCodes.map((code) => ({
         code,
