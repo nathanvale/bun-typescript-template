@@ -1,12 +1,13 @@
 diff --git a/src/pin-move-branch.ts b/src/pin-move-branch.ts
+index 1111111..2222222 100644
 --- a/src/pin-move-branch.ts
 +++ b/src/pin-move-branch.ts
-@@ -343,7 +343,7 @@ async function keptAttemptRefusal(
+@@ -351,7 +351,7 @@ async function keptAttemptRefusal(
    return new RepositoryPinRefusal(
      code,
-     `${reason} The failed attempt is kept on branch ${kept} for inspection; ${startingRef} is checked out again and was not changed.`,
--    `${repair}${unrenamed}${leftOver(repository, runGit)}`,
-+    `Delete the failed attempt with git branch -D ${branch} in ${repository} before running pin-move again.${leftOver(repository, runGit)}`,
+     `${shownReason} The failed attempt is kept on branch ${kept} for inspection; ${startingRef} is checked out again and was not changed.`,
+-    `${repair}${unrenamed}${left}`,
++    `Delete the failed attempt with git branch -D ${branch} in ${repository} before running pin-move again.${left}`,
+     unrenamed === "" && left === "",
    );
  }
- 

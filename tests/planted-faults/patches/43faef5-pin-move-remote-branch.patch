@@ -2,12 +2,12 @@ diff --git a/src/pin-move-command.ts b/src/pin-move-command.ts
 index 1111111..2222222 100644
 --- a/src/pin-move-command.ts
 +++ b/src/pin-move-command.ts
-@@ -194,7 +194,7 @@ async function executeTemplateMove(
-   const folder = mkdtempSync(join(tmpdir(), "kernel-trial-"));
-   try {
-     const { branchCommit, trial } = await withStopSignals(active, async () => {
--      const branchCommit = pinBranchCommitHeld(pin, kernel.repository);
-+      const branchCommit = kernel.commit;
-       verifyPin(kernel, pin, branchCommit);
-       const trial = await kernelTrial({ kernel, folder, active });
-       return { branchCommit, trial };
+@@ -260,7 +260,7 @@ async function executeTemplateMove(
+   readonly moved: ReturnType<typeof movePin> | undefined;
+   readonly capturedError: Error | undefined;
+ }> {
+-  const branchCommit = pinBranchCommitHeld(pin, kernel.repository);
++  const branchCommit = kernel.commit;
+   verifyPin(kernel, pin, branchCommit);
+   const scopeKey = existsSync(root) ? realpathSync(root) : resolve(root);
+   let moved: ReturnType<typeof movePin> | undefined;

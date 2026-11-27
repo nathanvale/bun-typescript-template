@@ -221,7 +221,6 @@ export const verifyRefusalCauses = [
 
 export const planRefusalCauses = [
   ...verifyRefusalCauses,
-  "DOMAIN_PIN_REPOSITORY_GIT_FAILED",
   "DOMAIN_PIN_REPOSITORY_INVALID",
   "DOMAIN_PIN_REPOSITORY_PIN_MISSING",
   "DOMAIN_PIN_CHANGESET_INVALID",
@@ -241,6 +240,7 @@ export const movePreWriteRefusalCauses = [
 ] as const;
 
 export const moveCompletedFailureCauses = [
+  "DOMAIN_PIN_REPOSITORY_GIT_FAILED",
   "DOMAIN_PIN_REPOSITORY_CHECK_FAILED",
   "DOMAIN_PIN_CHANGESET_ADD_FAILED",
   "DOMAIN_PIN_CHANGESET_ADD_UNEXPECTED_FILES",
@@ -337,10 +337,6 @@ export function planRefusalRows<const Identity extends string>(
   return [
     ...verifyRefusalRows(identity),
     station(cliCauses, {
-      ...refusalFields(identity, "DOMAIN_PIN_REPOSITORY_GIT_FAILED"),
-      causeCode: "DOMAIN_PIN_REPOSITORY_GIT_FAILED",
-    }),
-    station(cliCauses, {
       ...refusalFields(identity, "DOMAIN_PIN_REPOSITORY_INVALID"),
       causeCode: "DOMAIN_PIN_REPOSITORY_INVALID",
     }),
@@ -387,6 +383,10 @@ export function moveRefusalRows<const Identity extends string>(
     station(cliCauses, {
       ...refusalFields(identity, "DOMAIN_PIN_REPOSITORY_DIRTY"),
       causeCode: "DOMAIN_PIN_REPOSITORY_DIRTY",
+    }),
+    station(cliCauses, {
+      ...completedFailureFields(identity, "DOMAIN_PIN_REPOSITORY_GIT_FAILED"),
+      causeCode: "DOMAIN_PIN_REPOSITORY_GIT_FAILED",
     }),
     station(cliCauses, {
       ...completedFailureFields(identity, "DOMAIN_PIN_REPOSITORY_CHECK_FAILED"),

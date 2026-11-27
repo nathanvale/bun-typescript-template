@@ -319,6 +319,7 @@ describe("pin-move --repository", () => {
     expect(envelope.result.outcome).toBe("failed");
     expect(envelope.result.transactionState).not.toBe("unchanged");
     expect(envelope.result.transactionState).toBe("unknown");
+    expect(envelope.message.length).toBeLessThanOrEqual(2000);
     const kept = keptAttempt(repo, expectedBranch);
     expect(envelope.message).toContain(
       `The failed attempt is kept on branch ${kept} for inspection and main is checked out again, but its installed packages may still hold the failed attempt's kernel: bun install --frozen-lockfile on main failed:`,

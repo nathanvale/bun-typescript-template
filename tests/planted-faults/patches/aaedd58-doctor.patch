@@ -2,7 +2,7 @@ diff --git a/src/cli.ts b/src/cli.ts
 index 1111111..2222222 100644
 --- a/src/cli.ts
 +++ b/src/cli.ts
-@@ -45,11 +45,15 @@ async function loadKernel() {
+@@ -37,11 +37,15 @@ async function loadKernel() {
    return { kernel, diagnostics, stateModule, causes, pinCommands };
  }
  
@@ -10,7 +10,7 @@ index 1111111..2222222 100644
 +  return `${cliName}: node_modules/agent-cli-kernel is missing. Repair: ${installRepair}.\n`;
 +}
 +
- async function runFrontDoor(argv: readonly string[]): Promise<void> {
+ export async function runFrontDoor(argv: readonly string[]): Promise<void> {
    const loaded = await loadKernel();
    if (loaded === undefined) {
      process.stderr.write(

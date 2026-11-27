@@ -2,21 +2,22 @@ diff --git a/src/pin-move-repository.ts b/src/pin-move-repository.ts
 index 1111111..2222222 100644
 --- a/src/pin-move-repository.ts
 +++ b/src/pin-move-repository.ts
-@@ -668,14 +668,14 @@ export async function moveRepositoryPin(
-       `Repository at ${repository} already pins ${kernel.commit}.`,
-       "Give a different kernel commit to move the pin.",
-     );
-+  const branch = createPinMoveBranch(repository, kernel.commit);
-   const edits = planRepositoryEdits(
-     repository,
-     kernelRepository,
-     kernel.commit,
-     pin,
-     current,
-   );
--  requireBranchAbsent(repository, kernel.commit);
-   return runWrite(repository, () => {
--    const branch = createPinMoveBranch(repository, kernel.commit);
-     return applyRepositoryPinMove(
+@@ -599,6 +599,7 @@ export async function moveRepositoryPin(
+         `Repository at ${repository} already pins ${kernel.commit}.`,
+         "Give a different kernel commit to move the pin.",
+       );
++    const branch = createPinMoveBranch(repository, kernel.commit);
+     const edits = planRepositoryEdits(
        repository,
-       startingRef,
+       kernelRepository,
+@@ -606,10 +607,8 @@ export async function moveRepositoryPin(
+       pin,
+       current,
+     );
+-    requireBranchAbsent(repository, kernel.commit);
+     return {
+       apply: () => {
+-        const branch = createPinMoveBranch(repository, kernel.commit);
+         return applyRepositoryPinMove(
+           repository,
+           startingRef,
