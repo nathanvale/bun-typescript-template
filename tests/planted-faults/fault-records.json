@@ -3437,29 +3437,29 @@
     "id": "pin-move-template-package-write",
     "patch": "tests/planted-faults/patches/pin-move-template-package-write.patch",
     "testFile": "tests/template/pin-move/pin-move.test.ts",
-    "title": "^to a commit whose one dependency changed, writes the new lockfile and the new pin",
-    "source": "8bd141b feat(cli): move pin verify, pin plan, and pin move behind the front door"
+    "title": "^the pin move to a commit whose one dependency changed, writes the new lockfile and the new pin, and reports the changed file and the kernel's log line$",
+    "source": "a6547b18 feat(pin): pin verify, pin plan and pin move run behind the front door, and pin move writes both Pin places"
   },
   {
     "id": "pin-move-template-lockfile-write",
     "patch": "tests/planted-faults/patches/pin-move-template-lockfile-write.patch",
     "testFile": "tests/template/pin-move/pin-move.test.ts",
-    "title": "^to a commit whose one dependency changed, writes the new lockfile and the new pin",
-    "source": "8bd141b feat(cli): move pin verify, pin plan, and pin move behind the front door"
+    "title": "^the pin move to a commit whose one dependency changed, writes the new lockfile and the new pin, and reports the changed file and the kernel's log line$",
+    "source": "a6547b18 feat(pin): pin verify, pin plan and pin move run behind the front door, and pin move writes both Pin places"
   },
   {
     "id": "pin-verify-route-places-disagree",
     "patch": "tests/planted-faults/patches/pin-verify-route-places-disagree.patch",
     "testFile": "tests/template/pin-move/pin-cli.test.ts",
-    "title": "^pin verify refuses DOMAIN_PIN_PLACES_DISAGREE in an envelope when package\\.json disagrees with kernel-pin\\.json$",
-    "source": "8bd141b feat(cli): move pin verify, pin plan, and pin move behind the front door"
+    "title": "^cli front door pin routes pin verify refuses DOMAIN_PIN_PLACES_DISAGREE in an envelope when package\\.json disagrees with kernel-pin\\.json$",
+    "source": "a6547b18 feat(pin): pin verify, pin plan and pin move run behind the front door, and pin move writes both Pin places"
   },
   {
     "id": "pin-plan-route-discover",
     "patch": "tests/planted-faults/patches/pin-plan-route-discover.patch",
     "testFile": "tests/template/pin-move/pin-cli.test.ts",
-    "title": "^--discover-all lists pin verify, pin plan, and pin move with their identities and effect classes, and each answers --help$",
-    "source": "8bd141b feat(cli): move pin verify, pin plan, and pin move behind the front door"
+    "title": "^cli front door pin routes --discover-all lists pin verify, pin plan, and pin move with their identities and effect classes, and each answers --help$",
+    "source": "a6547b18 feat(pin): pin verify, pin plan and pin move run behind the front door, and pin move writes both Pin places"
   },
   {
     "id": "a612a1ed-pin-move",
