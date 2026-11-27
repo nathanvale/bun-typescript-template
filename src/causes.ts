@@ -43,7 +43,7 @@ export const pinCauses = {
   DOMAIN_PIN_KERNEL_ENTRY_UNSUPPORTED: refusedNext,
   DOMAIN_PIN_TRIAL_FAILED: refusedNext,
   DOMAIN_PIN_TRIAL_STOPPED: refusedNext,
-  DOMAIN_PIN_REPOSITORY_GIT_FAILED: failedCompleted,
+  DOMAIN_PIN_REPOSITORY_GIT_FAILED: refusedNext,
   DOMAIN_PIN_REPOSITORY_DIRTY: refusedNext,
   DOMAIN_PIN_REPOSITORY_INVALID: refusedNext,
   DOMAIN_PIN_REPOSITORY_PIN_MISSING: refusedNext,
@@ -60,6 +60,7 @@ export const pinCauses = {
   DOMAIN_PIN_MOVE_HELD: refusedHandoff,
   DOMAIN_PIN_MOVE_UNRESOLVED: refusedHandoff,
   DOMAIN_PIN_STATE_UNAVAILABLE: refusedHandoff,
+  DOMAIN_PIN_MOVE_FAILED_RESTORED: failedCompleted,
   DOMAIN_PIN_MOVE_FAILED_UNCHANGED: {
     outcome: "failed",
     transactionState: "unchanged",

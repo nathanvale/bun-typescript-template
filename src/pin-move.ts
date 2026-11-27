@@ -30,12 +30,15 @@ export type PinMove = {
   readonly written: readonly string[];
 };
 
-export type PinRefusalCode =
-  | "pin_places_disagree"
-  | "kernel_commit_unreachable"
-  | "kernel_commit_before_carry_out"
-  | "kernel_history_unreadable"
-  | "kernel_branch_unreadable";
+export const pinRefusalCodes = [
+  "pin_places_disagree",
+  "kernel_commit_unreachable",
+  "kernel_commit_before_carry_out",
+  "kernel_history_unreadable",
+  "kernel_branch_unreadable",
+] as const;
+
+export type PinRefusalCode = (typeof pinRefusalCodes)[number];
 
 const repairs: { readonly [Code in PinRefusalCode]: string } = {
   pin_places_disagree:

@@ -239,7 +239,7 @@ describe("pin-move --repository with a regenerate step", () => {
 
     const failed = await moveTo(repo);
     expect(failed.exit).toBe(3);
-    expect(failed.stderr).toContain("[DOMAIN_PIN_REPOSITORY_GIT_FAILED]");
+    expect(failed.stderr).toContain("[DOMAIN_PIN_MOVE_FAILED_RESTORED]");
     expect(failed.stderr).toContain("pre-commit refused");
     const [kept = ""] = pinMoveBranches(repo);
     expect(pinMoveBranches(repo)).toEqual([

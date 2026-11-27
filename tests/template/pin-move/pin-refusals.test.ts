@@ -9,13 +9,14 @@ import {
 import { delimiter, join } from "node:path";
 import { pinCauses } from "../../../src/causes.ts";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
-import { PinRefusal, type PinRefusalCode } from "../../../src/pin-move.ts";
-import { RepositoryPinRefusal } from "../../../src/pin-move-branch.ts";
+import { PinRefusal, pinRefusalCodes } from "../../../src/pin-move.ts";
 import {
+  RepositoryPinRefusal,
+  repositoryPinRefusalCodes,
+} from "../../../src/pin-move-branch.ts";
+import {
+  classifyMoveRefusal,
   classifyRefusal,
-  moveCompletedFailureCauses,
-  moveFailedCause,
-  movePreWriteRefusalCauses,
   moveRefusalRows,
   moveStateRows,
   pinMoveIdentity,
@@ -36,40 +37,19 @@ const pin = readKernelPin(ROOT);
 const folder = ownedFolders();
 const fixture = pinMoveRepositoryFixture();
 
-const allPinRefusalCodes: readonly PinRefusalCode[] = [
-  "pin_places_disagree",
-  "kernel_commit_unreachable",
-  "kernel_commit_before_carry_out",
-  "kernel_history_unreadable",
-  "kernel_branch_unreadable",
-];
-
-const allRepositoryPinRefusalCodes = [
-  "repository_git_failed",
-  "repository_dirty",
-  "repository_invalid",
-  "repository_pin_missing",
-  "repository_check_failed",
-  "repository_branch_exists",
-  "repository_pin_unchanged",
-  "trial_stopped",
-] as const;
-
 const planRepositoryCodes = [
   "repository_git_failed",
   "repository_invalid",
   "repository_pin_missing",
 ] as const;
 
-const preWriteRepositoryCodes = [
-  "repository_git_failed",
-  "repository_dirty",
-  "repository_invalid",
-  "repository_pin_missing",
-  "repository_branch_exists",
-  "repository_pin_unchanged",
-  "trial_stopped",
-] as const;
+const afterWriteOnlyRepositoryCodes = new Set<string>([
+  "repository_check_failed",
+]);
+
+const preWriteRepositoryCodes = repositoryPinRefusalCodes.filter(
+  (code) => !afterWriteOnlyRepositoryCodes.has(code),
+);
 
 const planStationCodes = new Set<string>(
   planRefusalRows(pinPlanIdentity).map((row) => row.causeCode),
@@ -129,7 +109,7 @@ function remotePathEnv(remoteRepository: string): {
 describe("pin refusal classification across phases", () => {
   test("every PinRefusal and RepositoryPinRefusal code in pin plan yields a declared refused unchanged DOMAIN_PIN_* cause", () => {
     const planCases = [
-      ...allPinRefusalCodes.map((code) => ({
+      ...pinRefusalCodes.map((code) => ({
         code,
         error: new PinRefusal(code, `cause ${code}`, "main"),
       })),
@@ -153,7 +133,7 @@ describe("pin refusal classification across phases", () => {
 
   test("every PinRefusal and RepositoryPinRefusal code before writes in pin move yields a declared refused unchanged DOMAIN_PIN_* cause", () => {
     const beforeWriteCases = [
-      ...allPinRefusalCodes.map((code) => ({
+      ...pinRefusalCodes.map((code) => ({
         code,
         error: new PinRefusal(code, `cause ${code}`, "main"),
       })),
@@ -164,10 +144,7 @@ describe("pin refusal classification across phases", () => {
     ];
 
     for (const entry of beforeWriteCases) {
-      const classified = classifyRefusal(
-        entry.error,
-        movePreWriteRefusalCauses,
-      );
+      const classified = classifyMoveRefusal(entry.error, "before-write");
       expect(classified, `pin move before-write: ${entry.code}`).toBeDefined();
       if (classified === undefined) continue;
       expect(classified.causeCode.startsWith("DOMAIN_PIN_")).toBe(true);
@@ -180,21 +157,18 @@ describe("pin refusal classification across phases", () => {
 
   test("every PinRefusal and RepositoryPinRefusal code after writes with start restored yields a declared failed completed DOMAIN_PIN_* cause", () => {
     const restoredCases = [
-      ...allPinRefusalCodes.map((code) => ({
+      ...pinRefusalCodes.map((code) => ({
         code,
         error: new PinRefusal(code, `cause ${code}`, "main"),
       })),
-      ...allRepositoryPinRefusalCodes.map((code) => ({
+      ...repositoryPinRefusalCodes.map((code) => ({
         code,
         error: new RepositoryPinRefusal(code, `cause ${code}`, "repair", true),
       })),
     ];
 
     for (const entry of restoredCases) {
-      const classified = classifyRefusal(
-        entry.error,
-        moveCompletedFailureCauses,
-      );
+      const classified = classifyMoveRefusal(entry.error, "restored");
       expect(classified, `pin move restored: ${entry.code}`).toBeDefined();
       if (classified === undefined) continue;
       expect(classified.causeCode.startsWith("DOMAIN_PIN_")).toBe(true);
@@ -205,15 +179,31 @@ describe("pin refusal classification across phases", () => {
     }
   });
 
-  test("every unrestored transaction state maps to a declared DOMAIN_PIN_MOVE_FAILED_* cause matching transactionState", () => {
+  test("every PinRefusal and RepositoryPinRefusal code in unrestored states maps to a declared DOMAIN_PIN_MOVE_FAILED_* cause matching transactionState", () => {
+    const unrestoredCases = [
+      ...pinRefusalCodes.map((code) => ({
+        code,
+        error: new PinRefusal(code, `cause ${code}`, "main"),
+      })),
+      ...repositoryPinRefusalCodes.map((code) => ({
+        code,
+        error: new RepositoryPinRefusal(code, `cause ${code}`, "repair", false),
+      })),
+    ];
     const states = ["unchanged", "partially-completed", "unknown"] as const;
     for (const state of states) {
-      const causeCode = moveFailedCause(state);
-      expect(causeCode.startsWith("DOMAIN_PIN_MOVE_FAILED_")).toBe(true);
-      expect(moveStationCodes.has(causeCode)).toBe(true);
-      const causeRow = pinCauses[causeCode];
-      expect(causeRow.outcome).toBe("failed");
-      expect(causeRow.transactionState).toBe(state);
+      for (const entry of unrestoredCases) {
+        const classified = classifyMoveRefusal(entry.error, state);
+        expect(classified, `pin move ${state}: ${entry.code}`).toBeDefined();
+        if (classified === undefined) continue;
+        expect(classified.causeCode.startsWith("DOMAIN_PIN_MOVE_FAILED_")).toBe(
+          true,
+        );
+        expect(moveStationCodes.has(classified.causeCode)).toBe(true);
+        const causeRow = pinCauses[classified.causeCode];
+        expect(causeRow.outcome).toBe("failed");
+        expect(causeRow.transactionState).toBe(state);
+      }
     }
   });
 

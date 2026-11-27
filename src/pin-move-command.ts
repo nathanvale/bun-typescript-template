@@ -27,18 +27,18 @@ import {
   type RepositoryPinMoveOutcome,
 } from "./pin-move-repository.ts";
 import {
-  classifyRefusal,
+  classifyMoveRefusal,
   commitArgument,
   kernelOption,
-  moveCompletedFailureCauses,
   moveFailedCause,
-  movePreWriteRefusalCauses,
   moveRefusalRows,
   moveStateRows,
   pinCauseDefaults,
   pinMoveIdentity,
   pinNoChange,
   pinPathValue,
+  type PreWriteMoveRefusalCause,
+  type RestoredMoveFailureCause,
   stateRefusalCause,
 } from "./pin-refusals.ts";
 
@@ -97,11 +97,11 @@ function handleMoveTransactionFailure<Result>(
       kind: string,
     ) => Result;
     readonly domainRefused: (
-      causeCode: (typeof movePreWriteRefusalCauses)[number],
+      causeCode: PreWriteMoveRefusalCause,
       message: string,
     ) => Result;
-    readonly completedFailed: (
-      causeCode: (typeof moveCompletedFailureCauses)[number],
+    readonly restoredFailed: (
+      causeCode: RestoredMoveFailureCause,
       message: string,
       proof: Extract<MoveTransaction, { readonly kind: "ran" }>["proof"],
     ) => Result;
@@ -119,7 +119,7 @@ function handleMoveTransactionFailure<Result>(
     tx.proof.transactionState === "unchanged" &&
     capturedError !== undefined
   ) {
-    const refused = classifyRefusal(capturedError, movePreWriteRefusalCauses);
+    const refused = classifyMoveRefusal(capturedError, "before-write");
     if (refused !== undefined) {
       return onResult.domainRefused(refused.causeCode, refused.message);
     }
@@ -130,14 +130,11 @@ function handleMoveTransactionFailure<Result>(
     completedValue === undefined &&
     capturedError !== undefined
   ) {
-    const completedFailure = classifyRefusal(
-      capturedError,
-      moveCompletedFailureCauses,
-    );
-    if (completedFailure !== undefined) {
-      return onResult.completedFailed(
-        completedFailure.causeCode,
-        completedFailure.message,
+    const restoredFailure = classifyMoveRefusal(capturedError, "restored");
+    if (restoredFailure !== undefined) {
+      return onResult.restoredFailed(
+        restoredFailure.causeCode,
+        restoredFailure.message,
         tx.proof,
       );
     }
@@ -226,8 +223,7 @@ async function executeRepositoryMove(
                     if (
                       error instanceof RepositoryPinRefusal &&
                       error.restored &&
-                      classifyRefusal(error, moveCompletedFailureCauses) !==
-                        undefined
+                      classifyMoveRefusal(error, "restored") !== undefined
                     ) {
                       completedFailure = error;
                       return;
@@ -420,7 +416,7 @@ export function pinMoveCommand(
           );
         },
         domainRefused: (
-          causeCode: (typeof movePreWriteRefusalCauses)[number],
+          causeCode: PreWriteMoveRefusalCause,
           message: string,
         ) => {
           context.diagnostics.record(
@@ -433,8 +429,8 @@ export function pinMoveCommand(
             { message, data: null, effects: pinNoChange },
           );
         },
-        completedFailed: (
-          causeCode: (typeof moveCompletedFailureCauses)[number],
+        restoredFailed: (
+          causeCode: RestoredMoveFailureCause,
           message: string,
           proof: Extract<MoveTransaction, { readonly kind: "ran" }>["proof"],
         ) => {
@@ -547,7 +543,7 @@ export function pinMoveCommand(
           ? await finishRepository(input["--repository"])
           : await finishTemplate();
       } catch (error) {
-        const refused = classifyRefusal(error, movePreWriteRefusalCauses);
+        const refused = classifyMoveRefusal(error, "before-write");
         if (refused === undefined) throw error;
         return failureHandlers.domainRefused(
           refused.causeCode,

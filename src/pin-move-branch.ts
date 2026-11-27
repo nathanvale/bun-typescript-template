@@ -7,6 +7,17 @@ import { CliError } from "./cli-error.ts";
 const repositoryGitMilliseconds = 20_000;
 const restoreInstallMilliseconds = 120_000;
 
+export const repositoryPinRefusalCodes = [
+  "repository_git_failed",
+  "repository_dirty",
+  "repository_invalid",
+  "repository_pin_missing",
+  "repository_check_failed",
+  "repository_branch_exists",
+  "repository_pin_unchanged",
+  "trial_stopped",
+] as const;
+
 export class RepositoryPinRefusal extends Error {
   constructor(
     readonly code: string,

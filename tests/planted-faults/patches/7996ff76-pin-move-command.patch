@@ -9,8 +9,7 @@ index 11111111..22222222 100644
 -                    if (
 -                      error instanceof RepositoryPinRefusal &&
 -                      error.restored &&
--                      classifyRefusal(error, moveCompletedFailureCauses) !==
--                        undefined
+-                      classifyMoveRefusal(error, "restored") !== undefined
 -                    ) {
 -                      completedFailure = error;
 -                      return;
