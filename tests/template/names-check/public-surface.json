@@ -2,6 +2,7 @@
   "exports": [
     "generated-repository/application/**/*.ts",
     "generated-repository/scripts/**/*.ts",
+    "tests/support/loopback-connect-probe.ts",
     "tests/support/test-folder.ts",
     "tests/support/test-run-folder.ts",
     "scripts/test-run.ts",

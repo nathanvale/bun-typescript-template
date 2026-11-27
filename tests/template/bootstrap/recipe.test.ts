@@ -239,6 +239,22 @@ describe("the recipe", () => {
       "scripts/test-run.ts",
     ]);
   });
+
+  test("it copies tests/support/loopback-connect-probe.ts and Bootstrap writes it byte-identical to the starter kit", async () => {
+    const files = await copiedFiles(KERNEL_RECIPE);
+    expect(files).toContain("tests/support/loopback-connect-probe.ts");
+    const { destination, request } = bootstrapFixture();
+    await bootstrapRow(request);
+    const copied = await readFile(
+      join(destination, "tests/support/loopback-connect-probe.ts"),
+      "utf8",
+    );
+    const starter = await readFile(
+      join(ROOT, "tests/support/loopback-connect-probe.ts"),
+      "utf8",
+    );
+    expect(copied).toBe(starter);
+  });
 });
 
 const probeFolder = ownedFolders();
