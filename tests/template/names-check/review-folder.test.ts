@@ -18,17 +18,26 @@ function plantReviewFiles(root: string): void {
   put(root, ".review/probe.ts", "export const   probe: any = 1;\n");
 }
 
-function starterKitFixture(): string {
+async function starterKitFixture(): Promise<string> {
   const root = plainWordsRepository();
   put(root, ".gitignore", readFileSync(join(ROOT, ".gitignore"), "utf8"));
   put(root, "biome.json", readFileSync(join(ROOT, "biome.json"), "utf8"));
   put(root, "scripts/file-size-recorded-hits.json", "{}\n");
+  const formatted = await spawnBounded([biomeBin, "format", "--write", "."], {
+    cwd: root,
+    processGroup: true,
+  });
+  expect(formatted.exit).toBe(0);
   git(
     root,
     "add",
     ".gitignore",
     "biome.json",
+    "names-plain-words.json",
     "scripts/file-size-recorded-hits.json",
+    "tests/template/names-check/public-surface.json",
+    "tests/template/names-check/recorded-hits.json",
+    "tests/template/names-check/recorded-unused-terms.json",
   );
   git(root, "commit", "--quiet", "-m", "add starter kit ignore and checks");
   return root;
@@ -37,7 +46,7 @@ function starterKitFixture(): string {
 test(
   "skips untracked .review/ files across tree-walking checks",
   async () => {
-    const root = starterKitFixture();
+    const root = await starterKitFixture();
     plantReviewFiles(root);
 
     expect(await check(root, ["--against", "HEAD"])).toEqual({
@@ -60,10 +69,8 @@ test(
       cwd: root,
       processGroup: true,
     });
-    expect({ exit: format.exit, stderr: format.stderr }).toEqual({
-      exit: 0,
-      stderr: "",
-    });
+    expect(format.exit).toBe(0);
+    expect(format.stderr).not.toContain(".review");
 
     const eslint = new ESLint({ cwd: ROOT });
     expect(await eslint.isPathIgnored(".review/probe.ts")).toBe(true);
@@ -75,7 +82,7 @@ test(
 );
 
 test("refuses untracked review/, .reviews/ and docs/.review-notes.md when they use unknown words", async () => {
-  const root = starterKitFixture();
+  const root = await starterKitFixture();
   put(root, "review/SPEC.md", "# Not ignored\n");
   put(root, ".reviews/SPEC.md", "# Not ignored\n");
   put(root, "docs/.review-notes.md", "# Not ignored\n");

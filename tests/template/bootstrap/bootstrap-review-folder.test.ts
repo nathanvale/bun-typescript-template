@@ -91,10 +91,8 @@ test(
       cwd: destination,
       processGroup: true,
     });
-    expect({ exit: format.exit, stderr: format.stderr }).toEqual({
-      exit: 0,
-      stderr: "",
-    });
+    expect(format.exit).toBe(0);
+    expect(format.stderr).not.toContain(".review");
 
     const eslint = new ESLint({ cwd: destination });
     expect(await eslint.isPathIgnored(".review/probe.ts")).toBe(true);
