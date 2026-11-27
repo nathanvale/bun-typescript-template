@@ -238,6 +238,27 @@ describe("cli front door and doctor route", () => {
   );
 
   test(
+    "doctor without --json writes nothing to stdout on failure and reports failed checks on stderr",
+    async () => {
+      const root = copyCliCheckout({
+        packageManager: "bun@0.0.1",
+        linkNodeModules: true,
+      });
+      const stateHome = folder("doctor-state-");
+      const result = await runCli(root, ["doctor"], stateHome);
+
+      expect(result.exitCode).toBe(3);
+      expect(result.stdout).toMatch(/^(?:Diagnostics: [^\n]+\.jsonl\n)?$/);
+      expect(result.stderr).toContain("[DOMAIN_DOCTOR_CHECK_FAILED]");
+      expect(result.stderr).toContain(
+        `FAIL bun: found Bun ${Bun.version}, pinned 0.0.1.`,
+      );
+      expect(result.stderr).toContain("Done when bun run doctor passes.");
+    },
+    processWatchdog(1),
+  );
+
+  test(
     "doctor refuses a checkout that fails a check with DOMAIN_DOCTOR_CHECK_FAILED, results in the envelope, and a diagnostics event",
     async () => {
       const root = copyCliCheckout({

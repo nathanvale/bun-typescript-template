@@ -103,11 +103,11 @@ describe("pin-move --repository", () => {
       stderr: "",
     });
     const reportIndex = run.stdout.indexOf("Kernel changesets (1):");
-    const movedIndex = run.stdout.indexOf(
-      `Moved kernel Pin in ${realpathSync(repo)} on branch ${expectedBranch}`,
-    );
+    const movedSummary = `Moved kernel Pin in ${realpathSync(repo)} on branch ${expectedBranch}`;
+    const movedIndex = run.stdout.indexOf(movedSummary);
     expect(reportIndex).toBeGreaterThan(-1);
     expect(movedIndex).toBeGreaterThan(reportIndex);
+    expect(run.stdout.split(movedSummary).length - 1).toBe(1);
     expect(run.stdout).toContain(
       "Stopped a hung child process group on timeout.",
     );
@@ -257,7 +257,7 @@ describe("pin-move --repository", () => {
       repo,
     ]);
     expect(run.exit).toBe(3);
-    expect(run.stdout).toContain("Kernel changesets (1):");
+    expect(run.stdout).toMatch(/^(?:Diagnostics: [^\n]+\.jsonl\n)?$/);
     expect(run.stderr).toContain("[DOMAIN_PIN_REPOSITORY_CHECK_FAILED]");
     const kept = keptAttempt(repo, expectedBranch);
     expect(run.stderr).toContain(
