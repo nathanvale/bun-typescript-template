@@ -9,6 +9,7 @@ import {
 } from "node:fs";
 import { delimiter, join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { pinCauseCode } from "../../src/causes.ts";
 import { readKernelPin } from "../../src/kernel-pin.ts";
 import { ROOT } from "./bootstrap-cli-fixture.ts";
 import { ownedFolders } from "./fixture-files.ts";
@@ -55,10 +56,15 @@ export function expectRefused(
     readonly stdout: string;
     readonly stderr: string;
   },
-  _code: string,
+  code: string,
 ): void {
+  const causeCode = pinCauseCode(code);
+  if (causeCode === undefined) {
+    throw new Error(`Unknown pin refusal code in test: ${code}`);
+  }
   expect(run.exit).toBe(3);
   expect(run.stdout).toMatch(/^(?:Diagnostics: [^\n]+\.jsonl\n)?$/);
+  expect(run.stderr).toContain(`[${causeCode}]`);
   expect(run.stderr).toContain("Repair:");
 }
 
