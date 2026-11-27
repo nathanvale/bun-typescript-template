@@ -3460,5 +3460,26 @@
     "testFile": "tests/template/pin-move/pin-cli.test.ts",
     "title": "^--discover-all lists pin verify, pin plan, and pin move with their identities and effect classes, and each answers --help$",
     "source": "8bd141b feat(cli): move pin verify, pin plan, and pin move behind the front door"
+  },
+  {
+    "id": "a612a1ed-pin-move",
+    "patch": "tests/planted-faults/patches/a612a1ed-pin-move.patch",
+    "testFile": "tests/template/pin-move/pin-move-command.test.ts",
+    "title": "run at the pinned commit on a template with no lockfile",
+    "source": "a612a1ed fix(pin): skip rewriting template bun.lock when it already pins the target commit"
+  },
+  {
+    "id": "7996ff76-pin-move-command",
+    "patch": "tests/planted-faults/patches/7996ff76-pin-move-command.patch",
+    "testFile": "tests/template/pin-move/pin-move-regenerate.test.ts",
+    "title": "refuses when the regenerate step exits non-zero",
+    "source": "7996ff76 fix(pin): emit DOMAIN_PIN_* refusal causes on repository pin-move failures and bound refusal detail"
+  },
+  {
+    "id": "7996ff76-pin-move-branch",
+    "patch": "tests/planted-faults/patches/7996ff76-pin-move-branch.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "says the installed kernel was not restored when the starting branch's frozen install fails",
+    "source": "7996ff76 fix(pin): emit DOMAIN_PIN_* refusal causes on repository pin-move failures and bound refusal detail"
   }
 ]
