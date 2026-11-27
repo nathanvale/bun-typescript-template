@@ -513,6 +513,7 @@ function preparePendingRecording(
 export function runRecordedHitsRepairStep(
   request: RecordedHitsRequest,
   timeoutMilliseconds: number,
+  timeoutMessage?: string,
 ):
   | { readonly ok: true; readonly steps: readonly TemplateUpgradeApplyStep[] }
   | {
@@ -525,6 +526,7 @@ export function runRecordedHitsRepairStep(
     worktree: request.worktree,
     args: ["run", RECORDED_HITS_SCRIPT],
     timeoutMilliseconds,
+    timeoutMessage,
     env: request.env,
   });
   if (!record.ok) {
@@ -564,6 +566,7 @@ export function runRecordedHitsRepairStep(
 export function runRecordedHitsStep(
   request: RecordedHitsRequest,
   timeoutMilliseconds: number,
+  timeoutMessage?: string,
 ):
   | { readonly ok: true; readonly steps: readonly TemplateUpgradeApplyStep[] }
   | {
@@ -582,6 +585,7 @@ export function runRecordedHitsStep(
     worktree: request.worktree,
     args: ["run", RECORDED_HITS_SCRIPT],
     timeoutMilliseconds,
+    timeoutMessage,
     env: request.env,
   });
   if (!record.ok) {

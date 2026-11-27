@@ -56,7 +56,7 @@ const BIOME_ERROR_SUMMARY_PATTERN = /^Found\s+(\d+)\s+errors?\./m;
 const CRASH_OR_NON_GATE_PATTERNS: readonly RegExp[] = [
   /Oops! Something went wrong!/,
   /error:\s+script\s+"test"\s+exited\s+with\s+code/,
-  /did not finish within \d+ ms/,
+  /did not finish within \d+ (?:ms|seconds?)/,
   /Segmentation fault/i,
   /\bFATAL ERROR\b/,
   /\bUnhandledPromiseRejection\b/,

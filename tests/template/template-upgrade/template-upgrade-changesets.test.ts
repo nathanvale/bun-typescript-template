@@ -268,11 +268,23 @@ test(
       configPath,
       `${JSON.stringify({ ...config, ignore: ["example-ignored"] }, null, 2)}\n`,
     );
+    const bootstrapPath = join(templateClone, "src/bootstrap.ts");
+    const agentsNote = "Use the existing repository CLI at src/cli.ts.";
+    const updatedAgentsNote =
+      "Use the existing repository CLI at src/cli.ts (keep one front door).";
+    writeFileSync(
+      bootstrapPath,
+      readFileSync(bootstrapPath, "utf8").replace(
+        agentsNote,
+        updatedAgentsNote,
+      ),
+    );
     git(
       templateClone,
       "add",
       "--",
       "generated-repository/changeset/config.json",
+      "src/bootstrap.ts",
     );
     const targetCommit = commitTemplateUpgradeChanges(templateClone);
     const branch = `template-upgrade/${baseCommit.slice(0, 7)}-${targetCommit.slice(0, 7)}`;
@@ -375,7 +387,7 @@ test(
     );
     expect(applyRun.exitCode).toBe(0);
     const mergedAgents = gitOutput(editedRepo, "show", `${branch}:AGENTS.md`);
-    expect(mergedAgents).toContain(`Template source: ${targetCommit}`);
+    expect(mergedAgents).toContain(updatedAgentsNote);
     expect(mergedAgents).toContain("## Repository rules");
     const mergedConfig = JSON.parse(
       gitOutput(editedRepo, "show", `${branch}:.changeset/config.json`),

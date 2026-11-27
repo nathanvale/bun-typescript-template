@@ -1,0 +1,19 @@
+diff --git a/src/template-upgrade-json-merge.ts b/src/template-upgrade-json-merge.ts
+--- a/src/template-upgrade-json-merge.ts
++++ b/src/template-upgrade-json-merge.ts
+@@ -426,7 +426,14 @@ export async function mergeJsonUpgradeFile(options: {
+       await writeFile(oursPath, json.mergedText);
+       return { outcome: "merge" };
+     }
+-    await writeFile(oursPath, json.markedText);
++    await writeFile(
++      oursPath,
++      `<<<<<<< ours\n` +
++        `${withTrailingNewline(oursText)}` +
++        `=======\n` +
++        `${withTrailingNewline(newText)}` +
++        `>>>>>>> new\n`,
++    );
+     return { outcome: "conflict", keyConflicts: json.conflicts };
+   }
+   const textResult = gitMergeFile(oursPath, oldPath, newPath, env);

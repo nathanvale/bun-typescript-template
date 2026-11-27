@@ -1,10 +1,19 @@
 import { expect, test } from "bun:test";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { CliError } from "../../../src/cli-error.ts";
+import { TEMPLATE_UPGRADE_FLOOR } from "../../../src/template-upgrade-git.ts";
+import { resolveTemplateUpgradeInputs } from "../../../src/template-upgrade-inputs.ts";
+import { main } from "../../../src/template-upgrade.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
-import { git } from "../../support/git-fixture.ts";
-import {} from "../../support/kernel-sibling.ts";
+import {
+  commitIn,
+  git,
+  gitEnv,
+  initRepository,
+} from "../../support/git-fixture.ts";
+import { trialBase } from "../../support/kernel-sibling.ts";
 import { processWatchdog, spawnBounded } from "../../support/process.ts";
 import { streamWrites } from "../../support/stream-writes.ts";
 import {
@@ -369,3 +378,268 @@ test(
   },
   processWatchdog(2),
 );
+
+test(
+  "applies templateUpgrade.checkTimeoutSeconds to bun run check, names the key on timeout, and succeeds when raised",
+  async () => {
+    const { templateClone, baseCommit } = cloneTemplateAtHead(folder);
+    const targetCommit = commitTemplateLintChange(templateClone);
+    const repo = await bootstrapGeneratedRepository(
+      folder,
+      templateClone,
+      baseCommit,
+      "check-timeout-app",
+    );
+    const setCheckTimeout = (seconds: number) => {
+      const packagePath = join(repo, "package.json");
+      const manifest = JSON.parse(readFileSync(packagePath, "utf8")) as Record<
+        string,
+        unknown
+      >;
+      manifest.templateUpgrade = { checkTimeoutSeconds: seconds };
+      writeFileSync(packagePath, `${JSON.stringify(manifest, null, 2)}\n`);
+      git(repo, "add", "--", "package.json");
+      git(repo, "commit", "--quiet", "-m", `set check limit to ${seconds}s`);
+    };
+    setCheckTimeout(1);
+
+    const { env } = writeScriptedBun(
+      folder,
+      "scripted-bun-timeout-",
+      `#!/bin/sh
+echo "$*" >> __LEDGER__
+if [ "$1" = "run" ] && [ "$2" = "check" ]; then
+  sleep 2
+  exit 0
+fi
+exit 0
+`,
+    );
+    const stdout = captureStream(process.stdout);
+    const stderr = captureStream(process.stderr);
+    const runtime = { templateRoot: templateClone, env };
+
+    const timeoutJsonRun = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      ["apply", "--repository", repo, "--to", targetCommit, "--json"],
+      runtime,
+    );
+    expect(timeoutJsonRun.exitCode).toBe(1);
+    const timeoutPayload = JSON.parse(timeoutJsonRun.stdout) as {
+      status: string;
+      failedStep: string;
+      checkCommandOutput: string;
+    };
+    expect(timeoutPayload.status).toBe("check-failed");
+    expect(timeoutPayload.failedStep).toBe("bun run check");
+    expect(timeoutPayload.checkCommandOutput).toContain(
+      "did not finish within 1 second",
+    );
+    expect(timeoutPayload.checkCommandOutput).toContain(
+      "templateUpgrade.checkTimeoutSeconds",
+    );
+    expect(timeoutPayload.checkCommandOutput).toContain("package.json");
+
+    const timeoutTextRun = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      ["apply", "--repository", repo, "--to", targetCommit],
+      runtime,
+    );
+    expect(timeoutTextRun.exitCode).toBe(1);
+    expect(timeoutTextRun.stdout).toContain("did not finish within 1 second");
+    expect(timeoutTextRun.stdout).toContain(
+      "templateUpgrade.checkTimeoutSeconds",
+    );
+    expect(timeoutTextRun.stdout).toContain("package.json");
+    expect(timeoutTextRun.stdout).toContain("upgrade recover");
+
+    const recoverRun = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      ["recover", "--repository", repo, "--to", targetCommit, "--json"],
+      runtime,
+    );
+    expect(recoverRun.exitCode).toBe(0);
+
+    setCheckTimeout(5);
+    const passRun = await invokeTemplateUpgradeMain(
+      stdout,
+      stderr,
+      ["apply", "--repository", repo, "--to", targetCommit, "--json"],
+      runtime,
+    );
+    expect(passRun.exitCode).toBe(0);
+    expect(JSON.parse(passRun.stdout)).toMatchObject({
+      status: "applied",
+      steps: [
+        { command: "bun install", ran: true, outcome: "passed" },
+        { command: "bun run check", ran: true, outcome: "passed" },
+        {
+          command: "fallow audit",
+          ran: false,
+          outcome: "skipped",
+          reason: "node_modules/.bin/fallow not found",
+        },
+      ],
+    });
+  },
+  processWatchdog(4),
+);
+
+function captureCliError(run: () => unknown): CliError {
+  try {
+    run();
+  } catch (error) {
+    if (error instanceof CliError) {
+      return error;
+    }
+    throw error;
+  }
+  throw new Error("Expected a CliError refusal.");
+}
+
+test("defaults templateUpgrade.checkTimeoutSeconds to 900 seconds when absent and reads a positive integer", () => {
+  const targetCommit = git(ROOT, "rev-parse", "HEAD");
+  const baseStamp = {
+    name: "demo",
+    templateRevision: TEMPLATE_UPGRADE_FLOOR,
+    templateDirty: false,
+    sourcePacket: "/abs/packet",
+  };
+  const baseManifest = {
+    name: "demo",
+    dependencies: {
+      "agent-cli-kernel": `github:nathanvale/agent-cli-kernel#${trialBase}`,
+    },
+  };
+  const readResolvedLimit = (manifest: Record<string, unknown>) => {
+    const repository = folder("check-limit-default-");
+    initRepository(repository);
+    commitIn(repository, "initial", {
+      ".template.json": `${JSON.stringify(baseStamp, null, 2)}\n`,
+      "package.json": `${JSON.stringify(manifest, null, 2)}\n`,
+    });
+    const inputs = resolveTemplateUpgradeInputs({
+      templateRoot: ROOT,
+      repository,
+      targetRef: targetCommit,
+      env: gitEnv,
+    });
+    return new Map<string, unknown>(Object.entries(inputs)).get(
+      "checkLimitSeconds",
+    );
+  };
+
+  expect(readResolvedLimit(baseManifest)).toBe(900);
+  expect(readResolvedLimit({ ...baseManifest, templateUpgrade: {} })).toBe(900);
+  expect(
+    readResolvedLimit({
+      ...baseManifest,
+      templateUpgrade: { checkTimeoutSeconds: 1 },
+    }),
+  ).toBe(1);
+  expect(
+    readResolvedLimit({
+      ...baseManifest,
+      templateUpgrade: { checkTimeoutSeconds: 2_147_483 },
+    }),
+  ).toBe(2_147_483);
+});
+
+test("refuses non-positive-integer templateUpgrade.checkTimeoutSeconds before any work", async () => {
+  const targetCommit = git(ROOT, "rev-parse", "HEAD");
+  const baseStamp = {
+    name: "demo",
+    templateRevision: TEMPLATE_UPGRADE_FLOOR,
+    templateDirty: false,
+    sourcePacket: "/abs/packet",
+  };
+  const kernelPin = `github:nathanvale/agent-cli-kernel#${trialBase}`;
+  for (const invalidValue of [0, -1, "60", 1.5, null, true, 2_147_484]) {
+    const repository = folder("check-limit-invalid-");
+    initRepository(repository);
+    commitIn(repository, "initial", {
+      ".template.json": `${JSON.stringify(baseStamp, null, 2)}\n`,
+      "package.json": `${JSON.stringify(
+        {
+          name: "demo",
+          dependencies: { "agent-cli-kernel": kernelPin },
+          templateUpgrade: { checkTimeoutSeconds: invalidValue },
+        },
+        null,
+        2,
+      )}\n`,
+    });
+    const refusal = captureCliError(() =>
+      resolveTemplateUpgradeInputs({
+        templateRoot: ROOT,
+        repository,
+        targetRef: targetCommit,
+        env: gitEnv,
+      }),
+    );
+    expect(refusal.code).toBe("check_limit_invalid");
+    expect(refusal.message).toContain("templateUpgrade.checkTimeoutSeconds");
+    expect(refusal.message).toContain(JSON.stringify(invalidValue));
+    expect(refusal.repair).toContain("templateUpgrade.checkTimeoutSeconds");
+  }
+
+  for (const invalidSection of ["60", null, []]) {
+    const repository = folder("check-limit-section-invalid-");
+    initRepository(repository);
+    commitIn(repository, "initial", {
+      ".template.json": `${JSON.stringify(baseStamp, null, 2)}\n`,
+      "package.json": `${JSON.stringify(
+        {
+          name: "demo",
+          dependencies: { "agent-cli-kernel": kernelPin },
+          templateUpgrade: invalidSection,
+        },
+        null,
+        2,
+      )}\n`,
+    });
+    const refusal = captureCliError(() =>
+      resolveTemplateUpgradeInputs({
+        templateRoot: ROOT,
+        repository,
+        targetRef: targetCommit,
+        env: gitEnv,
+      }),
+    );
+    expect(refusal.code).toBe("check_limit_invalid");
+    expect(refusal.message).toContain("templateUpgrade.checkTimeoutSeconds");
+    expect(refusal.message).toContain(JSON.stringify(invalidSection));
+    expect(refusal.repair).toContain("templateUpgrade.checkTimeoutSeconds");
+  }
+
+  const beforeWorkRepo = folder("check-limit-before-work-");
+  initRepository(beforeWorkRepo);
+  commitIn(beforeWorkRepo, "initial", {
+    ".template.json": `${JSON.stringify(baseStamp, null, 2)}\n`,
+    "package.json": `${JSON.stringify(
+      {
+        name: "demo",
+        dependencies: { "agent-cli-kernel": kernelPin },
+        templateUpgrade: { checkTimeoutSeconds: 0 },
+      },
+      null,
+      2,
+    )}\n`,
+  });
+  const stdout = captureStream(process.stdout);
+  const stderr = captureStream(process.stderr);
+  const exitCode = await main(
+    ["apply", "--repository", beforeWorkRepo, "--to", targetCommit, "--json"],
+    { templateRoot: ROOT, env: gitEnv },
+  );
+  expect(exitCode).toBe(2);
+  expect(stdout()).toBe("");
+  expect(JSON.parse(stderr())).toMatchObject({
+    status: "refused",
+    error: { code: "check_limit_invalid" },
+  });
+  expect(existsSync(join(beforeWorkRepo, ".worktrees"))).toBe(false);
+});

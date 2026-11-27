@@ -1,0 +1,14 @@
+diff --git a/src/template-upgrade-apply.ts b/src/template-upgrade-apply.ts
+--- a/src/template-upgrade-apply.ts
++++ b/src/template-upgrade-apply.ts
+@@ -177,9 +177,7 @@ async function executePlanInWorktree(options: {
+     new Set<string>(),
+     mergedJsonTexts,
+   );
+-  const afterPackage =
+-    mergedJsonTexts.get("package.json") ??
+-    (await readTextIfFile(join(planWorktree, "package.json")));
++  const afterPackage = await readTextIfFile(join(planWorktree, "package.json"));
+   const dependencyDiff = readPackageChanges(beforePackage, afterPackage);
+   const templateCopyChanges = await diffTemplateUpgradeCopyChanges(
+     oldFolder,

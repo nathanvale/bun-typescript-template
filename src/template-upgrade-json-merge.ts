@@ -1,3 +1,9 @@
+import { readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { gitMergeFile } from "./template-upgrade-git.ts";
+import { mergeDuplicatesMember } from "./template-upgrade-json-members.ts";
+import { assertNoSymlinkAncestors } from "./template-upgrade-worktree.ts";
+
 export type JsonValue =
   | null
   | boolean
@@ -6,9 +12,18 @@ export type JsonValue =
   | readonly JsonValue[]
   | { readonly [key: string]: JsonValue };
 
+export interface JsonKeyConflict {
+  readonly path: string;
+  readonly base?: JsonValue;
+  readonly ours?: JsonValue;
+  readonly next?: JsonValue;
+}
+
 export interface JsonMergeResult {
   readonly mergedText: string;
+  readonly markedText: string;
   readonly conflictPaths: readonly string[];
+  readonly conflicts: readonly JsonKeyConflict[];
 }
 
 export interface PackageDependencyChange {
@@ -17,6 +32,24 @@ export interface PackageDependencyChange {
   readonly before: string | null;
   readonly after: string | null;
 }
+
+export interface PackageChangesResult {
+  readonly changes: readonly PackageDependencyChange[];
+  readonly unavailableReason?: string;
+}
+
+type RenderedMember =
+  | {
+      readonly kind: "clean";
+      readonly key: string;
+      readonly rendered: string;
+    }
+  | {
+      readonly kind: "conflict";
+      readonly key: string;
+      readonly ours: JsonValue | undefined;
+      readonly next: JsonValue | undefined;
+    };
 
 const DEPENDENCY_SECTIONS: readonly PackageDependencyChange["section"][] = [
   "dependencies",
@@ -41,6 +74,29 @@ function compareCodeUnits(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
+function formatJsonIndented(value: JsonValue, indent: number): string {
+  const serialized = JSON.stringify(value, null, 2);
+  if (indent === 0) {
+    return serialized;
+  }
+  const prefix = " ".repeat(indent);
+  return serialized.replaceAll("\n", `\n${prefix}`);
+}
+
+function makeJsonKeyConflict(
+  path: string,
+  base: JsonValue | undefined,
+  ours: JsonValue | undefined,
+  next: JsonValue | undefined,
+): JsonKeyConflict {
+  return Object.freeze({
+    path,
+    ...(base === undefined ? {} : { base }),
+    ...(ours === undefined ? {} : { ours }),
+    ...(next === undefined ? {} : { next }),
+  });
+}
+
 function mergeObjectKeyOrder(
   oursKeys: readonly string[],
   nextKeys: readonly string[],
@@ -62,13 +118,108 @@ function mergeObjectKeyOrder(
   return mergedKeys;
 }
 
-function mergeJsonObjects(
-  ours: { readonly [key: string]: JsonValue },
-  base: JsonValue | undefined,
-  next: { readonly [key: string]: JsonValue },
-  path: string,
-  conflicts: string[],
-): { readonly [key: string]: JsonValue } {
+function renderObjectMembers(
+  members: readonly RenderedMember[],
+  indent: number,
+): string {
+  if (members.length === 0) {
+    return "{}";
+  }
+  const memberIndent = " ".repeat(indent + 2);
+  const closeIndent = " ".repeat(indent);
+  const lines = members.map((member, index) => {
+    const comma = index < members.length - 1 ? "," : "";
+    if (member.kind === "clean") {
+      return `${memberIndent}${JSON.stringify(member.key)}: ${member.rendered}${comma}`;
+    }
+    const oursBlock =
+      member.ours === undefined
+        ? ""
+        : `${memberIndent}${JSON.stringify(member.key)}: ${formatJsonIndented(member.ours, indent + 2)}${comma}\n`;
+    const nextBlock =
+      member.next === undefined
+        ? ""
+        : `${memberIndent}${JSON.stringify(member.key)}: ${formatJsonIndented(member.next, indent + 2)}${comma}\n`;
+    return `<<<<<<< ours\n${oursBlock}=======\n${nextBlock}>>>>>>> new`;
+  });
+  return `{\n${lines.join("\n")}\n${closeIndent}}`;
+}
+
+type JsonObject = { readonly [key: string]: JsonValue };
+
+interface MergedObjectMember {
+  readonly entry?: readonly [string, JsonValue];
+  readonly member?: RenderedMember;
+}
+
+function cleanJsonMember(
+  key: string,
+  value: JsonValue | undefined,
+  indent: number,
+): MergedObjectMember {
+  if (value === undefined) {
+    return {};
+  }
+  return {
+    entry: [key, value],
+    member: {
+      kind: "clean",
+      key,
+      rendered: formatJsonIndented(value, indent),
+    },
+  };
+}
+
+function mergeJsonObjectMember(options: {
+  readonly key: string;
+  readonly oursValue: JsonValue | undefined;
+  readonly baseValue: JsonValue | undefined;
+  readonly nextValue: JsonValue | undefined;
+  readonly path: string;
+  readonly conflicts: JsonKeyConflict[];
+  readonly indent: number;
+}): MergedObjectMember {
+  const { key, oursValue, baseValue, nextValue, path, conflicts, indent } =
+    options;
+  if (equalJson(baseValue, nextValue)) {
+    return cleanJsonMember(key, oursValue, indent);
+  }
+  if (equalJson(baseValue, oursValue) || equalJson(oursValue, nextValue)) {
+    return cleanJsonMember(key, nextValue, indent);
+  }
+  if (isJsonObject(oursValue) && isJsonObject(nextValue)) {
+    const child = mergeJsonObjects({
+      ours: oursValue,
+      base: baseValue,
+      next: nextValue,
+      path,
+      conflicts,
+      indent,
+    });
+    return {
+      entry: [key, child.value],
+      member: { kind: "clean", key, rendered: child.marked },
+    };
+  }
+  conflicts.push(makeJsonKeyConflict(path, baseValue, oursValue, nextValue));
+  return {
+    ...(oursValue === undefined ? {} : { entry: [key, oursValue] }),
+    member: { kind: "conflict", key, ours: oursValue, next: nextValue },
+  };
+}
+
+function mergeJsonObjects(options: {
+  readonly ours: JsonObject;
+  readonly base: JsonValue | undefined;
+  readonly next: JsonObject;
+  readonly path: string;
+  readonly conflicts: JsonKeyConflict[];
+  readonly indent: number;
+}): {
+  readonly value: JsonObject;
+  readonly marked: string;
+} {
+  const { ours, base, next, path, conflicts, indent } = options;
   const baseEntries = isJsonObject(base)
     ? new Map<string, JsonValue>(Object.entries(base))
     : new Map<string, JsonValue>();
@@ -78,40 +229,29 @@ function mergeJsonObjects(
     [...oursEntries.keys()],
     Object.keys(next),
   );
-  const entries: [string, JsonValue][] = [];
+  const entries: (readonly [string, JsonValue])[] = [];
+  const members: RenderedMember[] = [];
   for (const key of mergedKeys) {
-    const value = mergeJsonValue(
-      oursEntries.get(key),
-      baseEntries.get(key),
-      nextEntries.get(key),
-      `${path}.${key}`,
+    const result = mergeJsonObjectMember({
+      key,
+      oursValue: oursEntries.get(key),
+      baseValue: baseEntries.get(key),
+      nextValue: nextEntries.get(key),
+      path: `${path}.${key}`,
       conflicts,
-    );
-    if (value !== undefined) {
-      entries.push([key, value]);
+      indent: indent + 2,
+    });
+    if (result.entry !== undefined) {
+      entries.push(result.entry);
+    }
+    if (result.member !== undefined) {
+      members.push(result.member);
     }
   }
-  return Object.fromEntries(entries);
-}
-
-function mergeJsonValue(
-  ours: JsonValue | undefined,
-  base: JsonValue | undefined,
-  next: JsonValue | undefined,
-  path: string,
-  conflicts: string[],
-): JsonValue | undefined {
-  if (equalJson(base, next)) {
-    return ours;
-  }
-  if (equalJson(base, ours) || equalJson(ours, next)) {
-    return next;
-  }
-  if (isJsonObject(ours) && isJsonObject(next)) {
-    return mergeJsonObjects(ours, base, next, path, conflicts);
-  }
-  conflicts.push(path);
-  return ours;
+  return {
+    value: Object.fromEntries(entries),
+    marked: renderObjectMembers(members, indent),
+  };
 }
 
 export function mergeJsonDocuments(
@@ -119,11 +259,52 @@ export function mergeJsonDocuments(
   base: JsonValue,
   next: JsonValue,
 ): JsonMergeResult {
-  const conflicts: string[] = [];
-  const merged = mergeJsonValue(ours, base, next, "$", conflicts);
+  const conflicts: JsonKeyConflict[] = [];
+  if (equalJson(base, next)) {
+    const mergedText = `${JSON.stringify(ours, null, 2)}\n`;
+    return Object.freeze({
+      mergedText,
+      markedText: mergedText,
+      conflictPaths: Object.freeze([]),
+      conflicts: Object.freeze([]),
+    });
+  }
+  if (equalJson(base, ours) || equalJson(ours, next)) {
+    const mergedText = `${JSON.stringify(next, null, 2)}\n`;
+    return Object.freeze({
+      mergedText,
+      markedText: mergedText,
+      conflictPaths: Object.freeze([]),
+      conflicts: Object.freeze([]),
+    });
+  }
+  if (isJsonObject(ours) && isJsonObject(next)) {
+    const merged = mergeJsonObjects({
+      ours,
+      base,
+      next,
+      path: "$",
+      conflicts,
+      indent: 0,
+    });
+    return Object.freeze({
+      mergedText: `${JSON.stringify(merged.value, null, 2)}\n`,
+      markedText: `${merged.marked}\n`,
+      conflictPaths: Object.freeze(conflicts.map((conflict) => conflict.path)),
+      conflicts: Object.freeze(conflicts),
+    });
+  }
+  conflicts.push(makeJsonKeyConflict("$", base, ours, next));
   return Object.freeze({
-    mergedText: `${JSON.stringify(merged, null, 2)}\n`,
-    conflictPaths: Object.freeze(conflicts),
+    mergedText: `${JSON.stringify(ours, null, 2)}\n`,
+    markedText:
+      `<<<<<<< ours\n` +
+      `${formatJsonIndented(ours, 0)}\n` +
+      `=======\n` +
+      `${formatJsonIndented(next, 0)}\n` +
+      `>>>>>>> new\n`,
+    conflictPaths: Object.freeze(["$"]),
+    conflicts: Object.freeze(conflicts),
   });
 }
 
@@ -172,36 +353,162 @@ function sectionRecord(
   return entries;
 }
 
+function parsePackageJsonObject(
+  text: string | undefined,
+):
+  | { readonly ok: true; readonly value: JsonValue | undefined }
+  | { readonly ok: false } {
+  if (text === undefined) {
+    return { ok: true, value: undefined };
+  }
+  const parsed = parseJsonValue(text);
+  if (!parsed.ok || !isJsonObject(parsed.value)) {
+    return { ok: false };
+  }
+  return { ok: true, value: parsed.value };
+}
+
+function diffDependencySection(
+  beforeValue: JsonValue | undefined,
+  afterValue: JsonValue | undefined,
+  section: PackageDependencyChange["section"],
+): PackageDependencyChange[] {
+  const beforeMap = sectionRecord(beforeValue, section);
+  const afterMap = sectionRecord(afterValue, section);
+  const names = [...new Set([...beforeMap.keys(), ...afterMap.keys()])].sort(
+    compareCodeUnits,
+  );
+  const changes: PackageDependencyChange[] = [];
+  for (const packageName of names) {
+    const beforeVersion = beforeMap.get(packageName) ?? null;
+    const afterVersion = afterMap.get(packageName) ?? null;
+    if (beforeVersion !== afterVersion) {
+      changes.push(
+        Object.freeze({
+          section,
+          packageName,
+          before: beforeVersion,
+          after: afterVersion,
+        }),
+      );
+    }
+  }
+  return changes;
+}
+
+export function readPackageChanges(
+  beforeText: string | undefined,
+  afterText: string | undefined,
+): PackageChangesResult {
+  const before = parsePackageJsonObject(beforeText);
+  if (!before.ok) {
+    return Object.freeze({
+      changes: Object.freeze([]),
+      unavailableReason: "current package.json could not be parsed as JSON",
+    });
+  }
+  const after = parsePackageJsonObject(afterText);
+  if (!after.ok) {
+    return Object.freeze({
+      changes: Object.freeze([]),
+      unavailableReason: "merged package.json could not be parsed as JSON",
+    });
+  }
+  const changes = DEPENDENCY_SECTIONS.flatMap((section) =>
+    diffDependencySection(before.value, after.value, section),
+  );
+  return Object.freeze({ changes: Object.freeze(changes) });
+}
+
 export function diffPackageDependencies(
   beforeText: string | undefined,
   afterText: string | undefined,
 ): readonly PackageDependencyChange[] {
-  const before =
-    beforeText === undefined ? undefined : parseJsonValue(beforeText);
-  const after = afterText === undefined ? undefined : parseJsonValue(afterText);
-  const beforeValue = before?.ok ? before.value : undefined;
-  const afterValue = after?.ok ? after.value : undefined;
-  const changes: PackageDependencyChange[] = [];
-  for (const section of DEPENDENCY_SECTIONS) {
-    const beforeMap = sectionRecord(beforeValue, section);
-    const afterMap = sectionRecord(afterValue, section);
-    const names = [...new Set([...beforeMap.keys(), ...afterMap.keys()])].sort(
-      compareCodeUnits,
-    );
-    for (const packageName of names) {
-      const beforeVersion = beforeMap.get(packageName) ?? null;
-      const afterVersion = afterMap.get(packageName) ?? null;
-      if (beforeVersion !== afterVersion) {
-        changes.push(
-          Object.freeze({
-            section,
-            packageName,
-            before: beforeVersion,
-            after: afterVersion,
-          }),
-        );
-      }
-    }
+  return readPackageChanges(beforeText, afterText).changes;
+}
+
+const STRICT_UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+
+function decodeUtf8IfValid(bytes: Uint8Array): string | undefined {
+  try {
+    return STRICT_UTF8.decode(bytes);
+  } catch {
+    return undefined;
   }
-  return Object.freeze(changes);
+}
+
+function withTrailingNewline(content: string): string {
+  return content === "" || content.endsWith("\n") ? content : `${content}\n`;
+}
+
+export async function mergeJsonUpgradeFile(options: {
+  readonly targetFolder: string;
+  readonly oldFolder: string;
+  readonly newFolder: string;
+  readonly relativePath: string;
+  readonly oursBytes: Uint8Array;
+  readonly oldBytes: Uint8Array;
+  readonly newBytes: Uint8Array;
+  readonly env: Readonly<Record<string, string | undefined>>;
+  readonly keyMergedPaths: Set<string>;
+  readonly mergedJsonTexts: Map<string, string>;
+}): Promise<{
+  readonly outcome: "merge" | "conflict";
+  readonly keyConflicts?: readonly JsonKeyConflict[];
+}> {
+  const {
+    targetFolder,
+    oldFolder,
+    newFolder,
+    relativePath,
+    oursBytes,
+    oldBytes,
+    newBytes,
+    env,
+  } = options;
+  await assertNoSymlinkAncestors(targetFolder, relativePath);
+  await assertNoSymlinkAncestors(oldFolder, relativePath);
+  await assertNoSymlinkAncestors(newFolder, relativePath);
+  const oursPath = join(targetFolder, relativePath);
+  const oldPath = join(oldFolder, relativePath);
+  const newPath = join(newFolder, relativePath);
+  const oursText = decodeUtf8IfValid(oursBytes);
+  const oldText = decodeUtf8IfValid(oldBytes);
+  const newText = decodeUtf8IfValid(newBytes);
+  if (
+    oursText === undefined ||
+    oldText === undefined ||
+    newText === undefined
+  ) {
+    return {
+      outcome:
+        gitMergeFile(oursPath, oldPath, newPath, env) === "clean"
+          ? "merge"
+          : "conflict",
+    };
+  }
+  const json = tryMergeJsonText(oursText, oldText, newText);
+  if (json !== undefined) {
+    options.mergedJsonTexts.set(relativePath, json.mergedText);
+    options.keyMergedPaths.add(relativePath);
+    if (json.conflictPaths.length === 0) {
+      await writeFile(oursPath, json.mergedText);
+      return { outcome: "merge" };
+    }
+    await writeFile(oursPath, json.markedText);
+    return { outcome: "conflict", keyConflicts: json.conflicts };
+  }
+  const textResult = gitMergeFile(oursPath, oldPath, newPath, env);
+  if (!mergeDuplicatesMember(await readFile(oursPath, "utf8"))) {
+    return { outcome: textResult === "clean" ? "merge" : "conflict" };
+  }
+  await writeFile(
+    oursPath,
+    `<<<<<<< ours\n` +
+      `${withTrailingNewline(oursText)}` +
+      `=======\n` +
+      `${withTrailingNewline(newText)}` +
+      `>>>>>>> new\n`,
+  );
+  return { outcome: "conflict" };
 }

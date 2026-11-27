@@ -502,9 +502,11 @@ export function runWorktreeStep(options: {
   readonly command: readonly [string, ...string[]];
   readonly label: string;
   readonly timeoutMilliseconds: number;
+  readonly timeoutMessage?: string | undefined;
   readonly env: ProcessEnvMap;
 }): TemplateUpgradeBunResult {
-  const { worktree, command, label, timeoutMilliseconds, env } = options;
+  const { worktree, command, label, timeoutMilliseconds, timeoutMessage, env } =
+    options;
   const child = Bun.spawnSync([...command], {
     cwd: worktree,
     env: toolchainEnvironment(env),
@@ -518,12 +520,15 @@ export function runWorktreeStep(options: {
   const signalCode =
     typeof child.signalCode === "string" ? child.signalCode : null;
   if (child.exitedDueToTimeout) {
+    const header =
+      timeoutMessage ??
+      `${label} did not finish within ${timeoutMilliseconds} ms`;
     return {
       ok: false,
       exitCode: null,
       timedOut: true,
       signalCode: signalCode ?? "SIGKILL",
-      output: `${label} did not finish within ${timeoutMilliseconds} ms${combined === "" ? "" : `\n${combined}`}`,
+      output: `${header}${combined === "" ? "" : `\n${combined}`}`,
     };
   }
   const exitCode = typeof child.exitCode === "number" ? child.exitCode : null;
@@ -540,9 +545,10 @@ export function runBunStep(options: {
   readonly worktree: string;
   readonly args: readonly string[];
   readonly timeoutMilliseconds: number;
+  readonly timeoutMessage?: string | undefined;
   readonly env: ProcessEnvMap;
 }): TemplateUpgradeBunResult {
-  const { worktree, args, timeoutMilliseconds, env } = options;
+  const { worktree, args, timeoutMilliseconds, timeoutMessage, env } = options;
   const toolEnv = toolchainEnvironment(env);
   const bunExecutable =
     Bun.which("bun", { PATH: toolEnv.PATH ?? "" }) ?? process.execPath;
@@ -551,6 +557,7 @@ export function runBunStep(options: {
     command: [bunExecutable, ...args],
     label: `bun ${args.join(" ")}`,
     timeoutMilliseconds,
+    timeoutMessage,
     env,
   });
 }
