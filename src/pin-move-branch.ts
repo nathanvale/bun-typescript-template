@@ -282,6 +282,10 @@ async function restoreInstalledKernel(
     : `the installed ${kernelPackage} is ${installed}, not ${startingPin}, the Pin on ${startingRef}.`;
 }
 
+function boundedDetail(text: string, limit: number): string {
+  return text.length <= limit ? text : `${text.slice(0, limit)}...`;
+}
+
 async function keptAttemptRefusal(
   attempt: PinMoveAttempt,
   code: string,
@@ -291,6 +295,7 @@ async function keptAttemptRefusal(
   runGit: typeof repositoryGit,
 ): Promise<RepositoryPinRefusal> {
   const { repository, startingRef, branch } = attempt;
+  const shownReason = boundedDetail(reason, 600);
   const reinstall = installRan
     ? ` Run bun install --frozen-lockfile in ${repository} once ${startingRef} is checked out.`
     : "";
@@ -321,7 +326,7 @@ async function keptAttemptRefusal(
   if (!committed.ok)
     return new RepositoryPinRefusal(
       code,
-      `${reason} pin move could not commit the failed attempt on branch ${branch}: git says "${committed.said}". Branch ${branch} is still checked out with uncommitted edits to ${paths.join(", ")}; ${startingRef} was not changed.`,
+      `${shownReason} pin move could not commit the failed attempt on branch ${branch}: git says "${committed.said}". Branch ${branch} is still checked out with uncommitted edits to ${paths.join(", ")}; ${startingRef} was not changed.`,
       `In ${repository}, discard pin move's edits to ${paths.join(", ")} until git status is clean, then git checkout ${startingRef} && git branch -d ${branch}, and run bun run pin:move again.${reinstall}`,
     );
   const { kept, unrenamed } = keepFailedAttempt(repository, branch, runGit);
@@ -329,7 +334,7 @@ async function keptAttemptRefusal(
   if (!back.ok)
     return new RepositoryPinRefusal(
       code,
-      `${reason} The failed attempt is committed on branch ${kept}, but git checkout ${startingRef} failed: git says "${back.said}". Branch ${kept} is still checked out; ${startingRef} was not changed.`,
+      `${shownReason} The failed attempt is committed on branch ${kept}, but git checkout ${startingRef} failed: git says "${back.said}". Branch ${kept} is still checked out; ${startingRef} was not changed.`,
       `Run git checkout ${startingRef} in ${repository}, then run bun run pin:move again.${unrenamed}${reinstall}`,
     );
   const unrestored = installRan
@@ -338,12 +343,12 @@ async function keptAttemptRefusal(
   if (unrestored !== undefined)
     return new RepositoryPinRefusal(
       code,
-      `${reason} The failed attempt is kept on branch ${kept} for inspection and ${startingRef} is checked out again, but its installed packages may still hold the failed attempt's kernel: ${unrestored}`,
+      `${shownReason} The failed attempt is kept on branch ${kept} for inspection and ${startingRef} is checked out again, but its installed packages may still hold the failed attempt's kernel: ${boundedDetail(unrestored, 400)}`,
       `Run bun install --frozen-lockfile in ${repository} before running bun run pin:move again.${unrenamed}${leftOver(repository, runGit)}`,
     );
   return new RepositoryPinRefusal(
     code,
-    `${reason} The failed attempt is kept on branch ${kept} for inspection; ${startingRef} is checked out again and was not changed.`,
+    `${shownReason} The failed attempt is kept on branch ${kept} for inspection; ${startingRef} is checked out again and was not changed.`,
     `${repair}${unrenamed}${leftOver(repository, runGit)}`,
   );
 }

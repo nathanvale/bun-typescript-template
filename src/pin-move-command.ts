@@ -177,21 +177,22 @@ async function executeRepositoryMove(
               },
             },
             async (transaction) => {
+              let result: RepositoryPinMoveOutcome;
+              try {
+                result = await apply();
+              } catch (error) {
+                const failure = toError(error);
+                capturedError = failure;
+                throw failure;
+              }
+              if (result.planOnly) {
+                throw new Error("Unexpected plan-only result.");
+              }
+              movedOutcome = result;
               await transaction.record(
                 "pin.move",
-                async () => {
-                  try {
-                    const result = await apply();
-                    if (result.planOnly)
-                      throw new Error("Unexpected plan-only result.");
-                    movedOutcome = result;
-                  } catch (error) {
-                    const failure = toError(error);
-                    capturedError = failure;
-                    throw failure;
-                  }
-                },
-                () => Promise.resolve(movedOutcome !== undefined),
+                () => Promise.resolve(),
+                () => Promise.resolve(true),
               );
             },
           );
@@ -240,19 +241,17 @@ async function executeTemplateMove(
         facts: { commit: kernel.commit },
       },
       async (transaction) => {
+        try {
+          moved = movePin(trial, root, branchCommit);
+        } catch (error) {
+          const failure = toError(error);
+          capturedError = failure;
+          throw failure;
+        }
         await transaction.record(
           "pin.move",
-          () => {
-            try {
-              moved = movePin(trial, root, branchCommit);
-              return Promise.resolve();
-            } catch (error) {
-              const failure = toError(error);
-              capturedError = failure;
-              return Promise.reject(failure);
-            }
-          },
-          () => Promise.resolve(moved !== undefined),
+          () => Promise.resolve(),
+          () => Promise.resolve(true),
         );
       },
     );

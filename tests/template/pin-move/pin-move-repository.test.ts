@@ -253,9 +253,9 @@ describe("pin-move --repository", () => {
       "--repository",
       repo,
     ]);
-    expect(run.exit).toBe(1);
+    expect(run.exit).toBe(3);
     expect(run.stdout).toContain("Kernel changesets (1):");
-    expect(run.stderr).toContain("repository_check_failed:");
+    expect(run.stderr).toContain("[DOMAIN_PIN_REPOSITORY_CHECK_FAILED]");
     const kept = keptAttempt(repo, expectedBranch);
     expect(run.stderr).toContain(
       `The failed attempt is kept on branch ${kept} for inspection; main is checked out again and was not changed.`,
@@ -301,8 +301,8 @@ describe("pin-move --repository", () => {
       "--repository",
       repo,
     ]);
-    expect(run.exit).toBe(1);
-    expect(run.stderr).toContain("repository_check_failed:");
+    expect(run.exit).toBe(3);
+    expect(run.stderr).toContain("[DOMAIN_PIN_REPOSITORY_CHECK_FAILED]");
     const kept = keptAttempt(repo, expectedBranch);
     expect(run.stderr).toContain(
       `The failed attempt is kept on branch ${kept} for inspection and main is checked out again, but its installed packages may still hold the failed attempt's kernel: bun install --frozen-lockfile on main failed:`,

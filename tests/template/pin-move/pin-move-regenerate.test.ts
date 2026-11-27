@@ -146,9 +146,10 @@ describe("pin-move --repository with a regenerate step", () => {
     const branch = `pin-move/${fixture.targetCommit.slice(0, 7)}`;
 
     const failed = await moveTo(repo);
-    expect(failed.exit).toBe(1);
+    expect(failed.exit).toBe(3);
+    expect(failed.stderr).toContain("[DOMAIN_PIN_REPOSITORY_CHECK_FAILED]");
     expect(failed.stderr).toContain(
-      `repository_check_failed: regenerate failed on branch ${branch} in ${realpathSync(repo)}:`,
+      `regenerate failed on branch ${branch} in ${realpathSync(repo)}:`,
     );
     expect(failed.stderr).toContain("exited 3");
     const [kept = ""] = pinMoveBranches(repo);
@@ -237,8 +238,8 @@ describe("pin-move --repository with a regenerate step", () => {
     const branch = `pin-move/${fixture.targetCommit.slice(0, 7)}`;
 
     const failed = await moveTo(repo);
-    expect(failed.exit).toBe(1);
-    expect(failed.stderr).toContain("repository_git_failed");
+    expect(failed.exit).toBe(3);
+    expect(failed.stderr).toContain("[DOMAIN_PIN_REPOSITORY_GIT_FAILED]");
     expect(failed.stderr).toContain("pre-commit refused");
     const [kept = ""] = pinMoveBranches(repo);
     expect(pinMoveBranches(repo)).toEqual([
