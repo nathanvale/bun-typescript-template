@@ -54,12 +54,13 @@ const repair =
 const stopRepair =
   "Nothing was written, and nothing is wrong with the kernel commit. Run the kernel trial, or the pin move, again when it can run to its end.";
 
+export const trialRefusalCodes = ["trial_failed", "trial_stopped"] as const;
+
+export type TrialRefusalCode = (typeof trialRefusalCodes)[number];
+
 export class TrialRefusal extends Error {
-  readonly code: "trial_failed" | "trial_stopped";
-  constructor(
-    cause: string,
-    code: "trial_failed" | "trial_stopped" = "trial_failed",
-  ) {
+  readonly code: TrialRefusalCode;
+  constructor(cause: string, code: TrialRefusalCode = "trial_failed") {
     super(`${cause} Repair: ${code === "trial_stopped" ? stopRepair : repair}`);
     this.code = code;
   }

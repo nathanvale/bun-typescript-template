@@ -13,6 +13,12 @@ const LEGACY_NOTES_FOLDER = "change-notes";
 const LEGACY_NOTES_PREFIX = `${LEGACY_NOTES_FOLDER}/`;
 const ACTION_LINE = /^Action: \S/;
 
+export const repositoryChangesetReadErrorCodes = [
+  "changeset_invalid",
+  "changesets_unreadable",
+  "invalid_utf8",
+] as const;
+
 export type TemplateChangesetEntry = {
   readonly file: string;
   readonly level: "major" | "minor" | "patch" | "none";

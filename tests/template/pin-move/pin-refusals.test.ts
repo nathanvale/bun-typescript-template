@@ -4,13 +4,23 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  rmSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { delimiter, join } from "node:path";
+import {
+  TrialRefusal,
+  trialRefusalCodes,
+} from "../../../scripts/kernel-trial.ts";
 import { startChild } from "../../../scripts/process-runner.ts";
 import { pinCauses } from "../../../src/causes.ts";
+import { CliError } from "../../../src/cli-error.ts";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
+import {
+  KernelRefusal,
+  kernelRefusalCodes,
+} from "../../../src/kernel-reader.ts";
 import { PinRefusal, pinRefusalCodes } from "../../../src/pin-move.ts";
 import {
   RepositoryPinRefusal,
@@ -23,9 +33,16 @@ import {
   moveStateRows,
   pinMoveIdentity,
   pinPlanIdentity,
+  pinVerifyIdentity,
   planRefusalCauses,
   planRefusalRows,
+  verifyRefusalCauses,
+  verifyRefusalRows,
 } from "../../../src/pin-refusals.ts";
+import {
+  repositoryChangesetPlanErrorCodes,
+  repositoryChangesetWriteErrorCodes,
+} from "../../../src/template-upgrade-changeset-write.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import {
@@ -68,6 +85,9 @@ const preWriteRepositoryCodes = repositoryPinRefusalCodes.filter(
   (code) => !afterWriteOnlyRepositoryCodes.has(code),
 );
 
+const verifyStationCodes = new Set<string>(
+  verifyRefusalRows(pinVerifyIdentity).map((row) => row.causeCode),
+);
 const planStationCodes = new Set<string>(
   planRefusalRows(pinPlanIdentity).map((row) => row.causeCode),
 );
@@ -75,6 +95,17 @@ const moveStationCodes = new Set<string>([
   ...moveRefusalRows(pinMoveIdentity).map((row) => row.causeCode),
   ...moveStateRows().map((row) => row.causeCode),
 ]);
+
+function cliErrorCodesInSource(relativePath: string): string[] {
+  const source = readFileSync(join(ROOT, relativePath), "utf8");
+  return [
+    ...new Set(
+      [...source.matchAll(/new CliError\(\s*"([^"]+)"/g)].map(
+        (match) => match[1] ?? "",
+      ),
+    ),
+  ].filter((code) => code !== "");
+}
 
 type PinEnvelope = {
   readonly message: string;
@@ -124,15 +155,62 @@ function remotePathEnv(remoteRepository: string): {
 }
 
 describe("pin refusal classification across phases", () => {
-  test("every PinRefusal and RepositoryPinRefusal code in pin plan yields a declared refused unchanged DOMAIN_PIN_* cause", () => {
+  test("every CliError literal in the shared changeset helpers is covered by the exported helper error code lists", () => {
+    const listed = new Set<string>([
+      ...repositoryChangesetWriteErrorCodes,
+      "changeset_predates_switchover",
+    ]);
+    for (const file of [
+      "src/template-upgrade-changeset-write.ts",
+      "src/template-upgrade-changesets.ts",
+    ]) {
+      for (const code of cliErrorCodesInSource(file)) {
+        expect(listed.has(code), `${file}: ${code}`).toBe(true);
+      }
+    }
+  });
+
+  test("every PinRefusal and KernelRefusal code in pin verify yields a declared refused unchanged DOMAIN_PIN_* cause", () => {
+    const verifyCases = [
+      ...pinRefusalCodes.map((code) => ({
+        code,
+        error: new PinRefusal(code, `cause ${code}`, "main"),
+      })),
+      ...kernelRefusalCodes.map((code) => ({
+        code,
+        error: new KernelRefusal(code, `cause ${code}`),
+      })),
+    ];
+
+    for (const entry of verifyCases) {
+      const classified = classifyRefusal(entry.error, verifyRefusalCauses);
+      expect(classified, `pin verify: ${entry.code}`).toBeDefined();
+      if (classified === undefined) continue;
+      expect(classified.causeCode.startsWith("DOMAIN_PIN_")).toBe(true);
+      expect(verifyStationCodes.has(classified.causeCode)).toBe(true);
+      const causeRow = pinCauses[classified.causeCode];
+      expect(causeRow.outcome).toBe("refused");
+      expect(causeRow.transactionState).toBe("unchanged");
+    }
+  });
+
+  test("every PinRefusal, KernelRefusal, RepositoryPinRefusal, and shared-helper CliError code in pin plan yields a declared refused unchanged DOMAIN_PIN_* cause", () => {
     const planCases = [
       ...pinRefusalCodes.map((code) => ({
         code,
         error: new PinRefusal(code, `cause ${code}`, "main"),
       })),
+      ...kernelRefusalCodes.map((code) => ({
+        code,
+        error: new KernelRefusal(code, `cause ${code}`),
+      })),
       ...planRepositoryCodes.map((code) => ({
         code,
         error: new RepositoryPinRefusal(code, `cause ${code}`, "repair"),
+      })),
+      ...repositoryChangesetPlanErrorCodes.map((code) => ({
+        code,
+        error: new CliError(code, `cause ${code}`, "repair", 1, false),
       })),
     ];
 
@@ -148,15 +226,27 @@ describe("pin refusal classification across phases", () => {
     }
   });
 
-  test("every PinRefusal and RepositoryPinRefusal code before writes in pin move yields a declared refused unchanged DOMAIN_PIN_* cause", () => {
+  test("every PinRefusal, KernelRefusal, TrialRefusal, RepositoryPinRefusal, and shared-helper CliError code before writes in pin move yields a declared refused unchanged DOMAIN_PIN_* cause", () => {
     const beforeWriteCases = [
       ...pinRefusalCodes.map((code) => ({
         code,
         error: new PinRefusal(code, `cause ${code}`, "main"),
       })),
+      ...kernelRefusalCodes.map((code) => ({
+        code,
+        error: new KernelRefusal(code, `cause ${code}`),
+      })),
+      ...trialRefusalCodes.map((code) => ({
+        code,
+        error: new TrialRefusal(`cause ${code}`, code),
+      })),
       ...preWriteRepositoryCodes.map((code) => ({
         code,
         error: new RepositoryPinRefusal(code, `cause ${code}`, "repair"),
+      })),
+      ...repositoryChangesetPlanErrorCodes.map((code) => ({
+        code,
+        error: new CliError(code, `cause ${code}`, "repair", 1, false),
       })),
     ];
 
@@ -172,14 +262,30 @@ describe("pin refusal classification across phases", () => {
     }
   });
 
-  test("every PinRefusal and RepositoryPinRefusal code after writes with start restored yields a declared failed completed DOMAIN_PIN_* cause", () => {
+  test("every PinRefusal, KernelRefusal, TrialRefusal, RepositoryPinRefusal, and shared-helper CliError code after writes with start restored yields a declared failed completed DOMAIN_PIN_* cause", () => {
     const restoredCases = [
       ...pinRefusalCodes.map((code) => ({
         code,
         error: new PinRefusal(code, `cause ${code}`, "main"),
       })),
+      ...kernelRefusalCodes.map((code) => ({
+        code,
+        error: new KernelRefusal(code, `cause ${code}`),
+      })),
+      ...trialRefusalCodes.map((code) => ({
+        code,
+        error: new TrialRefusal(`cause ${code}`, code),
+      })),
       ...repositoryPinRefusalCodes.map((code) => ({
         code,
+        error: new RepositoryPinRefusal(code, `cause ${code}`, "repair", true),
+      })),
+      ...repositoryChangesetWriteErrorCodes.map((code) => ({
+        code: `CliError(${code})`,
+        error: new CliError(code, `cause ${code}`, "repair", 1, false),
+      })),
+      ...repositoryChangesetWriteErrorCodes.map((code) => ({
+        code: `RepositoryPinRefusal(${code})`,
         error: new RepositoryPinRefusal(code, `cause ${code}`, "repair", true),
       })),
     ];
@@ -196,15 +302,27 @@ describe("pin refusal classification across phases", () => {
     }
   });
 
-  test("every PinRefusal and RepositoryPinRefusal code in unrestored states maps to a declared DOMAIN_PIN_MOVE_FAILED_* cause matching transactionState", () => {
+  test("every PinRefusal, KernelRefusal, TrialRefusal, RepositoryPinRefusal, and shared-helper CliError code in unrestored states maps to a declared DOMAIN_PIN_MOVE_FAILED_* cause matching transactionState", () => {
     const unrestoredCases = [
       ...pinRefusalCodes.map((code) => ({
         code,
         error: new PinRefusal(code, `cause ${code}`, "main"),
       })),
+      ...kernelRefusalCodes.map((code) => ({
+        code,
+        error: new KernelRefusal(code, `cause ${code}`),
+      })),
+      ...trialRefusalCodes.map((code) => ({
+        code,
+        error: new TrialRefusal(`cause ${code}`, code),
+      })),
       ...repositoryPinRefusalCodes.map((code) => ({
         code,
         error: new RepositoryPinRefusal(code, `cause ${code}`, "repair", false),
+      })),
+      ...repositoryChangesetWriteErrorCodes.map((code) => ({
+        code,
+        error: new CliError(code, `cause ${code}`, "repair", 1, false),
       })),
     ];
     const states = ["unchanged", "partially-completed", "unknown"] as const;
@@ -223,6 +341,41 @@ describe("pin refusal classification across phases", () => {
       }
     }
   });
+
+  test(
+    "pin plan refuses DOMAIN_PIN_SYMLINK_ANCESTOR when .changeset is a symbolic link",
+    async () => {
+      const repo = fixture.freshRepository("pin-refusals-symlink-changeset-");
+      const target = folder("pin-refusals-symlink-target-");
+      rmSync(join(repo, ".changeset"), { recursive: true, force: true });
+      symlinkSync(target, join(repo, ".changeset"));
+      const stateHome = folder("pin-refusals-symlink-state-");
+
+      const run = await runPinRoute(
+        ROOT,
+        [
+          "pin",
+          "plan",
+          fixture.targetCommit,
+          "--kernel",
+          fixture.kernelRepo,
+          "--repository",
+          repo,
+          "--json",
+        ],
+        stateHome,
+        remotePathEnv(fixture.kernelRepo),
+      );
+      expect(run.exitCode).toBe(3);
+      expect(run.stderr).toBe("");
+      const envelope = JSON.parse(run.stdout) as PinEnvelope;
+      expect(envelope.result.commandIdentity).toBe(pinPlanIdentity);
+      expect(envelope.result.causeCode).toBe("DOMAIN_PIN_SYMLINK_ANCESTOR");
+      expect(envelope.result.outcome).toBe("refused");
+      expect(envelope.result.transactionState).toBe("unchanged");
+    },
+    processWatchdog(2),
+  );
 
   test(
     "pin move refuses repository_git_failed before any write when .git/index is corrupt",
