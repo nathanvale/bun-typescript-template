@@ -241,17 +241,19 @@ async function executeTemplateMove(
         facts: { commit: kernel.commit },
       },
       async (transaction) => {
-        try {
-          moved = movePin(trial, root, branchCommit);
-        } catch (error) {
-          const failure = toError(error);
-          capturedError = failure;
-          throw failure;
-        }
         await transaction.record(
           "pin.move",
-          () => Promise.resolve(),
-          () => Promise.resolve(true),
+          () => {
+            try {
+              moved = movePin(trial, root, branchCommit);
+              return Promise.resolve();
+            } catch (error) {
+              const failure = toError(error);
+              capturedError = failure;
+              return Promise.reject(failure);
+            }
+          },
+          () => Promise.resolve(moved !== undefined),
         );
       },
     );
