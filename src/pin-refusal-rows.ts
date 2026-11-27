@@ -157,6 +157,26 @@ export const pinRefusalDefinitions = {
     repair:
       "Choose commits at or after the changesets switchover, then run this again.",
   },
+  DOMAIN_PIN_SYMLINK_ANCESTOR: {
+    trigger: "A repository changeset path traverses a symbolic link.",
+    repair:
+      "Replace or remove the symbolic link reported in the message, commit the change if tracked, then run this again.",
+  },
+  DOMAIN_PIN_INVALID_UTF8: {
+    trigger: "A changeset file contains bytes that are not valid UTF-8 text.",
+    repair:
+      "Fix or replace the file reported in the message with valid UTF-8 text, then run this again.",
+  },
+  DOMAIN_PIN_UNREADABLE_FILE: {
+    trigger: "A repository changeset file is not a readable regular file.",
+    repair:
+      "Replace the path reported in the message with a regular file, then run this again.",
+  },
+  DOMAIN_PIN_WORKTREE_STATUS_FAILED: {
+    trigger: "git status failed while reading repository worktree paths.",
+    repair:
+      "Inspect the repository with git status and resolve the error reported in the message, then run this again.",
+  },
 } as const;
 
 export type PinRefusalCause = keyof typeof pinRefusalDefinitions;
@@ -293,6 +313,22 @@ export function planRefusalRows<const Identity extends string>(
     station(cliCauses, {
       ...refusalFields(identity, "DOMAIN_PIN_CHANGESET_PREDATES_SWITCHOVER"),
       causeCode: "DOMAIN_PIN_CHANGESET_PREDATES_SWITCHOVER",
+    }),
+    station(cliCauses, {
+      ...refusalFields(identity, "DOMAIN_PIN_SYMLINK_ANCESTOR"),
+      causeCode: "DOMAIN_PIN_SYMLINK_ANCESTOR",
+    }),
+    station(cliCauses, {
+      ...refusalFields(identity, "DOMAIN_PIN_INVALID_UTF8"),
+      causeCode: "DOMAIN_PIN_INVALID_UTF8",
+    }),
+    station(cliCauses, {
+      ...refusalFields(identity, "DOMAIN_PIN_UNREADABLE_FILE"),
+      causeCode: "DOMAIN_PIN_UNREADABLE_FILE",
+    }),
+    station(cliCauses, {
+      ...refusalFields(identity, "DOMAIN_PIN_WORKTREE_STATUS_FAILED"),
+      causeCode: "DOMAIN_PIN_WORKTREE_STATUS_FAILED",
     }),
   ] as const;
 }
