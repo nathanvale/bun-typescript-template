@@ -354,7 +354,7 @@ async function writeRepositoryContext(
   const skills = await skillGuidance(staging);
   await writeFile(
     join(staging, "AGENTS.md"),
-    `# Repository commands\n\n${skills}Use the existing repository CLI at src/cli.ts. Add commands through src/commands.ts.\nKeep domain implementation in separate files and preserve one public application CLI.\n\nCheck command: ${check}\nSmoke: bun run start --help\nSource packet: ${options.sourcePacket}\nTemplate source: ${metadata.templateRevision}\n\n${COMMENT_GUIDANCE}`,
+    `# Repository commands\n\n${skills}Use the existing repository CLI at src/cli.ts. Add commands through src/commands.ts.\nKeep domain implementation in separate files and preserve one public application CLI.\n\nCheck command: ${check}\nSmoke: bun run start --help\nSource packet: ${options.sourcePacket}\n\n${COMMENT_GUIDANCE}`,
   );
 }
 

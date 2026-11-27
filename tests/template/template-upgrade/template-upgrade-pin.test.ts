@@ -183,8 +183,8 @@ test(
       templateRevision: targetCommit,
       templateDirty: false,
     });
-    expect(gitOutput(repo, "show", `${branch}:AGENTS.md`)).toContain(
-      `Template source: ${targetCommit}`,
+    expect(gitOutput(repo, "show", `${branch}:AGENTS.md`)).not.toContain(
+      "Template source:",
     );
 
     const applyTextRun = await invokeTemplateUpgradeMain(

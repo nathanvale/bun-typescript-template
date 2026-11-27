@@ -1,0 +1,19 @@
+diff --git a/src/template-upgrade-merge.ts b/src/template-upgrade-merge.ts
+--- a/src/template-upgrade-merge.ts
++++ b/src/template-upgrade-merge.ts
+@@ -428,15 +428,6 @@ async function mergeRegularFiles(options: {
+   const oursPath = join(options.targetFolder, options.relativePath);
+   const oldPath = join(options.oldFolder, options.relativePath);
+   const newPath = join(options.newFolder, options.relativePath);
+-  if (options.relativePath === AGENTS_FILE) {
+-    const agentsResult = await mergeAgentsWithoutTemplateSource(
+-      oursPath,
+-      newPath,
+-      [options.oursBytes, options.oldBytes, options.newBytes],
+-      options.env,
+-    );
+-    if (agentsResult !== undefined) return agentsResult;
+-  }
+   const fileResult = gitMergeFile(oursPath, oldPath, newPath, options.env);
+   return { outcome: fileResult === "clean" ? "merge" : "conflict" };
+ }

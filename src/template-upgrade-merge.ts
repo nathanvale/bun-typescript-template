@@ -3,7 +3,6 @@ import {
   mkdir,
   mkdtemp,
   readdir,
-  readFile,
   readlink,
   rm,
   symlink,
@@ -19,8 +18,10 @@ import {
   lstatIfPresent,
 } from "./template-upgrade-git.ts";
 import { OLD_TEMPLATE_JSON_FILE } from "./template-upgrade-inputs.ts";
-import { mergeDuplicatesMember } from "./template-upgrade-json-members.ts";
-import { tryMergeJsonText } from "./template-upgrade-json-merge.ts";
+import {
+  type JsonKeyConflict,
+  mergeJsonUpgradeFile,
+} from "./template-upgrade-json-merge.ts";
 import {
   assertNoSymlinkAncestors,
   readPlainFileBytes,
@@ -55,11 +56,13 @@ export interface TemplateUpgradeRow {
   readonly ownerLabel: TemplateUpgradeFileOwner;
   readonly outcome: TemplateUpgradeOutcome;
   readonly reason?: string;
+  readonly keyConflicts?: readonly JsonKeyConflict[];
 }
 
 interface PathMergeResult {
   readonly outcome: TemplateUpgradeOutcome;
   readonly reason?: string;
+  readonly keyConflicts?: readonly JsonKeyConflict[];
 }
 
 const UNMARKABLE_TEMPLATE_DELETE_REASON =
@@ -313,66 +316,45 @@ async function mergeAddedConflictFile(
   }
 }
 
-async function mergeJsonFile(options: {
-  readonly targetFolder: string;
-  readonly oldFolder: string;
-  readonly newFolder: string;
-  readonly relativePath: string;
-  readonly oursBytes: Uint8Array;
-  readonly oldBytes: Uint8Array;
-  readonly newBytes: Uint8Array;
-  readonly env: Readonly<Record<string, string | undefined>>;
-  readonly keyMergedPaths: Set<string>;
-}): Promise<"merge" | "conflict"> {
-  const {
-    targetFolder,
-    oldFolder,
-    newFolder,
-    relativePath,
-    oursBytes,
-    oldBytes,
-    newBytes,
-    env,
-  } = options;
-  await assertNoSymlinkAncestors(targetFolder, relativePath);
-  await assertNoSymlinkAncestors(oldFolder, relativePath);
-  await assertNoSymlinkAncestors(newFolder, relativePath);
-  const oursPath = join(targetFolder, relativePath);
-  const oldPath = join(oldFolder, relativePath);
-  const newPath = join(newFolder, relativePath);
-  const oursText = decodeTextIfUtf8(oursBytes);
-  const oldText = decodeTextIfUtf8(oldBytes);
-  const newText = decodeTextIfUtf8(newBytes);
+const AGENTS_FILE = "AGENTS.md";
+const TEMPLATE_SOURCE_HEX_LINE = /^Template source: ([0-9a-f]{40})\r?\n/m;
+const TEMPLATE_SOURCE_PREFIX = /^Template source: /m;
+
+async function mergeAgentsWithoutTemplateSource(
+  oursPath: string,
+  newPath: string,
+  bytes: readonly [Uint8Array, Uint8Array, Uint8Array],
+  env: Readonly<Record<string, string | undefined>>,
+): Promise<PathMergeResult | undefined> {
+  const [oursText, oldText, newText] = bytes.map(decodeTextIfUtf8);
+  const oldHex =
+    oldText === undefined
+      ? undefined
+      : TEMPLATE_SOURCE_HEX_LINE.exec(oldText)?.[1];
   if (
     oursText === undefined ||
     oldText === undefined ||
-    newText === undefined
-  ) {
-    return gitMergeFile(oursPath, oldPath, newPath, env) === "clean"
-      ? "merge"
-      : "conflict";
+    newText === undefined ||
+    oldHex === undefined ||
+    TEMPLATE_SOURCE_PREFIX.test(newText)
+  )
+    return undefined;
+  const exactLine = new RegExp(`^Template source: ${oldHex}\\r?\\n`, "m");
+  if (!exactLine.test(oursText)) return undefined;
+  await writeFile(oursPath, oursText.replace(exactLine, ""));
+  const baseFolder = await mkdtemp(join(tmpdir(), "template-upgrade-base-"));
+  try {
+    const strippedOldPath = join(baseFolder, "old");
+    await writeFile(strippedOldPath, oldText.replace(exactLine, ""));
+    return {
+      outcome:
+        gitMergeFile(oursPath, strippedOldPath, newPath, env) === "clean"
+          ? "merge"
+          : "conflict",
+    };
+  } finally {
+    await rm(baseFolder, { force: true, recursive: true });
   }
-  const json = tryMergeJsonText(oursText, oldText, newText);
-  if (json?.conflictPaths.length === 0) {
-    await writeFile(oursPath, json.mergedText);
-    options.keyMergedPaths.add(relativePath);
-    return "merge";
-  }
-  if (json === undefined) {
-    const textResult = gitMergeFile(oursPath, oldPath, newPath, env);
-    if (!mergeDuplicatesMember(await readFile(oursPath, "utf8"))) {
-      return textResult === "clean" ? "merge" : "conflict";
-    }
-  }
-  await writeFile(
-    oursPath,
-    `<<<<<<< ours\n` +
-      `${ensureTrailingNewline(oursText)}` +
-      `=======\n` +
-      `${ensureTrailingNewline(newText)}` +
-      `>>>>>>> new\n`,
-  );
-  return "conflict";
 }
 
 async function applyUnchangedPathUpdate(
@@ -434,20 +416,28 @@ async function mergeRegularFiles(options: {
   readonly newBytes: Uint8Array;
   readonly env: Readonly<Record<string, string | undefined>>;
   readonly keyMergedPaths: Set<string>;
-}): Promise<"merge" | "conflict"> {
+  readonly mergedJsonTexts: Map<string, string>;
+}): Promise<PathMergeResult> {
   if (options.relativePath.endsWith(".json")) {
-    return await mergeJsonFile(options);
+    return await mergeJsonUpgradeFile(options);
   }
   await assertNoSymlinkAncestors(options.targetFolder, options.relativePath);
   await assertNoSymlinkAncestors(options.oldFolder, options.relativePath);
   await assertNoSymlinkAncestors(options.newFolder, options.relativePath);
-  const fileResult = gitMergeFile(
-    join(options.targetFolder, options.relativePath),
-    join(options.oldFolder, options.relativePath),
-    join(options.newFolder, options.relativePath),
-    options.env,
-  );
-  return fileResult === "clean" ? "merge" : "conflict";
+  const oursPath = join(options.targetFolder, options.relativePath);
+  const oldPath = join(options.oldFolder, options.relativePath);
+  const newPath = join(options.newFolder, options.relativePath);
+  if (options.relativePath === AGENTS_FILE) {
+    const agentsResult = await mergeAgentsWithoutTemplateSource(
+      oursPath,
+      newPath,
+      [options.oursBytes, options.oldBytes, options.newBytes],
+      options.env,
+    );
+    if (agentsResult !== undefined) return agentsResult;
+  }
+  const fileResult = gitMergeFile(oursPath, oldPath, newPath, options.env);
+  return { outcome: fileResult === "clean" ? "merge" : "conflict" };
 }
 
 async function mergeDivergentPath(options: {
@@ -460,6 +450,7 @@ async function mergeDivergentPath(options: {
   readonly newEntry: TreeEntry;
   readonly env: Readonly<Record<string, string | undefined>>;
   readonly keyMergedPaths: Set<string>;
+  readonly mergedJsonTexts: Map<string, string>;
 }): Promise<PathMergeResult> {
   const { relativePath, targetFolder, oldFolder, newFolder, env } = options;
   const { oursEntry, oldEntry, newEntry } = options;
@@ -488,19 +479,18 @@ async function mergeDivergentPath(options: {
   ) {
     return { outcome: "conflict" };
   }
-  return {
-    outcome: await mergeRegularFiles({
-      relativePath,
-      targetFolder,
-      oldFolder,
-      newFolder,
-      oursBytes: oursEntry.bytes,
-      oldBytes: oldEntry.bytes,
-      newBytes: newEntry.bytes,
-      env,
-      keyMergedPaths: options.keyMergedPaths,
-    }),
-  };
+  return await mergeRegularFiles({
+    relativePath,
+    targetFolder,
+    oldFolder,
+    newFolder,
+    oursBytes: oursEntry.bytes,
+    oldBytes: oldEntry.bytes,
+    newBytes: newEntry.bytes,
+    env,
+    keyMergedPaths: options.keyMergedPaths,
+    mergedJsonTexts: options.mergedJsonTexts,
+  });
 }
 
 async function mergeSinglePath(options: {
@@ -512,6 +502,7 @@ async function mergeSinglePath(options: {
   readonly newHasCurrentStamp: boolean;
   readonly env: Readonly<Record<string, string | undefined>>;
   readonly keyMergedPaths: Set<string>;
+  readonly mergedJsonTexts: Map<string, string>;
 }): Promise<PathMergeResult> {
   const {
     relativePath,
@@ -574,6 +565,7 @@ async function mergeSinglePath(options: {
     newEntry,
     env,
     keyMergedPaths: options.keyMergedPaths,
+    mergedJsonTexts: options.mergedJsonTexts,
   });
 }
 
@@ -596,6 +588,7 @@ export async function mergeTemplateUpgradeTrees(
   targetFolder: string,
   env: Readonly<Record<string, string | undefined>> = process.env,
   keyMergedPaths = new Set<string>(),
+  mergedJsonTexts = new Map<string, string>(),
 ): Promise<readonly TemplateUpgradeRow[]> {
   const [oldPaths, newPaths] = await Promise.all([
     collectTreePaths(oldFolder),
@@ -635,6 +628,7 @@ export async function mergeTemplateUpgradeTrees(
       newHasCurrentStamp,
       env,
       keyMergedPaths,
+      mergedJsonTexts,
     });
     rowByPath.set(
       relativePath,
@@ -643,6 +637,10 @@ export async function mergeTemplateUpgradeTrees(
         ownerLabel,
         outcome: merged.outcome,
         ...(merged.reason === undefined ? {} : { reason: merged.reason }),
+        ...(merged.keyConflicts === undefined ||
+        merged.keyConflicts.length === 0
+          ? {}
+          : { keyConflicts: merged.keyConflicts }),
       }),
     );
   }
