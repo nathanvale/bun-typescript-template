@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   appendFileSync,
+  chmodSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -407,5 +408,43 @@ await new Promise<void>((resolve) => {
       }
     },
     processWatchdog(3),
+  );
+
+  test.skipIf(process.getuid?.() === 0)(
+    "pin plan refuses DOMAIN_PIN_UNREADABLE_FILE when .changeset/config.json is unreadable",
+    async () => {
+      const repo = fixture.freshRepository("pin-cli-refusals-chmod-repo-");
+      const configPath = join(repo, ".changeset", "config.json");
+      const stateHome = folder("pin-cli-refusals-chmod-state-");
+      chmodSync(configPath, 0o000);
+      try {
+        const run = await runPinRoute(
+          ROOT,
+          [
+            "pin",
+            "plan",
+            fixture.targetCommit,
+            "--kernel",
+            fixture.kernelRepo,
+            "--repository",
+            repo,
+            "--json",
+          ],
+          stateHome,
+          remotePathEnv(fixture.kernelRepo),
+        );
+        expect(run.stderr).toBe("");
+        const envelope = JSON.parse(run.stdout) as PinEnvelope;
+        expect(run.exitCode).toBe(3);
+        expect(envelope.result.commandIdentity).toBe(pinPlanIdentity);
+        expect(envelope.result.causeCode).toBe("DOMAIN_PIN_UNREADABLE_FILE");
+        expect(envelope.result.outcome).toBe("refused");
+        expect(envelope.result.transactionState).toBe("unchanged");
+        expect(envelope.message).toContain(".changeset/config.json");
+      } finally {
+        chmodSync(configPath, 0o644);
+      }
+    },
+    processWatchdog(2),
   );
 });
