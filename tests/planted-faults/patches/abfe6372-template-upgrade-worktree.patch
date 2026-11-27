@@ -1,0 +1,46 @@
+diff --git a/src/template-upgrade-worktree.ts b/src/template-upgrade-worktree.ts
+index 8b78b952..d15bb4b2 100644
+--- a/src/template-upgrade-worktree.ts
++++ b/src/template-upgrade-worktree.ts
+@@ -76,28 +76,12 @@ export async function assertNoSymlinkAncestors(
+   }
+ }
+ 
+-function unreadableFileError(fullPath: string, error: unknown): CliError {
+-  const detail = error instanceof Error ? error.message : String(error);
+-  return new CliError(
+-    "unreadable_file",
+-    `cannot read file ${fullPath}: ${detail}`,
+-    `check permissions and ensure ${fullPath} is a readable regular file, then rerun`,
+-    1,
+-    false,
+-  );
+-}
+-
+ export async function readPlainFileBytes(
+   fullPath: string,
+ ): Promise<Uint8Array> {
+   const flags =
+     constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
+-  let handle: Awaited<ReturnType<typeof open>>;
+-  try {
+-    handle = await open(fullPath, flags);
+-  } catch (error) {
+-    throw unreadableFileError(fullPath, error);
+-  }
++  const handle = await open(fullPath, flags);
+   try {
+     const stats = await handle.stat();
+     if (!stats.isFile()) {
+@@ -110,11 +94,6 @@ export async function readPlainFileBytes(
+       );
+     }
+     return new Uint8Array(await handle.readFile());
+-  } catch (error) {
+-    if (error instanceof CliError) {
+-      throw error;
+-    }
+-    throw unreadableFileError(fullPath, error);
+   } finally {
+     await handle.close();
+   }

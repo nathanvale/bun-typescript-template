@@ -1,0 +1,20 @@
+diff --git a/src/pin-move-command.ts b/src/pin-move-command.ts
+index e4784b1e..52f4ad37 100644
+--- a/src/pin-move-command.ts
++++ b/src/pin-move-command.ts
+@@ -198,6 +198,7 @@ async function executeRepositoryMove(
+                 repository: resolvedRepository,
+                 commit: kernel.commit,
+               },
++              supersedeUnresolved: true,
+             },
+             async (transaction) => {
+               let apply: () => Promise<RepositoryPinMoveOutcome>;
+@@ -277,6 +278,7 @@ async function executeTemplateMove(
+       command: pinMoveIdentity,
+       scope: { resources: [{ resource: "template", key: scopeKey }] },
+       facts: { commit: kernel.commit },
++      supersedeUnresolved: true,
+     },
+     async (transaction) => {
+       const folder = mkdtempSync(join(tmpdir(), "kernel-trial-"));

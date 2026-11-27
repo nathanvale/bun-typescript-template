@@ -3551,5 +3551,26 @@
     "testFile": "tests/template/pin-move/pin-refusals.test.ts",
     "title": "every PinRefusal and RepositoryPinRefusal code after writes with start restored yields a declared failed completed",
     "source": "4fcc3450 fix(pin): classify pin refusals by code and phase and drop non-glossary export (GREEN)"
+  },
+  {
+    "id": "aac5cba2-pin-move-command",
+    "patch": "tests/planted-faults/patches/aac5cba2-pin-move-command.patch",
+    "testFile": "tests/template/pin-move/pin-cli-refusals.test.ts",
+    "title": "SIGKILL during .* pin move leaves an unresolved case that the next pin move refuses with DOMAIN_PIN_MOVE_UNRESOLVED",
+    "source": "aac5cba2 fix(pin): drop supersedeUnresolved from pin move transactions"
+  },
+  {
+    "id": "6182602d-kernel-pin",
+    "patch": "tests/planted-faults/patches/6182602d-kernel-pin.patch",
+    "testFile": "tests/template/pin-move/pin-cli-refusals.test.ts",
+    "title": "pin verify, pin plan, and pin move refuse missing or invalid kernel-pin\\.json with DOMAIN_PIN_KERNEL_PIN_UNREADABLE",
+    "source": "6182602d fix(pin): refuse unreadable or invalid kernel-pin.json with DOMAIN_PIN_KERNEL_PIN_UNREADABLE"
+  },
+  {
+    "id": "abfe6372-template-upgrade-worktree",
+    "patch": "tests/planted-faults/patches/abfe6372-template-upgrade-worktree.patch",
+    "testFile": "tests/template/pin-move/pin-cli-refusals.test.ts",
+    "title": "pin plan refuses DOMAIN_PIN_UNREADABLE_FILE when \\.changeset/config\\.json is unreadable",
+    "source": "abfe6372 fix(pin): map readPlainFileBytes OS errors to unreadable_file"
   }
 ]
