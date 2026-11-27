@@ -15,8 +15,18 @@
       "approved": "Super Coordinator, 27 November 2026 06:50"
     },
     {
+      "word": "connect",
+      "reason": "TCP connection attempt in `tests/support/loopback-connect-probe.ts`, kept from agent-engineering so generated repositories switch with an import change only.",
+      "approved": "MAG-262 (proposed name from agent-engineering; Super Coordinator confirms at PR review)"
+    },
+    {
       "word": "pattern",
       "reason": "A glob or matching pattern, approved by Nathan for the template CLI."
+    },
+    {
+      "word": "probe",
+      "reason": "Qualified check of a runtime capability in `tests/support/loopback-connect-probe.ts`, kept from agent-engineering so generated repositories switch with an import change only.",
+      "approved": "MAG-262 (proposed name from agent-engineering; Super Coordinator confirms at PR review)"
     },
     {
       "word": "readiness",
@@ -27,6 +37,11 @@
       "word": "recover",
       "reason": "The verb for saving a failed upgrade worktree's edits onto a branch and patch before removing the worktree.",
       "approved": "Super Coordinator, item 33, 25 November 2026 04:08"
+    },
+    {
+      "word": "should",
+      "reason": "Predicate prefix in `shouldSkipLoopback`, kept from agent-engineering so generated repositories switch with an import change only.",
+      "approved": "MAG-262 (proposed name from agent-engineering; Super Coordinator confirms at PR review)"
     }
   ]
 }

@@ -74,6 +74,7 @@ const ownFiles = [
   "tests/git-fixture.test.ts",
   "tests/pointer-skills.test.ts",
   "tests/support/git-fixture.ts",
+  "tests/support/loopback-connect-probe.ts",
   "tests/support/test-folder.ts",
   "tests/support/test-run-folder.ts",
   "tsconfig.base.json",

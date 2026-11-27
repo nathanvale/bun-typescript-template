@@ -234,6 +234,10 @@ preload `tests/support/test-run-folder.ts` removes the folder and stops
 started outside one by a package script under `CI=true`, and warns about any
 other plain `bun test`.
 
+**Needs-loopback gate**:
+A test gate that skips a test needing a loopback connection inside a sandbox
+that refuses one, and fails the run under `CI=true`.
+
 ### Shared tool words
 
 **Toolchain pin**:
