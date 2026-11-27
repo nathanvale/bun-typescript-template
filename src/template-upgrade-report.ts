@@ -39,6 +39,7 @@ export interface TemplateUpgradePlanResult {
   readonly conflicts: readonly string[];
   readonly sharedMerges: readonly string[];
   readonly dependencyChanges: readonly PackageDependencyChange[];
+  readonly dependencyChangesNotice?: string;
   readonly templateCopyChanges: readonly TemplateUpgradeCopyChange[];
   readonly changesets: readonly TemplateChangesetEntry[];
   readonly upgradeChangeset?: TemplateUpgradeChangesetPlan;
@@ -65,6 +66,7 @@ export interface TemplateUpgradeApplyResult {
   readonly rows: readonly TemplateUpgradeRow[];
   readonly conflicts: readonly string[];
   readonly dependencyChanges: readonly PackageDependencyChange[];
+  readonly dependencyChangesNotice?: string;
   readonly templateCopyChanges: readonly TemplateUpgradeCopyChange[];
   readonly changesets: readonly TemplateChangesetEntry[];
   readonly steps: readonly TemplateUpgradeApplyStep[];
@@ -118,6 +120,7 @@ export interface TemplateUpgradeApplyReportOptions {
   readonly rows?: readonly TemplateUpgradeRow[];
   readonly conflicts?: readonly string[];
   readonly dependencyChanges?: readonly PackageDependencyChange[];
+  readonly dependencyChangesNotice?: string;
   readonly templateCopyChanges?: readonly TemplateUpgradeCopyChange[];
   readonly failedStep?: string;
   readonly checkCommandOutput?: string;
@@ -134,6 +137,7 @@ export interface TemplateUpgradePlanReportOptions {
   readonly conflicts: readonly string[];
   readonly sharedMerges: readonly string[];
   readonly dependencyChanges: readonly PackageDependencyChange[];
+  readonly dependencyChangesNotice?: string;
   readonly templateCopyChanges: readonly TemplateUpgradeCopyChange[];
   readonly changesets: readonly TemplateChangesetEntry[];
   readonly upgradeChangeset?: TemplateUpgradeChangesetPlan;
@@ -194,6 +198,9 @@ export function createTemplateUpgradePlanResult(
     conflicts: options.conflicts,
     sharedMerges: options.sharedMerges,
     dependencyChanges: options.dependencyChanges,
+    ...(options.dependencyChangesNotice === undefined
+      ? {}
+      : { dependencyChangesNotice: options.dependencyChangesNotice }),
     templateCopyChanges: options.templateCopyChanges,
     changesets: options.changesets,
     ...(options.upgradeChangeset === undefined
@@ -211,6 +218,7 @@ function definedApplyFields(
   const pairs: readonly (readonly [string, unknown])[] = [
     ["commit", options.commit],
     ["worktree", options.worktree],
+    ["dependencyChangesNotice", options.dependencyChangesNotice],
     ["pinMoveNotice", pinMoveNotice],
     ["templateHeadNotice", options.inputs.templateHeadNotice],
     ["leftoverWorktreeNotice", options.leftoverWorktreeNotice],

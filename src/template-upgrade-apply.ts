@@ -20,8 +20,8 @@ import {
 } from "./template-upgrade-git.ts";
 import type { TemplateUpgradeInputs } from "./template-upgrade-inputs.ts";
 import {
-  diffPackageDependencies,
   type PackageDependencyChange,
+  readPackageChanges,
 } from "./template-upgrade-json-merge.ts";
 import {
   diffTemplateUpgradeCopyChanges,
@@ -82,6 +82,7 @@ interface ApplySession {
 interface ApplyMergeData {
   readonly rows: readonly TemplateUpgradeRow[];
   readonly dependencyChanges: readonly PackageDependencyChange[];
+  readonly dependencyChangesNotice?: string;
   readonly templateCopyChanges: readonly TemplateUpgradeCopyChange[];
   readonly beforePackage: string | undefined;
   readonly afterPackage: string | undefined;
@@ -166,17 +167,19 @@ async function executePlanInWorktree(options: {
   const beforePackage = await readTextIfFile(
     join(planWorktree, "package.json"),
   );
+  const mergedJsonTexts = new Map<string, string>();
   const rows = await mergeTemplateUpgradeTrees(
     oldFolder,
     newFolder,
     planWorktree,
     env,
+    new Set<string>(),
+    mergedJsonTexts,
   );
-  const afterPackage = await readTextIfFile(join(planWorktree, "package.json"));
-  const dependencyChanges = diffPackageDependencies(
-    beforePackage,
-    afterPackage,
-  );
+  const afterPackage =
+    mergedJsonTexts.get("package.json") ??
+    (await readTextIfFile(join(planWorktree, "package.json")));
+  const dependencyDiff = readPackageChanges(beforePackage, afterPackage);
   const templateCopyChanges = await diffTemplateUpgradeCopyChanges(
     oldFolder,
     newFolder,
@@ -202,7 +205,10 @@ async function executePlanInWorktree(options: {
     rows,
     conflicts: Object.freeze(conflicts),
     sharedMerges: Object.freeze(sharedMerges),
-    dependencyChanges,
+    dependencyChanges: dependencyDiff.changes,
+    ...(dependencyDiff.unavailableReason === undefined
+      ? {}
+      : { dependencyChangesNotice: dependencyDiff.unavailableReason }),
     templateCopyChanges,
     changesets,
     ...(upgradeChangeset === undefined ? {} : { upgradeChangeset }),
@@ -367,6 +373,7 @@ async function prepareTemplateUpgradeWorktree(
     const afterPackage = await readTextIfFile(
       join(targetWorktree, "package.json"),
     );
+    const dependencyDiff = readPackageChanges(beforePackage, afterPackage);
     return {
       kind: "stopped",
       run: createTemplateUpgradeApplyRun({
@@ -379,7 +386,10 @@ async function prepareTemplateUpgradeWorktree(
         steps: skipTemplateUpgradeSteps("resolution-in-progress"),
         rows,
         conflicts: markerFiles,
-        dependencyChanges: diffPackageDependencies(beforePackage, afterPackage),
+        dependencyChanges: dependencyDiff.changes,
+        ...(dependencyDiff.unavailableReason === undefined
+          ? {}
+          : { dependencyChangesNotice: dependencyDiff.unavailableReason }),
         templateCopyChanges,
       }),
     };
@@ -468,15 +478,21 @@ async function finalizeTemplateUpgradeWorktree(
   rows: readonly TemplateUpgradeRow[],
   templateCopyChanges: readonly TemplateUpgradeCopyChange[],
   keyMergedPaths: ReadonlySet<string>,
+  mergedJsonTexts: ReadonlyMap<string, string>,
 ): Promise<TemplateUpgradeApplyRun> {
   const { inputs, branch, changesets, targetWorktree, skipCheckCommand } =
     session;
-  const afterPackage = await readTextIfFile(
-    join(targetWorktree, "package.json"),
-  );
+  const afterPackage = usingResolved
+    ? await readTextIfFile(join(targetWorktree, "package.json"))
+    : (mergedJsonTexts.get("package.json") ??
+      (await readTextIfFile(join(targetWorktree, "package.json"))));
+  const dependencyDiff = readPackageChanges(beforePackage, afterPackage);
   const mergeData: ApplyMergeData = {
     rows,
-    dependencyChanges: diffPackageDependencies(beforePackage, afterPackage),
+    dependencyChanges: dependencyDiff.changes,
+    ...(dependencyDiff.unavailableReason === undefined
+      ? {}
+      : { dependencyChangesNotice: dependencyDiff.unavailableReason }),
     templateCopyChanges,
     beforePackage,
     afterPackage,
@@ -543,12 +559,14 @@ async function applyTemplateUpgradeInTrees(
       join(temporaryWorktree, "package.json"),
     );
     const keyMergedPaths = new Set<string>();
+    const mergedJsonTexts = new Map<string, string>();
     const rows = await mergeTemplateUpgradeTrees(
       oldFolder,
       newFolder,
       temporaryWorktree,
       env,
       keyMergedPaths,
+      mergedJsonTexts,
     );
     const templateCopyChanges = await diffTemplateUpgradeCopyChanges(
       oldFolder,
@@ -573,6 +591,7 @@ async function applyTemplateUpgradeInTrees(
       rows,
       templateCopyChanges,
       keyMergedPaths,
+      mergedJsonTexts,
     );
   } finally {
     if (!temporaryMoved) {

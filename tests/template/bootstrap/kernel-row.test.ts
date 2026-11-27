@@ -120,6 +120,9 @@ describe("the kernel row", () => {
       "templateDirty",
       "templateRevision",
     ]);
+    expect(readFileSync(join(destination, "AGENTS.md"), "utf8")).not.toContain(
+      "Template source:",
+    );
     expect(JSON.stringify(provenance)).not.toContain(request.kernel.commit);
   });
 

@@ -16,7 +16,11 @@ import {
 } from "./template-upgrade-arguments.ts";
 import { formatTemplateUpgradeCommand } from "./template-upgrade-git.ts";
 import { resolveTemplateUpgradeInputs } from "./template-upgrade-inputs.ts";
-import type { PackageDependencyChange } from "./template-upgrade-json-merge.ts";
+import type {
+  JsonKeyConflict,
+  JsonValue,
+  PackageDependencyChange,
+} from "./template-upgrade-json-merge.ts";
 import type {
   TemplateUpgradeCopyChange,
   TemplateUpgradeRow,
@@ -99,7 +103,14 @@ function formatApplySteps(
 
 function formatDependencyChanges(
   changes: readonly PackageDependencyChange[],
+  unavailableReason?: string,
 ): string[] {
+  if (unavailableReason !== undefined) {
+    return [
+      "",
+      `package.json dependency changes: unavailable (${unavailableReason})`,
+    ];
+  }
   if (changes.length === 0) {
     return [];
   }
@@ -111,6 +122,25 @@ function formatDependencyChanges(
         `  ${change.section}.${change.packageName}: ${change.before ?? "(none)"} -> ${change.after ?? "(removed)"}`,
     ),
   ];
+}
+
+function formatJsonConflictValue(value: JsonValue | undefined): string {
+  return value === undefined ? "(absent)" : JSON.stringify(value);
+}
+
+function formatKeyConflictLines(
+  conflicts: readonly JsonKeyConflict[] | undefined,
+  indent: string,
+): string[] {
+  if (conflicts === undefined || conflicts.length === 0) {
+    return [];
+  }
+  return conflicts.flatMap((conflict) => [
+    `${indent}${conflict.path}:`,
+    `${indent}  base: ${formatJsonConflictValue(conflict.base)}`,
+    `${indent}  ours: ${formatJsonConflictValue(conflict.ours)}`,
+    `${indent}  new: ${formatJsonConflictValue(conflict.next)}`,
+  ]);
 }
 
 function formatTemplateCopyDiffs(
@@ -175,14 +205,27 @@ function formatPlan(result: TemplateUpgradePlanResult): string {
     ...(result.changesets.length > 0 ? [""] : []),
     ...formatRows(result.rows),
     ...formatSharedMerges(result.sharedMerges),
-    ...formatDependencyChanges(result.dependencyChanges),
+    ...formatDependencyChanges(
+      result.dependencyChanges,
+      result.dependencyChangesNotice,
+    ),
     ...formatTemplateCopyDiffs(result.templateCopyChanges),
   ];
   if (result.conflicts.length > 0) {
+    const rowByPath = new Map(result.rows.map((row) => [row.path, row]));
     lines.push(
       "",
       `Conflicts (${result.conflicts.length}): ${result.conflicts.join(", ")}`,
     );
+    for (const path of result.conflicts) {
+      const keyLines = formatKeyConflictLines(
+        rowByPath.get(path)?.keyConflicts,
+        "    ",
+      );
+      if (keyLines.length > 0) {
+        lines.push(`  ${path}`, ...keyLines);
+      }
+    }
   }
   if (result.pinMoveNotice !== undefined) {
     lines.push("", result.pinMoveNotice);
@@ -221,10 +264,14 @@ function formatConflictApply(
   const instruction = isResolving
     ? "Finish resolving conflict markers in that worktree, then rerun the same upgrade apply command."
     : "Resolve the conflicts in that worktree, then rerun the same upgrade apply command.";
+  const rowByPath = new Map(result.rows.map((row) => [row.path, row]));
   const lines = [
     header,
     ...headerDetails,
-    ...result.conflicts.map((path) => `  ${path}`),
+    ...result.conflicts.flatMap((path) => [
+      `  ${path}`,
+      ...formatKeyConflictLines(rowByPath.get(path)?.keyConflicts, "    "),
+    ]),
     ...notices,
     instruction,
     ...formatWorktreeDiscardLines(

@@ -56,10 +56,10 @@ Preconditions:
   Exit 0; stdout reads
   `Created a repository at <path>, with the kernel at the template's Pin`.
 - **Provenance.** Record `bootstrap-provenance` in `generated/repository`:
-  `cat .template.json AGENTS.md`. `templateRevision` and
-  `Template source:` equal the launched commit, `templateDirty` is `false`,
-  `sourcePacket` equals `$packet`, and the file names no `profile` or
-  `starter`.
+  `cat .template.json AGENTS.md`. `.template.json` has `templateRevision`
+  equal to the launched commit, `templateDirty` is `false`, `sourcePacket`
+  equals `$packet`, and names no `profile` or `starter`; `AGENTS.md` carries
+  no `Template source:` line.
 - **Green, ready.** In `generated/repository`, record `bootstrap-base`:
   `git init -q -b main && git commit -q --allow-empty -m "chore: establish comparison base"`,
   then `bootstrap-install`: `bun install --frozen-lockfile`, then
