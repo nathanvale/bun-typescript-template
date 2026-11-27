@@ -3537,5 +3537,19 @@
     "testFile": "tests/template/template-upgrade/template-upgrade-json-merge.test.ts",
     "title": "readPackageChanges reports unavailable instead of removals when package.json cannot be parsed",
     "source": "f1351af fix(template-upgrade): conflicts arrive key by key and named, dependency changes come from the key merge, and AGENTS.md drops the template stamp"
+  },
+  {
+    "id": "4fcc3450-pin-refusals",
+    "patch": "tests/planted-faults/patches/4fcc3450-pin-refusals.patch",
+    "testFile": "tests/template/pin-move/pin-refusals.test.ts",
+    "title": "pin move refuses repository_git_failed before any write when .git/index is corrupt",
+    "source": "4fcc3450 fix(pin): classify pin refusals by code and phase and drop non-glossary export (GREEN)"
+  },
+  {
+    "id": "4fcc3450-pin-refusals-restored",
+    "patch": "tests/planted-faults/patches/4fcc3450-pin-refusals-restored.patch",
+    "testFile": "tests/template/pin-move/pin-refusals.test.ts",
+    "title": "every PinRefusal and RepositoryPinRefusal code after writes with start restored yields a declared failed completed",
+    "source": "4fcc3450 fix(pin): classify pin refusals by code and phase and drop non-glossary export (GREEN)"
   }
 ]

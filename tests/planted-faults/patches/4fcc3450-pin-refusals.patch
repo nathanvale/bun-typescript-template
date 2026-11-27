@@ -1,0 +1,12 @@
+diff --git a/src/pin-refusals.ts b/src/pin-refusals.ts
+index 11111111..22222222 100644
+--- a/src/pin-refusals.ts
++++ b/src/pin-refusals.ts
+@@ -76,7 +76,6 @@ export const verifyRefusalCauses = [
+ 
+ export const planRefusalCauses = [
+   ...verifyRefusalCauses,
+-  "DOMAIN_PIN_REPOSITORY_GIT_FAILED",
+   "DOMAIN_PIN_REPOSITORY_INVALID",
+   "DOMAIN_PIN_REPOSITORY_PIN_MISSING",
+   "DOMAIN_PIN_CHANGESET_INVALID",
