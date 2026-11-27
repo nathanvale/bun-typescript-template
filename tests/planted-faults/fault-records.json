@@ -3586,5 +3586,12 @@
     "testFile": "tests/template/bootstrap/recipe.test.ts",
     "title": "it copies tests/support/loopback-connect-probe.ts and Bootstrap writes it byte-identical to the starter kit",
     "source": "595b3954 feat(recipe): ship loopback-connect-probe in generated repositories"
+  },
+  {
+    "id": "d6f1810a-pin-move-branch",
+    "patch": "tests/planted-faults/patches/d6f1810a-pin-move-branch.patch",
+    "testFile": "tests/template/pin-move/pin-move-stop.test.ts",
+    "title": "SIGTERM during repository check settles inside 450 ms even when restore frozen install is slow",
+    "source": "d6f1810a fix(pin): skip package reinstall on signal stop so move settles"
   }
 ]
