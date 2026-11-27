@@ -23,14 +23,6 @@ const noEffects = {
   inventoryComplete: true,
 } as const;
 
-export function jsonOutput(argv: readonly string[]): boolean {
-  for (const token of argv) {
-    if (token === "--") return false;
-    if (token === "--json") return true;
-  }
-  return false;
-}
-
 async function loadKernel() {
   if (!existsSync(join(root, "node_modules", "agent-cli-kernel")))
     return undefined;
@@ -45,7 +37,7 @@ async function loadKernel() {
   return { kernel, diagnostics, stateModule, causes, pinCommands };
 }
 
-async function runFrontDoor(argv: readonly string[]): Promise<void> {
+export async function runFrontDoor(argv: readonly string[]): Promise<void> {
   const loaded = await loadKernel();
   if (loaded === undefined) {
     process.stderr.write(
@@ -68,7 +60,6 @@ async function runFrontDoor(argv: readonly string[]): Promise<void> {
     },
   } = loaded;
 
-  const machineOutput = jsonOutput(argv);
   const state = stateAddon({
     root: frontDoorStateRoot(process.env),
     report: pinVerifyIdentity,
@@ -120,11 +111,10 @@ async function runFrontDoor(argv: readonly string[]): Promise<void> {
           { ready: true, resultCount: results.length },
           "info",
         );
-        if (!machineOutput) process.stdout.write(formatDoctorReport(report));
         return context.result(
           { commandIdentity: doctorIdentity, causeCode: "SUCCESS_UNCHANGED" },
           {
-            message: "Checkout is ready.",
+            message: `${formatDoctorReport(report)}Checkout is ready.`,
             data: { ready: true, results },
             effects: noEffects,
           },
@@ -139,17 +129,13 @@ async function runFrontDoor(argv: readonly string[]): Promise<void> {
         },
         "warning",
       );
-      if (!machineOutput) process.stdout.write(formatDoctorReport(report));
-      const summary = failing
-        .map((result) => `${result.check}: ${result.detail}`)
-        .join(" ");
       return context.result(
         {
           commandIdentity: doctorIdentity,
           causeCode: "DOMAIN_DOCTOR_CHECK_FAILED",
         },
         {
-          message: summary,
+          message: formatDoctorReport(report).trimEnd(),
           data: { ready: false, results },
           effects: noEffects,
         },
@@ -162,8 +148,8 @@ async function runFrontDoor(argv: readonly string[]): Promise<void> {
     commands: [
       doctorCommand,
       pinVerifyCommand(root),
-      pinPlanCommand(root, machineOutput),
-      pinMoveCommand(root, state, machineOutput),
+      pinPlanCommand(root),
+      pinMoveCommand(root, state),
     ] as const,
     causes: cliCauses,
     state: state.descriptor,

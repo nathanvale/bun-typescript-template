@@ -125,7 +125,7 @@ describe("pin-move --repository with a regenerate step", () => {
         "utf8",
       ),
     );
-    expect(run.stdout).toContain("  regenerated.txt\n");
+    expect(run.stdout).toContain("regenerated.txt");
 
     await regenerate(repo);
     expect(cleanStatus(repo)).toBe("");

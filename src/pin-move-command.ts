@@ -164,7 +164,6 @@ async function executeRepositoryMove(
   active: TrialActive,
   state: FrontDoorState,
   stateContext: StateCapability<PinMoveEffect>,
-  machineOutput: boolean,
 ): Promise<{
   readonly tx: MoveTransaction;
   readonly movedOutcome: AppliedRepositoryOutcome | undefined;
@@ -188,7 +187,6 @@ async function executeRepositoryMove(
           pinBranchCommitHeld(currentPin, seam.repository),
         ),
       {
-        quiet: machineOutput,
         runWrite: async (resolvedRepository, prepare) => {
           const tx = await state.transaction(
             stateContext,
@@ -360,7 +358,6 @@ function createAbortHandler(signal: AbortSignal, active: TrialActive) {
 export function pinMoveCommand(
   root: string,
   state: ReturnType<typeof stateAddon>,
-  machineOutput: boolean,
 ) {
   return changing({
     identity: pinMoveIdentity,
@@ -476,7 +473,6 @@ export function pinMoveCommand(
           active,
           state,
           context.state,
-          machineOutput,
         );
         const failure = handleMoveTransactionFailure(
           tx,
@@ -527,9 +523,6 @@ export function pinMoveCommand(
         if (tx.kind !== "ran" || moved === undefined) {
           throw new Error("Pin move did not complete.");
         }
-        if (!machineOutput) {
-          process.stdout.write(pinMoveReportText(moved.report, moved.written));
-        }
         context.diagnostics.record(
           "pin.move.completed",
           {
@@ -542,7 +535,7 @@ export function pinMoveCommand(
         return context.result(
           { commandIdentity: pinMoveIdentity, causeCode: "SUCCESS_COMPLETED" },
           {
-            message: `Moved template Pin from ${moved.report.from} to ${moved.report.to}.`,
+            message: `${pinMoveReportText(moved.report, moved.written)}Moved template Pin from ${moved.report.from} to ${moved.report.to}.`,
             data: moveResultData(moved),
             transaction: tx.proof,
           },

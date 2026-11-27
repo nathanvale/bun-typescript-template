@@ -160,7 +160,7 @@ describe("the pin move command", () => {
         stderr: "",
       });
       expect(run.stdout).toContain(
-        `Pin move report: ${trialBase} to ${trialBase}\nWritten in the template, kernel lockfile first and pin last (1):\n  ${KERNEL_LOCKFILE}\nKernel files added (0):\nKernel files changed (0):\nKernel files removed (0):\nKernel log (0):\n`,
+        `Pin move report: ${trialBase} to ${trialBase} Written in the template, kernel lockfile first and pin last (1): ${KERNEL_LOCKFILE} Kernel files added (0): Kernel files changed (0): Kernel files removed (0): Kernel log (0):`,
       );
       expect(
         gitOutput(copy, "status", "--porcelain", "--untracked-files=all"),
@@ -176,7 +176,7 @@ describe("the pin move command", () => {
       );
       expect(again.exit).toBe(0);
       expect(again.stdout).toContain(
-        `Pin move report: ${trialBase} to ${trialBase}\nWritten in the template, kernel lockfile first and pin last (0):\n`,
+        `Pin move report: ${trialBase} to ${trialBase} Written in the template, kernel lockfile first and pin last (0):`,
       );
       expect(
         gitOutput(copy, "status", "--porcelain", "--untracked-files=all"),

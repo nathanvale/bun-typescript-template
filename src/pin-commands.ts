@@ -128,7 +128,7 @@ export function pinVerifyCommand(root: string) {
   });
 }
 
-export function pinPlanCommand(root: string, machineOutput: boolean) {
+export function pinPlanCommand(root: string) {
   return command({
     identity: pinPlanIdentity,
     route: ["pin", "plan"],
@@ -175,7 +175,6 @@ export function pinPlanCommand(root: string, machineOutput: boolean) {
               currentPin,
               pinBranchCommitHeld(currentPin, seam.repository),
             ),
-          { quiet: machineOutput },
         );
         if (!outcome.planOnly) {
           throw new Error("Expected plan-only outcome from pin plan.");

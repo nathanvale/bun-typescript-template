@@ -225,13 +225,13 @@ describe("cli front door and doctor route", () => {
 
       expect(result.exitCode).toBe(0);
       expect(result.stderr).toBe("");
-      expect(result.lines).toContain(
+      expect(result.stdout).toContain(
         `ok bun: Bun ${Bun.version} matches the toolchain pin.`,
       );
-      expect(result.lines).toContain(
+      expect(result.stdout).toContain(
         "ok toolchain: node_modules resolves the accepted lint, compiler and semantic backends.",
       );
-      expect(result.lines).toContain("ok fallow: fallow doctor passes.");
+      expect(result.stdout).toContain("ok fallow: fallow doctor passes.");
       expect(diagnosticsRecords(stateHome)).toHaveLength(1);
     },
     processWatchdog(1),

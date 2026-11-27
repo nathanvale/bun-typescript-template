@@ -433,7 +433,6 @@ async function applyRepositoryPinMove(
   reportText: string,
   active: TrialActive,
   kernelPackage: string,
-  quiet: boolean,
 ): Promise<RepositoryPinMoveOutcome> {
   const editedPaths = edits.map((edit) => edit.path);
   const attempt: PinMoveAttempt = {
@@ -449,7 +448,6 @@ async function applyRepositoryPinMove(
   };
   let installRan = false;
   try {
-    if (!quiet) process.stdout.write(reportText);
     for (const edit of edits)
       writeFileSync(join(repository, edit.path), edit.text);
     installRan = true;
@@ -479,7 +477,6 @@ async function applyRepositoryPinMove(
       written,
     );
     const summary = `Moved kernel Pin in ${repository} on branch ${branch} (${commit}):\n${written.map((file) => `  ${file}\n`).join("")}`;
-    if (!quiet) process.stdout.write(summary);
     return {
       planOnly: false,
       repository,
@@ -490,7 +487,7 @@ async function applyRepositoryPinMove(
       written,
       report,
       reportText,
-      message: summary.trimEnd(),
+      message: `${reportText}${summary}`.trimEnd(),
     };
   } catch (error) {
     throw await failedAttempt(attempt, error, installRan);
@@ -503,7 +500,6 @@ async function writePinMovePlan(
   kernelCommit: string,
   report: PinMoveReport,
   reportText: string,
-  quiet: boolean,
 ): Promise<RepositoryPinMoveOutcome> {
   const plannedChangeset =
     oldCommit === kernelCommit
@@ -518,10 +514,6 @@ async function writePinMovePlan(
       ? ""
       : `Changeset: ${plannedChangeset.path} (${plannedChangeset.level}, ${plannedChangeset.summary})\n`;
   const planLine = `Plan only: no branch or file changed in ${repository}.`;
-  if (!quiet) {
-    process.stdout.write(reportText);
-    if (changesetLine !== "") process.stdout.write(changesetLine);
-  }
   return {
     planOnly: true,
     repository,
@@ -538,7 +530,7 @@ async function writePinMovePlan(
             summary: plannedChangeset.summary,
           },
         }),
-    message: planLine,
+    message: `${reportText}${changesetLine}${planLine}`.trimEnd(),
   };
 }
 
@@ -554,14 +546,12 @@ export async function moveRepositoryPin(
   active: TrialActive,
   verifyTarget: (seam: KernelSeam, pin: KernelPin) => string,
   options: {
-    readonly quiet?: boolean;
     readonly runWrite?: (
       repository: string,
       prepare: () => PreparedRepositoryMove,
     ) => Promise<RepositoryPinMoveOutcome>;
   } = {},
 ): Promise<RepositoryPinMoveOutcome> {
-  const quiet = options.quiet === true;
   if (planOnly) {
     const { repository } = openGeneratedRepository(givenRepository, false);
     const kernelRepository = verifyTarget(kernel, pin);
@@ -584,7 +574,6 @@ export async function moveRepositoryPin(
       kernel.commit,
       report,
       reportText,
-      quiet,
     );
   }
   const runWrite =
@@ -635,7 +624,6 @@ export async function moveRepositoryPin(
           reportText,
           active,
           pin.repository,
-          quiet,
         );
       },
     };
