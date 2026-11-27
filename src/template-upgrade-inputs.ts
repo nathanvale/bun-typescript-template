@@ -12,6 +12,9 @@ import {
 } from "./template-upgrade-git.ts";
 
 export const OLD_TEMPLATE_JSON_FILE = ".cli-design-template.json";
+const DEFAULT_TEMPLATE_UPGRADE_CHECK_LIMIT_SECONDS = 900;
+const MAX_TEMPLATE_UPGRADE_CHECK_LIMIT_SECONDS = 2_147_483;
+const CHECK_LIMIT_SETTING_KEY = "templateUpgrade.checkTimeoutSeconds";
 const PACKAGE_FILE = "package.json";
 const KERNEL_PACKAGE_NAME = "agent-cli-kernel";
 const FULL_COMMIT_PATTERN = /^[0-9a-f]{40}$/;
@@ -29,6 +32,7 @@ export interface TemplateUpgradeInputs {
   readonly sourcePacket: string;
   readonly repositoryPinnedCommit: string;
   readonly templatePinnedCommit: string;
+  readonly checkLimitSeconds: number;
   readonly templateHeadNotice?: string;
 }
 
@@ -228,6 +232,48 @@ function readTemplatePinnedCommit(
   }
 }
 
+function readTemplateUpgradeCheckLimitSeconds(
+  packageFields: ReadonlyMap<string, unknown>,
+): number {
+  const rawSection = packageFields.get("templateUpgrade");
+  if (rawSection === undefined) {
+    return DEFAULT_TEMPLATE_UPGRADE_CHECK_LIMIT_SECONDS;
+  }
+  if (
+    typeof rawSection !== "object" ||
+    rawSection === null ||
+    Array.isArray(rawSection)
+  ) {
+    throw new CliError(
+      "check_limit_invalid",
+      `HEAD:${PACKAGE_FILE} ${CHECK_LIMIT_SETTING_KEY} cannot be read because "templateUpgrade" (${JSON.stringify(rawSection)}) is not a JSON object`,
+      `set ${CHECK_LIMIT_SETTING_KEY} to a positive integer in ${PACKAGE_FILE}, or remove "templateUpgrade" to use the default ${DEFAULT_TEMPLATE_UPGRADE_CHECK_LIMIT_SECONDS} seconds, and commit it`,
+      2,
+      true,
+    );
+  }
+  const sectionFields = new Map<string, unknown>(Object.entries(rawSection));
+  const rawValue = sectionFields.get("checkTimeoutSeconds");
+  if (rawValue === undefined) {
+    return DEFAULT_TEMPLATE_UPGRADE_CHECK_LIMIT_SECONDS;
+  }
+  if (
+    typeof rawValue !== "number" ||
+    !Number.isSafeInteger(rawValue) ||
+    rawValue <= 0 ||
+    rawValue > MAX_TEMPLATE_UPGRADE_CHECK_LIMIT_SECONDS
+  ) {
+    throw new CliError(
+      "check_limit_invalid",
+      `HEAD:${PACKAGE_FILE} ${CHECK_LIMIT_SETTING_KEY} (${JSON.stringify(rawValue)}) must be a positive integer`,
+      `set ${CHECK_LIMIT_SETTING_KEY} to a positive integer (1 to ${MAX_TEMPLATE_UPGRADE_CHECK_LIMIT_SECONDS}) in ${PACKAGE_FILE}, or remove it to use the default ${DEFAULT_TEMPLATE_UPGRADE_CHECK_LIMIT_SECONDS} seconds, and commit it`,
+      2,
+      true,
+    );
+  }
+  return rawValue;
+}
+
 function readCommittedPackageFields(
   repository: string,
   stampFields: ReadonlyMap<string, unknown>,
@@ -346,6 +392,9 @@ export function resolveTemplateUpgradeInputs(
   const packageName = readCommittedPackageName(
     packageFields ?? new Map<string, unknown>(),
   );
+  const checkLimitSeconds = readTemplateUpgradeCheckLimitSeconds(
+    packageFields ?? new Map<string, unknown>(),
+  );
   const templatePinnedCommit = readTemplatePinnedCommit(
     templateRoot,
     targetCommit,
@@ -368,6 +417,7 @@ export function resolveTemplateUpgradeInputs(
     sourcePacket,
     repositoryPinnedCommit,
     templatePinnedCommit,
+    checkLimitSeconds,
     ...(templateHeadNotice === undefined ? {} : { templateHeadNotice }),
   });
 }

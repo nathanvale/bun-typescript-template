@@ -18,15 +18,19 @@ index ac9d6a1..f084444 100644
    );
 -  const recordedBeforeRepair =
 -    recordedHitsRecordedBeforeRepair(recordedHitsRequest);
-   const recorded = runRecordedHitsStep(recordedHitsRequest, CHECK_TIMEOUT_MS);
-   if (!recorded.ok) {
-     return {
+   const recorded = runRecordedHitsStep(
+     recordedHitsRequest,
+     checkTimeoutMilliseconds,
 @@ -434,27 +430,6 @@ export function runTemplateUpgradeCheckSteps(options: {
      ...recorded.steps,
      createTemplateUpgradeApplyStep("bun run check", true, "passed"),
    ];
 -  const recordedAfterRepair = recordedBeforeRepair
--    ? runRecordedHitsRepairStep(recordedHitsRequest, CHECK_TIMEOUT_MS)
+-    ? runRecordedHitsRepairStep(
+-        recordedHitsRequest,
+-        checkTimeoutMilliseconds,
+-        checkTimeoutMessage(RECORDED_HITS_STEP, checkLimitSeconds),
+-      )
 -    : { ok: true as const, steps: [] };
 -  if (!recordedAfterRepair.ok) {
 -    return {
@@ -41,7 +45,7 @@ index ac9d6a1..f084444 100644
 -          timedOut: false,
 -          signalCode: null,
 -        },
--        timeoutMilliseconds: CHECK_TIMEOUT_MS,
+-        timeoutMilliseconds: checkTimeoutMilliseconds,
 -      }),
 -    };
 -  }

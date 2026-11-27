@@ -62,7 +62,11 @@ import {
 const FALLOW_AUDIT_STEP = "fallow audit";
 const FALLOW_BIN = "node_modules/.bin/fallow";
 const INSTALL_TIMEOUT_MS = 120_000;
-const CHECK_TIMEOUT_MS = 240_000;
+
+function checkTimeoutMessage(label: string, limitSeconds: number): string {
+  const unit = limitSeconds === 1 ? "second" : "seconds";
+  return `${label} did not finish within ${limitSeconds} ${unit}. Raise templateUpgrade.checkTimeoutSeconds in package.json to give this repository's check more time.`;
+}
 
 const GATE_SCRIPT_ARGS: Readonly<
   Record<TemplateUpgradeGateName, readonly string[]>
@@ -361,6 +365,7 @@ function createTemplateUpgradeCheckFailureRun(options: {
 function runPushFallowAuditStep(
   worktree: string,
   base: string,
+  checkLimitSeconds: number,
   env: ProcessEnvMap,
 ):
   | { readonly ok: true; readonly step: TemplateUpgradeApplyStep }
@@ -381,7 +386,8 @@ function runPushFallowAuditStep(
     worktree,
     command: [fallow, "audit", "--base", base, "--quiet"],
     label: FALLOW_AUDIT_STEP,
-    timeoutMilliseconds: CHECK_TIMEOUT_MS,
+    timeoutMilliseconds: checkLimitSeconds * 1000,
+    timeoutMessage: checkTimeoutMessage(FALLOW_AUDIT_STEP, checkLimitSeconds),
     env,
   });
   if (!result.ok) return { ok: false, result };
@@ -406,6 +412,8 @@ export function runTemplateUpgradeCheckSteps(options: {
 }):
   | { readonly ok: true; readonly steps: readonly TemplateUpgradeApplyStep[] }
   | { readonly ok: false; readonly run: TemplateUpgradeApplyRun } {
+  const checkLimitSeconds = options.inputs.checkLimitSeconds;
+  const checkTimeoutMilliseconds = checkLimitSeconds * 1000;
   const install = runBunStep({
     worktree: options.worktree,
     args: ["install"],
@@ -429,7 +437,7 @@ export function runTemplateUpgradeCheckSteps(options: {
           ),
         ]),
         stepResult: install,
-        timeoutMilliseconds: CHECK_TIMEOUT_MS,
+        timeoutMilliseconds: checkTimeoutMilliseconds,
       }),
     };
   }
@@ -455,7 +463,7 @@ export function runTemplateUpgradeCheckSteps(options: {
           ),
         ]),
         stepResult: formatted.result,
-        timeoutMilliseconds: CHECK_TIMEOUT_MS,
+        timeoutMilliseconds: checkTimeoutMilliseconds,
       }),
     };
   }
@@ -471,7 +479,11 @@ export function runTemplateUpgradeCheckSteps(options: {
   );
   const recordedBeforeRepair =
     recordedHitsRecordedBeforeRepair(recordedHitsRequest);
-  const recorded = runRecordedHitsStep(recordedHitsRequest, CHECK_TIMEOUT_MS);
+  const recorded = runRecordedHitsStep(
+    recordedHitsRequest,
+    checkTimeoutMilliseconds,
+    checkTimeoutMessage(RECORDED_HITS_STEP, checkLimitSeconds),
+  );
   if (!recorded.ok) {
     return {
       ok: false,
@@ -485,14 +497,15 @@ export function runTemplateUpgradeCheckSteps(options: {
           timedOut: false,
           signalCode: null,
         },
-        timeoutMilliseconds: CHECK_TIMEOUT_MS,
+        timeoutMilliseconds: checkTimeoutMilliseconds,
       }),
     };
   }
   const check = runBunStep({
     worktree: options.worktree,
     args: ["run", "check"],
-    timeoutMilliseconds: CHECK_TIMEOUT_MS,
+    timeoutMilliseconds: checkTimeoutMilliseconds,
+    timeoutMessage: checkTimeoutMessage("bun run check", checkLimitSeconds),
     env: options.env,
   });
   if (!check.ok) {
@@ -507,7 +520,7 @@ export function runTemplateUpgradeCheckSteps(options: {
           createTemplateUpgradeApplyStep("bun run check", true, "failed"),
         ]),
         stepResult: check,
-        timeoutMilliseconds: CHECK_TIMEOUT_MS,
+        timeoutMilliseconds: checkTimeoutMilliseconds,
       }),
     };
   }
@@ -517,7 +530,11 @@ export function runTemplateUpgradeCheckSteps(options: {
     createTemplateUpgradeApplyStep("bun run check", true, "passed"),
   ];
   const recordedAfterRepair = recordedBeforeRepair
-    ? runRecordedHitsRepairStep(recordedHitsRequest, CHECK_TIMEOUT_MS)
+    ? runRecordedHitsRepairStep(
+        recordedHitsRequest,
+        checkTimeoutMilliseconds,
+        checkTimeoutMessage(RECORDED_HITS_STEP, checkLimitSeconds),
+      )
     : { ok: true as const, steps: [] };
   if (!recordedAfterRepair.ok) {
     return {
@@ -532,7 +549,7 @@ export function runTemplateUpgradeCheckSteps(options: {
           timedOut: false,
           signalCode: null,
         },
-        timeoutMilliseconds: CHECK_TIMEOUT_MS,
+        timeoutMilliseconds: checkTimeoutMilliseconds,
       }),
     };
   }
@@ -540,6 +557,7 @@ export function runTemplateUpgradeCheckSteps(options: {
   const audit = runPushFallowAuditStep(
     options.worktree,
     options.inputs.repositoryHead,
+    checkLimitSeconds,
     options.env,
   );
   if (!audit.ok) {
@@ -553,7 +571,7 @@ export function runTemplateUpgradeCheckSteps(options: {
           createTemplateUpgradeApplyStep(FALLOW_AUDIT_STEP, true, "failed"),
         ]),
         stepResult: audit.result,
-        timeoutMilliseconds: CHECK_TIMEOUT_MS,
+        timeoutMilliseconds: checkTimeoutMilliseconds,
       }),
     };
   }

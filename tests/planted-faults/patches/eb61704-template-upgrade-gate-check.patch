@@ -3,7 +3,8 @@ index ac9d6a1..7b98dee 100644
 --- a/src/template-upgrade-gate-check.ts
 +++ b/src/template-upgrade-gate-check.ts
 @@ -302,7 +302,6 @@ function runPushFallowAuditStep(
-     timeoutMilliseconds: CHECK_TIMEOUT_MS,
+     timeoutMilliseconds: checkLimitSeconds * 1000,
+     timeoutMessage: checkTimeoutMessage(FALLOW_AUDIT_STEP, checkLimitSeconds),
      env,
    });
 -  if (!result.ok) return { ok: false, result };

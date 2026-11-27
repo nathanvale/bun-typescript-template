@@ -1,0 +1,13 @@
+diff --git a/src/template-upgrade-inputs.ts b/src/template-upgrade-inputs.ts
+index 0000000..0000000 100644
+--- a/src/template-upgrade-inputs.ts
++++ b/src/template-upgrade-inputs.ts
+@@ -12,7 +12,7 @@ import {
+ } from "./template-upgrade-git.ts";
+ 
+ export const OLD_TEMPLATE_JSON_FILE = ".cli-design-template.json";
+-const DEFAULT_TEMPLATE_UPGRADE_CHECK_LIMIT_SECONDS = 900;
++const DEFAULT_TEMPLATE_UPGRADE_CHECK_LIMIT_SECONDS = 240;
+ const MAX_TEMPLATE_UPGRADE_CHECK_LIMIT_SECONDS = 2_147_483;
+ const CHECK_LIMIT_SETTING_KEY = "templateUpgrade.checkTimeoutSeconds";
+ const PACKAGE_FILE = "package.json";

@@ -51,6 +51,8 @@ bun run upgrade recover --repository PATH [--to REF] [--json]
 
 If `templateRevision` equals the resolved target commit, `plan` and `apply` exit `0` with status `up-to-date` and write nothing. When the template's Pin at the target (`kernel-pin.json`) differs from the repository's Pin, both print one notice (`pinMoveNotice` in `--json`) naming both Pins and reminding you that a Template upgrade does not move a Pin.
 
+The Template upgrade check limit bounds each check step: `templateUpgrade.checkTimeoutSeconds` in the committed `package.json` (default `900`); a bad value refuses as `check_limit_invalid`.
+
 ### Where the kernel repository comes from
 
 Bootstrap and a Template upgrade read the kernel from the first of these places that exists:

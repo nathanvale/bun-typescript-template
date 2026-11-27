@@ -207,6 +207,7 @@ test("withTemplateUpgradeTrees refuses when regeneration writes both stamp files
         sourcePacket: "/abs/packet",
         repositoryPinnedCommit: pinnedCommit,
         templatePinnedCommit: pinnedCommit,
+        checkLimitSeconds: 900,
       },
       { ...gitEnv, KERNEL_REPOSITORY: folder("stamp-kernel-") },
       () => Promise.resolve("unreachable"),

@@ -56,7 +56,7 @@ index ac9d6a1..aeb5f2b 100644
 -          ),
 -        ]),
 -        stepResult: formatted.result,
--        timeoutMilliseconds: CHECK_TIMEOUT_MS,
+-        timeoutMilliseconds: checkTimeoutMilliseconds,
 -      }),
 -    };
 -  }
