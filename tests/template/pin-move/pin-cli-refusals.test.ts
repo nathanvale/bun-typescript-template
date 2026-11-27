@@ -4,13 +4,18 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  rmSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { delimiter, join } from "node:path";
 import { startChild } from "../../../scripts/process-runner.ts";
-import { readKernelPin } from "../../../src/kernel-pin.ts";
-import { pinMoveIdentity } from "../../../src/pin-refusals.ts";
+import { kernelPinFile, readKernelPin } from "../../../src/kernel-pin.ts";
+import {
+  pinMoveIdentity,
+  pinPlanIdentity,
+  pinVerifyIdentity,
+} from "../../../src/pin-refusals.ts";
 import { KERNEL_LOCKFILE } from "../../../src/recipe.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
@@ -295,6 +300,111 @@ await new Promise<void>((resolve) => {
         .split("\n")
         .filter((line) => line === "trial-started");
       expect(starts).toHaveLength(1);
+    },
+    processWatchdog(3),
+  );
+
+  test(
+    "pin verify, pin plan, and pin move refuse missing or invalid kernel-pin.json with DOMAIN_PIN_KERNEL_PIN_UNREADABLE and readKernelPin's repair before any write or transaction",
+    async () => {
+      const repo = fixture.freshRepository("pin-cli-refusals-bad-pin-repo-");
+      const restoreRepair =
+        "Repair: restore it from the last commit that changed it. After its first write, only a pin move changes the kernel pin.";
+      const cases = [
+        {
+          label: "missing",
+          prepare: (copy: string) => {
+            rmSync(join(copy, kernelPinFile), { force: true });
+          },
+          expectedMessage: "is missing at",
+        },
+        {
+          label: "invalid JSON",
+          prepare: (copy: string) => {
+            writeFileSync(join(copy, kernelPinFile), "{");
+          },
+          expectedMessage: "is not JSON.",
+        },
+      ] as const;
+
+      const routes = [
+        {
+          name: "pin verify",
+          identity: pinVerifyIdentity,
+          args: ["pin", "verify", "--kernel", fixture.kernelRepo, "--json"],
+        },
+        {
+          name: "pin plan",
+          identity: pinPlanIdentity,
+          args: [
+            "pin",
+            "plan",
+            fixture.targetCommit,
+            "--kernel",
+            fixture.kernelRepo,
+            "--repository",
+            repo,
+            "--json",
+          ],
+        },
+        {
+          name: "pin move",
+          identity: pinMoveIdentity,
+          args: [
+            "pin",
+            "move",
+            fixture.targetCommit,
+            "--kernel",
+            fixture.kernelRepo,
+            "--json",
+          ],
+        },
+      ] as const;
+
+      for (const pinCase of cases) {
+        const copy = copyTemplateWithModules(trialBase);
+        pinCase.prepare(copy);
+        for (const route of routes) {
+          const stateHome = folder("pin-cli-refusals-bad-pin-state-");
+          const run = await runPinRoute(copy, route.args, stateHome);
+          expect(run.stderr, `${pinCase.label} ${route.name}`).toBe("");
+          const envelope = JSON.parse(run.stdout) as PinEnvelope;
+          expect(run.exitCode, `${pinCase.label} ${route.name}`).toBe(3);
+          expect(
+            envelope.result.commandIdentity,
+            `${pinCase.label} ${route.name}`,
+          ).toBe(route.identity);
+          expect(
+            envelope.result.causeCode,
+            `${pinCase.label} ${route.name}`,
+          ).toBe("DOMAIN_PIN_KERNEL_PIN_UNREADABLE");
+          expect(
+            envelope.result.outcome,
+            `${pinCase.label} ${route.name}`,
+          ).toBe("refused");
+          expect(
+            envelope.result.transactionState,
+            `${pinCase.label} ${route.name}`,
+          ).toBe("unchanged");
+          expect(envelope.message, `${pinCase.label} ${route.name}`).toContain(
+            pinCase.expectedMessage,
+          );
+          expect(envelope.message, `${pinCase.label} ${route.name}`).toContain(
+            restoreRepair,
+          );
+          expect(
+            existsSync(
+              join(
+                stateHome,
+                "my-agent-dojo",
+                "bun-typescript-template",
+                "state",
+              ),
+            ),
+            `${pinCase.label} ${route.name} must not open state`,
+          ).toBe(false);
+        }
+      }
     },
     processWatchdog(3),
   );
