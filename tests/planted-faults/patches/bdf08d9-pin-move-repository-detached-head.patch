@@ -1,7 +1,7 @@
 diff --git a/src/pin-move-repository.ts b/src/pin-move-repository.ts
 --- a/src/pin-move-repository.ts
 +++ b/src/pin-move-repository.ts
-@@ -115,12 +115,7 @@ function requireStartingBranch(
+@@ -112,12 +112,7 @@ function requireStartingBranch(
      "HEAD",
    ]);
    if (branch.ok) return branch.stdout.trim();
@@ -9,7 +9,7 @@ diff --git a/src/pin-move-repository.ts b/src/pin-move-repository.ts
 -  throw new RepositoryPinRefusal(
 -    "repository_invalid",
 -    `Repository at ${repository} is on a detached HEAD.`,
--    `Check out a branch such as main in ${repository}, then run pin-move again.`,
+-    `Check out a branch such as main in ${repository}, then run bun run pin:move again.`,
 -  );
 +  return "HEAD";
  }

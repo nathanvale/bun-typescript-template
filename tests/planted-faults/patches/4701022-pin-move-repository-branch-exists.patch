@@ -2,9 +2,8 @@ diff --git a/src/pin-move-repository.ts b/src/pin-move-repository.ts
 index 322de3f..9f38aa1 100644
 --- a/src/pin-move-repository.ts
 +++ b/src/pin-move-repository.ts
-@@ -405,22 +405,9 @@ async function runCheckSteps(
- 
- function createPinMoveBranch(repository: string, kernelCommit: string): string {
+@@ -370,26 +370,13 @@ async function runCheckSteps(
+ function requireBranchAbsent(repository: string, kernelCommit: string): string {
    const branch = `pin-move/${kernelCommit.slice(0, 7)}`;
 -  if (
 -    repositoryGit(repository, [
@@ -17,12 +16,17 @@ index 322de3f..9f38aa1 100644
 -    throw new RepositoryPinRefusal(
 -      "repository_branch_exists",
 -      `Branch ${branch} already exists in ${repository}.`,
--      `Inspect branch ${branch} in ${repository}: merge it if it holds the Pin move you want, or rename it with git branch -m ${branch} <an unused branch name>, then run pin-move again.`,
+-      `Inspect branch ${branch} in ${repository}: merge it if it holds the Pin move you want, or rename it with git branch -m ${branch} <an unused branch name>, then run bun run pin:move again.`,
 -    );
+   return branch;
+ }
+ 
+ function createPinMoveBranch(repository: string, kernelCommit: string): string {
+   const branch = requireBranchAbsent(repository, kernelCommit);
    requireRepositoryGit(
      repository,
 -    ["checkout", "-b", branch],
 +    ["checkout", "-B", branch],
-     `Resolve why git could not create branch ${branch} in ${repository}, then run pin-move again.`,
+     `Resolve why git could not create branch ${branch} in ${repository}, then run bun run pin:move again.`,
    );
    return branch;
