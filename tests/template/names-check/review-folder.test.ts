@@ -81,15 +81,35 @@ test(
   processWatchdog(2),
 );
 
-test("refuses untracked review/, .reviews/ and docs/.review-notes.md when they use unknown words", async () => {
+test("refuses untracked review/, .reviews/, docs/.review-notes.md and docs/.review/ when they use unknown words", async () => {
   const root = await starterKitFixture();
   put(root, "review/SPEC.md", "# Not ignored\n");
   put(root, ".reviews/SPEC.md", "# Not ignored\n");
   put(root, "docs/.review-notes.md", "# Not ignored\n");
+  put(root, "docs/.review/SKILL.md", "# Not ignored\n");
+  put(root, "docs/.review/SPEC.md", "# Not ignored\n");
+
+  const untracked = gitResult(
+    root,
+    "-c",
+    "core.excludesFile=/dev/null",
+    "ls-files",
+    "--others",
+    "--exclude-standard",
+  );
+  expect(untracked.exitCode).toBe(0);
+  const listed = untracked.stdout.toString().trim().split("\n");
+  expect(listed).toContain("docs/.review/SKILL.md");
+  expect(listed).toContain("docs/.review/SPEC.md");
 
   const result = await check(root, ["--against", "HEAD"]);
   expect(result.code).toBe(1);
   expect(result.stderr).toContain("review/SPEC.md");
   expect(result.stderr).toContain(".reviews/SPEC.md");
   expect(result.stderr).toContain("docs/.review-notes.md");
+  expect(result.stderr).toContain("docs/.review/SKILL.md");
+  expect(result.stderr).toContain("docs/.review/SPEC.md");
+
+  const eslint = new ESLint({ cwd: ROOT });
+  expect(await eslint.isPathIgnored("docs/.review/probe.ts")).toBe(false);
 });
