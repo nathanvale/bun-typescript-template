@@ -216,6 +216,19 @@ function writeTemplateLockfile(
   const before = readFileSync(lockPath, "utf8");
   const spec = generatedPin(pin, commit);
   const shortCommit = commit.slice(0, 7);
+  const declared = /"agent-cli-kernel": "[^"\n]*#([0-9a-f]{40})"/.exec(
+    before,
+  )?.[1];
+  const resolved =
+    /"agent-cli-kernel": \["agent-cli-kernel@[^"\n]*#([0-9a-f]{7,40})"/.exec(
+      before,
+    )?.[1];
+  if (
+    declared === commit &&
+    resolved !== undefined &&
+    commit.startsWith(resolved)
+  )
+    return false;
   let next = before.replace(
     /"agent-cli-kernel": "[^"\n]*#[0-9a-f]{40}"/,
     () => `"agent-cli-kernel": "${spec}"`,

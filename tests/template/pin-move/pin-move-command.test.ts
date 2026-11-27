@@ -5,6 +5,7 @@ import {
   readFileSync,
   realpathSync,
   symlinkSync,
+  writeFileSync,
 } from "node:fs";
 import { delimiter, join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -51,6 +52,7 @@ function copyPinnedAt(commit: string): string {
   pinnedTemplate(copy, commit, carryOutIdentity);
   if (!existsSync(join(copy, "node_modules"))) {
     symlinkSync(join(ROOT, "node_modules"), join(copy, "node_modules"));
+    writeFileSync(join(copy, ".git", "info", "exclude"), "node_modules\n");
   }
   git(copy, "commit", "--quiet", "--all", "--allow-empty", "-m", "pin it");
   return copy;
