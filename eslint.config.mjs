@@ -22,6 +22,7 @@ export default defineConfig(
       "coverage/**",
       ".fallow/**",
       ".worktrees/**",
+      ".review/**",
       "generated-repository/**",
     ],
   },
