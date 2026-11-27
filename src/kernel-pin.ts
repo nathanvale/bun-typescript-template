@@ -113,8 +113,10 @@ export function siblingKernelPath(root: string, { repository }: KernelPin) {
   return join(dirname(root), repository);
 }
 
-const kernelCacheFolder =
-  "my-agent-dojo/bun-typescript-template/agent-cli-kernel.git";
+export function userFolderSuite(): string {
+  return "my-agent-dojo";
+}
+
 const networkMilliseconds = 300_000;
 
 export function kernelCachePath(
@@ -125,7 +127,12 @@ export function kernelCachePath(
     named !== undefined && isAbsolute(named)
       ? named
       : join(environment.HOME ?? homedir(), ".cache");
-  return join(home, kernelCacheFolder);
+  return join(
+    home,
+    userFolderSuite(),
+    "bun-typescript-template",
+    "agent-cli-kernel.git",
+  );
 }
 
 function networkGit(

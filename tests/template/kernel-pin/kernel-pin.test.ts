@@ -3,10 +3,14 @@ import { readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import {
   generatedPin,
+  kernelCachePath,
   parseKernelPin,
   readKernelPin,
+  userFolderSuite,
 } from "../../../src/kernel-pin.ts";
+import { frontDoorStateRoot } from "../../../src/pin-commands.ts";
 import { KERNEL_LOCKFILE } from "../../../src/recipe.ts";
+import { spawnBounded } from "../../support/process.ts";
 import { testFolder } from "../../support/test-folder.ts";
 
 const root = join(import.meta.dir, "../../..");
@@ -185,4 +189,53 @@ test("the Pin a generated repository holds names the kernel pin's GitHub reposit
       `github:some.owner/fixture-kernel.v2#${candidate}`,
     ],
   );
+});
+
+test("kernelCachePath and frontDoorStateRoot resolve under XDG_CACHE_HOME and XDG_STATE_HOME with the user-folder suite", () => {
+  expect(userFolderSuite()).toBe("my-agent-dojo");
+  expect(kernelCachePath({ XDG_CACHE_HOME: "/x/cache", HOME: "/x/home" })).toBe(
+    "/x/cache/my-agent-dojo/bun-typescript-template/agent-cli-kernel.git",
+  );
+  expect(kernelCachePath({ HOME: "/x/home" })).toBe(
+    "/x/home/.cache/my-agent-dojo/bun-typescript-template/agent-cli-kernel.git",
+  );
+  expect(
+    frontDoorStateRoot({ XDG_STATE_HOME: "/x/state", HOME: "/x/home" }),
+  ).toBe("/x/state/my-agent-dojo/bun-typescript-template/state");
+  expect(frontDoorStateRoot({ HOME: "/x/home" })).toBe(
+    "/x/home/.local/state/my-agent-dojo/bun-typescript-template/state",
+  );
+});
+
+test("changing userFolderSuite moves both kernelCachePath and frontDoorStateRoot", async () => {
+  const probe = [
+    "Bun.plugin({",
+    '  name: "planted-user-folder-suite",',
+    "  setup(build) {",
+    "    build.onLoad({ filter: /src\\/kernel-pin\\.ts$/ }, async ({ path }) => {",
+    "      const source = await Bun.file(path).text();",
+    "      const replaced = source.replace('return \"my-agent-dojo\";', 'return \"planted-suite\";');",
+    '      if (replaced === source) throw new Error("expected userFolderSuite return literal");',
+    '      return { contents: replaced, loader: "ts" };',
+    "    });",
+    "  },",
+    "});",
+    'const { kernelCachePath, userFolderSuite } = await import("./src/kernel-pin.ts");',
+    'const { frontDoorStateRoot } = await import("./src/pin-commands.ts");',
+    "console.log(JSON.stringify({",
+    "  suite: userFolderSuite(),",
+    '  cache: kernelCachePath({ XDG_CACHE_HOME: "/x/cache", HOME: "/x/home" }),',
+    '  state: frontDoorStateRoot({ XDG_STATE_HOME: "/x/state", HOME: "/x/home" }),',
+    "}));",
+  ].join("\n");
+  const result = await spawnBounded([process.execPath, "-e", probe], {
+    cwd: root,
+  });
+  expect(result.exit).toBe(0);
+  expect(JSON.parse(result.stdout.trim())).toEqual({
+    suite: "planted-suite",
+    cache:
+      "/x/cache/planted-suite/bun-typescript-template/agent-cli-kernel.git",
+    state: "/x/state/planted-suite/bun-typescript-template/state",
+  });
 });

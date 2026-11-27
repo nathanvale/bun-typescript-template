@@ -3,7 +3,11 @@ import { isAbsolute, join, resolve } from "node:path";
 import { command, station } from "agent-cli-kernel";
 import type { TrialActive } from "../scripts/kernel-trial.ts";
 import { cliCauses } from "./causes.ts";
-import { readKernelPin, siblingKernelPath } from "./kernel-pin.ts";
+import {
+  readKernelPin,
+  siblingKernelPath,
+  userFolderSuite,
+} from "./kernel-pin.ts";
 import { pinBranchCommitHeld, verifyPin } from "./pin-move.ts";
 import { moveRepositoryPin } from "./pin-move-repository.ts";
 import {
@@ -46,7 +50,7 @@ export function frontDoorStateRoot(
     xdg !== undefined && isAbsolute(xdg)
       ? xdg
       : join(environment.HOME ?? homedir(), ".local", "state");
-  return join(base, "my-agent-dojo", "bun-typescript-template", "state");
+  return join(base, userFolderSuite(), "bun-typescript-template", "state");
 }
 
 export function pinVerifyCommand(root: string) {
