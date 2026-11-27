@@ -120,10 +120,7 @@ function requireStartingBranch(
   );
 }
 
-function openGeneratedRepository(
-  givenPath: string,
-  requireClean: boolean,
-): { readonly repository: string; readonly startingRef: string } {
+function resolveGeneratedRepository(givenPath: string): string {
   const invalid = (why: string) =>
     new RepositoryPinRefusal(
       "repository_invalid",
@@ -134,6 +131,14 @@ function openGeneratedRepository(
     throw invalid("that path is not an existing folder.");
   const repository = realpathSync(givenPath);
   requireGitWorkTreeRoot(repository, invalid);
+  return repository;
+}
+
+function openGeneratedRepository(
+  givenPath: string,
+  requireClean: boolean,
+): { readonly repository: string; readonly startingRef: string } {
+  const repository = resolveGeneratedRepository(givenPath);
   const startingRef = requireStartingBranch(repository, requireClean);
   if (requireClean) requireCleanWorkTree(repository);
   return { repository, startingRef };
@@ -537,6 +542,10 @@ async function writePinMovePlan(
   };
 }
 
+export type PreparedRepositoryMove = {
+  readonly apply: () => Promise<RepositoryPinMoveOutcome>;
+};
+
 export async function moveRepositoryPin(
   kernel: KernelSeam,
   pin: KernelPin,
@@ -548,31 +557,27 @@ export async function moveRepositoryPin(
     readonly quiet?: boolean;
     readonly runWrite?: (
       repository: string,
-      apply: () => Promise<RepositoryPinMoveOutcome>,
+      prepare: () => PreparedRepositoryMove,
     ) => Promise<RepositoryPinMoveOutcome>;
   } = {},
 ): Promise<RepositoryPinMoveOutcome> {
   const quiet = options.quiet === true;
-  const runWrite = options.runWrite ?? ((_repository, apply) => apply());
-  const { repository, startingRef } = openGeneratedRepository(
-    givenRepository,
-    !planOnly,
-  );
-  const kernelRepository = verifyTarget(kernel, pin);
-  readKernel(kernel);
-  const current = readRepositoryPin(
-    repository,
-    { repository: kernelRepository, commit: kernel.commit },
-    pin,
-  );
-  openCommit({ repository: kernelRepository, commit: current.oldCommit });
-  const report = pinMoveReport(
-    kernelRepository,
-    current.oldCommit,
-    kernel.commit,
-  );
-  const reportText = pinMoveReportText(report);
   if (planOnly) {
+    const { repository } = openGeneratedRepository(givenRepository, false);
+    const kernelRepository = verifyTarget(kernel, pin);
+    readKernel(kernel);
+    const current = readRepositoryPin(
+      repository,
+      { repository: kernelRepository, commit: kernel.commit },
+      pin,
+    );
+    openCommit({ repository: kernelRepository, commit: current.oldCommit });
+    const report = pinMoveReport(
+      kernelRepository,
+      current.oldCommit,
+      kernel.commit,
+    );
+    const reportText = pinMoveReportText(report);
     return writePinMovePlan(
       repository,
       current.oldCommit,
@@ -582,34 +587,57 @@ export async function moveRepositoryPin(
       quiet,
     );
   }
-  if (current.oldCommit === kernel.commit)
-    throw new RepositoryPinRefusal(
-      "repository_pin_unchanged",
-      `Repository at ${repository} already pins ${kernel.commit}.`,
-      "Give a different kernel commit to move the pin.",
-    );
-  const edits = planRepositoryEdits(
-    repository,
-    kernelRepository,
-    kernel.commit,
-    pin,
-    current,
-  );
-  requireBranchAbsent(repository, kernel.commit);
+  const runWrite =
+    options.runWrite ?? ((_repository, prepare) => prepare().apply());
+  const repository = resolveGeneratedRepository(givenRepository);
+  const kernelRepository = verifyTarget(kernel, pin);
+  readKernel(kernel);
   return runWrite(repository, () => {
-    const branch = createPinMoveBranch(repository, kernel.commit);
-    return applyRepositoryPinMove(
+    const startingRef = requireStartingBranch(repository, true);
+    requireCleanWorkTree(repository);
+    const current = readRepositoryPin(
       repository,
-      startingRef,
-      branch,
-      kernel.commit,
-      current,
-      edits,
-      report,
-      reportText,
-      active,
-      pin.repository,
-      quiet,
+      { repository: kernelRepository, commit: kernel.commit },
+      pin,
     );
+    openCommit({ repository: kernelRepository, commit: current.oldCommit });
+    const report = pinMoveReport(
+      kernelRepository,
+      current.oldCommit,
+      kernel.commit,
+    );
+    const reportText = pinMoveReportText(report);
+    if (current.oldCommit === kernel.commit)
+      throw new RepositoryPinRefusal(
+        "repository_pin_unchanged",
+        `Repository at ${repository} already pins ${kernel.commit}.`,
+        "Give a different kernel commit to move the pin.",
+      );
+    const edits = planRepositoryEdits(
+      repository,
+      kernelRepository,
+      kernel.commit,
+      pin,
+      current,
+    );
+    requireBranchAbsent(repository, kernel.commit);
+    return {
+      apply: () => {
+        const branch = createPinMoveBranch(repository, kernel.commit);
+        return applyRepositoryPinMove(
+          repository,
+          startingRef,
+          branch,
+          kernel.commit,
+          current,
+          edits,
+          report,
+          reportText,
+          active,
+          pin.repository,
+          quiet,
+        );
+      },
+    };
   });
 }

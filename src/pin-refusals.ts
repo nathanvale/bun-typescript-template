@@ -231,14 +231,17 @@ export const planRefusalCauses = [
   "DOMAIN_PIN_CHANGESET_PREDATES_SWITCHOVER",
 ] as const;
 
-export const moveRefusalCauses = [
+export const movePreWriteRefusalCauses = [
   ...planRefusalCauses,
   "DOMAIN_PIN_TRIAL_FAILED",
   "DOMAIN_PIN_TRIAL_STOPPED",
   "DOMAIN_PIN_REPOSITORY_DIRTY",
-  "DOMAIN_PIN_REPOSITORY_CHECK_FAILED",
   "DOMAIN_PIN_REPOSITORY_BRANCH_EXISTS",
   "DOMAIN_PIN_REPOSITORY_PIN_UNCHANGED",
+] as const;
+
+export const moveCompletedFailureCauses = [
+  "DOMAIN_PIN_REPOSITORY_CHECK_FAILED",
   "DOMAIN_PIN_CHANGESET_ADD_FAILED",
   "DOMAIN_PIN_CHANGESET_ADD_UNEXPECTED_FILES",
 ] as const;
@@ -254,6 +257,21 @@ function refusalFields<const Identity extends string>(
     trigger: def.trigger,
     repairAction: def.repair,
     guidance: { next: { kind: "instruction", text: def.repair } },
+    independentObservable: `${identity}:${causeCode.toLowerCase()}`,
+  } as const;
+}
+
+function completedFailureFields<const Identity extends string>(
+  identity: Identity,
+  causeCode: PinRefusalCause,
+) {
+  const def = pinRefusalDefinitions[causeCode];
+  return {
+    ...pinCauseDefaults,
+    commandIdentity: identity,
+    trigger: def.trigger,
+    repairAction: def.repair,
+    guidance: { handoff: inspectPinState },
     independentObservable: `${identity}:${causeCode.toLowerCase()}`,
   } as const;
 }
@@ -371,7 +389,7 @@ export function moveRefusalRows<const Identity extends string>(
       causeCode: "DOMAIN_PIN_REPOSITORY_DIRTY",
     }),
     station(cliCauses, {
-      ...refusalFields(identity, "DOMAIN_PIN_REPOSITORY_CHECK_FAILED"),
+      ...completedFailureFields(identity, "DOMAIN_PIN_REPOSITORY_CHECK_FAILED"),
       causeCode: "DOMAIN_PIN_REPOSITORY_CHECK_FAILED",
     }),
     station(cliCauses, {
@@ -383,11 +401,14 @@ export function moveRefusalRows<const Identity extends string>(
       causeCode: "DOMAIN_PIN_REPOSITORY_PIN_UNCHANGED",
     }),
     station(cliCauses, {
-      ...refusalFields(identity, "DOMAIN_PIN_CHANGESET_ADD_FAILED"),
+      ...completedFailureFields(identity, "DOMAIN_PIN_CHANGESET_ADD_FAILED"),
       causeCode: "DOMAIN_PIN_CHANGESET_ADD_FAILED",
     }),
     station(cliCauses, {
-      ...refusalFields(identity, "DOMAIN_PIN_CHANGESET_ADD_UNEXPECTED_FILES"),
+      ...completedFailureFields(
+        identity,
+        "DOMAIN_PIN_CHANGESET_ADD_UNEXPECTED_FILES",
+      ),
       causeCode: "DOMAIN_PIN_CHANGESET_ADD_UNEXPECTED_FILES",
     }),
   ] as const;

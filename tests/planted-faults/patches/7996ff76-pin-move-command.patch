@@ -1,40 +1,20 @@
 diff --git a/src/pin-move-command.ts b/src/pin-move-command.ts
-index ca807083..9cc3b9f5 100644
+index 11111111..22222222 100644
 --- a/src/pin-move-command.ts
 +++ b/src/pin-move-command.ts
-@@ -177,22 +177,21 @@ async function executeRepositoryMove(
-               },
-             },
-             async (transaction) => {
--              let result: RepositoryPinMoveOutcome;
--              try {
--                result = await apply();
--              } catch (error) {
--                const failure = toError(error);
--                capturedError = failure;
--                throw failure;
--              }
--              if (result.planOnly) {
--                throw new Error("Unexpected plan-only result.");
--              }
--              movedOutcome = result;
-               await transaction.record(
-                 "pin.move",
--                () => Promise.resolve(),
--                () => Promise.resolve(true),
-+                async () => {
-+                  try {
-+                    const result = await apply();
-+                    if (result.planOnly)
-+                      throw new Error("Unexpected plan-only result.");
-+                    movedOutcome = result;
-+                  } catch (error) {
-+                    const failure = toError(error);
-+                    capturedError = failure;
-+                    throw failure;
-+                  }
-+                },
-+                () => Promise.resolve(movedOutcome !== undefined),
-               );
-             },
-           );
+@@ -222,15 +222,6 @@ async function executeRepositoryMove(
+                   } catch (error) {
+                     const failure = toError(error);
+                     capturedError = failure;
+-                    if (
+-                      error instanceof RepositoryPinRefusal &&
+-                      error.restored &&
+-                      classifyRefusal(error, moveCompletedFailureCauses) !==
+-                        undefined
+-                    ) {
+-                      completedFailure = error;
+-                      return;
+-                    }
+                     throw failure;
+                   }
+                 },

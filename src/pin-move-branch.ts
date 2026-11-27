@@ -12,6 +12,7 @@ export class RepositoryPinRefusal extends Error {
     readonly code: string,
     readonly reason: string,
     readonly repair: string,
+    readonly restored = false,
   ) {
     super(`${reason} Repair: ${repair}`);
   }
@@ -346,10 +347,12 @@ async function keptAttemptRefusal(
       `${shownReason} The failed attempt is kept on branch ${kept} for inspection and ${startingRef} is checked out again, but its installed packages may still hold the failed attempt's kernel: ${boundedDetail(unrestored, 400)}`,
       `Run bun install --frozen-lockfile in ${repository} before running bun run pin:move again.${unrenamed}${leftOver(repository, runGit)}`,
     );
+  const left = leftOver(repository, runGit);
   return new RepositoryPinRefusal(
     code,
     `${shownReason} The failed attempt is kept on branch ${kept} for inspection; ${startingRef} is checked out again and was not changed.`,
-    `${repair}${unrenamed}${leftOver(repository, runGit)}`,
+    `${repair}${unrenamed}${left}`,
+    unrenamed === "" && left === "",
   );
 }
 

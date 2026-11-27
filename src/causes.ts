@@ -12,6 +12,15 @@ const refusedNext = {
 
 const refusedHandoff = { ...refusedNext, guidance: "handoff" } as const;
 
+const failedCompleted = {
+  outcome: "failed",
+  transactionState: "completed",
+  failureClass: "domain",
+  exitCode: 3,
+  retryable: false,
+  guidance: "handoff",
+} as const;
+
 const doctorCauses = {
   DOMAIN_DOCTOR_CHECK_FAILED: {
     ...refusedNext,
@@ -38,15 +47,15 @@ export const pinCauses = {
   DOMAIN_PIN_REPOSITORY_DIRTY: refusedNext,
   DOMAIN_PIN_REPOSITORY_INVALID: refusedNext,
   DOMAIN_PIN_REPOSITORY_PIN_MISSING: refusedNext,
-  DOMAIN_PIN_REPOSITORY_CHECK_FAILED: refusedNext,
+  DOMAIN_PIN_REPOSITORY_CHECK_FAILED: failedCompleted,
   DOMAIN_PIN_REPOSITORY_BRANCH_EXISTS: refusedNext,
   DOMAIN_PIN_REPOSITORY_PIN_UNCHANGED: refusedNext,
   DOMAIN_PIN_CHANGESET_INVALID: refusedNext,
   DOMAIN_PIN_CHANGESETS_UNREADABLE: refusedNext,
   DOMAIN_PIN_CHANGESET_CONFIG_INVALID: refusedNext,
   DOMAIN_PIN_CHANGESET_PACKAGE_MISSING: refusedNext,
-  DOMAIN_PIN_CHANGESET_ADD_FAILED: refusedNext,
-  DOMAIN_PIN_CHANGESET_ADD_UNEXPECTED_FILES: refusedNext,
+  DOMAIN_PIN_CHANGESET_ADD_FAILED: failedCompleted,
+  DOMAIN_PIN_CHANGESET_ADD_UNEXPECTED_FILES: failedCompleted,
   DOMAIN_PIN_CHANGESET_PREDATES_SWITCHOVER: refusedNext,
   DOMAIN_PIN_MOVE_HELD: refusedHandoff,
   DOMAIN_PIN_MOVE_UNRESOLVED: refusedHandoff,

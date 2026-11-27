@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { changing, type StateCapability, station } from "agent-cli-kernel";
@@ -21,6 +21,7 @@ import {
   verifyPin,
   withStopSignals,
 } from "./pin-move.ts";
+import { RepositoryPinRefusal } from "./pin-move-branch.ts";
 import {
   moveRepositoryPin,
   type RepositoryPinMoveOutcome,
@@ -29,8 +30,9 @@ import {
   classifyRefusal,
   commitArgument,
   kernelOption,
+  moveCompletedFailureCauses,
   moveFailedCause,
-  moveRefusalCauses,
+  movePreWriteRefusalCauses,
   moveRefusalRows,
   moveStateRows,
   pinCauseDefaults,
@@ -95,8 +97,13 @@ function handleMoveTransactionFailure<Result>(
       kind: string,
     ) => Result;
     readonly domainRefused: (
-      causeCode: (typeof moveRefusalCauses)[number],
+      causeCode: (typeof movePreWriteRefusalCauses)[number],
       message: string,
+    ) => Result;
+    readonly completedFailed: (
+      causeCode: (typeof moveCompletedFailureCauses)[number],
+      message: string,
+      proof: Extract<MoveTransaction, { readonly kind: "ran" }>["proof"],
     ) => Result;
     readonly failed: (
       causeCode: ReturnType<typeof moveFailedCause>,
@@ -108,12 +115,32 @@ function handleMoveTransactionFailure<Result>(
   if (tx.kind !== "ran") {
     return onResult.stateRefused(stateRefusalCause(tx.kind), tx.kind);
   }
-  if (capturedError !== undefined) {
-    const refused = classifyRefusal(capturedError, moveRefusalCauses);
-    if (refused !== undefined && tx.proof.transactionState === "unchanged") {
+  if (
+    tx.proof.transactionState === "unchanged" &&
+    capturedError !== undefined
+  ) {
+    const refused = classifyRefusal(capturedError, movePreWriteRefusalCauses);
+    if (refused !== undefined) {
       return onResult.domainRefused(refused.causeCode, refused.message);
     }
-    if (refused === undefined) throw capturedError;
+    throw capturedError;
+  }
+  if (
+    tx.proof.transactionState === "completed" &&
+    completedValue === undefined &&
+    capturedError !== undefined
+  ) {
+    const completedFailure = classifyRefusal(
+      capturedError,
+      moveCompletedFailureCauses,
+    );
+    if (completedFailure !== undefined) {
+      return onResult.completedFailed(
+        completedFailure.causeCode,
+        completedFailure.message,
+        tx.proof,
+      );
+    }
   }
   if (
     tx.proof.transactionState !== "completed" ||
@@ -145,6 +172,7 @@ async function executeRepositoryMove(
 }> {
   let movedOutcome: AppliedRepositoryOutcome | undefined;
   let capturedError: Error | undefined;
+  let completedFailure: RepositoryPinRefusal | undefined;
   let txOutcome: MoveTransaction | undefined;
   await withStopSignals(active, () =>
     moveRepositoryPin(
@@ -161,7 +189,7 @@ async function executeRepositoryMove(
         ),
       {
         quiet: machineOutput,
-        runWrite: async (resolvedRepository, apply) => {
+        runWrite: async (resolvedRepository, prepare) => {
           const tx = await state.transaction(
             stateContext,
             {
@@ -177,22 +205,43 @@ async function executeRepositoryMove(
               },
             },
             async (transaction) => {
-              let result: RepositoryPinMoveOutcome;
+              let apply: () => Promise<RepositoryPinMoveOutcome>;
               try {
-                result = await apply();
+                ({ apply } = prepare());
               } catch (error) {
                 const failure = toError(error);
                 capturedError = failure;
                 throw failure;
               }
-              if (result.planOnly) {
-                throw new Error("Unexpected plan-only result.");
-              }
-              movedOutcome = result;
               await transaction.record(
                 "pin.move",
-                () => Promise.resolve(),
-                () => Promise.resolve(true),
+                async () => {
+                  try {
+                    const result = await apply();
+                    if (result.planOnly) {
+                      throw new Error("Unexpected plan-only result.");
+                    }
+                    movedOutcome = result;
+                  } catch (error) {
+                    const failure = toError(error);
+                    capturedError = failure;
+                    if (
+                      error instanceof RepositoryPinRefusal &&
+                      error.restored &&
+                      classifyRefusal(error, moveCompletedFailureCauses) !==
+                        undefined
+                    ) {
+                      completedFailure = error;
+                      return;
+                    }
+                    throw failure;
+                  }
+                },
+                () =>
+                  Promise.resolve(
+                    movedOutcome !== undefined ||
+                      completedFailure !== undefined,
+                  ),
               );
             },
           );
@@ -223,24 +272,31 @@ async function executeTemplateMove(
   readonly moved: ReturnType<typeof movePin> | undefined;
   readonly capturedError: Error | undefined;
 }> {
-  const folder = mkdtempSync(join(tmpdir(), "kernel-trial-"));
-  try {
-    const { branchCommit, trial } = await withStopSignals(active, async () => {
-      const branchCommit = pinBranchCommitHeld(pin, kernel.repository);
-      verifyPin(kernel, pin, branchCommit);
-      const trial = await kernelTrial({ kernel, folder, active });
-      return { branchCommit, trial };
-    });
-    let moved: ReturnType<typeof movePin> | undefined;
-    let capturedError: Error | undefined;
-    const tx = await state.transaction(
-      stateContext,
-      {
-        command: pinMoveIdentity,
-        scope: { resources: [{ resource: "template", key: root }] },
-        facts: { commit: kernel.commit },
-      },
-      async (transaction) => {
+  const branchCommit = pinBranchCommitHeld(pin, kernel.repository);
+  verifyPin(kernel, pin, branchCommit);
+  const scopeKey = existsSync(root) ? realpathSync(root) : resolve(root);
+  let moved: ReturnType<typeof movePin> | undefined;
+  let capturedError: Error | undefined;
+  const tx = await state.transaction(
+    stateContext,
+    {
+      command: pinMoveIdentity,
+      scope: { resources: [{ resource: "template", key: scopeKey }] },
+      facts: { commit: kernel.commit },
+    },
+    async (transaction) => {
+      const folder = mkdtempSync(join(tmpdir(), "kernel-trial-"));
+      try {
+        let trial: Awaited<ReturnType<typeof kernelTrial>>;
+        try {
+          trial = await withStopSignals(active, () =>
+            kernelTrial({ kernel, folder, active }),
+          );
+        } catch (error) {
+          const failure = toError(error);
+          capturedError = failure;
+          throw failure;
+        }
         await transaction.record(
           "pin.move",
           () => {
@@ -255,12 +311,12 @@ async function executeTemplateMove(
           },
           () => Promise.resolve(moved !== undefined),
         );
-      },
-    );
-    return { tx, moved, capturedError };
-  } finally {
-    rmSync(folder, { recursive: true, force: true });
-  }
+      } finally {
+        rmSync(folder, { recursive: true, force: true });
+      }
+    },
+  );
+  return { tx, moved, capturedError };
 }
 
 function moveResultData(moved: ReturnType<typeof movePin>) {
@@ -367,7 +423,7 @@ export function pinMoveCommand(
           );
         },
         domainRefused: (
-          causeCode: (typeof moveRefusalCauses)[number],
+          causeCode: (typeof movePreWriteRefusalCauses)[number],
           message: string,
         ) => {
           context.diagnostics.record(
@@ -378,6 +434,21 @@ export function pinMoveCommand(
           return context.result(
             { commandIdentity: pinMoveIdentity, causeCode },
             { message, data: null, effects: pinNoChange },
+          );
+        },
+        completedFailed: (
+          causeCode: (typeof moveCompletedFailureCauses)[number],
+          message: string,
+          proof: Extract<MoveTransaction, { readonly kind: "ran" }>["proof"],
+        ) => {
+          context.diagnostics.record(
+            "pin.move.failed",
+            { causeCode, transactionState: proof.transactionState },
+            "error",
+          );
+          return context.result(
+            { commandIdentity: pinMoveIdentity, causeCode },
+            { message, data: null, transaction: proof },
           );
         },
         failed: (
@@ -483,7 +554,7 @@ export function pinMoveCommand(
           ? await finishRepository(input["--repository"])
           : await finishTemplate();
       } catch (error) {
-        const refused = classifyRefusal(error, moveRefusalCauses);
+        const refused = classifyRefusal(error, movePreWriteRefusalCauses);
         if (refused === undefined) throw error;
         return failureHandlers.domainRefused(
           refused.causeCode,
