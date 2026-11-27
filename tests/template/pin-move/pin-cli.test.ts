@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  appendFileSync,
   existsSync,
   mkdirSync,
   readdirSync,
@@ -10,6 +11,7 @@ import {
 } from "node:fs";
 import { delimiter, join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { startChild } from "../../../scripts/process-runner.ts";
 import {
   generatedPin,
   kernelPinFile,
@@ -39,7 +41,11 @@ import {
   pinnedTemplate,
   trialTimeout,
 } from "../../support/kernel-trial-fixture.ts";
-import { processWatchdog, spawnBounded } from "../../support/process.ts";
+import {
+  processWatchdog,
+  spawnBounded,
+  watchLedger,
+} from "../../support/process.ts";
 import { templateCopy } from "../../support/template-copy.ts";
 
 const pin = readKernelPin(ROOT);
@@ -510,5 +516,86 @@ describe("cli front door pin routes", () => {
       expect(verifyEnv.result.causeCode).toBe("SUCCESS_UNCHANGED");
     },
     trialTimeout(1),
+  );
+
+  test(
+    "pin move in template mode refuses a concurrent pin move on the same state folder with DOMAIN_PIN_MOVE_HELD before starting a second trial",
+    async () => {
+      const copy = copyTemplateWithModules(trialBase, [KERNEL_LOCKFILE]);
+      const stateHome = folder("pin-cli-held-state-");
+      const barrier = folder("pin-cli-held-barrier-");
+      const ledger = join(barrier, "ledger");
+      const release = join(barrier, "release");
+      const kernel = siblingKernel();
+      const env = remotePathEnv(kernel);
+
+      const trialPath = join(copy, "scripts/kernel-trial.ts");
+      const trialSource = readFileSync(trialPath, "utf8");
+      const marker =
+        "export async function kernelTrial(trial: KernelTrial): Promise<TrialPassed> {";
+      expect(trialSource).toContain(marker);
+      const barrierCode = `${marker}
+  const { appendFileSync: appendBarrier, existsSync: barrierExists } = await import("node:fs");
+  appendBarrier(${JSON.stringify(ledger)}, "trial-started\\n");
+  await new Promise<void>((resolve) => {
+    const poll = setInterval(() => {
+      if (barrierExists(${JSON.stringify(release)}) || trial.active?.stoppedBy !== undefined) {
+        clearInterval(poll);
+        resolve();
+      }
+    }, 5);
+  });
+  throw new TrialRefusal("barrier released", "trial_stopped");
+`;
+      writeFileSync(trialPath, trialSource.replace(marker, barrierCode));
+
+      const first = startChild(
+        [
+          process.execPath,
+          join(copy, "src/cli.ts"),
+          "pin",
+          "move",
+          pin.commit,
+          "--kernel",
+          kernel,
+          "--json",
+        ],
+        {
+          cwd: copy,
+          env: { ...inherited(), ...gitEnv, ...env, XDG_STATE_HOME: stateHome },
+          limitMilliseconds: 30_000,
+        },
+      );
+      const started = watchLedger(ledger, "trial-started", 20_000);
+      try {
+        const reached = await Promise.race([
+          started.reached.then(() => "started"),
+          first.finished.then(
+            (run) => `exited ${run.exitCode}: ${run.stdout}${run.stderr}`,
+          ),
+        ]);
+        expect(reached).toBe("started");
+
+        const second = await runPinCli(
+          copy,
+          ["pin", "move", pin.commit, "--kernel", kernel, "--json"],
+          stateHome,
+          { env, boundMilliseconds: 15_000 },
+        );
+        expect(second.exitCode).toBe(3);
+        expect(second.stderr).toBe("");
+        const secondEnv = JSON.parse(second.stdout) as PinEnvelope;
+        expect(secondEnv.result.causeCode).toBe("DOMAIN_PIN_MOVE_HELD");
+        const starts = readFileSync(ledger, "utf8")
+          .split("\n")
+          .filter((line) => line === "trial-started");
+        expect(starts).toHaveLength(1);
+      } finally {
+        started.stop();
+        appendFileSync(release, "go\n");
+        await first.finished;
+      }
+    },
+    processWatchdog(3),
   );
 });

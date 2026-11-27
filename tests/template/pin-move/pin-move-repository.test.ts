@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  appendFileSync,
   readFileSync,
   realpathSync,
   rmSync,
@@ -7,6 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+import { startChild } from "../../../scripts/process-runner.ts";
 import { commitIn, git, gitOutput } from "../../support/git-fixture.ts";
 import {
   absentCommit,
@@ -21,7 +23,8 @@ import {
   pinMoveRepositoryFixture,
   updatedSkillDescription,
 } from "../../support/pin-move-repository-fixture.ts";
-import { processWatchdog } from "../../support/process.ts";
+import { processWatchdog, watchLedger } from "../../support/process.ts";
+import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 
 const fixture = pinMoveRepositoryFixture();
 
@@ -300,20 +303,95 @@ describe("pin-move --repository", () => {
       fixture.kernelRepo,
       "--repository",
       repo,
+      "--json",
     ]);
     expect(run.exit).toBe(3);
-    expect(run.stderr).toContain("[DOMAIN_PIN_REPOSITORY_CHECK_FAILED]");
+    expect(run.stderr).toBe("");
+    const envelope = JSON.parse(run.stdout) as {
+      readonly message: string;
+      readonly result: {
+        readonly causeCode: string;
+        readonly outcome: string;
+        readonly transactionState: string;
+      };
+    };
+    expect(envelope.result.causeCode).toBe("DOMAIN_PIN_MOVE_FAILED_UNKNOWN");
+    expect(envelope.result.outcome).toBe("failed");
+    expect(envelope.result.transactionState).not.toBe("unchanged");
+    expect(envelope.result.transactionState).toBe("unknown");
     const kept = keptAttempt(repo, expectedBranch);
-    expect(run.stderr).toContain(
+    expect(envelope.message).toContain(
       `The failed attempt is kept on branch ${kept} for inspection and main is checked out again, but its installed packages may still hold the failed attempt's kernel: bun install --frozen-lockfile on main failed:`,
     );
-    expect(run.stderr).not.toContain("was not changed");
-    expect(run.stderr).toContain(
+    expect(envelope.message).not.toContain("was not changed");
+    expect(envelope.message).toContain(
       `Repair: Run bun install --frozen-lockfile in ${realpathSync(repo)} before running bun run pin:move again.`,
     );
-    expect(run.stderr).not.toContain("branch -D");
+    expect(envelope.message).not.toContain("branch -D");
     expect(git(repo, "rev-parse", "--abbrev-ref", "HEAD")).toBe("main");
     expect(fixture.targetCommit).toStartWith(installedKernelCommit(repo));
+  }, 180_000);
+
+  test("refuses a concurrent pin move against the same repository and state folder with DOMAIN_PIN_MOVE_HELD instead of DOMAIN_PIN_REPOSITORY_DIRTY", async () => {
+    const repo = await installedRepository("pin-move-concurrent-");
+    const barrier = folder("pin-move-concurrent-barrier-");
+    const ledger = join(barrier, "ledger");
+    const release = join(barrier, "release");
+    const waitScript = `bun -e 'const fs = require("node:fs"); fs.appendFileSync(${JSON.stringify(ledger)}, "check-started\\n"); const poll = setInterval(() => { if (fs.existsSync(${JSON.stringify(release)})) { clearInterval(poll); process.exit(0); } }, 5);'`;
+    const manifest = JSON.parse(
+      readFileSync(join(repo, "package.json"), "utf8"),
+    ) as { scripts: Record<string, string> };
+    manifest.scripts.check = waitScript;
+    commitIn(repo, "pause check on barrier", {
+      "bun.lock": readFileSync(join(repo, "bun.lock"), "utf8"),
+      "package.json": `${JSON.stringify(manifest, null, 2)}\n`,
+    });
+
+    const env = fixture.pinMoveEnv(fixture.remoteBin);
+    const first = startChild(
+      [
+        process.execPath,
+        join(ROOT, "src/cli.ts"),
+        "pin",
+        "move",
+        fixture.targetCommit,
+        "--kernel",
+        fixture.kernelRepo,
+        "--repository",
+        repo,
+        "--json",
+      ],
+      { cwd: ROOT, env, limitMilliseconds: 120_000 },
+    );
+    const started = watchLedger(ledger, "check-started", 60_000);
+    try {
+      const reached = await Promise.race([
+        started.reached.then(() => "started"),
+        first.finished.then(
+          (run) => `exited ${run.exitCode}: ${run.stdout}${run.stderr}`,
+        ),
+      ]);
+      expect(reached).toBe("started");
+
+      const second = await runPinMove([
+        fixture.targetCommit,
+        "--kernel",
+        fixture.kernelRepo,
+        "--repository",
+        repo,
+        "--json",
+      ]);
+      expect(second.exit).toBe(3);
+      expect(second.stderr).toBe("");
+      const secondEnv = JSON.parse(second.stdout) as {
+        readonly result: { readonly causeCode: string };
+      };
+      expect(secondEnv.result.causeCode).toBe("DOMAIN_PIN_MOVE_HELD");
+    } finally {
+      started.stop();
+      appendFileSync(release, "go\n");
+      await first.finished;
+    }
   }, 180_000);
 
   test(
