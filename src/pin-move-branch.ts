@@ -1,6 +1,10 @@
 import { lstatSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { type TrialActive, trialStep } from "../scripts/kernel-trial.ts";
+import {
+  type TrialActive,
+  trialStep,
+  withStopSignals,
+} from "../scripts/kernel-trial.ts";
 import { withoutRepositoryLocation } from "../scripts/process-runner.ts";
 import { CliError } from "./cli-error.ts";
 
@@ -276,13 +280,16 @@ async function restoreInstalledKernel(
   attempt: PinMoveAttempt,
 ): Promise<string | undefined> {
   const { repository, startingRef, startingPin, kernelPackage } = attempt;
+  const restoreActive: TrialActive = {};
   try {
-    await trialStep(
-      repository,
-      "frozen install",
-      ["install", "--frozen-lockfile"],
-      restoreInstallMilliseconds,
-      attempt.active,
+    await withStopSignals(restoreActive, () =>
+      trialStep(
+        repository,
+        "frozen install",
+        ["install", "--frozen-lockfile"],
+        restoreInstallMilliseconds,
+        restoreActive,
+      ),
     );
   } catch (error) {
     const said = error instanceof Error ? error.message : String(error);

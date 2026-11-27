@@ -80,7 +80,7 @@ export async function withStopSignals<Result>(
     active.stoppedBy ??= signal;
     active.stop?.();
   };
-  for (const signal of stopSignals) process.on(signal, stop);
+  for (const signal of stopSignals) process.prependListener(signal, stop);
   try {
     return await work();
   } finally {
