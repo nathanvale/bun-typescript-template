@@ -18,6 +18,7 @@ import {
   withToolsFirst,
 } from "../../support/hung-git.ts";
 import { processWatchdog } from "../../support/process.ts";
+import { shouldSkipLoopback } from "../../support/loopback-connect-probe.ts";
 import {
   commitIn,
   git,
@@ -34,6 +35,7 @@ import {
 
 const pin = readKernelPin(ROOT);
 const folder = ownedFolders();
+const skipLoopback = await shouldSkipLoopback();
 const unreachableRepair =
   "Repair: Give a commit that branch reaches on the pin's remote. Push the commit there first if it is only local.";
 
@@ -289,31 +291,57 @@ describe("pin verification", () => {
     });
   });
 
-  test("gives up a fetch that does not finish within its bound", () => {
-    const silent = Bun.listen({
-      hostname: "127.0.0.1",
-      port: 0,
-      socket: { data: () => undefined },
-    });
-    try {
-      const repository = kernelClone(folder("pin-verification-"));
-      const started = performance.now();
-      const fetched = fetchBranchCommit(
-        repository,
-        `http://127.0.0.1:${silent.port}/kernel.git`,
-        "e".repeat(40),
-        500,
-      );
-      const elapsed = performance.now() - started;
-      expect([fetched, elapsed >= 500, elapsed < 2_000]).toEqual([
-        false,
-        true,
-        true,
-      ]);
-    } finally {
-      silent.stop(true);
-    }
-  }, 30_000);
+  describe.skipIf(skipLoopback)("needs-loopback", () => {
+    test("gives up a fetch that does not finish within its bound", () => {
+      const silent = Bun.listen({
+        hostname: "127.0.0.1",
+        port: 0,
+        socket: { data: () => undefined },
+      });
+      try {
+        const repository = kernelClone(folder("pin-verification-"));
+        const started = performance.now();
+        const fetched = fetchBranchCommit(
+          repository,
+          `http://127.0.0.1:${silent.port}/kernel.git`,
+          "e".repeat(40),
+          500,
+        );
+        const elapsed = performance.now() - started;
+        expect([fetched, elapsed >= 500, elapsed < 2_000]).toEqual([
+          false,
+          true,
+          true,
+        ]);
+      } finally {
+        silent.stop(true);
+      }
+    }, 30_000);
+
+    test("refuses a remote that does not answer within its bound", () => {
+      const silent = Bun.listen({
+        hostname: "127.0.0.1",
+        port: 0,
+        socket: { data: () => undefined },
+      });
+      try {
+        const started = performance.now();
+        const refusal = branchRefusalOf(
+          `http://127.0.0.1:${silent.port}/kernel.git`,
+          pin.branch,
+          500,
+        );
+        const elapsed = performance.now() - started;
+        expect(refusal).toEqual({
+          code: "kernel_branch_unreadable",
+          message: `Branch main of http://127.0.0.1:${silent.port}/kernel.git could not be read: git ls-remote did not finish within 500 ms. Repair: Check that the network reaches the pin's remote and that it serves branch main, then run this again.`,
+        });
+        expect([elapsed >= 500, elapsed < 2_000]).toEqual([true, true]);
+      } finally {
+        silent.stop(true);
+      }
+    }, 30_000);
+  });
 
   test("refuses a branch the pin's remote does not have", () => {
     const remote = kernelClone(folder("pin-verification-remote-"));
@@ -331,30 +359,6 @@ describe("pin verification", () => {
       `Branch main of ${remote} could not be read: git ls-remote exited 128 and says "`,
     );
   });
-
-  test("refuses a remote that does not answer within its bound", () => {
-    const silent = Bun.listen({
-      hostname: "127.0.0.1",
-      port: 0,
-      socket: { data: () => undefined },
-    });
-    try {
-      const started = performance.now();
-      const refusal = branchRefusalOf(
-        `http://127.0.0.1:${silent.port}/kernel.git`,
-        pin.branch,
-        500,
-      );
-      const elapsed = performance.now() - started;
-      expect(refusal).toEqual({
-        code: "kernel_branch_unreadable",
-        message: `Branch main of http://127.0.0.1:${silent.port}/kernel.git could not be read: git ls-remote did not finish within 500 ms. Repair: Check that the network reaches the pin's remote and that it serves branch main, then run this again.`,
-      });
-      expect([elapsed >= 500, elapsed < 2_000]).toEqual([true, true]);
-    } finally {
-      silent.stop(true);
-    }
-  }, 30_000);
 
   test("refuses, as unreadable history, a clone too shallow to hold the carry-out commit", () => {
     const work = folder("pin-verification-");
