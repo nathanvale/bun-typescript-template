@@ -6,6 +6,7 @@
   finds.
 - Add a changeset under `.changeset/` when a pull request changes a gated path
   (`generated-repository/**`, the copied lint rule files in `config/`,
+  `tests/support/loopback-connect-probe.ts`,
   `tests/support/test-folder.ts`, `tests/support/test-run-folder.ts`,
   `scripts/test-run.ts`, `kernel-pin.json`, `src/recipe.ts`,
   `src/bootstrap.ts`, `src/bootstrap-arguments.ts`,

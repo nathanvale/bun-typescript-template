@@ -56,7 +56,11 @@ export const KERNEL_RECIPE: Recipe = {
     {
       from: "tests/support",
       into: "tests/support",
-      only: ["test-folder.ts", "test-run-folder.ts"],
+      only: [
+        "loopback-connect-probe.ts",
+        "test-folder.ts",
+        "test-run-folder.ts",
+      ],
     },
     { from: "config", into: "config", only: LINT_RULE_FILES },
   ],
