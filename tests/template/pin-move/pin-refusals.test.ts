@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  appendFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -7,6 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { delimiter, join } from "node:path";
+import { startChild } from "../../../scripts/process-runner.ts";
 import { pinCauses } from "../../../src/causes.ts";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
 import { PinRefusal, pinRefusalCodes } from "../../../src/pin-move.ts";
@@ -26,11 +28,26 @@ import {
 } from "../../../src/pin-refusals.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
-import { commitIn, git, gitEnv, inherited } from "../../support/git-fixture.ts";
+import {
+  commitIn,
+  git,
+  gitEnv,
+  inherited,
+  initRepository,
+} from "../../support/git-fixture.ts";
 import { gitReadingRemoteAs } from "../../support/hung-git.ts";
+import { trialBase } from "../../support/kernel-sibling.ts";
 import { pinnedTemplate } from "../../support/kernel-trial-fixture.ts";
-import { pinMoveRepositoryFixture } from "../../support/pin-move-repository-fixture.ts";
-import { processWatchdog, spawnBounded } from "../../support/process.ts";
+import {
+  cloneSpecifier,
+  installedKernelCommit,
+  pinMoveRepositoryFixture,
+} from "../../support/pin-move-repository-fixture.ts";
+import {
+  processWatchdog,
+  spawnBounded,
+  watchLedger,
+} from "../../support/process.ts";
 import { templateCopy } from "../../support/template-copy.ts";
 
 const pin = readKernelPin(ROOT);
@@ -295,5 +312,128 @@ describe("pin refusal classification across phases", () => {
       "main is checked out again and was not changed.",
     );
     expect(git(repo, "rev-parse", "--abbrev-ref", "HEAD")).toBe("main");
+  }, 180_000);
+
+  test("SIGTERM during repository pin move restores the starting branch kernel and does not strand the next pin move as unresolved", async () => {
+    const repo = folder("pin-refusals-sigterm-repo-");
+    initRepository(repo);
+    const barrier = folder("pin-refusals-sigterm-barrier-");
+    const ledger = join(barrier, "check-started");
+    const release = join(barrier, "release");
+    const pinSpec = cloneSpecifier(fixture.kernelRepo, trialBase);
+    const baseManifest = {
+      name: "pin-refusals-sigterm-fixture",
+      dependencies: { "agent-cli-kernel": pinSpec },
+    };
+    commitIn(repo, "initial repository with blocking check", {
+      ".gitignore": "node_modules/\n",
+      "package.json": `${JSON.stringify(
+        {
+          ...baseManifest,
+          scripts: { check: "bun run check-wait.ts" },
+        },
+        null,
+        2,
+      )}\n`,
+      "check-wait.ts": `import { appendFileSync, existsSync } from "node:fs";
+appendFileSync(${JSON.stringify(ledger)}, "check-started\\n");
+await new Promise<void>((resolve) => {
+  const poll = setInterval(() => {
+    if (existsSync(${JSON.stringify(release)})) {
+      clearInterval(poll);
+      resolve();
+    }
+  }, 10);
+});
+`,
+    });
+
+    const stateHome = folder("pin-refusals-sigterm-state-");
+    const env = {
+      ...inherited(),
+      ...gitEnv,
+      ...remotePathEnv(fixture.kernelRepo),
+      XDG_STATE_HOME: stateHome,
+    };
+    const installed = await spawnBounded([process.execPath, "install"], {
+      cwd: repo,
+      env,
+      boundMilliseconds: 120_000,
+    });
+    expect({ exit: installed.exit, stderr: installed.stderr }).toMatchObject({
+      exit: 0,
+    });
+    commitIn(repo, "commit starting lockfile", {
+      "bun.lock": readFileSync(join(repo, "bun.lock"), "utf8"),
+    });
+    expect(trialBase).toStartWith(installedKernelCommit(repo));
+
+    const child = startChild(
+      [
+        process.execPath,
+        join(ROOT, "src/cli.ts"),
+        "pin",
+        "move",
+        fixture.targetCommit,
+        "--kernel",
+        fixture.kernelRepo,
+        "--repository",
+        repo,
+        "--json",
+      ],
+      { cwd: ROOT, env, limitMilliseconds: 120_000 },
+    );
+    const started = watchLedger(ledger, "check-started", 90_000);
+    try {
+      const reached = await Promise.race([
+        started.reached.then(() => "started"),
+        child.finished.then(
+          (run) => `exited ${run.exitCode}: ${run.stdout}${run.stderr}`,
+        ),
+      ]);
+      expect(reached).toBe("started");
+      child.signal("SIGTERM");
+      const stopped = await child.finished;
+      expect(stopped.exitCode).toBe(143);
+    } finally {
+      started.stop();
+      appendFileSync(release, "go\n");
+      child.stop();
+      await child.finished;
+    }
+
+    expect(git(repo, "rev-parse", "--abbrev-ref", "HEAD")).toBe("main");
+    expect(trialBase).toStartWith(installedKernelCommit(repo));
+
+    commitIn(repo, "restore passing check script", {
+      "package.json": `${JSON.stringify(
+        {
+          ...baseManifest,
+          scripts: { check: "bun -e ''" },
+        },
+        null,
+        2,
+      )}\n`,
+    });
+    const nextRun = await runPinRoute(
+      ROOT,
+      [
+        "pin",
+        "move",
+        fixture.targetCommit,
+        "--kernel",
+        fixture.kernelRepo,
+        "--repository",
+        repo,
+        "--json",
+      ],
+      stateHome,
+      env,
+      120_000,
+    );
+    expect(nextRun.exitCode).toBe(0);
+    expect(nextRun.stderr).toBe("");
+    const nextEnvelope = JSON.parse(nextRun.stdout) as PinEnvelope;
+    expect(nextEnvelope.result.causeCode).toBe("SUCCESS_COMPLETED");
   }, 180_000);
 });
