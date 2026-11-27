@@ -50,7 +50,9 @@ test(
         "",
       );
       expect(cut).not.toBe(kernelReader);
-      expect(cut).toContain('| "kernel_commit_missing"');
+      expect(cut).toMatch(
+        /kernelRefusalCodes = \[[^\]]*"kernel_commit_missing",/,
+      );
       return cut;
     });
     expect(withoutOne.exit).not.toBe(0);
