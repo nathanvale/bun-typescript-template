@@ -101,16 +101,22 @@ test(
     );
     expect(untracked.exitCode).toBe(0);
     const listed = untracked.stdout.toString().trim().split("\n");
-    expect(listed).toContain("docs/.review/SKILL.md");
-    expect(listed).toContain("docs/.review/SPEC.md");
+    const expectedPaths = [
+      "review/SPEC.md",
+      ".reviews/SPEC.md",
+      "docs/.review-notes.md",
+      "docs/.review/SKILL.md",
+      "docs/.review/SPEC.md",
+    ];
+    for (const path of expectedPaths) expect(listed).toContain(path);
 
     const result = await check(root, ["--against", "HEAD"]);
     expect(result.code).toBe(1);
-    expect(result.stderr).toContain("review/SPEC.md");
-    expect(result.stderr).toContain(".reviews/SPEC.md");
-    expect(result.stderr).toContain("docs/.review-notes.md");
-    expect(result.stderr).toContain("docs/.review/SKILL.md");
-    expect(result.stderr).toContain("docs/.review/SPEC.md");
+    const stderrLines = result.stderr.split("\n");
+    for (const path of expectedPaths)
+      expect(stderrLines.some((line) => line.startsWith(`${path} `))).toBe(
+        true,
+      );
 
     const eslint = new ESLint({ cwd: ROOT });
     expect(await eslint.isPathIgnored("docs/.review/probe.ts")).toBe(false);
