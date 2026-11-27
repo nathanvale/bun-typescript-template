@@ -1,0 +1,17 @@
+diff --git a/src/recipe.ts b/src/recipe.ts
+index 205ff820..4abaca3b 100644
+--- a/src/recipe.ts
++++ b/src/recipe.ts
+@@ -56,11 +56,7 @@ export const KERNEL_RECIPE: Recipe = {
+     {
+       from: "tests/support",
+       into: "tests/support",
+-      only: [
+-        "loopback-connect-probe.ts",
+-        "test-folder.ts",
+-        "test-run-folder.ts",
+-      ],
++      only: ["test-folder.ts", "test-run-folder.ts"],
+     },
+     { from: "config", into: "config", only: LINT_RULE_FILES },
+   ],
