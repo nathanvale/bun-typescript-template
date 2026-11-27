@@ -9,4 +9,4 @@ coverage/
 !.env.example
 
 .worktrees/
-.review/
+/.review/

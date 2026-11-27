@@ -48,7 +48,7 @@ test(
     });
     expect(
       gitOutput(repo, "show", `${branch}:.gitignore`).split(/\r?\n/),
-    ).toContain(".review/");
+    ).toContain("/.review/");
     expect(gitOutput(repo, "show", `${branch}:eslint.config.mjs`)).toContain(
       '".review/**"',
     );

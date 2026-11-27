@@ -33,7 +33,7 @@ test(
       join(destination, ".gitignore"),
       "utf8",
     ).split(/\r?\n/);
-    expect(gitignoreLines).toContain(".review/");
+    expect(gitignoreLines).toContain("/.review/");
 
     const ignored = gitResult(
       destination,
@@ -59,6 +59,8 @@ test(
       "review/SPEC.md",
       ".reviews/SPEC.md",
       "docs/.review-notes.md",
+      "docs/.review/SKILL.md",
+      "docs/.review/SPEC.md",
     ]) {
       const probe = gitResult(
         destination,
@@ -96,6 +98,7 @@ test(
 
     const eslint = new ESLint({ cwd: destination });
     expect(await eslint.isPathIgnored(".review/probe.ts")).toBe(true);
+    expect(await eslint.isPathIgnored("docs/.review/probe.ts")).toBe(false);
 
     const lint = await spawnBounded([eslintBin, ".", "--max-warnings", "0"], {
       cwd: destination,
