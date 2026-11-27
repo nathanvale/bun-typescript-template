@@ -198,7 +198,6 @@ async function executeRepositoryMove(
                 repository: resolvedRepository,
                 commit: kernel.commit,
               },
-              supersedeUnresolved: true,
             },
             async (transaction) => {
               let apply: () => Promise<RepositoryPinMoveOutcome>;
@@ -278,7 +277,6 @@ async function executeTemplateMove(
       command: pinMoveIdentity,
       scope: { resources: [{ resource: "template", key: scopeKey }] },
       facts: { commit: kernel.commit },
-      supersedeUnresolved: true,
     },
     async (transaction) => {
       const folder = mkdtempSync(join(tmpdir(), "kernel-trial-"));
