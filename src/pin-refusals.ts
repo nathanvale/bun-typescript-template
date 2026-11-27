@@ -1,6 +1,7 @@
 import { TrialRefusal } from "../scripts/kernel-trial.ts";
 import { pinCauseCode } from "./causes.ts";
 import { CliError } from "./cli-error.ts";
+import { KernelPinRefusal } from "./kernel-pin.ts";
 import { KernelRefusal } from "./kernel-reader.ts";
 import { PinRefusal } from "./pin-move.ts";
 import { RepositoryPinRefusal } from "./pin-move-branch.ts";
@@ -60,6 +61,7 @@ export const kernelOption = {
 } as const;
 
 export const verifyRefusalCauses = [
+  "DOMAIN_PIN_KERNEL_PIN_UNREADABLE",
   "DOMAIN_PIN_PLACES_DISAGREE",
   "DOMAIN_PIN_KERNEL_COMMIT_UNREACHABLE",
   "DOMAIN_PIN_KERNEL_COMMIT_BEFORE_CARRY_OUT",
@@ -126,8 +128,14 @@ export type MoveFailureState =
 
 function isPinRefusalError(
   error: unknown,
-): error is PinRefusal | KernelRefusal | TrialRefusal | RepositoryPinRefusal {
+): error is
+  | KernelPinRefusal
+  | PinRefusal
+  | KernelRefusal
+  | TrialRefusal
+  | RepositoryPinRefusal {
   return (
+    error instanceof KernelPinRefusal ||
     error instanceof PinRefusal ||
     error instanceof KernelRefusal ||
     error instanceof TrialRefusal ||

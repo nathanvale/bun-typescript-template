@@ -388,11 +388,6 @@ export function pinMoveCommand(
       ...moveStateRows(),
     ],
     run: async (input, context) => {
-      const pin = readKernelPin(root);
-      const kernel: KernelSeam = {
-        repository: input["--kernel"] ?? siblingKernelPath(root, pin),
-        commit: input.commit,
-      };
       const active: TrialActive = {};
       const detachAbort = createAbortHandler(context.signal, active);
 
@@ -461,7 +456,11 @@ export function pinMoveCommand(
         },
       };
 
-      const finishRepository = async (targetRepository: string) => {
+      const finishRepository = async (
+        targetRepository: string,
+        pin: KernelPin,
+        kernel: KernelSeam,
+      ) => {
         const { tx, movedOutcome, capturedError } = await executeRepositoryMove(
           kernel,
           pin,
@@ -500,7 +499,7 @@ export function pinMoveCommand(
         );
       };
 
-      const finishTemplate = async () => {
+      const finishTemplate = async (pin: KernelPin, kernel: KernelSeam) => {
         const { tx, moved, capturedError } = await executeTemplateMove(
           root,
           kernel,
@@ -539,9 +538,14 @@ export function pinMoveCommand(
       };
 
       try {
+        const pin = readKernelPin(root);
+        const kernel: KernelSeam = {
+          repository: input["--kernel"] ?? siblingKernelPath(root, pin),
+          commit: input.commit,
+        };
         return input["--repository"] !== undefined
-          ? await finishRepository(input["--repository"])
-          : await finishTemplate();
+          ? await finishRepository(input["--repository"], pin, kernel)
+          : await finishTemplate(pin, kernel);
       } catch (error) {
         const refused = classifyMoveRefusal(error, "before-write");
         if (refused === undefined) throw error;

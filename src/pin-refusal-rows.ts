@@ -12,6 +12,11 @@ export const pinCauseDefaults = {
 } as const;
 
 export const pinRefusalDefinitions = {
+  DOMAIN_PIN_KERNEL_PIN_UNREADABLE: {
+    trigger: "kernel-pin.json is missing, unreadable, or invalid.",
+    repair:
+      "Restore it from the last commit that changed it, or correct the invalid field reported in the message.",
+  },
   DOMAIN_PIN_PLACES_DISAGREE: {
     trigger:
       "kernel-pin.json, package.json, and bun.lock do not name the same kernel commit.",
@@ -226,6 +231,10 @@ export function verifyRefusalRows<const Identity extends string>(
   identity: Identity,
 ) {
   return [
+    station(cliCauses, {
+      ...refusalFields(identity, "DOMAIN_PIN_KERNEL_PIN_UNREADABLE"),
+      causeCode: "DOMAIN_PIN_KERNEL_PIN_UNREADABLE",
+    }),
     station(cliCauses, {
       ...refusalFields(identity, "DOMAIN_PIN_PLACES_DISAGREE"),
       causeCode: "DOMAIN_PIN_PLACES_DISAGREE",

@@ -156,13 +156,13 @@ export function pinPlanCommand(root: string) {
       ...planRefusalRows(pinPlanIdentity),
     ],
     run: async (input, context) => {
-      const pin = readKernelPin(root);
-      const kernel = {
-        repository: input["--kernel"] ?? siblingKernelPath(root, pin),
-        commit: input.commit,
-      };
-      const active: TrialActive = {};
       try {
+        const pin = readKernelPin(root);
+        const kernel = {
+          repository: input["--kernel"] ?? siblingKernelPath(root, pin),
+          commit: input.commit,
+        };
+        const active: TrialActive = {};
         const outcome = await moveRepositoryPin(
           kernel,
           pin,

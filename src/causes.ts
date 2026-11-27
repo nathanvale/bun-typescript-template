@@ -29,6 +29,7 @@ const doctorCauses = {
 } as const satisfies CauseTable;
 
 export const pinCauses = {
+  DOMAIN_PIN_KERNEL_PIN_UNREADABLE: refusedNext,
   DOMAIN_PIN_PLACES_DISAGREE: refusedNext,
   DOMAIN_PIN_KERNEL_COMMIT_UNREACHABLE: refusedNext,
   DOMAIN_PIN_KERNEL_COMMIT_BEFORE_CARRY_OUT: refusedNext,

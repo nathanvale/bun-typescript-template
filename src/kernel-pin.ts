@@ -43,8 +43,15 @@ export type KernelPin = {
   readonly carryOutIdentity: string;
 };
 
+export class KernelPinRefusal extends Error {
+  readonly code = "kernel_pin_unreadable" as const;
+  constructor(problem: string) {
+    super(`${file}: ${problem}`);
+  }
+}
+
 function fail(problem: string): never {
-  throw new Error(`${file}: ${problem}`);
+  throw new KernelPinRefusal(problem);
 }
 
 function entriesOf(source: string): Map<string, unknown> {
@@ -106,7 +113,14 @@ export function readKernelPin(root: string): KernelPin {
     fail(
       `is missing at ${root}. The template holds no kernel source, so this kernel pin is its only record of the kernel repository. ${restoreRepair}`,
     );
-  return parseKernelPin(readFileSync(path, "utf8"));
+  let source: string;
+  try {
+    source = readFileSync(path, "utf8");
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    fail(`could not be read at ${root}: ${detail}. ${restoreRepair}`);
+  }
+  return parseKernelPin(source);
 }
 
 export function siblingKernelPath(root: string, { repository }: KernelPin) {
