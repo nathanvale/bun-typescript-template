@@ -6,4 +6,4 @@ index 5ce5f228..d37d1862 100644
  !.env.example
  
  .worktrees/
--.review/
+-/.review/

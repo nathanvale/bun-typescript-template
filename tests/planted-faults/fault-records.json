@@ -3535,7 +3535,7 @@
     "id": "fb2c4b7a-gitignore-widened",
     "patch": "tests/planted-faults/patches/fb2c4b7a-gitignore-widened.patch",
     "testFile": "tests/template/names-check/review-folder.test.ts",
-    "title": "^refuses untracked review/, \\.reviews/ and docs/\\.review-notes\\.md when they use unknown words$",
+    "title": "^refuses untracked review/, \\.reviews/, docs/\\.review-notes\\.md and docs/\\.review/ when they use unknown words$",
     "source": "fb2c4b7a fix(ignore): skip .review/ in starter kit and generated repository gitignore and eslint"
   },
   {
@@ -3558,5 +3558,12 @@
     "testFile": "tests/template/bootstrap/bootstrap-review-folder.test.ts",
     "title": "^generated repository ignores \\.review/ and skips it in lint and format checks$",
     "source": "fb2c4b7a fix(ignore): skip .review/ in starter kit and generated repository gitignore and eslint"
+  },
+  {
+    "id": "8b5b4204-gitignore",
+    "patch": "tests/planted-faults/patches/8b5b4204-gitignore.patch",
+    "testFile": "tests/template/names-check/review-folder.test.ts",
+    "title": "^refuses untracked review/, \\.reviews/, docs/\\.review-notes\\.md and docs/\\.review/ when they use unknown words$",
+    "source": "8b5b4204 fix(ignore): anchor .review/ gitignore entries to repository root"
   }
 ]
