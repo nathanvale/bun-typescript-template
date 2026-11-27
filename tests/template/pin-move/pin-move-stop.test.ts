@@ -94,21 +94,34 @@ describe("pin move stop settlement", () => {
       `Pin move in ${repo} was stopped by SIGTERM during check command on branch ${branch}.`,
       "Run bun run pin:move again when it can run to its end.",
     );
-    const result = await failedAttempt(
-      {
-        repository: repo,
-        startingRef: "main",
-        branch,
-        subject: "chore(kernel): failed Pin move from 0000000 to 1234567",
-        edited: ["package.json"],
-        kernelPackage: "agent-cli-kernel",
-        startingPin: "0".repeat(40),
-        regenerate: false,
-        active: { stoppedBy: "SIGTERM" },
-      },
-      original,
-      true,
-    );
+    const savedEnv = new Map<string, string | undefined>();
+    for (const [key, value] of Object.entries(gitEnv)) {
+      savedEnv.set(key, process.env[key]);
+      process.env[key] = value;
+    }
+    let result: Error;
+    try {
+      result = await failedAttempt(
+        {
+          repository: repo,
+          startingRef: "main",
+          branch,
+          subject: "chore(kernel): failed Pin move from 0000000 to 1234567",
+          edited: ["package.json"],
+          kernelPackage: "agent-cli-kernel",
+          startingPin: "0".repeat(40),
+          regenerate: false,
+          active: { stoppedBy: "SIGTERM" },
+        },
+        original,
+        true,
+      );
+    } finally {
+      for (const [key, value] of savedEnv) {
+        if (value === undefined) Reflect.deleteProperty(process.env, key);
+        else process.env[key] = value;
+      }
+    }
 
     expect(result).toBeInstanceOf(RepositoryPinRefusal);
     if (!(result instanceof RepositoryPinRefusal)) {
@@ -184,10 +197,12 @@ await new Promise<void>((resolve) => {
     });
 
     const stateHome = folder("pin-move-stop-state-");
+    const bunCache = folder("pin-move-stop-bun-cache-");
     const env = {
       ...inherited(),
       ...gitEnv,
       ...remotePathEnv(fixture.kernelRepo),
+      BUN_INSTALL_CACHE_DIR: bunCache,
       XDG_STATE_HOME: stateHome,
     };
     const installed = await spawnBounded([process.execPath, "install"], {
