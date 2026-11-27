@@ -211,7 +211,11 @@ await new Promise<void>((resolve) => {
     expect(envelope.result.causeCode).toBe("DOMAIN_PIN_MOVE_UNRESOLVED");
     expect(envelope.result.outcome).toBe("refused");
     expect(envelope.result.transactionState).toBe("unchanged");
-    expect(envelope.result.repairAction).toContain("pin:verify");
+    expect(envelope.result.repairAction).toContain("git status");
+    expect(envelope.result.repairAction).toContain("pin-move/<commit>");
+    expect(envelope.result.repairAction).toContain("bun run pin:verify");
+    expect(envelope.result.repairAction).toContain("qualified close");
+    expect(envelope.result.repairAction).not.toMatch(/\b(delete|remove)\b/i);
   }, 180_000);
 
   test(
@@ -296,7 +300,11 @@ await new Promise<void>((resolve) => {
       expect(envelope.result.causeCode).toBe("DOMAIN_PIN_MOVE_UNRESOLVED");
       expect(envelope.result.outcome).toBe("refused");
       expect(envelope.result.transactionState).toBe("unchanged");
-      expect(envelope.result.repairAction).toContain("pin:verify");
+      expect(envelope.result.repairAction).toContain("git status");
+      expect(envelope.result.repairAction).toContain("pin-move/<commit>");
+      expect(envelope.result.repairAction).toContain("bun run pin:verify");
+      expect(envelope.result.repairAction).toContain("qualified close");
+      expect(envelope.result.repairAction).not.toMatch(/\b(delete|remove)\b/i);
       const starts = readFileSync(ledger, "utf8")
         .split("\n")
         .filter((line) => line === "trial-started");

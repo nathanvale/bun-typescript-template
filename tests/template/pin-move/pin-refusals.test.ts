@@ -556,7 +556,7 @@ await new Promise<void>((resolve) => {
     }
 
     expect(git(repo, "rev-parse", "--abbrev-ref", "HEAD")).toBe("main");
-    expect(trialBase).toStartWith(installedKernelCommit(repo));
+    expect(fixture.targetCommit).toStartWith(installedKernelCommit(repo));
 
     commitIn(repo, "restore passing check script", {
       "package.json": `${JSON.stringify(
