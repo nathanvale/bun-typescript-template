@@ -61,6 +61,7 @@ export default tseslint.config(
       "coverage/**",
       ".fallow/**",
       ".worktrees/**",
+      ".review/**",
     ],
   },
   { linterOptions: { noInlineConfig: true } },
