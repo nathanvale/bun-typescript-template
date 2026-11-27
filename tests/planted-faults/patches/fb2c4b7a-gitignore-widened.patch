@@ -1,0 +1,10 @@
+diff --git a/.gitignore b/.gitignore
+index 5ce5f228..00000000 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -9,4 +9,4 @@ coverage/
+ !.env.example
+ 
+ .worktrees/
+-.review/
++review

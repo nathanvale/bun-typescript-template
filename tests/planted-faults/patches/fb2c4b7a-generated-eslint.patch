@@ -1,0 +1,12 @@
+diff --git a/generated-repository/settings/eslint.config.mjs b/generated-repository/settings/eslint.config.mjs
+index 8cc5a2e4..75575f51 100644
+--- a/generated-repository/settings/eslint.config.mjs
++++ b/generated-repository/settings/eslint.config.mjs
+@@ -61,7 +61,6 @@ export default tseslint.config(
+       "coverage/**",
+       ".fallow/**",
+       ".worktrees/**",
+-      ".review/**",
+     ],
+   },
+   { linterOptions: { noInlineConfig: true } },

@@ -1,0 +1,12 @@
+diff --git a/eslint.config.mjs b/eslint.config.mjs
+index 39cd144f..b00f7107 100644
+--- a/eslint.config.mjs
++++ b/eslint.config.mjs
+@@ -22,7 +22,6 @@ export default defineConfig(
+       "coverage/**",
+       ".fallow/**",
+       ".worktrees/**",
+-      ".review/**",
+       "generated-repository/**",
+     ],
+   },
