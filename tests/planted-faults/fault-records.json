@@ -3572,5 +3572,19 @@
     "testFile": "tests/template/pin-move/pin-cli-refusals.test.ts",
     "title": "pin plan refuses DOMAIN_PIN_UNREADABLE_FILE when \\.changeset/config\\.json is unreadable",
     "source": "abfe6372 fix(pin): map readPlainFileBytes OS errors to unreadable_file"
+  },
+  {
+    "id": "f74eec69-loopback-connect-probe",
+    "patch": "tests/planted-faults/patches/f74eec69-loopback-connect-probe.patch",
+    "testFile": "tests/template/test-helpers/loopback-connect-probe.test.ts",
+    "title": "skips and prints reason once when loopback connect is refused without CI, fails loudly under CI=true, and runs when allowed",
+    "source": "f74eec69 feat(support): implement needs-loopback gate and gate pin-verification loopback tests"
+  },
+  {
+    "id": "595b3954-recipe",
+    "patch": "tests/planted-faults/patches/595b3954-recipe.patch",
+    "testFile": "tests/template/bootstrap/recipe.test.ts",
+    "title": "it copies tests/support/loopback-connect-probe.ts and Bootstrap writes it byte-identical to the starter kit",
+    "source": "595b3954 feat(recipe): ship loopback-connect-probe in generated repositories"
   }
 ]

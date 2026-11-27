@@ -9,5 +9,5 @@ diff --git a/generated-repository/settings/.fallowrc.json b/generated-repository
 +    "scripts/fallow-health-at-base-settings.ts",
 +    "scripts/**"
    ],
-   "entry": ["tests/cli.test.ts"],
+   "entry": ["tests/cli.test.ts", "tests/support/loopback-connect-probe.ts"],
    "typeAware": {

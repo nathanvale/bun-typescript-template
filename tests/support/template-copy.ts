@@ -20,6 +20,7 @@ const copied = [
   "generated-repository",
   "config",
   "scripts/test-run.ts",
+  "tests/support/loopback-connect-probe.ts",
   "tests/support/test-folder.ts",
   "tests/support/test-run-folder.ts",
   "package.json",

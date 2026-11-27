@@ -10,7 +10,7 @@
     "scripts/check-recorded-health-sizes.ts",
     "scripts/fallow-health-at-base-settings.ts"
   ],
-  "entry": ["tests/cli.test.ts"],
+  "entry": ["tests/cli.test.ts", "tests/support/loopback-connect-probe.ts"],
   "typeAware": {
     "enabled": true,
     "projects": ["tsconfig.json"],

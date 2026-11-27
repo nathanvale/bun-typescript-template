@@ -19,6 +19,7 @@
     "config/payload-rules.mjs",
     "config/platform-rules.mjs",
     "config/template-rules.mjs",
+    "tests/support/loopback-connect-probe.ts",
     "tests/support/test-folder.ts",
     "tests/support/test-run-folder.ts",
     "scripts/test-run.ts",

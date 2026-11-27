@@ -28,8 +28,10 @@ const folder = ownedFolders();
 const captureStream = streamWrites();
 
 const SETTINGS = "generated-repository/settings";
-const ONE_ENTRY = '"entry": ["tests/cli.test.ts"]';
-const TWO_ENTRIES = '"entry": ["tests/cli.test.ts", "tests/skills.test.ts"]';
+const ONE_ENTRY =
+  '"entry": ["tests/cli.test.ts", "tests/support/loopback-connect-probe.ts"]';
+const TWO_ENTRIES =
+  '"entry": [\n    "tests/cli.test.ts",\n    "tests/support/loopback-connect-probe.ts",\n    "tests/skills.test.ts"\n  ]';
 const AUDIT_BASELINES =
   '"cssDeep": false,\n    "deadCodeBaseline": "fallow-dead-code-recorded-hits.json",\n    "dupesBaseline": "fallow-duplicates-recorded-hits.json",\n    "healthBaseline": "fallow-health-recorded-hits.json"\n';
 const SKILLS_TEST =
