@@ -2,11 +2,11 @@ diff --git a/scripts/kernel-trial.ts b/scripts/kernel-trial.ts
 index 05b4950..9419de2 100644
 --- a/scripts/kernel-trial.ts
 +++ b/scripts/kernel-trial.ts
-@@ -240,7 +240,6 @@ export async function withStopSignals<Result>(
+@@ -80,7 +80,6 @@ export async function withStopSignals<Result>(
      active.stoppedBy ??= signal;
      active.stop?.();
    };
--  for (const signal of stopSignals) process.on(signal, stop);
+-  for (const signal of stopSignals) process.prependListener(signal, stop);
    try {
      return await work();
    } finally {
