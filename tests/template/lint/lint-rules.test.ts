@@ -394,3 +394,17 @@ test("every recorded hit names a tracked file with that rule on", async () => {
         dead.push(`${path} ${rule}`);
   expect(dead).toEqual([]);
 });
+
+test("route modules refuse process.stdout.write", async () => {
+  for (const filePath of [
+    "src/cli.ts",
+    "src/pin-move-command.ts",
+    "src/pin-move-repository.ts",
+    "src/doctor.ts",
+  ]) {
+    const found = await messages(filePath, 'process.stdout.write("hi\\n");\n');
+    expect(found.some((entry) => entry.ruleId === "no-restricted-syntax")).toBe(
+      true,
+    );
+  }
+});

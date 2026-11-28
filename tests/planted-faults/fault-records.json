@@ -1369,13 +1369,6 @@
     "source": "a639dc0 fix(pin-move): settle the Sol standards and spec reviews of T3"
   },
   {
-    "id": "a639dc0-pin-move-arguments",
-    "patch": "tests/planted-faults/patches/a639dc0-pin-move-arguments.patch",
-    "testFile": "tests/template/pin-move/pin-move-command.test.ts",
-    "title": "reads as",
-    "source": "a639dc0 fix(pin-move): settle the Sol standards and spec reviews of T3"
-  },
-  {
     "id": "a639dc0-pin-move-report-bytes",
     "patch": "tests/planted-faults/patches/a639dc0-pin-move-report-bytes.patch",
     "testFile": "tests/template/pin-move/pin-move-report.test.ts",
@@ -1586,24 +1579,10 @@
     "source": "d3a35b6 fix(pin-move): refuse a kernel path inside another repository before fetching"
   },
   {
-    "id": "2c064b8-pin-verification-exit",
-    "patch": "tests/planted-faults/patches/2c064b8-pin-verification-exit.patch",
-    "testFile": "tests/template/pin-move/pin-verification-command.test.ts",
-    "title": "in process, the command exits 1 on a refusal and prints its code, 0 on a pass, and 2 with its usage on arguments it cannot read$",
-    "source": "2c064b8 feat(pin-verification): verify the template's kernel pin as a command"
-  },
-  {
     "id": "2c064b8-pin-verification-remote",
     "patch": "tests/planted-faults/patches/2c064b8-pin-verification-remote.patch",
     "testFile": "tests/template/pin-move/pin-verification-command.test.ts",
     "title": "fails on a pin that names a commit the pin's branch on its remote cannot reach$",
-    "source": "2c064b8 feat(pin-verification): verify the template's kernel pin as a command"
-  },
-  {
-    "id": "2c064b8-pin-verification-arguments",
-    "patch": "tests/planted-faults/patches/2c064b8-pin-verification-arguments.patch",
-    "testFile": "tests/template/pin-move/pin-verification-command.test.ts",
-    "title": "with an argument it cannot read prints its usage and exits 2$",
     "source": "2c064b8 feat(pin-verification): verify the template's kernel pin as a command"
   },
   {
@@ -2562,7 +2541,7 @@
     "id": "fd303d9-pin-move-status-renames",
     "patch": "tests/planted-faults/patches/fd303d9-pin-move-status-renames.patch",
     "testFile": "tests/template/pin-move/pin-move-regenerate.test.ts",
-    "title": "in process: parseStatusChanges keeps both paths of a rename record and marks staged-only deletions$",
+    "title": "in process: parseGitChanges keeps both paths of a rename record and marks staged-only deletions$",
     "source": "fd303d9 fix(pin-move): handle git renames, literal pathspecs, recovery timeouts, and commit-failure repairs"
   },
   {
@@ -3455,6 +3434,55 @@
     "source": "b51d414 feat(bootstrap): the starter kit and every generated repository carry the pr skill's pull request template and an issue template"
   },
   {
+    "id": "pin-move-template-package-write",
+    "patch": "tests/planted-faults/patches/pin-move-template-package-write.patch",
+    "testFile": "tests/template/pin-move/pin-move.test.ts",
+    "title": "^the pin move to a commit whose one dependency changed, writes the new lockfile and the new pin, and reports the changed file and the kernel's log line$",
+    "source": "a6547b18 feat(pin): pin verify, pin plan and pin move run behind the front door, and pin move writes both Pin places"
+  },
+  {
+    "id": "pin-move-template-lockfile-write",
+    "patch": "tests/planted-faults/patches/pin-move-template-lockfile-write.patch",
+    "testFile": "tests/template/pin-move/pin-move.test.ts",
+    "title": "^the pin move to a commit whose one dependency changed, writes the new lockfile and the new pin, and reports the changed file and the kernel's log line$",
+    "source": "a6547b18 feat(pin): pin verify, pin plan and pin move run behind the front door, and pin move writes both Pin places"
+  },
+  {
+    "id": "pin-verify-route-places-disagree",
+    "patch": "tests/planted-faults/patches/pin-verify-route-places-disagree.patch",
+    "testFile": "tests/template/pin-move/pin-cli.test.ts",
+    "title": "^cli front door pin routes pin verify refuses DOMAIN_PIN_PLACES_DISAGREE in an envelope when package\\.json disagrees with kernel-pin\\.json$",
+    "source": "a6547b18 feat(pin): pin verify, pin plan and pin move run behind the front door, and pin move writes both Pin places"
+  },
+  {
+    "id": "pin-plan-route-discover",
+    "patch": "tests/planted-faults/patches/pin-plan-route-discover.patch",
+    "testFile": "tests/template/pin-move/pin-cli.test.ts",
+    "title": "^cli front door pin routes --discover-all lists pin verify, pin plan, and pin move with their identities and effect classes, and each answers --help$",
+    "source": "a6547b18 feat(pin): pin verify, pin plan and pin move run behind the front door, and pin move writes both Pin places"
+  },
+  {
+    "id": "a612a1ed-pin-move",
+    "patch": "tests/planted-faults/patches/a612a1ed-pin-move.patch",
+    "testFile": "tests/template/pin-move/pin-move-command.test.ts",
+    "title": "run at the pinned commit on a template with no lockfile",
+    "source": "a612a1ed fix(pin): skip rewriting template bun.lock when it already pins the target commit"
+  },
+  {
+    "id": "7996ff76-pin-move-command",
+    "patch": "tests/planted-faults/patches/7996ff76-pin-move-command.patch",
+    "testFile": "tests/template/pin-move/pin-move-regenerate.test.ts",
+    "title": "refuses when the regenerate step exits non-zero",
+    "source": "7996ff76 fix(pin): emit DOMAIN_PIN_* refusal causes on repository pin-move failures and bound refusal detail"
+  },
+  {
+    "id": "7996ff76-pin-move-branch",
+    "patch": "tests/planted-faults/patches/7996ff76-pin-move-branch.patch",
+    "testFile": "tests/template/pin-move/pin-move-repository.test.ts",
+    "title": "says the installed kernel was not restored when the starting branch's frozen install fails",
+    "source": "7996ff76 fix(pin): emit DOMAIN_PIN_* refusal causes on repository pin-move failures and bound refusal detail"
+  },
+  {
     "id": "9ad81458-template-upgrade-inputs",
     "patch": "tests/planted-faults/patches/9ad81458-template-upgrade-inputs.patch",
     "testFile": "tests/template/template-upgrade/template-upgrade-check-command.test.ts",
@@ -3511,6 +3539,41 @@
     "source": "f1351af fix(template-upgrade): conflicts arrive key by key and named, dependency changes come from the key merge, and AGENTS.md drops the template stamp"
   },
   {
+    "id": "4fcc3450-pin-refusals",
+    "patch": "tests/planted-faults/patches/4fcc3450-pin-refusals.patch",
+    "testFile": "tests/template/pin-move/pin-refusals.test.ts",
+    "title": "pin move refuses repository_git_failed before any write when .git/index is corrupt",
+    "source": "4fcc3450 fix(pin): classify pin refusals by code and phase and drop non-glossary export (GREEN)"
+  },
+  {
+    "id": "4fcc3450-pin-refusals-restored",
+    "patch": "tests/planted-faults/patches/4fcc3450-pin-refusals-restored.patch",
+    "testFile": "tests/template/pin-move/pin-refusals.test.ts",
+    "title": "every PinRefusal and RepositoryPinRefusal code after writes with start restored yields a declared failed completed",
+    "source": "4fcc3450 fix(pin): classify pin refusals by code and phase and drop non-glossary export (GREEN)"
+  },
+  {
+    "id": "aac5cba2-pin-move-command",
+    "patch": "tests/planted-faults/patches/aac5cba2-pin-move-command.patch",
+    "testFile": "tests/template/pin-move/pin-cli-refusals.test.ts",
+    "title": "SIGKILL during .* pin move leaves an unresolved case that the next pin move refuses with DOMAIN_PIN_MOVE_UNRESOLVED",
+    "source": "aac5cba2 fix(pin): drop supersedeUnresolved from pin move transactions"
+  },
+  {
+    "id": "6182602d-kernel-pin",
+    "patch": "tests/planted-faults/patches/6182602d-kernel-pin.patch",
+    "testFile": "tests/template/pin-move/pin-cli-refusals.test.ts",
+    "title": "pin verify, pin plan, and pin move refuse missing or invalid kernel-pin\\.json with DOMAIN_PIN_KERNEL_PIN_UNREADABLE",
+    "source": "6182602d fix(pin): refuse unreadable or invalid kernel-pin.json with DOMAIN_PIN_KERNEL_PIN_UNREADABLE"
+  },
+  {
+    "id": "abfe6372-template-upgrade-worktree",
+    "patch": "tests/planted-faults/patches/abfe6372-template-upgrade-worktree.patch",
+    "testFile": "tests/template/pin-move/pin-cli-refusals.test.ts",
+    "title": "pin plan refuses DOMAIN_PIN_UNREADABLE_FILE when \\.changeset/config\\.json is unreadable",
+    "source": "abfe6372 fix(pin): map readPlainFileBytes OS errors to unreadable_file"
+  },
+  {
     "id": "f74eec69-loopback-connect-probe",
     "patch": "tests/planted-faults/patches/f74eec69-loopback-connect-probe.patch",
     "testFile": "tests/template/test-helpers/loopback-connect-probe.test.ts",
@@ -3523,6 +3586,13 @@
     "testFile": "tests/template/bootstrap/recipe.test.ts",
     "title": "it copies tests/support/loopback-connect-probe.ts and Bootstrap writes it byte-identical to the starter kit",
     "source": "595b3954 feat(recipe): ship loopback-connect-probe in generated repositories"
+  },
+  {
+    "id": "d6f1810a-pin-move-branch",
+    "patch": "tests/planted-faults/patches/d6f1810a-pin-move-branch.patch",
+    "testFile": "tests/template/pin-move/pin-move-stop.test.ts",
+    "title": "SIGTERM during repository check settles inside 450 ms even when restore frozen install is slow",
+    "source": "d6f1810a fix(pin): skip package reinstall on signal stop so move settles"
   },
   {
     "id": "fb2c4b7a-gitignore",

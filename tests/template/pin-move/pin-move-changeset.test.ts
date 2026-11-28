@@ -4,7 +4,7 @@ import { join } from "node:path";
 import {
   failedAttempt,
   RepositoryPinRefusal,
-} from "../../../scripts/pin-move-branch.ts";
+} from "../../../src/pin-move-branch.ts";
 import { CliError } from "../../../src/cli-error.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { commitIn, git, gitEnv, gitOutput } from "../../support/git-fixture.ts";
@@ -31,10 +31,14 @@ function changesetEnv() {
 }
 
 function runPinMove(args: readonly string[], boundMilliseconds = 120_000) {
-  return spawnBounded(
-    [process.execPath, join(ROOT, "scripts/pin-move.ts"), ...args],
-    { cwd: ROOT, env: changesetEnv(), boundMilliseconds },
-  );
+  const route = args.includes("--plan")
+    ? ["pin", "plan", ...args.filter((arg) => arg !== "--plan")]
+    : ["pin", "move", ...args];
+  return spawnBounded([process.execPath, join(ROOT, "src/cli.ts"), ...route], {
+    cwd: ROOT,
+    env: changesetEnv(),
+    boundMilliseconds,
+  });
 }
 
 function lockedRepository(prefix: string): string {

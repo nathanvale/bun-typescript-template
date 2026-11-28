@@ -6,7 +6,7 @@ import { ownedFolders } from "../../support/fixture-files.ts";
 import { processWatchdog, spawnBounded } from "../../support/process.ts";
 
 const folder = ownedFolders();
-const imports = `import { movePin } from ${JSON.stringify(join(ROOT, "scripts/pin-move.ts"))};
+const imports = `import { movePin } from ${JSON.stringify(join(ROOT, "src/pin-move.ts"))};
 import type { TrialPassed } from ${JSON.stringify(join(ROOT, "scripts/kernel-trial.ts"))};
 `;
 

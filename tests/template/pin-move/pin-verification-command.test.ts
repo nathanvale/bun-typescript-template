@@ -1,15 +1,20 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { delimiter, join } from "node:path";
 import { readKernelPin } from "../../../src/kernel-pin.ts";
 import { KernelRefusal } from "../../../src/kernel-reader.ts";
-import { PinRefusal, pinBranchCommit } from "../../../scripts/pin-move.ts";
+import { PinRefusal, pinBranchCommit } from "../../../src/pin-move.ts";
 import {
-  argumentsOf,
-  main,
   verifyKernelPin,
   verifyPinPlaces,
-} from "../../../scripts/pin-verification.ts";
+} from "../../../src/pin-verification.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
 import { git, gitEnv, inherited } from "../../support/git-fixture.ts";
@@ -22,19 +27,17 @@ import {
   siblingKernel,
   templateCommitHoldingS5,
 } from "../../support/kernel-sibling.ts";
-import { withEnvironment } from "../../support/recipe-fixture.ts";
 import { pinnedTemplate } from "../../support/kernel-trial-fixture.ts";
 import {
   processAlive,
   processWatchdog,
   spawnBounded,
 } from "../../support/process.ts";
-import { streamWrites } from "../../support/stream-writes.ts";
+import { withEnvironment } from "../../support/recipe-fixture.ts";
 import { templateCopy } from "../../support/template-copy.ts";
 
 const pin = readKernelPin(ROOT);
 const folder = ownedFolders();
-const written = streamWrites();
 
 function gone(pid: number, boundMilliseconds: number): Promise<boolean> {
   const started = Date.now();
@@ -47,8 +50,6 @@ function gone(pid: number, boundMilliseconds: number): Promise<boolean> {
     }, 10);
   });
 }
-const usage =
-  "Usage: bun run pin-verification [--kernel <path to the kernel repository>]\n";
 
 function pinnedAt(commit: string): string {
   return pinnedTemplate(
@@ -81,18 +82,13 @@ function unpushedCommit(): { repository: string; commit: string } {
   return { repository, commit };
 }
 
-describe("the pin verification command's arguments", () => {
-  test.each([
-    [[], {}],
-    [["--kernel", "/k"], { path: "/k" }],
-    [["--kernel"], undefined],
-    [["--other", "/k"], undefined],
-    [["/k"], undefined],
-    [["--kernel", "/k", "more"], undefined],
-  ] as const)("%j reads as %j", (argv, expected) => {
-    expect(argumentsOf(argv)).toEqual(expected);
-  });
-});
+function templateCopyWithModules(prefix: string): string {
+  const copy = templateCopy(folder(prefix));
+  if (!existsSync(join(copy, "node_modules"))) {
+    symlinkSync(join(ROOT, "node_modules"), join(copy, "node_modules"));
+  }
+  return copy;
+}
 
 describe("pin verification of the template's kernel pin", () => {
   test(
@@ -166,27 +162,6 @@ describe("pin verification of the template's kernel pin", () => {
     },
     processWatchdog(1),
   );
-
-  test(
-    "in process, the command exits 1 on a refusal and prints its code, 0 on a pass, and 2 with its usage on arguments it cannot read",
-    async () => {
-      const stdout = written(process.stdout);
-      const stderr = written(process.stderr);
-      const kernel = siblingKernel();
-      const exits = await isolated(() => [
-        main(["--kernel", kernel], pinnedAt(templateCommitHoldingS5)),
-        main(["--kernel", kernel], ROOT),
-        main(["--kernel"], ROOT),
-      ]);
-      expect(exits).toEqual([1, 0, 2]);
-      expect(stdout()).toStartWith(`Pin verified: ${pin.commit} `);
-      expect(stderr()).toStartWith(
-        `kernel_commit_before_carry_out: Commit ${templateCommitHoldingS5} `,
-      );
-      expect(stderr()).toEndWith(usage);
-    },
-    processWatchdog(2),
-  );
 });
 
 describe("the pin verification command", () => {
@@ -195,12 +170,14 @@ describe("the pin verification command", () => {
     args: readonly string[],
     { bin, bound }: { bin?: string; bound?: number } = {},
   ) {
+    const stateHome = folder("pin-verification-state-");
     const env: Record<string, string | undefined> = {
       ...inherited(),
       ...gitEnv,
+      XDG_STATE_HOME: stateHome,
     };
     return spawnBounded(
-      [process.execPath, join(copy, "scripts/pin-verification.ts"), ...args],
+      [process.execPath, join(copy, "src/cli.ts"), "pin", "verify", ...args],
       {
         cwd: copy,
         env:
@@ -225,7 +202,7 @@ describe("the pin verification command", () => {
         `#!/bin/sh\necho $$ > ${JSON.stringify(pidFile)}\nexec sleep 30\n`,
         { mode: 0o755 },
       );
-      const copy = templateCopy(folder("pin-verification-command-"));
+      const copy = templateCopyWithModules("pin-verification-command-");
       let pid: number | undefined;
       try {
         const failure = await pinVerification(
@@ -250,15 +227,26 @@ describe("the pin verification command", () => {
   test(
     "fails a template whose pin names a commit before the carry-out commit, and passes the template's own pin",
     async () => {
-      const copy = templateCopy(folder("pin-verification-command-"));
+      const copy = templateCopyWithModules("pin-verification-command-");
       pinnedTemplate(copy, templateCommitHoldingS5, pin.carryOutIdentity);
-      const before = await pinVerification(copy, ["--kernel", siblingKernel()]);
-      expect({ exit: before.exit, stdout: before.stdout }).toEqual({
-        exit: 1,
-        stdout: "",
+      const before = await pinVerification(copy, [
+        "--kernel",
+        siblingKernel(),
+        "--json",
+      ]);
+      expect({ exit: before.exit, stderr: before.stderr }).toEqual({
+        exit: 3,
+        stderr: "",
       });
-      expect(before.stderr).toStartWith(
-        `kernel_commit_before_carry_out: Commit ${templateCommitHoldingS5} does not have the carry-out commit ${pin.carryOutIdentity} as an ancestor`,
+      const beforeEnv = JSON.parse(before.stdout) as {
+        readonly message: string;
+        readonly result: { readonly causeCode: string };
+      };
+      expect(beforeEnv.result.causeCode).toBe(
+        "DOMAIN_PIN_KERNEL_COMMIT_BEFORE_CARRY_OUT",
+      );
+      expect(beforeEnv.message).toStartWith(
+        `Commit ${templateCommitHoldingS5} does not have the carry-out commit ${pin.carryOutIdentity} as an ancestor`,
       );
       pinnedTemplate(copy, pin.commit, pin.carryOutIdentity);
       const own = await pinVerification(copy, ["--kernel", siblingKernel()]);
@@ -266,20 +254,21 @@ describe("the pin verification command", () => {
         exit: 0,
         stderr: "",
       });
-      expect(own.stdout).toStartWith(`Pin verified: ${pin.commit} `);
+      expect(own.stdout).toContain(`Pin verified: ${pin.commit} `);
     },
     processWatchdog(2),
   );
 
   test(
-    "with an argument it cannot read prints its usage and exits 2",
+    "with an argument it cannot read exits 2",
     async () => {
-      const copy = templateCopy(folder("pin-verification-command-"));
-      expect(await pinVerification(copy, ["--kernel"])).toEqual({
+      const copy = templateCopyWithModules("pin-verification-command-");
+      const run = await pinVerification(copy, ["--kernel"]);
+      expect({ exit: run.exit, stdout: run.stdout }).toEqual({
         exit: 2,
         stdout: "",
-        stderr: usage,
       });
+      expect(run.stderr).not.toBe("");
     },
     processWatchdog(1),
   );

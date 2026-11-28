@@ -76,12 +76,28 @@ export async function assertNoSymlinkAncestors(
   }
 }
 
+function unreadableFileError(fullPath: string, error: unknown): CliError {
+  const detail = error instanceof Error ? error.message : String(error);
+  return new CliError(
+    "unreadable_file",
+    `cannot read file ${fullPath}: ${detail}`,
+    `check permissions and ensure ${fullPath} is a readable regular file, then rerun`,
+    1,
+    false,
+  );
+}
+
 export async function readPlainFileBytes(
   fullPath: string,
 ): Promise<Uint8Array> {
   const flags =
     constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
-  const handle = await open(fullPath, flags);
+  let handle: Awaited<ReturnType<typeof open>>;
+  try {
+    handle = await open(fullPath, flags);
+  } catch (error) {
+    throw unreadableFileError(fullPath, error);
+  }
   try {
     const stats = await handle.stat();
     if (!stats.isFile()) {
@@ -94,6 +110,11 @@ export async function readPlainFileBytes(
       );
     }
     return new Uint8Array(await handle.readFile());
+  } catch (error) {
+    if (error instanceof CliError) {
+      throw error;
+    }
+    throw unreadableFileError(fullPath, error);
   } finally {
     await handle.close();
   }

@@ -1,6 +1,6 @@
-diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
---- a/scripts/pin-move-repository.ts
-+++ b/scripts/pin-move-repository.ts
+diff --git a/src/pin-move-repository.ts b/src/pin-move-repository.ts
+--- a/src/pin-move-repository.ts
++++ b/src/pin-move-repository.ts
 @@ -500,7 +500,7 @@ async function applyRepositoryPinMove(
          editedPaths.push(changeset.createdPath);
        }

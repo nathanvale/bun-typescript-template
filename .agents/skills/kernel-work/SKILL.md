@@ -1,6 +1,6 @@
 ---
 name: kernel-work
-description: Build, repair, or review kernel work in this template: the installed kernel, the Pin, `pin-move` and their tests. Kernel source lives in the `agent-cli-kernel` repository.
+description: Build, repair, or review kernel work in this template: the installed kernel, the Pin, `pin:move` and their tests. Kernel source lives in the `agent-cli-kernel` repository.
 ---
 
 # Kernel work

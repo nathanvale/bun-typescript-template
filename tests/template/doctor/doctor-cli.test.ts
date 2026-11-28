@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   chmodSync,
   copyFileSync,
+  cpSync,
   existsSync,
   mkdirSync,
   readdirSync,
@@ -20,19 +21,6 @@ const repository = join(import.meta.dir, "../../..");
 const pin = readKernelPin(repository);
 const folder = ownedFolders();
 
-const cliSources = [
-  "src/cli.ts",
-  "src/causes.ts",
-  "src/cli-error.ts",
-  "src/doctor.ts",
-  "src/git-identities.ts",
-  "src/kernel-pin.ts",
-  "src/kernel-reader.ts",
-  "src/template-upgrade-git.ts",
-  "src/toolchain-resolution.ts",
-  "kernel-pin.json",
-];
-
 function write(root: string, path: string, content: string): void {
   mkdirSync(dirname(join(root, path)), { recursive: true });
   writeFileSync(join(root, path), content);
@@ -47,10 +35,14 @@ function copyCliCheckout(
   } = {},
 ): string {
   const root = folder("doctor-cli-");
-  for (const path of cliSources) {
-    mkdirSync(dirname(join(root, path)), { recursive: true });
-    copyFileSync(join(repository, path), join(root, path));
-  }
+  cpSync(join(repository, "src"), join(root, "src"), { recursive: true });
+  cpSync(join(repository, "scripts"), join(root, "scripts"), {
+    recursive: true,
+  });
+  copyFileSync(
+    join(repository, "kernel-pin.json"),
+    join(root, "kernel-pin.json"),
+  );
   const manifest = {
     name: "bun-typescript-template",
     private: true,
@@ -127,6 +119,10 @@ function copyCliCheckout(
       symlinkSync(
         join(repository, "node_modules/@logtape"),
         join(root, "node_modules/@logtape"),
+      );
+      symlinkSync(
+        join(repository, "node_modules/@changesets"),
+        join(root, "node_modules/@changesets"),
       );
     }
   }
@@ -229,14 +225,35 @@ describe("cli front door and doctor route", () => {
 
       expect(result.exitCode).toBe(0);
       expect(result.stderr).toBe("");
-      expect(result.lines).toContain(
+      expect(result.stdout).toContain(
         `ok bun: Bun ${Bun.version} matches the toolchain pin.`,
       );
-      expect(result.lines).toContain(
+      expect(result.stdout).toContain(
         "ok toolchain: node_modules resolves the accepted lint, compiler and semantic backends.",
       );
-      expect(result.lines).toContain("ok fallow: fallow doctor passes.");
+      expect(result.stdout).toContain("ok fallow: fallow doctor passes.");
       expect(diagnosticsRecords(stateHome)).toHaveLength(1);
+    },
+    processWatchdog(1),
+  );
+
+  test(
+    "doctor without --json writes nothing to stdout on failure and reports failed checks on stderr",
+    async () => {
+      const root = copyCliCheckout({
+        packageManager: "bun@0.0.1",
+        linkNodeModules: true,
+      });
+      const stateHome = folder("doctor-state-");
+      const result = await runCli(root, ["doctor"], stateHome);
+
+      expect(result.exitCode).toBe(3);
+      expect(result.stdout).toMatch(/^(?:Diagnostics: [^\n]+\.jsonl\n)?$/);
+      expect(result.stderr).toContain("[DOMAIN_DOCTOR_CHECK_FAILED]");
+      expect(result.stderr).toContain(
+        `FAIL bun: found Bun ${Bun.version}, pinned 0.0.1.`,
+      );
+      expect(result.stderr).toContain("Done when bun run doctor passes.");
     },
     processWatchdog(1),
   );

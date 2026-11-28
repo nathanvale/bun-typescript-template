@@ -1,7 +1,7 @@
-diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
+diff --git a/src/pin-move-repository.ts b/src/pin-move-repository.ts
 index 322de3f..3093f87 100644
---- a/scripts/pin-move-repository.ts
-+++ b/scripts/pin-move-repository.ts
+--- a/src/pin-move-repository.ts
++++ b/src/pin-move-repository.ts
 @@ -334,7 +334,7 @@ function planRepositoryEdits(
  
  function declaresRegenerate(packageText: string): boolean {

@@ -1,11 +1,11 @@
-diff --git a/scripts/pin-move-branch.ts b/scripts/pin-move-branch.ts
---- a/scripts/pin-move-branch.ts
-+++ b/scripts/pin-move-branch.ts
+diff --git a/src/pin-move-branch.ts b/src/pin-move-branch.ts
+--- a/src/pin-move-branch.ts
++++ b/src/pin-move-branch.ts
 @@ -88,7 +88,7 @@ export function commitPinMoveBranch(
        "--",
        ...written,
      ],
--    `Fix why git commit failed in ${repository} (for example a commit hook or signing; git's message above), then run pin-move again.`,
+-    `Fix why git commit failed in ${repository} (for example a commit hook or signing; git's message above), then run bun run pin:move again.`,
 +    `Commit the staged pin move on branch pin-move/${kernelCommit.slice(0, 7)} in ${repository}.`,
    );
    return requireRepositoryGit(

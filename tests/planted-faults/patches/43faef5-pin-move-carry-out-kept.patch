@@ -1,7 +1,7 @@
-diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
+diff --git a/src/pin-move.ts b/src/pin-move.ts
 index 6f7049a..f78ede4 100644
---- a/scripts/pin-move.ts
-+++ b/scripts/pin-move.ts
+--- a/src/pin-move.ts
++++ b/src/pin-move.ts
 @@ -142,7 +142,13 @@ export function movePin(trial: TrialPassed, template: string): PinMove {
      writeFileSync(lockfile, qualified.lockfile);
      written.push(KERNEL_LOCKFILE);

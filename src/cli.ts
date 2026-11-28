@@ -23,26 +23,21 @@ const noEffects = {
   inventoryComplete: true,
 } as const;
 
-export function jsonOutput(argv: readonly string[]): boolean {
-  for (const token of argv) {
-    if (token === "--") return false;
-    if (token === "--json") return true;
-  }
-  return false;
-}
-
 async function loadKernel() {
   if (!existsSync(join(root, "node_modules", "agent-cli-kernel")))
     return undefined;
-  const [kernel, diagnostics, causes] = await Promise.all([
-    import("agent-cli-kernel"),
-    import("agent-cli-kernel/addons/diagnostics"),
-    import("./causes.ts"),
-  ]);
-  return { kernel, diagnostics, causes };
+  const [kernel, diagnostics, stateModule, causes, pinCommands] =
+    await Promise.all([
+      import("agent-cli-kernel"),
+      import("agent-cli-kernel/addons/diagnostics"),
+      import("agent-cli-kernel/addons/state"),
+      import("./causes.ts"),
+      import("./pin-commands.ts"),
+    ]);
+  return { kernel, diagnostics, stateModule, causes, pinCommands };
 }
 
-async function runFrontDoor(argv: readonly string[]): Promise<void> {
+export async function runFrontDoor(argv: readonly string[]): Promise<void> {
   const loaded = await loadKernel();
   if (loaded === undefined) {
     process.stderr.write(
@@ -54,10 +49,21 @@ async function runFrontDoor(argv: readonly string[]): Promise<void> {
   const {
     kernel: { command, contractFor, runProcess, station },
     diagnostics: { diagnosticsAddon },
+    stateModule: { stateAddon },
     causes: { cliCauses },
+    pinCommands: {
+      frontDoorStateRoot,
+      pinMoveCommand,
+      pinPlanCommand,
+      pinVerifyCommand,
+      pinVerifyIdentity,
+    },
   } = loaded;
 
-  const machineOutput = jsonOutput(argv);
+  const state = stateAddon({
+    root: frontDoorStateRoot(process.env),
+    report: pinVerifyIdentity,
+  });
 
   const doctorCommand = command({
     identity: doctorIdentity,
@@ -105,11 +111,10 @@ async function runFrontDoor(argv: readonly string[]): Promise<void> {
           { ready: true, resultCount: results.length },
           "info",
         );
-        if (!machineOutput) process.stdout.write(formatDoctorReport(report));
         return context.result(
           { commandIdentity: doctorIdentity, causeCode: "SUCCESS_UNCHANGED" },
           {
-            message: "Checkout is ready.",
+            message: `${formatDoctorReport(report)}Checkout is ready.`,
             data: { ready: true, results },
             effects: noEffects,
           },
@@ -124,17 +129,13 @@ async function runFrontDoor(argv: readonly string[]): Promise<void> {
         },
         "warning",
       );
-      if (!machineOutput) process.stdout.write(formatDoctorReport(report));
-      const summary = failing
-        .map((result) => `${result.check}: ${result.detail}`)
-        .join(" ");
       return context.result(
         {
           commandIdentity: doctorIdentity,
           causeCode: "DOMAIN_DOCTOR_CHECK_FAILED",
         },
         {
-          message: summary,
+          message: formatDoctorReport(report).trimEnd(),
           data: { ready: false, results },
           effects: noEffects,
         },
@@ -144,12 +145,19 @@ async function runFrontDoor(argv: readonly string[]): Promise<void> {
 
   const contract = contractFor({
     cli: cliName,
-    commands: [doctorCommand] as const,
+    commands: [
+      doctorCommand,
+      pinVerifyCommand(root),
+      pinPlanCommand(root),
+      pinMoveCommand(root, state),
+    ] as const,
     causes: cliCauses,
-    installedAddons: ["diagnostics"],
+    state: state.descriptor,
+    installedAddons: ["diagnostics", "state"],
   });
 
   await runProcess(contract, {
+    emergencyRecord: state.emergencyRecord,
     addons: {
       diagnostics: diagnosticsAddon({
         cli: cliName,

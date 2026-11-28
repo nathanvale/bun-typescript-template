@@ -1,0 +1,13 @@
+diff --git a/src/kernel-pin.ts b/src/kernel-pin.ts
+index 8f970500..ad70417e 100644
+--- a/src/kernel-pin.ts
++++ b/src/kernel-pin.ts
+@@ -50,7 +50,7 @@ export class KernelPinRefusal extends Error {
+ }
+ 
+ function fail(problem: string): never {
+-  throw new KernelPinRefusal(problem);
++  throw new Error(`${file}: ${problem}`);
+ }
+ 
+ function entriesOf(source: string): Map<string, unknown> {

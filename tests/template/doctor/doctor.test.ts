@@ -2,6 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import {
   chmodSync,
   copyFileSync,
+  cpSync,
   mkdirSync,
   mkdtempSync,
   rmSync,
@@ -13,20 +14,6 @@ import { dirname, join } from "node:path";
 import { testRunFiles } from "../../support/fixture-files.ts";
 
 const repository = join(import.meta.dir, "../../..");
-const scripts = [
-  "src/cli.ts",
-  "src/causes.ts",
-  "src/cli-error.ts",
-  "src/doctor.ts",
-  "src/git-identities.ts",
-  "src/kernel-pin.ts",
-  "src/kernel-reader.ts",
-  "src/template-upgrade-git.ts",
-  "src/toolchain-resolution.ts",
-  "kernel-pin.json",
-  "scripts/test-area.ts",
-  "scripts/repository.ts",
-];
 const projects: string[] = [];
 
 afterAll(() => {
@@ -50,6 +37,10 @@ function linkKernel(root: string): void {
     join(repository, "node_modules/@logtape"),
     join(root, "node_modules/@logtape"),
   );
+  symlinkSync(
+    join(repository, "node_modules/@changesets"),
+    join(root, "node_modules/@changesets"),
+  );
 }
 
 function project(
@@ -59,10 +50,14 @@ function project(
 ) {
   const root = mkdtempSync(join(tmpdir(), "doctor-"));
   projects.push(root);
-  for (const path of scripts) {
-    mkdirSync(dirname(join(root, path)), { recursive: true });
-    copyFileSync(join(repository, path), join(root, path));
-  }
+  cpSync(join(repository, "src"), join(root, "src"), { recursive: true });
+  cpSync(join(repository, "scripts"), join(root, "scripts"), {
+    recursive: true,
+  });
+  copyFileSync(
+    join(repository, "kernel-pin.json"),
+    join(root, "kernel-pin.json"),
+  );
   write(root, "package.json", JSON.stringify(manifest));
   for (const [path, content] of Object.entries({
     ...testRunFiles(),
@@ -147,11 +142,13 @@ function run(root: string, script: string, args: string[] = [], cwd = root) {
       stderr: "pipe",
     },
   );
+  const stdout = result.stdout.toString();
+  const stderr = result.stderr.toString();
   return {
     exitCode: result.exitCode,
-    stdout: result.stdout.toString(),
-    stderr: result.stderr.toString(),
-    lines: result.stdout.toString().split("\n"),
+    stdout,
+    stderr,
+    lines: stdout.split("\n"),
   };
 }
 
@@ -166,9 +163,13 @@ describe("doctor", () => {
       doctor,
       doctorArgs,
     );
-    const line = result.lines.find((entry) => entry.startsWith("FAIL bun: "));
+    const segment = result.stderr
+      .split("FAIL bun: ")[1]
+      ?.split(/ (?:ok|FAIL|WARN) [a-z]+:/)[0];
+    const line = segment === undefined ? undefined : `FAIL bun: ${segment}`;
     return {
       exitCode: result.exitCode,
+      stdout: result.stdout,
       line,
       repair: line?.split("Repair: ")[1],
     };
@@ -180,9 +181,10 @@ describe("doctor", () => {
   ])(
     "a running Bun %s the pin fails, naming both versions and the repair",
     (_order, pin) => {
-      const { exitCode, line } = bunRepair(pin);
+      const { exitCode, stdout, line } = bunRepair(pin);
 
       expect(exitCode).toBe(3);
+      expect(stdout).toMatch(/^(?:Diagnostics: [^\n]+\.jsonl\n)?$/);
       expect(line).toBe(
         `FAIL bun: found Bun ${Bun.version}, pinned ${pin}. Repair: run each command as mise exec bun@${pin} -- <command>. If mise reports bun@${pin} missing, run mise install bun@${pin} first. In a hosted check, set bun-version: ${pin} on setup-bun.`,
       );
@@ -220,7 +222,7 @@ describe("doctor", () => {
       doctorArgs,
     );
 
-    expect(result.lines).toContain(
+    expect(result.stderr).toContain(
       `ok bun: Bun ${Bun.version} matches the toolchain pin.`,
     );
   });
@@ -232,7 +234,8 @@ describe("doctor", () => {
     const result = run(project(manifest), doctor, doctorArgs);
 
     expect(result.exitCode).toBe(3);
-    expect(result.lines).toContain(
+    expect(result.stdout).toMatch(/^(?:Diagnostics: [^\n]+\.jsonl\n)?$/);
+    expect(result.stderr).toContain(
       'FAIL bun: package.json has no toolchain pin. Repair: add "packageManager": "bun@<version>" to package.json.',
     );
   });
@@ -261,20 +264,21 @@ describe("doctor", () => {
     );
 
     expect(result.exitCode).toBe(3);
-    const toolchainLines = result.lines.filter((line) =>
-      line.startsWith("FAIL toolchain: "),
-    );
-    expect(toolchainLines).toHaveLength(1);
-    expect(toolchainLines[0]).toEndWith(
-      " Repair: bun install --frozen-lockfile.",
-    );
+    expect(result.stdout).toMatch(/^(?:Diagnostics: [^\n]+\.jsonl\n)?$/);
+    const toolchainMatches = result.stderr.match(/FAIL toolchain: /g) ?? [];
+    expect(toolchainMatches).toHaveLength(1);
+    const segment = result.stderr
+      .split("FAIL toolchain: ")[1]
+      ?.split(/ (?:ok|FAIL|WARN) [a-z]+:| Done when/)[0];
+    expect(segment).toEndWith(" Repair: bun install --frozen-lockfile.");
   });
 
   test("a drifted lint backend fails the toolchain check", () => {
     const result = run(withToolchain("6.0.3"), doctor, doctorArgs);
 
     expect(result.exitCode).toBe(3);
-    expect(result.lines).toContain(
+    expect(result.stdout).toMatch(/^(?:Diagnostics: [^\n]+\.jsonl\n)?$/);
+    expect(result.stderr).toContain(
       "FAIL toolchain: The installed lint, compiler and semantic backends do not match the accepted toolchain. Repair: bun install --frozen-lockfile.",
     );
   });
@@ -284,13 +288,13 @@ describe("doctor", () => {
     const result = run(root, doctor, doctorArgs, join(root, "scripts"));
 
     expect(result.exitCode).toBe(0);
-    expect(result.lines).toContain(
+    expect(result.stdout).toContain(
       `ok bun: Bun ${Bun.version} matches the toolchain pin.`,
     );
-    expect(result.lines).toContain(
+    expect(result.stdout).toContain(
       "ok toolchain: node_modules resolves the accepted lint, compiler and semantic backends.",
     );
-    expect(result.lines).toContain("ok fallow: fallow doctor passes.");
+    expect(result.stdout).toContain("ok fallow: fallow doctor passes.");
   });
 
   test("a fallow doctor warning is reported with its repair and does not fail", () => {
@@ -322,7 +326,7 @@ describe("doctor", () => {
     );
 
     expect(result.exitCode).toBe(0);
-    expect(result.lines).toContain(
+    expect(result.stdout).toContain(
       "WARN fallow: cache: Extraction cache would not be reused: cache format version changed. Repair: run fallow dead-code --quiet from the repository root.",
     );
   });
@@ -346,7 +350,8 @@ describe("doctor", () => {
     );
 
     expect(result.exitCode).toBe(3);
-    expect(result.lines).toContain(
+    expect(result.stdout).toMatch(/^(?:Diagnostics: [^\n]+\.jsonl\n)?$/);
+    expect(result.stderr).toContain(
       "FAIL fallow: config: The config file .fallowrc.json could not be parsed. Repair: run node_modules/.bin/fallow doctor for the details.",
     );
   });
@@ -359,7 +364,8 @@ describe("doctor", () => {
     );
 
     expect(result.exitCode).toBe(3);
-    expect(result.lines).toContain(
+    expect(result.stdout).toMatch(/^(?:Diagnostics: [^\n]+\.jsonl\n)?$/);
+    expect(result.stderr).toContain(
       "FAIL fallow: fallow doctor exited 2 without a readiness report. Repair: bun install --frozen-lockfile, then run node_modules/.bin/fallow doctor to read its error.",
     );
   });
@@ -372,7 +378,8 @@ describe("doctor", () => {
     );
 
     expect(result.exitCode).toBe(3);
-    expect(result.lines).toContain("Done when bun run doctor passes.");
+    expect(result.stdout).toMatch(/^(?:Diagnostics: [^\n]+\.jsonl\n)?$/);
+    expect(result.stderr).toContain("Done when bun run doctor passes.");
   });
 
   test("a run with no FAIL line does not say when a repair is done", () => {
@@ -386,7 +393,8 @@ describe("doctor", () => {
     const result = run(withToolchain("6.0.2", {}, null), doctor, doctorArgs);
 
     expect(result.exitCode).toBe(3);
-    expect(result.lines).toContain(
+    expect(result.stdout).toMatch(/^(?:Diagnostics: [^\n]+\.jsonl\n)?$/);
+    expect(result.stderr).toContain(
       "FAIL fallow: node_modules/.bin/fallow is missing. Repair: bun install --frozen-lockfile.",
     );
   });

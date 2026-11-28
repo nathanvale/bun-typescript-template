@@ -1,11 +1,12 @@
-diff --git a/scripts/pin-move-repository.ts b/scripts/pin-move-repository.ts
---- a/scripts/pin-move-repository.ts
-+++ b/scripts/pin-move-repository.ts
-@@ -137,7 +137,6 @@ function openGeneratedRepository(
-   const repository = realpathSync(givenPath);
-   requireGitWorkTreeRoot(repository, invalid);
-   const startingRef = requireStartingBranch(repository, requireClean);
--  if (requireClean) requireCleanWorkTree(repository);
-   return { repository, startingRef };
- }
- 
+diff --git a/src/pin-move-repository.ts b/src/pin-move-repository.ts
+index 1111111..2222222 100644
+--- a/src/pin-move-repository.ts
++++ b/src/pin-move-repository.ts
+@@ -579,7 +579,6 @@ export async function moveRepositoryPin(
+   readKernel(kernel);
+   return runWrite(repository, () => {
+     const startingRef = requireStartingBranch(repository, true);
+-    requireCleanWorkTree(repository);
+     const current = readRepositoryPin(
+       repository,
+       { repository: kernelRepository, commit: kernel.commit },

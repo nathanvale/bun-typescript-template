@@ -1,0 +1,19 @@
+diff --git a/src/pin-move-command.ts b/src/pin-move-command.ts
+index 11111111..22222222 100644
+--- a/src/pin-move-command.ts
++++ b/src/pin-move-command.ts
+@@ -220,15 +220,6 @@ async function executeRepositoryMove(
+                   } catch (error) {
+                     const failure = toError(error);
+                     capturedError = failure;
+-                    if (
+-                      error instanceof RepositoryPinRefusal &&
+-                      (error.restored || error.gitRestoredOnStop) &&
+-                      classifyMoveRefusal(error, "restored") !== undefined
+-                    ) {
+-                      completedFailure = error;
+-                      return;
+-                    }
+                     throw failure;
+                   }
+                 },

@@ -1,0 +1,20 @@
+diff --git a/src/pin-move.ts b/src/pin-move.ts
+index 1111111..2222222 100644
+--- a/src/pin-move.ts
++++ b/src/pin-move.ts
+@@ -282,15 +282,6 @@ export function movePin(
+     writeFileSync(lockfile, qualified.lockfile);
+     written.push(KERNEL_LOCKFILE);
+   }
+-  if (
+-    writeTemplateLockfile(
+-      template,
+-      pin,
+-      qualified.kernel.commit,
+-      qualified.lockfile,
+-    )
+-  )
+-    written.push("bun.lock");
+   if (writeTemplatePackagePin(template, pin, qualified.kernel.commit))
+     written.push("package.json");
+   if (writeKernelPin(template, { ...pin, commit: qualified.kernel.commit }))

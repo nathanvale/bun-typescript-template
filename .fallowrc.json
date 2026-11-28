@@ -32,7 +32,7 @@
     "rules": [
       {
         "from": "cli",
-        "allow": []
+        "allow": ["scripts"]
       },
       {
         "from": "scripts",
@@ -70,7 +70,6 @@
     "scripts/check-commits.ts",
     "scripts/check-names.ts",
     "scripts/kernel-trial-command.ts",
-    "scripts/pin-verification.ts",
     "scripts/planted-faults.ts",
     "scripts/test-area.ts"
   ]

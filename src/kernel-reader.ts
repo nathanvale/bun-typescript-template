@@ -49,14 +49,17 @@ export type Kernel = Requirements & {
   readonly addons: readonly Addon[];
 };
 
-export type KernelRefusalCode =
-  | "kernel_repository_missing"
-  | "kernel_commit_abbreviated"
-  | "kernel_commit_missing"
-  | "kernel_object_format_unsupported"
-  | "kernel_declaration_missing"
-  | "kernel_declaration_invalid"
-  | "kernel_entry_unsupported";
+export const kernelRefusalCodes = [
+  "kernel_repository_missing",
+  "kernel_commit_abbreviated",
+  "kernel_commit_missing",
+  "kernel_object_format_unsupported",
+  "kernel_declaration_missing",
+  "kernel_declaration_invalid",
+  "kernel_entry_unsupported",
+] as const;
+
+export type KernelRefusalCode = (typeof kernelRefusalCodes)[number];
 
 const repairs: { readonly [Code in KernelRefusalCode]: string } = {
   kernel_repository_missing:

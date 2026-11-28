@@ -1,6 +1,6 @@
-diff --git a/scripts/pin-move-branch.ts b/scripts/pin-move-branch.ts
---- a/scripts/pin-move-branch.ts
-+++ b/scripts/pin-move-branch.ts
+diff --git a/src/pin-move-branch.ts b/src/pin-move-branch.ts
+--- a/src/pin-move-branch.ts
++++ b/src/pin-move-branch.ts
 @@ -214,6 +214,7 @@ function keepFailedAttempt(
      ["rev-parse", "--short", "HEAD"],
      runGit,

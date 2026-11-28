@@ -1,0 +1,19 @@
+diff --git a/src/pin-refusals.ts b/src/pin-refusals.ts
+index 11111111..22222222 100644
+--- a/src/pin-refusals.ts
++++ b/src/pin-refusals.ts
+@@ -224,10 +224,10 @@ export function classifyMoveRefusal(
+   if (state === "restored") {
+     const match = moveRestoredFailureCauses.find(
+       (code) => code === parsed.causeCode,
+     );
+-    return {
+-      causeCode: match ?? "DOMAIN_PIN_MOVE_FAILED_RESTORED",
+-      message: parsed.message,
+-    };
++    return match === undefined
++      ? undefined
++      : { causeCode: match, message: parsed.message };
+   }
+   return {
+     causeCode: moveFailedCause(state),

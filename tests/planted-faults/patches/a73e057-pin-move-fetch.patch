@@ -1,7 +1,7 @@
-diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
+diff --git a/src/pin-move.ts b/src/pin-move.ts
 index cafb996..64fc635 100644
---- a/scripts/pin-move.ts
-+++ b/scripts/pin-move.ts
+--- a/src/pin-move.ts
++++ b/src/pin-move.ts
 @@ -136,7 +136,7 @@ export function fetchBranchCommit(
    const local = realpathSync(repository);
    const held = () =>

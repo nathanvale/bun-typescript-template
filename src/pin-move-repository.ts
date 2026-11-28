@@ -1,27 +1,24 @@
 import {
   existsSync,
   lstatSync,
-  readdirSync,
   readFileSync,
   realpathSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { clonePin, generatedPin, type KernelPin } from "../src/kernel-pin.ts";
 import {
-  git,
-  type KernelSeam,
-  openCommit,
-  readKernel,
-} from "../src/kernel-reader.ts";
-import { REGENERATE_SCRIPT, SKILL_FOLDER } from "../src/recipe.ts";
+  type TrialActive,
+  TrialRefusal,
+  trialStep,
+} from "../scripts/kernel-trial.ts";
 import {
-  planRepositoryChangeset,
-  writeRepositoryChangeset,
-} from "../src/template-upgrade-changeset-write.ts";
-import { type TrialActive, TrialRefusal, trialStep } from "./kernel-trial.ts";
-import { pinMoveReport, pinMoveReportText } from "./pin-move-report.ts";
-import { withoutRepositoryLocation } from "./process-runner.ts";
+  type PinMoveReport,
+  pinMoveReport,
+  pinMoveReportText,
+} from "../scripts/pin-move-report.ts";
+import { withoutRepositoryLocation } from "../scripts/process-runner.ts";
+import { clonePin, generatedPin, type KernelPin } from "./kernel-pin.ts";
+import { type KernelSeam, openCommit, readKernel } from "./kernel-reader.ts";
 import {
   attemptPaths,
   changedPaths,
@@ -32,21 +29,58 @@ import {
   repositoryGit,
   requireRepositoryGit,
 } from "./pin-move-branch.ts";
+import {
+  type PinMoveFile,
+  pointerSkillFiles,
+} from "./pin-move-pointer-skills.ts";
+import { REGENERATE_SCRIPT } from "./recipe.ts";
+import {
+  planRepositoryChangeset,
+  writeRepositoryChangeset,
+} from "./template-upgrade-changeset-write.ts";
 
 const repositoryInstallMilliseconds = 120_000;
 const repositoryCheckMilliseconds = 240_000;
+
+export type RepositoryPinMoveOutcome =
+  | {
+      readonly planOnly: true;
+      readonly repository: string;
+      readonly from: string;
+      readonly to: string;
+      readonly report: PinMoveReport;
+      readonly reportText: string;
+      readonly changeset?: {
+        readonly path: string;
+        readonly level: string;
+        readonly summary: string;
+      };
+      readonly message: string;
+    }
+  | {
+      readonly planOnly: false;
+      readonly repository: string;
+      readonly from: string;
+      readonly to: string;
+      readonly branch: string;
+      readonly commit: string;
+      readonly written: readonly string[];
+      readonly report: PinMoveReport;
+      readonly reportText: string;
+      readonly message: string;
+    };
 
 function requireCleanWorkTree(repository: string): void {
   const status = requireRepositoryGit(
     repository,
     ["status", "--porcelain", "--untracked-files=all"],
-    `Run git status in ${repository} and resolve any git error before running pin-move again.`,
+    `Run git status in ${repository} and resolve any git error before running bun run pin:move again.`,
   );
   if (status.trim() !== "")
     throw new RepositoryPinRefusal(
       "repository_dirty",
       `Repository at ${repository} has uncommitted or untracked changes.`,
-      `Commit or remove local changes in ${repository} so git status is clean, then run pin-move again.`,
+      `Commit or remove local changes in ${repository} so git status is clean, then run bun run pin:move again.`,
     );
 }
 
@@ -82,14 +116,11 @@ function requireStartingBranch(
   throw new RepositoryPinRefusal(
     "repository_invalid",
     `Repository at ${repository} is on a detached HEAD.`,
-    `Check out a branch such as main in ${repository}, then run pin-move again.`,
+    `Check out a branch such as main in ${repository}, then run bun run pin:move again.`,
   );
 }
 
-function openGeneratedRepository(
-  givenPath: string,
-  requireClean: boolean,
-): { readonly repository: string; readonly startingRef: string } {
+function resolveGeneratedRepository(givenPath: string): string {
   const invalid = (why: string) =>
     new RepositoryPinRefusal(
       "repository_invalid",
@@ -100,6 +131,14 @@ function openGeneratedRepository(
     throw invalid("that path is not an existing folder.");
   const repository = realpathSync(givenPath);
   requireGitWorkTreeRoot(repository, invalid);
+  return repository;
+}
+
+function openGeneratedRepository(
+  givenPath: string,
+  requireClean: boolean,
+): { readonly repository: string; readonly startingRef: string } {
+  const repository = resolveGeneratedRepository(givenPath);
   const startingRef = requireStartingBranch(repository, requireClean);
   if (requireClean) requireCleanWorkTree(repository);
   return { repository, startingRef };
@@ -126,14 +165,14 @@ function requirePlainEntry(
       throw new RepositoryPinRefusal(
         "repository_invalid",
         `${relativePath} in ${repository} traverses a symbolic link.`,
-        `Replace the symbolic link at ${relativePath} in ${repository} with a plain ${kind}, commit it, and run pin-move again.`,
+        `Replace the symbolic link at ${relativePath} in ${repository} with a plain ${kind}, commit it, and run bun run pin:move again.`,
       );
     const expectedDirectory = !isLast || kind === "directory";
     if (expectedDirectory ? !stats.isDirectory() : !stats.isFile())
       throw new RepositoryPinRefusal(
         "repository_invalid",
         `${relativePath} in ${repository} is not a plain ${kind}.`,
-        `Restore ${relativePath} in ${repository} as a plain ${kind}, commit it, and run pin-move again.`,
+        `Restore ${relativePath} in ${repository} as a plain ${kind}, commit it, and run bun run pin:move again.`,
       );
   }
   return current;
@@ -180,7 +219,7 @@ function readRepositoryPin(
     new RepositoryPinRefusal(
       "repository_pin_missing",
       `${manifestPath} pins no valid ${pin.repository} commit: ${why}`,
-      `Set dependencies["${pin.repository}"] in ${manifestPath} to ${generatedPin(pin, pin.commit)} and commit it before running pin-move.`,
+      `Set dependencies["${pin.repository}"] in ${manifestPath} to ${generatedPin(pin, pin.commit)} and commit it before running bun run pin:move.`,
     );
   const { packageText, specifier } = readManifestSpecifier(
     repository,
@@ -211,13 +250,11 @@ function readRepositoryPin(
   );
 }
 
-type PlannedEdit = { readonly path: string; readonly text: string };
-
 function plannedPackagePin(
   repository: string,
   record: RepositoryPinRecord,
   packageName: string,
-): PlannedEdit {
+): PinMoveFile {
   const manifestPath = requirePlainEntry(repository, "package.json", "file");
   const parsed: unknown = JSON.parse(record.packageText);
   const deps = ownPropertyValue(parsed, "dependencies");
@@ -225,7 +262,7 @@ function plannedPackagePin(
     throw new RepositoryPinRefusal(
       "repository_pin_missing",
       `${manifestPath} has no dependencies object.`,
-      `Restore dependencies["${packageName}"] in ${manifestPath}, commit it, and run pin-move again.`,
+      `Restore dependencies["${packageName}"] in ${manifestPath}, commit it, and run bun run pin:move again.`,
     );
   Reflect.set(deps, packageName, record.nextSpecifier);
   const updated = `${JSON.stringify(parsed, null, 2)}\n`;
@@ -238,83 +275,9 @@ function plannedPackagePin(
     throw new RepositoryPinRefusal(
       "repository_pin_missing",
       `${manifestPath} could not record dependencies["${packageName}"].`,
-      `Write dependencies["${packageName}"] in ${manifestPath} by hand and run pin-move again.`,
+      `Write dependencies["${packageName}"] in ${manifestPath} by hand and run bun run pin:move again.`,
     );
   return { path: "package.json", text: updated };
-}
-
-function frontmatterLine(text: string, label: string): string | undefined {
-  const block = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(text)?.[1];
-  if (block === undefined) return undefined;
-  return new RegExp(`^${label}: (.*)$`, "m").exec(block)?.[1];
-}
-
-function replaceFrontmatterLine(
-  text: string,
-  label: string,
-  value: string,
-): string {
-  return text.replace(/^---\r?\n([\s\S]*?)\r?\n---(?=\r?\n|$)/, (block) =>
-    block.replace(
-      new RegExp(`^${label}: .*$`, "m"),
-      () => `${label}: ${value}`,
-    ),
-  );
-}
-
-function syncPointerSkill(
-  text: string,
-  kernelRepository: string,
-  kernelCommit: string,
-  skillRelPath: string,
-): string {
-  let next = text.replace(
-    /^Pinned commit: `[^`\n]*`$/m,
-    () => `Pinned commit: \`${kernelCommit}\``,
-  );
-  const full = git(kernelRepository, "cat-file", [
-    "-p",
-    `${kernelCommit}:${skillRelPath}`,
-  ]);
-  if (!full.ok) return next;
-  const fullText = full.stdout.toString("utf8");
-  for (const label of ["name", "description"] as const) {
-    const expected = frontmatterLine(fullText, label);
-    if (expected !== undefined)
-      next = replaceFrontmatterLine(next, label, expected);
-  }
-  return next;
-}
-
-function plannedPointerSkills(
-  repository: string,
-  kernelRepository: string,
-  kernelCommit: string,
-  packageName: string,
-): PlannedEdit[] {
-  const folder = join(repository, SKILL_FOLDER);
-  if (!existsSync(folder)) return [];
-  requirePlainEntry(repository, SKILL_FOLDER, "directory");
-  const installedPrefix = `node_modules/${packageName}/`;
-  const planned: PlannedEdit[] = [];
-  for (const name of readdirSync(folder).sort()) {
-    const relativeSkill = `${SKILL_FOLDER}/${name}/SKILL.md`;
-    const skillDir = join(folder, name);
-    if (!existsSync(join(skillDir, "SKILL.md"))) continue;
-    const file = requirePlainEntry(repository, relativeSkill, "file");
-    const text = readFileSync(file, "utf8");
-    const fullSkill = /^Full skill: `([^`\n]+)`$/m.exec(text)?.[1];
-    if (fullSkill === undefined || !fullSkill.startsWith(installedPrefix))
-      continue;
-    const next = syncPointerSkill(
-      text,
-      kernelRepository,
-      kernelCommit,
-      fullSkill.slice(installedPrefix.length),
-    );
-    if (next !== text) planned.push({ path: relativeSkill, text: next });
-  }
-  return planned;
 }
 
 function planRepositoryEdits(
@@ -323,16 +286,17 @@ function planRepositoryEdits(
   kernelCommit: string,
   pin: KernelPin,
   current: RepositoryPinRecord,
-): PlannedEdit[] {
+): PinMoveFile[] {
   if (lstatSync(join(repository, "bun.lock"), { throwIfNoEntry: false }))
     requirePlainEntry(repository, "bun.lock", "file");
   return [
     plannedPackagePin(repository, current, pin.repository),
-    ...plannedPointerSkills(
+    ...pointerSkillFiles(
       repository,
       kernelRepository,
       kernelCommit,
       pin.repository,
+      requirePlainEntry,
     ),
   ];
 }
@@ -393,14 +357,14 @@ async function runCheckSteps(
         throw new RepositoryPinRefusal(
           "repository_check_failed",
           `${name} failed on branch ${branch} in ${repository}: ${detail}`,
-          `Fix the failure ${name} reports, then run pin-move again.`,
+          `Fix the failure ${name} reports, then run bun run pin:move again.`,
         );
       }
       if (error instanceof TrialRefusal && error.code === "trial_stopped") {
         throw new RepositoryPinRefusal(
           "trial_stopped",
           `Pin move in ${repository} was stopped by ${active.stoppedBy ?? "a signal"} during ${name} on branch ${branch}.`,
-          "Run pin-move again when it can run to its end.",
+          "Run bun run pin:move again when it can run to its end.",
         );
       }
       throw error;
@@ -408,7 +372,7 @@ async function runCheckSteps(
   }
 }
 
-function createPinMoveBranch(repository: string, kernelCommit: string): string {
+function requireBranchAbsent(repository: string, kernelCommit: string): string {
   const branch = `pin-move/${kernelCommit.slice(0, 7)}`;
   if (
     repositoryGit(repository, [
@@ -421,12 +385,17 @@ function createPinMoveBranch(repository: string, kernelCommit: string): string {
     throw new RepositoryPinRefusal(
       "repository_branch_exists",
       `Branch ${branch} already exists in ${repository}.`,
-      `Inspect branch ${branch} in ${repository}: merge it if it holds the Pin move you want, or rename it with git branch -m ${branch} <an unused branch name>, then run pin-move again.`,
+      `Inspect branch ${branch} in ${repository}: merge it if it holds the Pin move you want, or rename it with git branch -m ${branch} <an unused branch name>, then run bun run pin:move again.`,
     );
+  return branch;
+}
+
+function createPinMoveBranch(repository: string, kernelCommit: string): string {
+  const branch = requireBranchAbsent(repository, kernelCommit);
   requireRepositoryGit(
     repository,
     ["checkout", "-b", branch],
-    `Resolve why git could not create branch ${branch} in ${repository}, then run pin-move again.`,
+    `Resolve why git could not create branch ${branch} in ${repository}, then run bun run pin:move again.`,
   );
   return branch;
 }
@@ -459,11 +428,12 @@ async function applyRepositoryPinMove(
   branch: string,
   kernelCommit: string,
   current: RepositoryPinRecord,
-  edits: readonly PlannedEdit[],
+  edits: readonly PinMoveFile[],
+  report: PinMoveReport,
   reportText: string,
   active: TrialActive,
   kernelPackage: string,
-): Promise<number> {
+): Promise<RepositoryPinMoveOutcome> {
   const editedPaths = edits.map((edit) => edit.path);
   const attempt: PinMoveAttempt = {
     repository,
@@ -478,7 +448,6 @@ async function applyRepositoryPinMove(
   };
   let installRan = false;
   try {
-    process.stdout.write(reportText);
     for (const edit of edits)
       writeFileSync(join(repository, edit.path), edit.text);
     installRan = true;
@@ -507,10 +476,19 @@ async function applyRepositoryPinMove(
       kernelCommit,
       written,
     );
-    process.stdout.write(
-      `Moved kernel Pin in ${repository} on branch ${branch} (${commit}):\n${written.map((file) => `  ${file}\n`).join("")}`,
-    );
-    return 0;
+    const summary = `Moved kernel Pin in ${repository} on branch ${branch} (${commit}):\n${written.map((file) => `  ${file}\n`).join("")}`;
+    return {
+      planOnly: false,
+      repository,
+      from: current.oldCommit,
+      to: kernelCommit,
+      branch,
+      commit,
+      written,
+      report,
+      reportText,
+      message: `${reportText}${summary}`.trimEnd(),
+    };
   } catch (error) {
     throw await failedAttempt(attempt, error, installRan);
   }
@@ -520,8 +498,9 @@ async function writePinMovePlan(
   repository: string,
   oldCommit: string,
   kernelCommit: string,
+  report: PinMoveReport,
   reportText: string,
-): Promise<number> {
+): Promise<RepositoryPinMoveOutcome> {
   const plannedChangeset =
     oldCommit === kernelCommit
       ? undefined
@@ -530,17 +509,34 @@ async function writePinMovePlan(
             "package.json",
           ]),
         );
-  process.stdout.write(reportText);
-  if (plannedChangeset !== undefined) {
-    process.stdout.write(
-      `Changeset: ${plannedChangeset.path} (${plannedChangeset.level}, ${plannedChangeset.summary})\n`,
-    );
-  }
-  process.stdout.write(
-    `Plan only: no branch or file changed in ${repository}.\n`,
-  );
-  return 0;
+  const changesetLine =
+    plannedChangeset === undefined
+      ? ""
+      : `Changeset: ${plannedChangeset.path} (${plannedChangeset.level}, ${plannedChangeset.summary})\n`;
+  const planLine = `Plan only: no branch or file changed in ${repository}.`;
+  return {
+    planOnly: true,
+    repository,
+    from: oldCommit,
+    to: kernelCommit,
+    report,
+    reportText,
+    ...(plannedChangeset === undefined
+      ? {}
+      : {
+          changeset: {
+            path: plannedChangeset.path,
+            level: plannedChangeset.level,
+            summary: plannedChangeset.summary,
+          },
+        }),
+    message: `${reportText}${changesetLine}${planLine}`.trimEnd(),
+  };
 }
+
+export type PreparedRepositoryMove = {
+  readonly apply: () => Promise<RepositoryPinMoveOutcome>;
+};
 
 export async function moveRepositoryPin(
   kernel: KernelSeam,
@@ -549,53 +545,87 @@ export async function moveRepositoryPin(
   planOnly: boolean,
   active: TrialActive,
   verifyTarget: (seam: KernelSeam, pin: KernelPin) => string,
-): Promise<number> {
-  const { repository, startingRef } = openGeneratedRepository(
-    givenRepository,
-    !planOnly,
-  );
-  const kernelRepository = verifyTarget(kernel, pin);
-  readKernel(kernel);
-  const current = readRepositoryPin(
-    repository,
-    { repository: kernelRepository, commit: kernel.commit },
-    pin,
-  );
-  openCommit({ repository: kernelRepository, commit: current.oldCommit });
-  const reportText = pinMoveReportText(
-    pinMoveReport(kernelRepository, current.oldCommit, kernel.commit),
-  );
+  options: {
+    readonly runWrite?: (
+      repository: string,
+      prepare: () => PreparedRepositoryMove,
+    ) => Promise<RepositoryPinMoveOutcome>;
+  } = {},
+): Promise<RepositoryPinMoveOutcome> {
   if (planOnly) {
+    const { repository } = openGeneratedRepository(givenRepository, false);
+    const kernelRepository = verifyTarget(kernel, pin);
+    readKernel(kernel);
+    const current = readRepositoryPin(
+      repository,
+      { repository: kernelRepository, commit: kernel.commit },
+      pin,
+    );
+    openCommit({ repository: kernelRepository, commit: current.oldCommit });
+    const report = pinMoveReport(
+      kernelRepository,
+      current.oldCommit,
+      kernel.commit,
+    );
+    const reportText = pinMoveReportText(report);
     return writePinMovePlan(
       repository,
       current.oldCommit,
       kernel.commit,
+      report,
       reportText,
     );
   }
-  if (current.oldCommit === kernel.commit)
-    throw new RepositoryPinRefusal(
-      "repository_pin_unchanged",
-      `Repository at ${repository} already pins ${kernel.commit}.`,
-      "Give a different kernel commit to move the pin.",
+  const runWrite =
+    options.runWrite ?? ((_repository, prepare) => prepare().apply());
+  const repository = resolveGeneratedRepository(givenRepository);
+  const kernelRepository = verifyTarget(kernel, pin);
+  readKernel(kernel);
+  return runWrite(repository, () => {
+    const startingRef = requireStartingBranch(repository, true);
+    requireCleanWorkTree(repository);
+    const current = readRepositoryPin(
+      repository,
+      { repository: kernelRepository, commit: kernel.commit },
+      pin,
     );
-  const edits = planRepositoryEdits(
-    repository,
-    kernelRepository,
-    kernel.commit,
-    pin,
-    current,
-  );
-  const branch = createPinMoveBranch(repository, kernel.commit);
-  return applyRepositoryPinMove(
-    repository,
-    startingRef,
-    branch,
-    kernel.commit,
-    current,
-    edits,
-    reportText,
-    active,
-    pin.repository,
-  );
+    openCommit({ repository: kernelRepository, commit: current.oldCommit });
+    const report = pinMoveReport(
+      kernelRepository,
+      current.oldCommit,
+      kernel.commit,
+    );
+    const reportText = pinMoveReportText(report);
+    if (current.oldCommit === kernel.commit)
+      throw new RepositoryPinRefusal(
+        "repository_pin_unchanged",
+        `Repository at ${repository} already pins ${kernel.commit}.`,
+        "Give a different kernel commit to move the pin.",
+      );
+    const edits = planRepositoryEdits(
+      repository,
+      kernelRepository,
+      kernel.commit,
+      pin,
+      current,
+    );
+    requireBranchAbsent(repository, kernel.commit);
+    return {
+      apply: () => {
+        const branch = createPinMoveBranch(repository, kernel.commit);
+        return applyRepositoryPinMove(
+          repository,
+          startingRef,
+          branch,
+          kernel.commit,
+          current,
+          edits,
+          report,
+          reportText,
+          active,
+          pin.repository,
+        );
+      },
+    };
+  });
 }

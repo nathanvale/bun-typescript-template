@@ -32,4 +32,4 @@ jobs:
           no-cache: true
       - run: bun install --frozen-lockfile
       - uses: ./.github/actions/kernel-sibling
-      - run: bun run pin-verification
+      - run: bun run pin:verify

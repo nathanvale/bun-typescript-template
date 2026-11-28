@@ -460,7 +460,7 @@ async function lockfileFor(lockfile: KernelBootstrap["lockfile"]) {
     throw new CliError(
       "kernel_lockfile_missing",
       `the template has no kernel lockfile at ${KERNEL_LOCKFILE}`,
-      "run bun run pin-move with the pinned commit to write it, then run Bootstrap again",
+      "run bun run pin:move with the pinned commit to write it, then run Bootstrap again",
       1,
       false,
     );

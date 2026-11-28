@@ -1,8 +1,7 @@
-diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
-index 6f7049a..176cce2 100644
---- a/scripts/pin-move.ts
-+++ b/scripts/pin-move.ts
-@@ -134,6 +134,8 @@ export function movePin(trial: TrialPassed, template: string): PinMove {
+diff --git a/src/pin-move.ts b/src/pin-move.ts
+--- a/src/pin-move.ts
++++ b/src/pin-move.ts
+@@ -260,6 +260,8 @@ export function movePin(
    const report = pinMoveReport(repository, pin.commit, qualified.kernel.commit);
    const written: string[] = [];
    const lockfile = join(template, KERNEL_LOCKFILE);
@@ -11,12 +10,10 @@ index 6f7049a..176cce2 100644
    if (
      !existsSync(lockfile) ||
      Buffer.compare(readFileSync(lockfile), qualified.lockfile) !== 0
-@@ -142,8 +144,6 @@ export function movePin(trial: TrialPassed, template: string): PinMove {
-     writeFileSync(lockfile, qualified.lockfile);
-     written.push(KERNEL_LOCKFILE);
-   }
+@@ -276,8 +278,6 @@ export function movePin(
+   if (writeTemplatePackagePin(template, pin, qualified.kernel.commit))
+     written.push("package.json");
 -  if (writeKernelPin(template, { ...pin, commit: qualified.kernel.commit }))
 -    written.push(kernelPinFile);
    return { report, written };
  }
- 

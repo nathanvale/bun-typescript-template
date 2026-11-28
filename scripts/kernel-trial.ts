@@ -54,12 +54,13 @@ const repair =
 const stopRepair =
   "Nothing was written, and nothing is wrong with the kernel commit. Run the kernel trial, or the pin move, again when it can run to its end.";
 
+export const trialRefusalCodes = ["trial_failed", "trial_stopped"] as const;
+
+export type TrialRefusalCode = (typeof trialRefusalCodes)[number];
+
 export class TrialRefusal extends Error {
-  readonly code: "trial_failed" | "trial_stopped";
-  constructor(
-    cause: string,
-    code: "trial_failed" | "trial_stopped" = "trial_failed",
-  ) {
+  readonly code: TrialRefusalCode;
+  constructor(cause: string, code: TrialRefusalCode = "trial_failed") {
     super(`${cause} Repair: ${code === "trial_stopped" ? stopRepair : repair}`);
     this.code = code;
   }
@@ -69,6 +70,24 @@ export type TrialActive = {
   stop?: (() => void) | undefined;
   stoppedBy?: string;
 };
+
+const stopSignals = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
+
+export async function withStopSignals<Result>(
+  active: TrialActive,
+  work: () => Promise<Result>,
+): Promise<Result> {
+  const stop = (signal: string) => {
+    active.stoppedBy ??= signal;
+    active.stop?.();
+  };
+  for (const signal of stopSignals) process.prependListener(signal, stop);
+  try {
+    return await work();
+  } finally {
+    for (const signal of stopSignals) process.off(signal, stop);
+  }
+}
 
 export type KernelTrial = {
   readonly kernel: KernelSeam;

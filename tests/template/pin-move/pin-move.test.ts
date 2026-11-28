@@ -10,7 +10,7 @@ import { join } from "node:path";
 import { kernelPinFile, readKernelPin } from "../../../src/kernel-pin.ts";
 import type { TrialPassed } from "../../../scripts/kernel-trial.ts";
 import { TrialRefusal } from "../../../scripts/kernel-trial.ts";
-import { movePin, PinRefusal } from "../../../scripts/pin-move.ts";
+import { movePin, PinRefusal } from "../../../src/pin-move.ts";
 import { KERNEL_LOCKFILE } from "../../../src/recipe.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
@@ -168,7 +168,7 @@ describe("the pin move", () => {
       );
       movePin(await trialAt(changed), template, branchCommit);
       const before = bytesOf(template);
-      for (const path of [KERNEL_LOCKFILE, pinFile])
+      for (const path of [KERNEL_LOCKFILE, "bun.lock", "package.json", pinFile])
         chmodSync(join(template, path), 0o444);
       expect(
         movePin(await trialAt(changed), template, branchCommit).written,
@@ -191,7 +191,12 @@ describe("the pin move", () => {
         template,
         branchCommit,
       );
-      expect(written).toEqual([KERNEL_LOCKFILE, pinFile]);
+      expect(written).toEqual([
+        KERNEL_LOCKFILE,
+        "bun.lock",
+        "package.json",
+        pinFile,
+      ]);
       expect(bytesOf(template).lockfile).toEqual(
         Buffer.from((await trialAt(changed)).lockfile),
       );
@@ -297,7 +302,7 @@ describe("the pin move", () => {
       );
       git(copy, "commit", "--quiet", "--all", "-m", "the renamed path");
       const script = `const { kernelTrial } = await import(${JSON.stringify(join(copy, "scripts/kernel-trial.ts"))});
-const { movePin } = await import(${JSON.stringify(join(copy, "scripts/pin-move.ts"))});
+const { movePin } = await import(${JSON.stringify(join(copy, "src/pin-move.ts"))});
 const trial = await kernelTrial({ kernel: { repository: ${JSON.stringify(renaming)}, commit: ${JSON.stringify(renamed.commit)} }, folder: ${JSON.stringify(join(copy, "..", "trial"))}, kernelFrom: "clone" });
 process.stdout.write(JSON.stringify(movePin(trial, ${JSON.stringify(copy)}, ${JSON.stringify(renamed.commit)}).written));`;
       const moved = await spawnBounded([process.execPath, "--eval", script], {
@@ -308,7 +313,12 @@ process.stdout.write(JSON.stringify(movePin(trial, ${JSON.stringify(copy)}, ${JS
       });
       expect(moved).toMatchObject({
         exit: 0,
-        stdout: JSON.stringify([KERNEL_LOCKFILE, pinFile]),
+        stdout: JSON.stringify([
+          KERNEL_LOCKFILE,
+          "bun.lock",
+          "package.json",
+          pinFile,
+        ]),
       });
       git(copy, "add", "--all");
       expect(
@@ -316,7 +326,15 @@ process.stdout.write(JSON.stringify(movePin(trial, ${JSON.stringify(copy)}, ${JS
           .split("\n")
           .filter((line) => line !== "")
           .sort(),
-      ).toEqual([KERNEL_LOCKFILE, pinFile, "src/kernel-reader.ts"].sort());
+      ).toEqual(
+        [
+          KERNEL_LOCKFILE,
+          "bun.lock",
+          "package.json",
+          pinFile,
+          "src/kernel-reader.ts",
+        ].sort(),
+      );
       expect(
         await callInCopy(copy, "src/bootstrap.ts", "bootstrapWithKernel", {
           destination: join(copy, "..", "made"),

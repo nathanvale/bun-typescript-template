@@ -5,6 +5,7 @@ import { parseGitTreeEntries } from "./git-identities.ts";
 import { CHANGESET_FOLDER } from "./recipe.ts";
 import {
   changesetPackageLevel,
+  repositoryChangesetReadErrorCodes,
   repositoryPackageChangeset,
 } from "./template-upgrade-changesets.ts";
 import {
@@ -29,6 +30,21 @@ const PACKAGE_FILE = "package.json";
 const DEFAULT_BASE_BRANCH = "main";
 const CHANGESET_TIMEOUT_MS = 30_000;
 const CONFLICT_MARKER = /^<<<<<<< ours\b/m;
+
+export const repositoryChangesetPlanErrorCodes = [
+  ...repositoryChangesetReadErrorCodes,
+  "changeset_config_invalid",
+  "changeset_package_missing",
+  "symlink_ancestor",
+  "unreadable_file",
+  "worktree_status_failed",
+] as const;
+
+export const repositoryChangesetWriteErrorCodes = [
+  ...repositoryChangesetPlanErrorCodes,
+  "changeset_add_failed",
+  "changeset_add_unexpected_files",
+] as const;
 
 export interface TemplateUpgradeChangesetPlan {
   readonly path: string;

@@ -1,7 +1,7 @@
-diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
+diff --git a/src/pin-move.ts b/src/pin-move.ts
 index ad9eb56..6d27740 100644
---- a/scripts/pin-move.ts
-+++ b/scripts/pin-move.ts
+--- a/src/pin-move.ts
++++ b/src/pin-move.ts
 @@ -159,7 +159,7 @@ export function verifyPin(
        `Commit ${commit} is not reachable from ${branchCommit}, where branch ${branch} points on the pin's remote, in the git repository at ${seam.repository}.`,
        branch,

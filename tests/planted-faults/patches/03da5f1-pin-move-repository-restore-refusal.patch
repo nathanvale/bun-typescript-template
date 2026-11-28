@@ -1,13 +1,13 @@
-diff --git a/scripts/pin-move-branch.ts b/scripts/pin-move-branch.ts
-index 785d9cb..cf46c30 100644
---- a/scripts/pin-move-branch.ts
-+++ b/scripts/pin-move-branch.ts
-@@ -205,7 +205,7 @@ async function keptAttemptRefusal(
-   const unrestored = installRan
-     ? await restoreInstalledKernel(attempt)
-     : undefined;
--  if (unrestored !== undefined)
-+  if (unrestored === "never")
+diff --git a/src/pin-move-branch.ts b/src/pin-move-branch.ts
+index 11111111..22222222 100644
+--- a/src/pin-move-branch.ts
++++ b/src/pin-move-branch.ts
+@@ -363,7 +363,7 @@ async function keptAttemptRefusal(
+     : stoppedBy !== undefined
+       ? `${stoppedBy} stopped the run before bun install --frozen-lockfile could restore ${startingRef}'s packages.`
+       : await restoreInstalledKernel(attempt);
+-  if (unrestored !== undefined) {
++  if (unrestored === "never") {
+     const left = leftOver(repository, runGit);
      return new RepositoryPinRefusal(
        code,
-       `${reason} The failed attempt is kept on branch ${branch} for inspection and ${startingRef} is checked out again, but its installed packages may still hold the failed attempt's kernel: ${unrestored}`,

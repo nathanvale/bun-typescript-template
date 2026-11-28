@@ -1,10 +1,16 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, readFileSync, realpathSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { delimiter, join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { kernelPinFile, readKernelPin } from "../../../src/kernel-pin.ts";
-import { argumentsOf } from "../../../scripts/pin-move.ts";
 import { startChild } from "../../../scripts/process-runner.ts";
+import { kernelPinFile, readKernelPin } from "../../../src/kernel-pin.ts";
 import { KERNEL_LOCKFILE } from "../../../src/recipe.ts";
 import { ROOT } from "../../support/bootstrap-cli-fixture.ts";
 import { ownedFolders } from "../../support/fixture-files.ts";
@@ -31,9 +37,9 @@ import {
   trialTimeout,
 } from "../../support/kernel-trial-fixture.ts";
 import {
+  processAlive,
   processWatchdog,
   spawnBounded,
-  processAlive,
   watchLedger,
 } from "../../support/process.ts";
 import { templateCopy } from "../../support/template-copy.ts";
@@ -44,57 +50,36 @@ const { carryOutIdentity } = readKernelPin(ROOT);
 function copyPinnedAt(commit: string): string {
   const copy = templateCopy(folder("pin-move-command-"), [KERNEL_LOCKFILE]);
   pinnedTemplate(copy, commit, carryOutIdentity);
+  if (!existsSync(join(copy, "node_modules"))) {
+    symlinkSync(join(ROOT, "node_modules"), join(copy, "node_modules"));
+    writeFileSync(join(copy, ".git", "info", "exclude"), "node_modules\n");
+  }
   git(copy, "commit", "--quiet", "--all", "--allow-empty", "-m", "pin it");
   return copy;
 }
 
 function pinMove(copy: string, args: readonly string[], bound?: number) {
+  const stateHome = folder("pin-move-state-");
   return spawnBounded(
-    [process.execPath, join(copy, "scripts/pin-move.ts"), ...args],
+    [process.execPath, join(copy, "src/cli.ts"), "pin", "move", ...args],
     {
       cwd: copy,
-      env: { ...inherited(), ...gitEnv },
+      env: { ...inherited(), ...gitEnv, XDG_STATE_HOME: stateHome },
       ...(bound === undefined ? {} : { boundMilliseconds: bound }),
     },
   );
 }
 
-describe("the pin move command's arguments", () => {
-  test.each([
-    [[], undefined],
-    [["c"], { commit: "c" }],
-    [["c", "--kernel", "/k"], { commit: "c", path: "/k" }],
-    [["c", "--kernel"], undefined],
-    [["c", "--other", "/k"], undefined],
-    [["c", "--kernel", "/k", "more"], undefined],
-    [["c", "--repository", "/r"], { commit: "c", repository: "/r" }],
-    [
-      ["c", "--repository", "/r", "--plan"],
-      { commit: "c", repository: "/r", plan: true },
-    ],
-    [
-      ["c", "--kernel", "/k", "--repository", "/r"],
-      { commit: "c", path: "/k", repository: "/r" },
-    ],
-    [["c", "--plan"], undefined],
-    [["c", "--repository"], undefined],
-    [["c", "--repository", "--plan"], undefined],
-    [["c", "--repository", "/r", "--repository", "/r2"], undefined],
-  ] as const)("%j reads as %j", (argv, expected) => {
-    expect(argumentsOf(argv)).toEqual(expected);
-  });
-});
-
 describe("the pin move command", () => {
   test(
-    "with no commit prints its usage and exits 2",
+    "with no commit refuses with exit 2",
     async () => {
-      expect(await pinMove(copyPinnedAt(trialBase), [])).toEqual({
+      const run = await pinMove(copyPinnedAt(trialBase), []);
+      expect({ exit: run.exit, stdout: run.stdout }).toEqual({
         exit: 2,
         stdout: "",
-        stderr:
-          "Usage: bun run pin-move <full kernel commit> [--kernel <path to the kernel repository>] [--repository <path to a generated repository>] [--plan]\n",
       });
+      expect(run.stderr).not.toBe("");
     },
     processWatchdog(1),
   );
@@ -112,13 +97,21 @@ describe("the pin move command", () => {
         unpushed,
         "--kernel",
         repository,
+        "--json",
       ]);
-      expect({ exit: run.exit, stdout: run.stdout }).toEqual({
-        exit: 1,
-        stdout: "",
+      expect({ exit: run.exit, stderr: run.stderr }).toEqual({
+        exit: 3,
+        stderr: "",
       });
-      expect(run.stderr).toStartWith(
-        `kernel_commit_unreachable: Commit ${unpushed} is not reachable from `,
+      const envelope = JSON.parse(run.stdout) as {
+        readonly message: string;
+        readonly result: { readonly causeCode: string };
+      };
+      expect(envelope.result.causeCode).toBe(
+        "DOMAIN_PIN_KERNEL_COMMIT_UNREACHABLE",
+      );
+      expect(envelope.message).toStartWith(
+        `Commit ${unpushed} is not reachable from `,
       );
     },
     processWatchdog(1),
@@ -132,13 +125,21 @@ describe("the pin move command", () => {
         commit,
         "--kernel",
         siblingKernel(),
+        "--json",
       ]);
-      expect({ exit: run.exit, stdout: run.stdout }).toEqual({
-        exit: 1,
-        stdout: "",
+      expect({ exit: run.exit, stderr: run.stderr }).toEqual({
+        exit: 3,
+        stderr: "",
       });
-      expect(run.stderr).toStartWith(
-        `kernel_commit_before_carry_out: Commit ${commit} does not have the carry-out commit`,
+      const envelope = JSON.parse(run.stdout) as {
+        readonly message: string;
+        readonly result: { readonly causeCode: string };
+      };
+      expect(envelope.result.causeCode).toBe(
+        "DOMAIN_PIN_KERNEL_COMMIT_BEFORE_CARRY_OUT",
+      );
+      expect(envelope.message).toStartWith(
+        `Commit ${commit} does not have the carry-out commit`,
       );
     },
     processWatchdog(1),
@@ -158,8 +159,8 @@ describe("the pin move command", () => {
         exit: 0,
         stderr: "",
       });
-      expect(run.stdout).toBe(
-        `Pin move report: ${trialBase} to ${trialBase}\nWritten in the template, kernel lockfile first and pin last (1):\n  ${KERNEL_LOCKFILE}\nKernel files added (0):\nKernel files changed (0):\nKernel files removed (0):\nKernel log (0):\n`,
+      expect(run.stdout).toContain(
+        `Pin move report: ${trialBase} to ${trialBase} Written in the template, kernel lockfile first and pin last (1):   ${KERNEL_LOCKFILE} Kernel files added (0): Kernel files changed (0): Kernel files removed (0): Kernel log (0):`,
       );
       expect(
         gitOutput(copy, "status", "--porcelain", "--untracked-files=all"),
@@ -174,8 +175,8 @@ describe("the pin move command", () => {
         trialTimeout(1) - 10_000,
       );
       expect(again.exit).toBe(0);
-      expect(again.stdout).toStartWith(
-        `Pin move report: ${trialBase} to ${trialBase}\nWritten in the template, kernel lockfile first and pin last (0):\n`,
+      expect(again.stdout).toContain(
+        `Pin move report: ${trialBase} to ${trialBase} Written in the template, kernel lockfile first and pin last (0):`,
       );
       expect(
         gitOutput(copy, "status", "--porcelain", "--untracked-files=all"),
@@ -194,7 +195,7 @@ describe("the pin move command", () => {
 writeFileSync(${JSON.stringify(pidFile)}, String(process.pid));
 writeFileSync(${JSON.stringify(ledger)}, "started\\n");
 await Bun.sleep(30_000);`;
-      const script = `const { withStopSignals } = await import(${JSON.stringify(join(ROOT, "scripts/pin-move.ts"))});
+      const script = `const { withStopSignals } = await import(${JSON.stringify(join(ROOT, "src/pin-move.ts"))});
 const { trialStep } = await import(${JSON.stringify(join(ROOT, "scripts/kernel-trial.ts"))});
 const active = {};
 try {
@@ -240,7 +241,7 @@ try {
   );
 
   test(
-    "refuses a malformed kernel changeset with its CliError code and repair line",
+    "refuses a malformed kernel changeset with its DOMAIN_PIN_CHANGESET_INVALID cause and repair line",
     async () => {
       const kernelRepo = kernelClone(
         folder("pin-move-command-bad-changeset-kernel-"),
@@ -271,33 +272,41 @@ try {
           2,
         )}\n`,
       });
+      const stateHome = folder("pin-move-state-");
 
       const run = await spawnBounded(
         [
           process.execPath,
-          join(ROOT, "scripts/pin-move.ts"),
+          join(ROOT, "src/cli.ts"),
+          "pin",
+          "plan",
           badCommit,
           "--kernel",
           kernelRepo,
           "--repository",
           generatedRepo,
-          "--plan",
+          "--json",
         ],
         {
           cwd: ROOT,
           env: {
             ...inherited(),
             ...gitEnv,
+            XDG_STATE_HOME: stateHome,
             PATH: `${remoteBin}${delimiter}${process.env.PATH ?? ""}`,
           },
         },
       );
-      expect({ exit: run.exit, stdout: run.stdout }).toEqual({
-        exit: 1,
-        stdout: "",
+      expect({ exit: run.exit, stderr: run.stderr }).toEqual({
+        exit: 3,
+        stderr: "",
       });
-      expect(run.stderr).toStartWith("changeset_invalid: ");
-      expect(run.stderr).toContain("\nRepair: ");
+      const envelope = JSON.parse(run.stdout) as {
+        readonly message: string;
+        readonly result: { readonly causeCode: string };
+      };
+      expect(envelope.result.causeCode).toBe("DOMAIN_PIN_CHANGESET_INVALID");
+      expect(envelope.message).toContain("Repair: ");
     },
     processWatchdog(1),
   );

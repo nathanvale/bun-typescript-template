@@ -1,0 +1,11 @@
+diff --git a/src/pin-refusals.ts b/src/pin-refusals.ts
+index 1111111..2222222 100644
+--- a/src/pin-refusals.ts
++++ b/src/pin-refusals.ts
+@@ -208,7 +208,6 @@ type RefusalStationCause = keyof typeof pinRefusalDefinitions;
+ 
+ export const verifyRefusalCauses = [
+-  "DOMAIN_PIN_PLACES_DISAGREE",
+   "DOMAIN_PIN_KERNEL_COMMIT_UNREACHABLE",
+   "DOMAIN_PIN_KERNEL_COMMIT_BEFORE_CARRY_OUT",
+   "DOMAIN_PIN_KERNEL_HISTORY_UNREADABLE",

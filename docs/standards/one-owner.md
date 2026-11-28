@@ -17,7 +17,7 @@ here.
   fetch skipped the kernel reader's repository check and wrote kernel
   objects into an enclosing repository).
 - Read a remote's branch commit and hold it in the clone through one
-  function, `branchCommitHeldBy`, which every command that verifies against
+  function, `pinBranchCommitHeld`, which every command that verifies against
   a kernel clone calls: a clone made before the branch moved lacks the
   commit. Witnessed: [a73e057] (kernel main moved between the hosted job's
   clone and the pin move's ls-remote, so a good commit was refused as

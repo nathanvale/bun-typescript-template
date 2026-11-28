@@ -1,7 +1,7 @@
-diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
+diff --git a/src/pin-move.ts b/src/pin-move.ts
 index e6cd9e6..89ed24e 100644
---- a/scripts/pin-move.ts
-+++ b/scripts/pin-move.ts
+--- a/src/pin-move.ts
++++ b/src/pin-move.ts
 @@ -134,7 +134,7 @@ export function fetchBranchCommit(
    commit: string,
    limitMilliseconds = remoteMilliseconds,

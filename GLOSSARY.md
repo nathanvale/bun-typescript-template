@@ -70,6 +70,9 @@ source, manifests, scripts and documented invocations.
 `src/cli.ts`, the one command line that every starter-kit tool runs through.
 It is built on `agent-cli-kernel`.
 
+**User folder suite**:
+The per-user folder name under the machine's cache and state folders that groups a suite's starter-kit tools, such as the kernel cache and the front door's state folder.
+
 **Pointer skill**:
 A short skill that Bootstrap writes into a generated repository at
 `.agents/skills/<name>/SKILL.md`, and links from `.claude/skills/`, for one

@@ -1,7 +1,7 @@
-diff --git a/scripts/pin-move-branch.ts b/scripts/pin-move-branch.ts
---- a/scripts/pin-move-branch.ts
-+++ b/scripts/pin-move-branch.ts
-@@ -137,14 +137,6 @@ export function parseStatusChanges(stdout: string): {
+diff --git a/src/pin-move-branch.ts b/src/pin-move-branch.ts
+--- a/src/pin-move-branch.ts
++++ b/src/pin-move-branch.ts
+@@ -137,14 +137,6 @@ export function parseGitChanges(stdout: string): {
      all.add(path);
      if (y !== " ") needsAdd.add(path);
      else maybeStagedOnly.add(path);

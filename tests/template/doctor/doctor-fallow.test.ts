@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { chmodSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { cliCauses } from "../../../src/causes.ts";
-import { jsonOutput } from "../../../src/cli.ts";
+import { runFrontDoor } from "../../../src/cli.ts";
 import {
   doctor,
   fallowCheck,
@@ -342,9 +342,7 @@ describe("doctor report and causes", () => {
     });
   });
 
-  test("jsonOutput recognises --json before -- only", () => {
-    expect(jsonOutput(["doctor"])).toBe(false);
-    expect(jsonOutput(["doctor", "--json"])).toBe(true);
-    expect(jsonOutput(["doctor", "--", "--json"])).toBe(false);
+  test("runFrontDoor is exported from src/cli.ts", () => {
+    expect(typeof runFrontDoor).toBe("function");
   });
 });

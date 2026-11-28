@@ -60,8 +60,18 @@ export default defineConfig(
     rules: { "repository/no-comments": "error" },
   },
   {
-    files: ["src/cli.ts"],
-    rules: { "no-console": ["error", { allow: ["log"] }] },
+    files: ["src/cli.ts", "src/pin-*.ts", "src/doctor.ts"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "MemberExpression[object.name='process'][property.name='stdout']",
+          message:
+            "Route handlers must not write to process.stdout directly. Return message and data through context.result so the kernel renders the single result.",
+        },
+      ],
+    },
   },
 
   {

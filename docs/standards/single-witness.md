@@ -140,7 +140,7 @@ this file.
   set up Bun with its default caching).
 - Declare each command a package script runs in `.fallowrc.json`'s
   `entry`, and record any gap that exposes in the coverage gaps test's
-  recorded hits. Witnessed: [c08e107] (`pin-verification` and
+  recorded hits. Witnessed: [c08e107] (pin verification and
   `kernel-trial` landed as package scripts with no entry).
 - Read a tracked path's own entry (`lstatSync`), never the file it points to:
   `existsSync` follows a symlink, so a tracked link that points nowhere drops

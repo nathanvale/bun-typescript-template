@@ -1,7 +1,7 @@
-diff --git a/scripts/pin-move.ts b/scripts/pin-move.ts
+diff --git a/src/pin-move.ts b/src/pin-move.ts
 index ad9eb56..1a6ee0b 100644
---- a/scripts/pin-move.ts
-+++ b/scripts/pin-move.ts
+--- a/src/pin-move.ts
++++ b/src/pin-move.ts
 @@ -114,7 +114,7 @@ export function pinBranchCommit(
        `git ls-remote exited ${run.exitCode} and says "${run.stderr.toString().trim().split("\n")[0] ?? ""}".`,
      );

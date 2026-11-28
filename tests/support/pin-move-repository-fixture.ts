@@ -9,6 +9,7 @@ import {
 } from "node:fs";
 import { delimiter, join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { pinCauseCode } from "../../src/causes.ts";
 import { readKernelPin } from "../../src/kernel-pin.ts";
 import { ROOT } from "./bootstrap-cli-fixture.ts";
 import { ownedFolders } from "./fixture-files.ts";
@@ -57,11 +58,13 @@ export function expectRefused(
   },
   code: string,
 ): void {
-  expect({ exit: run.exit, stdout: run.stdout }).toEqual({
-    exit: 1,
-    stdout: "",
-  });
-  expect(run.stderr).toContain(`${code}:`);
+  const causeCode = pinCauseCode(code);
+  if (causeCode === undefined) {
+    throw new Error(`Unknown pin refusal code in test: ${code}`);
+  }
+  expect(run.exit).toBe(3);
+  expect(run.stdout).toMatch(/^(?:Diagnostics: [^\n]+\.jsonl\n)?$/);
+  expect(run.stderr).toContain(`[${causeCode}]`);
   expect(run.stderr).toContain("Repair:");
 }
 
@@ -226,6 +229,7 @@ export function pinMoveRepositoryFixture(): PinMoveRepositoryFixture {
     ...inherited(),
     ...gitEnv,
     BUN_INSTALL_CACHE_DIR: bunCache(),
+    XDG_STATE_HOME: join(work, "state"),
     PATH: `${bin}${delimiter}${process.env.PATH ?? ""}`,
   });
   const freshRepository = (prefix: string) => {
@@ -247,11 +251,23 @@ export function pinMoveRepositoryFixture(): PinMoveRepositoryFixture {
     folder,
     pinMoveEnv,
     freshRepository,
-    runPinMove: (args, bin = fixture.remoteBin, boundMilliseconds = 120_000) =>
-      spawnBounded(
-        [process.execPath, join(ROOT, "scripts/pin-move.ts"), ...args],
-        { cwd: ROOT, env: pinMoveEnv(bin), boundMilliseconds },
-      ),
+    runPinMove: (
+      args,
+      bin = fixture.remoteBin,
+      boundMilliseconds = 120_000,
+    ) => {
+      const route = args.includes("--plan")
+        ? ["pin", "plan", ...args.filter((arg) => arg !== "--plan")]
+        : ["pin", "move", ...args];
+      return spawnBounded(
+        [process.execPath, join(ROOT, "src/cli.ts"), ...route],
+        {
+          cwd: ROOT,
+          env: pinMoveEnv(bin),
+          boundMilliseconds,
+        },
+      );
+    },
     installedRepository: async (prefix) => {
       const repo = freshRepository(prefix);
       await installStartingKernel(repo, pinMoveEnv(fixture.remoteBin));
